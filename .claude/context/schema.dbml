@@ -1,0 +1,70 @@
+// Financeiro Pessoal — schema v1
+// Importar em https://dbdiagram.io
+// Reflete as decisoes da regra-de-negocio.md
+
+Table conta {
+  id uuid [pk]
+  nome varchar [not null]
+  origem varchar [not null, note: 'OPEN_FINANCE | MANUAL']
+  tipo varchar [note: 'BANK | CREDIT | INVESTMENT']
+  pierre_account_id varchar [note: 'null se manual']
+  saldo_manual decimal [note: 'null se Open Finance (saldo e calculado)']
+  ativa boolean [not null, default: true]
+}
+
+Table categoria {
+  id uuid [pk]
+  nome varchar [not null]
+  tipo varchar [not null, note: 'DESPESA | RECEITA']
+  parent_id uuid [ref: > categoria.id, note: 'null se categoria raiz']
+  arquivada boolean [not null, default: false]
+}
+
+Table de_para_categoria {
+  id uuid [pk]
+  categoria_pierre varchar [not null, note: 'string vinda da API do Pierre']
+  categoria_id uuid [ref: > categoria.id, note: 'minha categoria']
+}
+
+Table lancamento {
+  id uuid [pk]
+  pierre_txn_id varchar [note: 'null se manual; chave de dedup do sync']
+  conta_id uuid [ref: > conta.id, not null]
+  categoria_id uuid [ref: > categoria.id, note: 'null = sem categoria']
+  descricao varchar
+  valor decimal [not null]
+  tipo varchar [not null, note: 'DEBIT | CREDIT — fonte da verdade do sinal']
+  data date [not null]
+  status varchar [not null, note: 'PENDENTE | SUGERIDO | PAGO']
+  manual boolean [not null, default: false]
+  oculto boolean [not null, default: false, note: 'soft-delete de lancamento OF']
+  conta_fixa_id uuid [ref: > conta_fixa.id, note: 'null se avulso']
+  conciliado_com uuid [ref: - lancamento.id, note: 'txn OF vinculada na conciliacao']
+}
+
+Table conta_fixa {
+  id uuid [pk]
+  conta_id uuid [ref: > conta.id, not null]
+  categoria_id uuid [ref: > categoria.id]
+  descricao varchar [not null]
+  valor decimal [not null]
+  dia_vencimento int [not null, note: '1-31']
+  ativa boolean [not null, default: true]
+}
+
+Table parcela {
+  id uuid [pk]
+  lancamento_id uuid [ref: > lancamento.id, not null]
+  numero int [not null, note: 'parcela atual, ex: 3']
+  total int [not null, note: 'total de parcelas, ex: 10']
+  valor decimal [not null]
+  vencimento date [not null]
+  paga boolean [not null, default: false]
+}
+
+Table limite_gasto {
+  id uuid [pk]
+  categoria_id uuid [ref: > categoria.id, not null]
+  valor_limite decimal [not null]
+  periodo varchar [not null, default: 'MENSAL']
+}
