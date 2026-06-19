@@ -1,7 +1,7 @@
 # Financeiro Pessoal
 
 App de financas pessoais que consome a API REST do Pierre (Open Finance) e
-combina com contas manuais. Stack: .NET 8 (API) + Angular (front) + PostgreSQL.
+combina com contas manuais. Stack: .NET 8 (API) + React/TypeScript/Vite (front) + PostgreSQL.
 
 ---
 
@@ -23,15 +23,15 @@ Se a regra de negocio for omissa sobre algo, PERGUNTE antes de assumir.
 
 Quando eu pedir uma tarefa, identifique o modo e siga o agente correspondente:
 
-- "arquitetar" / "desenhar" / "modelar" -> `agents/arquiteto.md`
+- "arquitetar" / "desenhar" / "modelar" -> `agents/killua.md`
   Discute estrutura, modelagem e fluxo. NAO escreve codigo final.
-- "codar" / "implementar" -> `agents/codar.md`
+- "codar" / "implementar" -> `agents/levi.md`
   Escreve codigo limpo seguindo clean-code.md e a regra de negocio.
-- "coda a tela" / "componente" / "UI" / "front" -> `agents/front.md`
+- "coda a tela" / "componente" / "UI" / "front" -> `agents/hanzo.md`
   Implementa UI React seguindo a identidade visual e a regra de negocio.
-- "revisar" -> `agents/revisar.md`
+- "revisar" -> `agents/style.md`
   Critica codigo contra a regra de negocio e o clean-code.md.
-- "testar" -> `agents/testar.md`
+- "testar" -> `agents/mike.md`
   Gera e avalia testes cobrindo as regras de negocio.
 
 ---
@@ -56,9 +56,9 @@ sem eu pedir explicitamente para implementar.
     identidade-visual.md <- direcao visual (dark/roxo/minimalista)
     schema.dbml          <- schema do banco (referencia)
   agents/
-    arquiteto.md         <- modo: desenhar/modelar
-    codar.md             <- modo: implementar (back)
-    front.md             <- modo: implementar UI React
-    revisar.md           <- modo: criticar codigo
-    testar.md            <- modo: gerar testes
+    killua.md            <- modo: desenhar/modelar
+    levi.md              <- modo: implementar (back)
+    hanzo.md             <- modo: implementar UI React
+    style.md             <- modo: criticar codigo
+    mike.md              <- modo: gerar testes
 ```
