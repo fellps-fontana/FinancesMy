@@ -33,7 +33,7 @@ DEPENDENCIAS: TASK-001
 CONTEXTO A LER: schema.dbml (tabelas conta, categoria, lancamento, transferencia, fatura); regra-de-negocio.md itens 2, 3, 10, 12
 
 ### TASK-003 — Migration inicial
-STATUS: PENDENTE
+STATUS: CONCLUIDA (InitialCreate gerada; indices/FKs conferidos, build OK)
 AGENT: levi
 ESCOPO: Gerar e aplicar a migration EF Core com as tabelas do TASK-002.
 ARQUIVOS: MyFinances/MyFinances/Migrations/
