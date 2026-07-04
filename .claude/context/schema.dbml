@@ -6,9 +6,11 @@ Table conta {
   id uuid [pk]
   nome varchar [not null]
   origem varchar [not null, note: 'OPEN_FINANCE | MANUAL']
-  tipo varchar [note: 'BANK | CREDIT | INVESTMENT']
+  tipo varchar [note: 'BANCO | CARTAO | INVESTIMENTO']
   pierre_account_id varchar [note: 'null se manual']
-  saldo_manual decimal [note: 'null se Open Finance (saldo e calculado)']
+  saldo_manual decimal [note: 'null se Open Finance ou CARTAO (saldo e calculado)']
+  dia_fechamento int [note: 'so CARTAO; dia de fechamento da fatura']
+  dia_vencimento int [note: 'so CARTAO; dia de vencimento da fatura']
   ativa boolean [not null, default: true]
 }
 
@@ -22,7 +24,7 @@ Table categoria {
 
 Table de_para_categoria {
   id uuid [pk]
-  categoria_pierre varchar [not null, note: 'string vinda da API do Pierre']
+  categoria_pierre varchar [not null, note: 'string vinda da API do Pierre ou descricao importada']
   categoria_id uuid [ref: > categoria.id, note: 'minha categoria']
 }
 
@@ -40,6 +42,33 @@ Table lancamento {
   oculto boolean [not null, default: false, note: 'soft-delete de lancamento OF']
   conta_fixa_id uuid [ref: > conta_fixa.id, note: 'null se avulso']
   conciliado_com uuid [ref: - lancamento.id, note: 'txn OF vinculada na conciliacao']
+  transferencia_id uuid [ref: > transferencia.id, note: 'null se nao for perna de transferencia (item 3/12)']
+  fatura_id uuid [ref: > fatura.id, note: 'null se nao for compra de cartao (item 12)']
+}
+
+// Transferencia de mesma titularidade (item 3). Modelo de duas pernas:
+// dois lancamentos (saida na origem, entrada no destino) compartilham o mesmo
+// transferencia_id. Nao conta como gasto nem receita. Pagamento de fatura de
+// cartao e uma transferencia conta corrente -> conta CARTAO (item 12).
+Table transferencia {
+  id uuid [pk]
+  data date [not null]
+  valor decimal [not null]
+  conta_origem_id uuid [ref: > conta.id, not null]
+  conta_destino_id uuid [ref: > conta.id, not null]
+  descricao varchar
+}
+
+// Ciclo de fatura do cartao (item 12). Agrupa as compras (lancamento.fatura_id)
+// e vincula o pagamento (transferencia). Saldo do cartao e calculado, nao
+// armazenado: compras - pagamentos - estornos.
+Table fatura {
+  id uuid [pk]
+  conta_id uuid [ref: > conta.id, not null, note: 'conta do tipo CARTAO']
+  data_fechamento date [not null]
+  data_vencimento date [not null]
+  status varchar [not null, note: 'ABERTA | FECHADA | PAGA']
+  transferencia_id uuid [ref: - transferencia.id, note: 'pagamento vinculado; null enquanto nao paga']
 }
 
 Table conta_fixa {
