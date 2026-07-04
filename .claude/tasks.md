@@ -129,7 +129,7 @@ DEPENDENCIAS: TASK-013
 CONTEXTO A LER: regra-de-negocio.md item 12
 
 ### TASK-015 — Fechar fatura (transicao ABERTA -> FECHADA)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (transicao lazy: fecha a fatura ABERTA mais antiga no momento em que uma nova precisa ser criada; GET /api/cartoes/{contaId}/faturas para listagem)
 AGENT: levi
 ESCOPO: Rotina/endpoint que transiciona fatura de ABERTA para FECHADA quando data_fechamento e atingida, impedindo novas compras na fatura fechada (a compra seguinte abre a proxima).
 ARQUIVOS: MyFinances/MyFinances/Services/FaturaCicloService.cs, Controllers/FaturasController.cs
@@ -137,7 +137,7 @@ DEPENDENCIAS: TASK-006
 CONTEXTO A LER: regra-de-negocio.md item 12 (paragrafo "Fatura")
 
 ### TASK-016 — Revisao TASK-015
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO apos 1 ciclo — achado critico: crash de constraint nao tratado em compra retroativa colidindo com fatura ABERTA mais recente; corrigido com rejeicao controlada. Tambem: entity vazando no controller (DTO criado), duplicacao extraida. Regra confirmada pelo usuario e documentada: rejeicao e definitiva)
 AGENT: style
 ESCOPO: Validar transicao de estado e que compra nao entra em fatura ja FECHADA.
 ARQUIVOS: os do TASK-015

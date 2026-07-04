@@ -48,8 +48,11 @@ public class FaturaCicloServiceTests
         var service = new FaturaCicloService(context);
 
         var dataReferencia = new DateOnly(2026, 3, 5);
-        var fatura = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
+        var (fatura, rejeitada, motivo) = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
 
+        Assert.False(rejeitada);
+        Assert.Null(motivo);
+        Assert.NotNull(fatura);
         Assert.Equal(new DateOnly(2026, 3, 10), fatura.DataFechamento);
         Assert.Equal(new DateOnly(2026, 3, 20), fatura.DataVencimento);
         Assert.Equal(FaturaStatusConstants.Aberta, fatura.Status);
@@ -64,8 +67,11 @@ public class FaturaCicloServiceTests
         var service = new FaturaCicloService(context);
 
         var dataReferencia = new DateOnly(2026, 3, 5);
-        var fatura = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
+        var (fatura, rejeitada, motivo) = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
 
+        Assert.False(rejeitada);
+        Assert.Null(motivo);
+        Assert.NotNull(fatura);
         Assert.Equal(new DateOnly(2026, 3, 10), fatura.DataFechamento);
         Assert.Equal(new DateOnly(2026, 4, 5), fatura.DataVencimento);
     }
@@ -79,8 +85,11 @@ public class FaturaCicloServiceTests
         var service = new FaturaCicloService(context);
 
         var dataReferencia = new DateOnly(2026, 3, 10);
-        var fatura = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
+        var (fatura, rejeitada, motivo) = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
 
+        Assert.False(rejeitada);
+        Assert.Null(motivo);
+        Assert.NotNull(fatura);
         Assert.Equal(new DateOnly(2026, 4, 10), fatura.DataFechamento);
         Assert.Equal(new DateOnly(2026, 4, 20), fatura.DataVencimento);
     }
@@ -94,8 +103,11 @@ public class FaturaCicloServiceTests
         var service = new FaturaCicloService(context);
 
         var dataReferencia = new DateOnly(2026, 2, 28);
-        var fatura = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
+        var (fatura, rejeitada, motivo) = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
 
+        Assert.False(rejeitada);
+        Assert.Null(motivo);
+        Assert.NotNull(fatura);
         Assert.Equal(new DateOnly(2026, 3, 31), fatura.DataFechamento);
         Assert.Equal(new DateOnly(2026, 4, 15), fatura.DataVencimento);
     }
@@ -109,8 +121,11 @@ public class FaturaCicloServiceTests
         var service = new FaturaCicloService(context);
 
         var dataReferencia = new DateOnly(2025, 12, 20);
-        var fatura = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
+        var (fatura, rejeitada, motivo) = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
 
+        Assert.False(rejeitada);
+        Assert.Null(motivo);
+        Assert.NotNull(fatura);
         Assert.Equal(new DateOnly(2026, 1, 15), fatura.DataFechamento);
         Assert.Equal(new DateOnly(2026, 1, 25), fatura.DataVencimento);
     }
@@ -124,9 +139,13 @@ public class FaturaCicloServiceTests
         var service = new FaturaCicloService(context);
 
         var dataReferencia = new DateOnly(2026, 3, 5);
-        var fatura1 = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
-        var fatura2 = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
+        var (fatura1, rejeitada1, _) = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
+        var (fatura2, rejeitada2, _) = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
 
+        Assert.False(rejeitada1);
+        Assert.False(rejeitada2);
+        Assert.NotNull(fatura1);
+        Assert.NotNull(fatura2);
         Assert.Equal(fatura1.Id, fatura2.Id);
     }
 
@@ -234,8 +253,11 @@ public class FaturaCicloServiceTests
         var service = new FaturaCicloService(context);
 
         var dataReferencia = new DateOnly(2024, 2, 15);
-        var fatura = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
+        var (fatura, rejeitada, motivo) = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferencia);
 
+        Assert.False(rejeitada);
+        Assert.Null(motivo);
+        Assert.NotNull(fatura);
         Assert.Equal(new DateOnly(2024, 2, 29), fatura.DataFechamento);
         Assert.Equal(new DateOnly(2024, 3, 15), fatura.DataVencimento);
     }
