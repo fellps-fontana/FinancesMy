@@ -153,7 +153,7 @@ DEPENDENCIAS: TASK-016
 CONTEXTO A LER: regra-de-negocio.md item 12
 
 ### TASK-018 — Endpoint pagamento de fatura
-STATUS: PENDENTE
+STATUS: CONCLUIDA (POST ~/api/faturas/{id}/pagamento; valor calculado server-side, transferencia de 2 pernas, fatura vira PAGA. 1 ciclo de correcao: faltava validar tipo BANCO na conta origem, rota de listagem mudada sem necessidade, semantica REST do retorno)
 AGENT: levi
 ESCOPO: POST /api/faturas/{id}/pagamento cria Transferencia com duas pernas (saida conta corrente / entrada conta CARTAO), vincula a fatura, muda status para PAGA. Pagamento fecha a fatura inteira, nunca compra a compra.
 ARQUIVOS: MyFinances/MyFinances/Controllers/FaturasController.cs, Services/PagamentoFaturaService.cs
@@ -161,7 +161,7 @@ DEPENDENCIAS: TASK-015
 CONTEXTO A LER: regra-de-negocio.md itens 3 (transferencia duas pernas) e 12 (paragrafo "Pagamento de fatura" + "Pagamento x fatura")
 
 ### TASK-019 — Revisao TASK-018
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO apos 1 ciclo — achado critico: conta origem sem validar tipo BANCO, permitia pagar fatura com outro cartao ou com a propria conta)
 AGENT: style
 ESCOPO: Confirmar que o pagamento nao gera categoria de despesa, que as duas pernas compartilham transferencia_id, e que fatura PAGA nao aceita novo pagamento.
 ARQUIVOS: os do TASK-018

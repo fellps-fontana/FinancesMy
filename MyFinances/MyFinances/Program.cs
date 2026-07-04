@@ -20,6 +20,7 @@ builder.Services.AddScoped<FaturaCicloService>();
 builder.Services.AddScoped<ValidacaoCartaoService>();
 builder.Services.AddScoped<CompraCartaoService>();
 builder.Services.AddScoped<EstornoCartaoService>();
+builder.Services.AddScoped<PagamentoFaturaService>();
 
 var app = builder.Build();
 
