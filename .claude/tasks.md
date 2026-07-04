@@ -121,7 +121,7 @@ DEPENDENCIAS: TASK-012
 CONTEXTO A LER: regra-de-negocio.md item 12
 
 ### TASK-014 — Testes TASK-012
-STATUS: PENDENTE
+STATUS: CONCLUIDA (12 testes novos, 42/42 total: sinal invertido, validacoes, fatura PAGA/FECHADA/sem-fatura)
 AGENT: mike
 ESCOPO: Cobrir que estorno reduz o saldo do cartao e a soma categorica corretamente, sem afetar fluxo de caixa.
 ARQUIVOS: MyFinances/MyFinances.Tests/EstornoCartaoServiceTests.cs
