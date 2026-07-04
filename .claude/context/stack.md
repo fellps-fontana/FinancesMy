@@ -2,7 +2,7 @@
 
 ## Stack
 
-- **Backend:** .NET 8, API REST.
+- **Backend:** .NET 10, API REST. (ambiente de dev tem apenas SDK .NET 10 instalado; EF Core 8.0.4 e Npgsql 8.0.3 confirmados compativeis com o TFM net10.0)
 - **ORM:** Entity Framework Core + Npgsql.
 - **Banco:** PostgreSQL.
 - **Frontend:** React (TypeScript) + Vite.
