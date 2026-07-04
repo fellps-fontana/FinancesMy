@@ -54,7 +54,7 @@ RETORNO ESPERADO: `ContaService` testavel isoladamente (sem depender do controll
 
 ## TASK-004 — Controller REST de Conta (investimento)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-003
