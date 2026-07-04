@@ -1,313 +1,224 @@
-# Tasks — Modulo Cartao de Credito (v1)
+# Tasks — Modulo Lancamento Geral (v1)
 
-Gerado por killua a partir de `regra-de-negocio.md` item 12 (+ itens 2, 3, 9, 10)
-e `schema.dbml` (tabelas conta, categoria, lancamento, transferencia, fatura).
+Gerado por killua a partir de `regra-de-negocio.md` itens 1, 2 (CRITICA), 3, 4
+e `schema.dbml` (tabelas conta, categoria, lancamento, transferencia, fatura —
+todas ja existentes no codigo, herdadas da branch cartao-credito-tasks).
 
-Decisoes tomadas pelo usuario antes de fechar esta lista (registradas em
-`context/stack.md` e `context/regra-de-negocio.md`):
-- Stack e .NET 10 (nao .NET 8 — `stack.md` corrigido).
-- Compra de cartao nasce sempre com `status = PAGO` (nao passa pela maquina de
-  conciliacao do item 5 — clarificado no item 12 da regra-de-negocio.md).
+Escopo desta lista: a camada GERAL de servico sobre entidades que ja existem.
+NAO redesenha Conta/Categoria/Lancamento/Transferencia/Fatura. NAO inclui UI
+(hanzo) — o dispatch restringe explicitamente este modulo a endpoints
+backend que cartao, investimentos e conta-corrente/sync vao consumir.
+NAO duplica a logica de compra/estorno/fatura de cartao (ja fechada no
+modulo cartao-credito-tasks).
 
-Fora de escopo v1, nao tarefado: import de fatura Nubank e dedup sem
-`pierre_txn_id` (item 12 / Pendencias) — fica para v2.
+## Decisoes de modelagem (Killua)
+
+- **Classificacao de lancamento vira funcao pura e nomeada**, sem acesso a
+  banco: `ClassificacaoLancamentoService.Classificar(Lancamento)` retornando
+  um enum `ClassificacaoLancamento { Entrada, Saida, Transferencia,
+  CompetenciaCartao }`. Regra (item 2, CRITICA):
+  ```
+  se lancamento.TransferenciaId != null  -> Transferencia   (cobre pagamento de fatura)
+  senao se lancamento.FaturaId != null   -> CompetenciaCartao (compra/estorno cartao)
+  senao (Tipo == DEBIT ? Saida : Entrada)
+  ```
+  Nunca le `Valor`. Esta funcao e a peca que os modulos cartao (saldo
+  calculado, fluxo de caixa, relatorio categorico — TASK-021/024/025 la) e
+  sync vao reaproveitar. Construida e testada aqui, isolada, para nao virar
+  logica duplicada/inconsistente em cada modulo consumidor.
+- **Valor de lancamento manual sempre magnitude positiva.** `Tipo`
+  (DEBIT|CREDIT) e a UNICA fonte de sinal — nunca inferido do valor. Isso e
+  diferente da convencao interna do modulo cartao (estorno usa valor
+  negativo dentro do proprio DEBIT), que e um caso fechado e fora de escopo
+  aqui.
+- **Transferencia manual exige as DUAS contas com `Origem = MANUAL`.** Conta
+  Open Finance e dado imutavel (item 1, "o sistema apenas le, nunca edita")
+  — criar uma perna de Lancamento sintetica dentro dela conflitaria com essa
+  regra. Ver duvida em aberto sobre pagamento de fatura partindo de conta OF.
+- **Exclusao de lancamento manual = HARD DELETE**, diferente do soft-delete
+  do item 4 (que e exclusivo de Open Finance, cujo racional explicito e
+  "nao ser reimportado pelo sync" — nao se aplica a lancamento manual, que
+  nao tem fonte externa para reimportar). Bloqueia delete se
+  `TransferenciaId`, `FaturaId` ou `ConciliadoCom` estiverem preenchidos
+  (protege integridade de dados de outros modulos que apontam pra essa
+  linha).
+- **Status aceito na criacao/edicao manual: PENDENTE ou PAGO apenas.**
+  `SUGERIDO` (item 5) e exclusivo da maquina de conciliacao automatica —
+  setar isso manualmente quebraria a invariante de que SUGERIDO sempre
+  vem acompanhado de uma proposta de vinculo do sync.
+- **GET de lancamento (listagem) e cru, sem "visao".** Retorna os campos da
+  entidade, filtravel por `contaId`/`manual`/`status`. NAO aplica a
+  classificacao CAIXA/COMPETENCIA (isso e relatorio, tarefado nos modulos
+  consumidores — cartao TASK-024/025). Este modulo so fornece o dado e a
+  funcao de classificacao; quem monta a "visao" e outro modulo.
+- **Contrato para o modulo de sync (fora de escopo aqui):** antes de
+  inserir um lancamento por `pierre_txn_id`, o sync deve checar se ja existe
+  um lancamento com esse `pierre_txn_id` e `Oculto = true` — se existir, NAO
+  reinserir. Este modulo garante o soft-delete e o campo; a checagem no
+  fluxo de sync e responsabilidade de outro modulo.
+
+Fora de escopo v1, nao tarefado: UI (hanzo), cancelamento/estorno de
+transferencia, endpoint de "desocultar", checagem de reimport no sync.
 
 Formato: STATUS (PENDENTE | CONCLUIDA | BLOQUEADA).
 
 ---
 
-### TASK-001 — Setup de infraestrutura (EF Core + projeto de testes)
-STATUS: CONCLUIDA (EF Core/Npgsql em 10.0.9/10.0.2, alinhado ao net10.0 do csproj; build OK)
+### TASK-001 — Servico de classificacao de lancamento (regra de sinal, item 2 CRITICA)
+STATUS: PENDENTE
 AGENT: levi
-ESCOPO: Adicionar pacotes EF Core/Npgsql ao projeto, criar `AppDbContext` vazio, configurar connection string e criar o projeto de testes xUnit referenciando o projeto principal.
-ARQUIVOS: MyFinances/MyFinances/MyFinances.csproj, MyFinances/MyFinances/Program.cs, MyFinances/MyFinances/appsettings.json, MyFinances/MyFinances/appsettings.Development.json, MyFinances/MyFinances/Data/AppDbContext.cs, MyFinances/MyFinances.Tests/MyFinances.Tests.csproj (novo), MyFinances/MyFinances.sln
+FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
-CONTEXTO A LER: stack.md completo (ORM, banco, convencoes)
+CONTEXTO A LER: regra-de-negocio.md item 2 (regra de sinal, CRITICA), item 3 (transferencia), item 12 (paragrafo "Duas visoes"); clean-code.md secao "Organizacao (.NET)" (regra de negocio em funcao nomeada e testavel)
+ESCOPO: criar `ClassificacaoLancamentoService` com metodo puro `Classificar(Lancamento lancamento)` retornando enum `ClassificacaoLancamento { Entrada, Saida, Transferencia, CompetenciaCartao }`, usando SEMPRE `Tipo` (DEBIT/CREDIT) + os vinculos `TransferenciaId`/`FaturaId` — nunca o sinal cru de `Valor`. `TransferenciaId` preenchido classifica como Transferencia independente do `Tipo` (cobre a excecao de pagamento de fatura citada no item 2). `FaturaId` preenchido classifica como CompetenciaCartao (nunca entra no fluxo de caixa geral, item 12).
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/ClassificacaoLancamentoService.cs (novo), MyFinances/MyFinances/Domain/ClassificacaoLancamento.cs (novo, enum)
+NAO FAZER: nao ler ou somar `Valor` para decidir sinal; nao implementar aqui os endpoints de fluxo de caixa/saldo/relatorio que VAO CONSUMIR esta funcao (pertencem a outros modulos, ja tarefados no worktree cartao-credito-tasks); nao alterar a convencao de valor negativo do estorno de cartao (modulo ja fechado, fora de escopo).
+RETORNO ESPERADO: funcao pura, sem dependencia de `AppDbContext`, testavel isoladamente, cobrindo os 4 casos de classificacao.
 
-### TASK-002 — Entidades EF Core do modulo cartao (Conta, Categoria stub, Lancamento, Transferencia, Fatura)
-STATUS: CONCLUIDA (mapping revisado; corrigidos Fatura<->Transferencia para 1:1 e filtro do indice unico de PierreTxnId para sintaxe PostgreSQL)
-AGENT: levi
-ESCOPO: Criar as classes de entidade e o Fluent API mapping no AppDbContext refletindo exatamente o schema.dbml (tipos, enums como string, nullability, FKs, indice unico em pierre_txn_id quando nao nulo).
-ARQUIVOS: MyFinances/MyFinances/Models/Conta.cs, Models/Categoria.cs, Models/Lancamento.cs, Models/Transferencia.cs, Models/Fatura.cs, Data/AppDbContext.cs
+### TASK-002 — Revisao TASK-001
+STATUS: PENDENTE
+AGENT: style
+FLUXO: Implementacao
 DEPENDENCIAS: TASK-001
-CONTEXTO A LER: schema.dbml (tabelas conta, categoria, lancamento, transferencia, fatura); regra-de-negocio.md itens 2, 3, 10, 12
+CONTEXTO A LER: regra-de-negocio.md item 2 (CRITICA)
+ESCOPO: confirmar que a classificacao nunca le o sinal de `Valor`, que transferencia (incluindo pagamento de fatura) nunca cai em Entrada/Saida, e que compra/estorno de cartao (FaturaId preenchido) nunca aparece como Entrada/Saida.
+ARQUIVOS PERMITIDOS: os mesmos do TASK-001 (leitura + veredito)
+NAO FAZER: nao editar codigo — devolver tarefa de correcao no esquema padrao se reprovar.
+RETORNO ESPERADO: veredito (APROVADO | PRECISA CORRIGIR) + tarefa de correcao se reprovado.
 
-### TASK-003 — Migration inicial
-STATUS: CONCLUIDA (InitialCreate gerada; indices/FKs conferidos, build OK)
-AGENT: levi
-ESCOPO: Gerar e aplicar a migration EF Core com as tabelas do TASK-002.
-ARQUIVOS: MyFinances/MyFinances/Migrations/
-DEPENDENCIAS: TASK-002
-CONTEXTO A LER: stack.md (convencao "Migrations versionadas pelo EF")
+### TASK-003 — Testes TASK-001
+STATUS: PENDENTE
+AGENT: mike
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-002 (aprovado)
+CONTEXTO A LER: regra-de-negocio.md item 2
+ESCOPO: cobrir os 4 casos (DEBIT sem vinculo = Saida; CREDIT sem vinculo = Entrada; TransferenciaId preenchido = Transferencia independente do Tipo; FaturaId preenchido = CompetenciaCartao); incluir caso de valor com sinal "errado" (ex.: CREDIT com Valor negativo) provando que o sinal cru e ignorado.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/ClassificacaoLancamentoServiceTests.cs (novo)
+NAO FAZER: nao alterar o servico pra fazer o teste passar sem reportar — bug de codigo volta pro levi.
+RETORNO ESPERADO: testes passando; relatorio estruturado se falhar por bug de codigo.
 
-### TASK-004 — Endpoint criar conta CARTAO
-STATUS: CONCLUIDA (POST /api/contas, validacao condicional CARTAO; 1 ciclo de correcao via style — nomes de metodo enganosos + comentario acentuado)
+### TASK-004 — Servico + endpoint CRUD de lancamento manual
+STATUS: PENDENTE
 AGENT: levi
-ESCOPO: POST /api/contas aceitando tipo CARTAO com validacao condicional obrigando dia_fechamento e dia_vencimento.
-ARQUIVOS: MyFinances/MyFinances/Controllers/ContasController.cs, Services/ContaService.cs
-DEPENDENCIAS: TASK-003
-CONTEXTO A LER: regra-de-negocio.md item 12 (conta CARTAO); schema.dbml tabela conta
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-001
+CONTEXTO A LER: regra-de-negocio.md item 1 (conta manual e fonte da verdade; OF imutavel), item 2 (regra de sinal), item 5 (paragrafo "Conta de pagamento manual", para os status aceitos)
+ESCOPO: `LancamentoManualService` com Criar/Editar/Listar/Excluir para lancamento em conta `Origem=MANUAL`; `LancamentosController` com POST/PUT/GET/DELETE em `/api/lancamentos`. Criar/editar exige `Tipo` (DEBIT|CREDIT) explicito no request (nunca inferido do sinal de `Valor`, sempre armazenado como magnitude positiva); `Status` aceita apenas PENDENTE ou PAGO. Excluir e HARD DELETE, bloqueado se `TransferenciaId`, `FaturaId` ou `ConciliadoCom` estiverem preenchidos.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/LancamentoManualService.cs (novo), MyFinances/MyFinances/Controllers/LancamentosController.cs (novo), MyFinances/MyFinances/Dtos/CriarLancamentoRequest.cs (novo), MyFinances/MyFinances/Dtos/EditarLancamentoRequest.cs (novo)
+NAO FAZER: nao permitir criar/editar lancamento em conta com `Origem=OPEN_FINANCE` (item 1); nao permitir setar `Status=SUGERIDO` nem preencher `ConciliadoCom`/`TransferenciaId`/`FaturaId` via este endpoint (geridos por outros fluxos); nao permitir mover lancamento entre contas na edicao.
+RETORNO ESPERADO: contrato de API dos 4 endpoints (rota, verbo, body, retorno) + servico testavel isoladamente.
 
 ### TASK-005 — Revisao TASK-004
-STATUS: CONCLUIDA (APROVADO apos correcao; regra de negocio ok desde a 1a versao — pendencia registrada: saldo_manual obrigatorio ou nao na criacao de conta BANCO/INVESTIMENTO, nao decidida)
+STATUS: PENDENTE
 AGENT: style
-ESCOPO: Validar que criacao de conta CARTAO sem os dois campos de ciclo e rejeitada e que saldo_manual nao e aceito para CARTAO (saldo e calculado, item 10).
-ARQUIVOS: os mesmos do TASK-004 (leitura + veredito)
+FLUXO: Implementacao
 DEPENDENCIAS: TASK-004
-CONTEXTO A LER: regra-de-negocio.md itens 10, 12
+CONTEXTO A LER: regra-de-negocio.md itens 1, 2, 5
+ESCOPO: confirmar bloqueio de conta OPEN_FINANCE, validacao de `Tipo` explicito (nunca sinal cru), bloqueio de delete quando ha vinculo (transferencia/fatura/conciliacao), e que `Status` nunca aceita SUGERIDO via este endpoint.
+ARQUIVOS PERMITIDOS: os do TASK-004
+RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 
-### TASK-006 — Servico de ciclo de fatura (fatura vigente / criacao sob demanda)
-STATUS: CONCLUIDA (calculo de ciclo com virada de mes/ano corrigido apos revisao — bug real de rollover sobre data clampada; indice unico parcial no banco adicionado, elimina race condition; FaturaStatusConstants movido p/ Domain/)
-AGENT: levi
-ESCOPO: Dado uma conta CARTAO e uma data, resolver a fatura ABERTA correspondente ao ciclo (dia_fechamento -> dia_vencimento), criando-a se nao existir.
-ARQUIVOS: MyFinances/MyFinances/Services/FaturaCicloService.cs
-DEPENDENCIAS: TASK-004
-CONTEXTO A LER: regra-de-negocio.md item 12 (paragrafo "Fatura"); schema.dbml tabela fatura
-
-### TASK-007 — Revisao TASK-006
-STATUS: CONCLUIDA (PRECISA CORRIGIR -> corrigido: bug de rollover de data, constraint de unicidade, organizacao de constantes, docstring incorreto. Duas lacunas de regra confirmadas pelo usuario e documentadas na regra-de-negocio.md)
-AGENT: style
-ESCOPO: Checar calculo de datas de ciclo (virada de mes, ano) e que nunca existam duas faturas ABERTA simultaneas para a mesma conta.
-ARQUIVOS: os do TASK-006
-DEPENDENCIAS: TASK-006
-CONTEXTO A LER: regra-de-negocio.md item 12
-
-### TASK-008 — Testes TASK-006
-STATUS: CONCLUIDA (11/11 testes passando: ciclo normal, virada mes curto->longo, virada de ano, reaproveitamento, dia exato do fechamento, validacoes de erro)
+### TASK-006 — Testes TASK-004
+STATUS: PENDENTE
 AGENT: mike
-ESCOPO: Cobrir maquina de estado de resolucao/criacao de fatura (ciclo normal, virada de ano, chamada concorrente nao duplicando fatura ABERTA).
-ARQUIVOS: MyFinances/MyFinances.Tests/FaturaCicloServiceTests.cs
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-005 (aprovado)
+CONTEXTO A LER: regra-de-negocio.md itens 1, 2, 5
+ESCOPO: cobrir criar/editar/listar/excluir em conta MANUAL; rejeicao em conta OPEN_FINANCE; rejeicao de `Status=SUGERIDO`; bloqueio de delete com `TransferenciaId`/`FaturaId`/`ConciliadoCom` preenchidos.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/LancamentoManualServiceTests.cs (novo)
+NAO FAZER: nao alterar servico/controller para o teste passar sem reportar.
+RETORNO ESPERADO: testes passando; relatorio se bug de codigo.
+
+### TASK-007 — Servico + endpoint transferencia entre contas manuais
+STATUS: PENDENTE
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-001
+CONTEXTO A LER: regra-de-negocio.md item 3 (transferencias de mesma titularidade, modelo de duas pernas)
+ESCOPO: `TransferenciaService.CriarAsync` cria um registro `Transferencia` + duas `Lancamento` (saida DEBIT na conta origem, entrada CREDIT na conta destino) compartilhando `TransferenciaId`, `Manual=true`, `Status=PAGO`, mesma magnitude de valor nas duas pernas, criadas atomicamente (mesma transacao); `TransferenciasController` com POST `/api/transferencias`. Validar: ambas as contas existem, `Origem=MANUAL` nas duas, contas diferentes entre si, valor > 0.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/TransferenciaService.cs (novo), MyFinances/MyFinances/Controllers/TransferenciasController.cs (novo), MyFinances/MyFinances/Dtos/CriarTransferenciaRequest.cs (novo)
+NAO FAZER: nao aceitar conta com `Origem=OPEN_FINANCE` em nenhuma perna (ver duvida em aberto sobre pagamento de fatura); nao implementar cancelamento/estorno de transferencia; nao duplicar a logica de pagamento de fatura do modulo cartao (aquele modulo pode reaproveitar este servico quando as duas contas forem MANUAL, mas a decisao e dele).
+RETORNO ESPERADO: contrato do endpoint + servico testavel; garantia de atomicidade das duas pernas.
+
+### TASK-008 — Revisao TASK-007
+STATUS: PENDENTE
+AGENT: style
+FLUXO: Implementacao
 DEPENDENCIAS: TASK-007
-CONTEXTO A LER: regra-de-negocio.md item 12
+CONTEXTO A LER: regra-de-negocio.md item 3
+ESCOPO: confirmar que as duas pernas sempre compartilham `TransferenciaId`, tipos opostos corretos (DEBIT origem / CREDIT destino), valor identico, atomicidade (nunca uma perna sem a outra), e que a classificacao da TASK-001 aplicada a ambas resulta em Transferencia.
+ARQUIVOS PERMITIDOS: os do TASK-007
+RETORNO ESPERADO: veredito + correcao se reprovado.
 
-### TASK-009 — Endpoint criar/editar compra
-STATUS: CONCLUIDA (POST/PUT /api/cartoes/{contaId}/compras; FaturaId resolvido pela data da compra via novo metodo ResolverFaturaParaLancamentoAsync — rejeita fatura PAGA, aceita FECHADA retroativa, cria ABERTA se nao existir; regra confirmada pelo usuario e documentada. Testes existentes (TASK-008) continuam passando 11/11)
-AGENT: levi
-ESCOPO: POST/PUT /api/cartoes/{contaId}/compras cria lancamento com categoria_id, data, valor, tipo=DEBIT, manual=true, status=PAGO (fixo — ver clarificacao no item 12), associado a fatura resolvida pelo TASK-006.
-ARQUIVOS: MyFinances/MyFinances/Controllers/CartaoComprasController.cs, Services/CompraCartaoService.cs
-DEPENDENCIAS: TASK-006
-CONTEXTO A LER: regra-de-negocio.md item 12 (paragrafo "Compra" + clarificacao "Status do lancamento de compra") e item 2 (regra de sinal)
-
-### TASK-010 — Revisao TASK-009
-STATUS: CONCLUIDA (APROVADO apos 1 ciclo de correcao — bug critico: edicao de valor/descricao numa compra com fatura ja PAGA passava sem validacao quando a data nao mudava; corrigido para revalidar sempre. Tambem: validacao duplicada unificada, constantes movidas p/ Domain/)
-AGENT: style
-ESCOPO: Garantir que a compra nunca e marcada como transferencia, nunca entra em endpoint de fluxo de caixa por engano, e que status e sempre PAGO fixo (nunca PENDENTE/SUGERIDO).
-ARQUIVOS: os do TASK-009
-DEPENDENCIAS: TASK-009
-CONTEXTO A LER: regra-de-negocio.md item 12
-
-### TASK-011 — Testes TASK-009
-STATUS: CONCLUIDA (30/30 testes: criar/editar compra, fatura PAGA/FECHADA/ABERTA em ambos os fluxos, incluindo regressao do bug corrigido na TASK-010)
+### TASK-009 — Testes TASK-007
+STATUS: PENDENTE
 AGENT: mike
-ESCOPO: Cobrir classificacao da compra (nunca some no fluxo de caixa, sempre soma na visao categorica), vinculo correto de fatura_id e status sempre PAGO.
-ARQUIVOS: MyFinances/MyFinances.Tests/CompraCartaoServiceTests.cs
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-008 (aprovado)
+CONTEXTO A LER: regra-de-negocio.md item 3
+ESCOPO: cobrir criacao das duas pernas; rejeicao de conta OPEN_FINANCE; rejeicao de conta origem==destino; rejeicao de valor<=0; classificacao das duas pernas resultando em Transferencia (nunca Entrada/Saida).
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/TransferenciaServiceTests.cs (novo)
+RETORNO ESPERADO: testes passando; relatorio se bug de codigo.
+
+### TASK-010 — Servico + endpoint ocultar lancamento Open Finance (soft-delete, item 4)
+STATUS: PENDENTE
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-004 (mesmo arquivo Controllers/LancamentosController.cs — serializar)
+CONTEXTO A LER: regra-de-negocio.md item 4 (exclusao de lancamento OF)
+ESCOPO: `LancamentoOcultacaoService.OcultarAsync` marca `Oculto=true` em lancamento com `Manual=false`, nunca hard-delete; `PATCH /api/lancamentos/{id}/ocultar` no `LancamentosController`. Bloqueia a acao se `Manual=true` (esses usam o DELETE da TASK-004).
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/LancamentoOcultacaoService.cs (novo), MyFinances/MyFinances/Controllers/LancamentosController.cs (estender)
+NAO FAZER: nao apagar fisicamente a linha em nenhuma hipotese; nao implementar aqui a checagem do sync contra reimport (responsabilidade do modulo de sync, que deve consumir `Oculto`+`PierreTxnId`); nao criar endpoint de "desocultar" (nao solicitado).
+RETORNO ESPERADO: contrato do endpoint; garantia de que `Oculto=true` e a UNICA mudanca de estado.
+
+### TASK-011 — Revisao TASK-010
+STATUS: PENDENTE
+AGENT: style
+FLUXO: Implementacao
 DEPENDENCIAS: TASK-010
-CONTEXTO A LER: regra-de-negocio.md item 12
+CONTEXTO A LER: regra-de-negocio.md item 4
+ESCOPO: confirmar que a acao e sempre soft-delete (nenhum caminho de codigo remove a linha), que so lancamento OF (`Manual=false`) pode ser ocultado, e que nenhum outro campo e alterado.
+ARQUIVOS PERMITIDOS: os do TASK-010
+RETORNO ESPERADO: veredito + correcao se reprovado.
 
-### TASK-012 — Endpoint estorno
-STATUS: CONCLUIDA (POST /api/cartoes/{contaId}/estornos, Lancamento com valor negativo, mesma regra de fatura da compra. 1 ciclo de correcao: extraido ValidacaoCartaoService compartilhado para remover acoplamento entre EstornoCartaoService e CompraCartaoService)
-AGENT: levi
-ESCOPO: POST /api/cartoes/{contaId}/estornos cria lancamento de compra negativa vinculado a fatura correspondente.
-ARQUIVOS: MyFinances/MyFinances/Controllers/CartaoComprasController.cs, Services/EstornoCartaoService.cs
-DEPENDENCIAS: TASK-009
-CONTEXTO A LER: regra-de-negocio.md item 12 (paragrafo "Estorno")
-
-### TASK-013 — Revisao TASK-012
-STATUS: CONCLUIDA (APROVADO apos 1 ciclo de correcao — regra de negocio ja estava correta desde a 1a versao; achado foi de design/acoplamento)
-AGENT: style
-ESCOPO: Confirmar que estorno reduz saldo/fatura corretamente e nao e confundido com pagamento.
-ARQUIVOS: os do TASK-012
-DEPENDENCIAS: TASK-012
-CONTEXTO A LER: regra-de-negocio.md item 12
-
-### TASK-014 — Testes TASK-012
-STATUS: CONCLUIDA (12 testes novos, 42/42 total: sinal invertido, validacoes, fatura PAGA/FECHADA/sem-fatura)
-AGENT: mike
-ESCOPO: Cobrir que estorno reduz o saldo do cartao e a soma categorica corretamente, sem afetar fluxo de caixa.
-ARQUIVOS: MyFinances/MyFinances.Tests/EstornoCartaoServiceTests.cs
-DEPENDENCIAS: TASK-013
-CONTEXTO A LER: regra-de-negocio.md item 12
-
-### TASK-015 — Fechar fatura (transicao ABERTA -> FECHADA)
-STATUS: PENDENTE
-AGENT: levi
-ESCOPO: Rotina/endpoint que transiciona fatura de ABERTA para FECHADA quando data_fechamento e atingida, impedindo novas compras na fatura fechada (a compra seguinte abre a proxima).
-ARQUIVOS: MyFinances/MyFinances/Services/FaturaCicloService.cs, Controllers/FaturasController.cs
-DEPENDENCIAS: TASK-006
-CONTEXTO A LER: regra-de-negocio.md item 12 (paragrafo "Fatura")
-
-### TASK-016 — Revisao TASK-015
-STATUS: PENDENTE
-AGENT: style
-ESCOPO: Validar transicao de estado e que compra nao entra em fatura ja FECHADA.
-ARQUIVOS: os do TASK-015
-DEPENDENCIAS: TASK-015
-CONTEXTO A LER: regra-de-negocio.md item 12
-
-### TASK-017 — Testes TASK-015
+### TASK-012 — Testes TASK-010
 STATUS: PENDENTE
 AGENT: mike
-ESCOPO: Cobrir transicao de estado ABERTA -> FECHADA e bloqueio de compra em fatura fechada.
-ARQUIVOS: MyFinances/MyFinances.Tests/FaturaFechamentoTests.cs
-DEPENDENCIAS: TASK-016
-CONTEXTO A LER: regra-de-negocio.md item 12
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-011 (aprovado)
+CONTEXTO A LER: regra-de-negocio.md item 4
+ESCOPO: cobrir ocultar lancamento OF (`Oculto` vira true, linha continua existindo); rejeicao de ocultar lancamento `Manual=true`; nenhum outro campo alterado pela operacao.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/LancamentoOcultacaoServiceTests.cs (novo)
+RETORNO ESPERADO: testes passando; relatorio se bug de codigo.
 
-### TASK-018 — Endpoint pagamento de fatura
-STATUS: PENDENTE
-AGENT: levi
-ESCOPO: POST /api/faturas/{id}/pagamento cria Transferencia com duas pernas (saida conta corrente / entrada conta CARTAO), vincula a fatura, muda status para PAGA. Pagamento fecha a fatura inteira, nunca compra a compra.
-ARQUIVOS: MyFinances/MyFinances/Controllers/FaturasController.cs, Services/PagamentoFaturaService.cs
-DEPENDENCIAS: TASK-015
-CONTEXTO A LER: regra-de-negocio.md itens 3 (transferencia duas pernas) e 12 (paragrafo "Pagamento de fatura" + "Pagamento x fatura")
+---
 
-### TASK-019 — Revisao TASK-018
-STATUS: PENDENTE
-AGENT: style
-ESCOPO: Confirmar que o pagamento nao gera categoria de despesa, que as duas pernas compartilham transferencia_id, e que fatura PAGA nao aceita novo pagamento.
-ARQUIVOS: os do TASK-018
-DEPENDENCIAS: TASK-018
-CONTEXTO A LER: regra-de-negocio.md itens 3, 12
+## Duvida em aberto para o usuario
 
-### TASK-020 — Testes TASK-018
-STATUS: PENDENTE
-AGENT: mike
-ESCOPO: Cobrir que o pagamento nao duplica com as compras (regra de sinal/dupla contagem) e que fecha o saldo da fatura como um todo.
-ARQUIVOS: MyFinances/MyFinances.Tests/PagamentoFaturaServiceTests.cs
-DEPENDENCIAS: TASK-019
-CONTEXTO A LER: regra-de-negocio.md itens 2, 3, 12
+1. **Delete de lancamento manual (TASK-004).** Assumi HARD DELETE porque o
+   racional do soft-delete do item 4 e explicitamente "nao ser reimportado
+   pelo sync" — nao existe risco equivalente pra lancamento manual. Mas a
+   regra e omissa sobre isso especificamente (so fala de exclusao de OF).
+   Se voce quiser auditoria/historico tambem pra lancamento manual excluido,
+   isso muda a task (viraria soft-delete generico, nao so pra OF).
 
-### TASK-021 — Saldo calculado do cartao
-STATUS: PENDENTE
-AGENT: levi
-ESCOPO: GET /api/contas/{id}/saldo para conta CARTAO retornando compras - pagamentos - estornos, calculado em tempo real, nunca armazenado.
-ARQUIVOS: MyFinances/MyFinances/Services/SaldoCartaoService.cs, Controllers/ContasController.cs
-DEPENDENCIAS: TASK-018 (precisa de compra, pagamento e estorno ja existentes)
-CONTEXTO A LER: regra-de-negocio.md itens 10, 12 (paragrafo "Saldo do cartao")
+2. **Status na criacao manual (PENDENTE|PAGO) e o item 5/6.** Modelei o CRUD
+   generico assumindo que "conta a pagar" (item 5) e a MESMA tabela
+   `lancamento` com `Status=PENDENTE`, e que este CRUD e o caminho de
+   criacao que o futuro modulo de conciliacao/conta-fixa vai usar. Se esse
+   modulo (ainda nao arquitetado) precisar de um fluxo/tabela proprios em
+   vez de reaproveitar este CRUD generico, a TASK-004 precisa ser revista.
 
-### TASK-022 — Revisao TASK-021
-STATUS: PENDENTE
-AGENT: style
-ESCOPO: Confirmar que o calculo nao soma valor cru (item 2) e que nenhuma linha e lida duas vezes (compra + estorno da mesma compra, pagamento).
-ARQUIVOS: os do TASK-021
-DEPENDENCIAS: TASK-021
-CONTEXTO A LER: regra-de-negocio.md itens 2, 10, 12
-
-### TASK-023 — Testes TASK-021
-STATUS: PENDENTE
-AGENT: mike
-ESCOPO: Cobrir o calculo do saldo com combinacoes de compra/pagamento/estorno.
-ARQUIVOS: MyFinances/MyFinances.Tests/SaldoCartaoServiceTests.cs
-DEPENDENCIAS: TASK-022
-CONTEXTO A LER: regra-de-negocio.md itens 10, 12
-
-### TASK-024 — Endpoint visao fluxo de caixa (CAIXA)
-STATUS: PENDENTE
-AGENT: levi
-ESCOPO: GET /api/lancamentos?visao=caixa — lista lancamentos gerais mostrando o pagamento de fatura como saida, excluindo as compras individuais do cartao.
-ARQUIVOS: MyFinances/MyFinances/Controllers/LancamentosController.cs, Services/FluxoCaixaService.cs
-DEPENDENCIAS: TASK-018
-CONTEXTO A LER: regra-de-negocio.md item 12 (paragrafo "Duas visoes" + "Lancamento geral / fluxo de caixa")
-
-### TASK-025 — Endpoint visao categorica (COMPETENCIA)
-STATUS: PENDENTE
-AGENT: levi
-ESCOPO: GET /api/relatorios/categorias?mes= — soma compras do cartao por categoria, ignorando pagamento/transferencia.
-ARQUIVOS: MyFinances/MyFinances/Controllers/RelatoriosController.cs, Services/RelatorioCategoriaService.cs
-DEPENDENCIAS: TASK-009
-CONTEXTO A LER: regra-de-negocio.md item 12 (paragrafo "Duas visoes" + "Categorico / gasto por categoria"), item 7 (categoria)
-
-### TASK-026 — Revisao conjunta TASK-024 + TASK-025 (nucleo do modelo)
-STATUS: PENDENTE
-AGENT: style
-ESCOPO: Validar lado a lado as duas queries — nenhuma compra pode aparecer no CAIXA, nenhum pagamento pode aparecer no COMPETENCIA. Regra critica do item 12; revisao isolada de cada endpoint nao basta.
-ARQUIVOS: os do TASK-024 e TASK-025
-DEPENDENCIAS: TASK-024, TASK-025
-CONTEXTO A LER: regra-de-negocio.md item 12 inteiro
-
-### TASK-027 — Testes conjuntos TASK-024 + TASK-025
-STATUS: PENDENTE
-AGENT: mike
-ESCOPO: Cenario com N compras + 1 pagamento no mes: comprovar que a soma do CAIXA e so o pagamento e a soma do COMPETENCIA e so as compras, sem sobreposicao de valor total.
-ARQUIVOS: MyFinances/MyFinances.Tests/VisoesCartaoTests.cs
-DEPENDENCIAS: TASK-026
-CONTEXTO A LER: regra-de-negocio.md item 12
-
-### TASK-028 — Endpoint projecao do mes (cartao como 1 linha)
-STATUS: PENDENTE
-AGENT: levi
-ESCOPO: GET /api/projecao?mes= — incorpora a fatura atual da conta CARTAO como uma unica linha (total + status pago/nao pago) dentro do calculo saldo_projetado = recebido - (pago + a_pagar); compras individuais nao entram.
-ARQUIVOS: MyFinances/MyFinances/Controllers/ProjecaoController.cs, Services/ProjecaoService.cs
-DEPENDENCIAS: TASK-015, TASK-018
-CONTEXTO A LER: regra-de-negocio.md itens 9 e 12 (paragrafo "Projecao")
-
-### TASK-029 — Revisao TASK-028
-STATUS: PENDENTE
-AGENT: style
-ESCOPO: Confirmar que so a fatura atual entra (nao faturas passadas/futuras) e que compras nao vazam para a projecao.
-ARQUIVOS: os do TASK-028
-DEPENDENCIAS: TASK-028
-CONTEXTO A LER: regra-de-negocio.md itens 9, 12
-
-### TASK-030 — Testes TASK-028
-STATUS: PENDENTE
-AGENT: mike
-ESCOPO: Cobrir que a projecao do mes soma o cartao como exatamente 1 linha independente de quantas compras existam na fatura.
-ARQUIVOS: MyFinances/MyFinances.Tests/ProjecaoServiceTests.cs
-DEPENDENCIAS: TASK-029
-CONTEXTO A LER: regra-de-negocio.md itens 9, 12
-
-### TASK-031 — Scaffold do projeto frontend (Vite + React + TS)
-STATUS: PENDENTE
-AGENT: hanzo
-ESCOPO: Criar o projeto Vite/React/TypeScript na raiz do repo, estrutura de pastas por feature, camada de dados via React Query (ou hook proprio) conforme stack.md.
-ARQUIVOS: frontend/ (novo — package.json, vite.config.ts, tsconfig.json, src/)
-DEPENDENCIAS: nenhuma (paralelo ao backend, mas telas de cartao dependem dos endpoints)
-CONTEXTO A LER: stack.md (secao Frontend React)
-
-### TASK-032 — Tela conta cartao
-STATUS: PENDENTE
-AGENT: hanzo
-ESCOPO: Criar/listar conta CARTAO e exibir saldo calculado (GET /api/contas/{id}/saldo).
-ARQUIVOS: frontend/src/features/cartao/ContaCartaoPage.tsx, frontend/src/features/cartao/api.ts
-DEPENDENCIAS: TASK-031, TASK-004, TASK-021
-CONTEXTO A LER: regra-de-negocio.md item 12; identidade-visual.md se existir
-
-### TASK-033 — Tela lancar compra
-STATUS: PENDENTE
-AGENT: hanzo
-ESCOPO: Formulario de compra (categoria, data, valor, descricao), mostrando a fatura vigente a qual a compra vai pertencer.
-ARQUIVOS: frontend/src/features/cartao/LancarCompraForm.tsx
-DEPENDENCIAS: TASK-031, TASK-009
-CONTEXTO A LER: regra-de-negocio.md item 12
-
-### TASK-034 — Tela fechar/ver fatura
-STATUS: PENDENTE
-AGENT: hanzo
-ESCOPO: Listar faturas da conta CARTAO com status (ABERTA/FECHADA/PAGA) e detalhe das compras de cada fatura.
-ARQUIVOS: frontend/src/features/cartao/FaturaPage.tsx
-DEPENDENCIAS: TASK-031, TASK-015
-CONTEXTO A LER: regra-de-negocio.md item 12
-
-### TASK-035 — Acao marcar fatura como paga
-STATUS: PENDENTE
-AGENT: hanzo
-ESCOPO: Botao/fluxo de pagamento de fatura, escolhendo a conta corrente de origem, chamando POST /api/faturas/{id}/pagamento.
-ARQUIVOS: frontend/src/features/cartao/PagarFaturaModal.tsx
-DEPENDENCIAS: TASK-031, TASK-018
-CONTEXTO A LER: regra-de-negocio.md itens 3, 12
-
-### TASK-036 — Tela visao por categoria do cartao
-STATUS: PENDENTE
-AGENT: hanzo
-ESCOPO: Relatorio categorico consumindo GET /api/relatorios/categorias, sem misturar com a visao de fluxo de caixa.
-ARQUIVOS: frontend/src/features/cartao/RelatorioCategoriaPage.tsx
-DEPENDENCIAS: TASK-031, TASK-025
-CONTEXTO A LER: regra-de-negocio.md item 12
-
-### TASK-037 — Revisao conjunta do frontend cartao
-STATUS: PENDENTE
-AGENT: style
-ESCOPO: Garantir que nenhuma tela recalcula saldo/classificacao no cliente e que a UI nao mistura visao CAIXA com COMPETENCIA (item 12 e critico tambem na apresentacao, nao so no backend).
-ARQUIVOS: frontend/src/features/cartao/ (todos os arquivos das tasks 032-036)
-DEPENDENCIAS: TASK-032, TASK-033, TASK-034, TASK-035, TASK-036
-CONTEXTO A LER: regra-de-negocio.md item 12
+3. **Transferencia envolvendo conta Open Finance.** O pagamento de fatura de
+   cartao (item 12) e modelado como transferencia de duas pernas partindo da
+   conta corrente. Se essa conta corrente for Open Finance (sincronizada via
+   Pierre), criar uma perna de `Lancamento` manual sintetica dentro dela
+   conflita com a regra de imutabilidade do item 1 ("o sistema apenas le,
+   nunca edita"). Esta lista restringe o endpoint de transferencia a
+   MANUAL-MANUAL exatamente para nao decidir isso sozinha. Fica pro modulo
+   cartao (`PagamentoFaturaService`, ja tarefado como TASK-018 no worktree
+   cartao-credito-tasks) resolver — mas o usuario precisa decidir a regra:
+   o pagamento cria uma perna sintetica no lado do banco OF mesmo assim, ou
+   o modelo so registra a perna do lado do cartao e deixa o lado do banco
+   ser refletido organicamente pelo proprio sync (evitando dado sintetico
+   dentro de uma conta que deveria ser somente leitura)?
