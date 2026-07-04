@@ -25,7 +25,7 @@ DEPENDENCIAS: nenhuma
 CONTEXTO A LER: stack.md completo (ORM, banco, convencoes)
 
 ### TASK-002 — Entidades EF Core do modulo cartao (Conta, Categoria stub, Lancamento, Transferencia, Fatura)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (mapping revisado; corrigidos Fatura<->Transferencia para 1:1 e filtro do indice unico de PierreTxnId para sintaxe PostgreSQL)
 AGENT: levi
 ESCOPO: Criar as classes de entidade e o Fluent API mapping no AppDbContext refletindo exatamente o schema.dbml (tipos, enums como string, nullability, FKs, indice unico em pierre_txn_id quando nao nulo).
 ARQUIVOS: MyFinances/MyFinances/Models/Conta.cs, Models/Categoria.cs, Models/Lancamento.cs, Models/Transferencia.cs, Models/Fatura.cs, Data/AppDbContext.cs
