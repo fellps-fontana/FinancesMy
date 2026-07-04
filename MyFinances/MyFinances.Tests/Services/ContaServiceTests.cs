@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MyFinances.Exceptions;
 using MyFinances.Models;
@@ -15,7 +16,7 @@ public class ContaServiceTests
     public ContaServiceTests()
     {
         _mockRepository = new Mock<IContaRepository>();
-        _service = new ContaService(_mockRepository.Object);
+        _service = new ContaService(_mockRepository.Object, NullLogger<ContaService>.Instance);
     }
 
     #region Regra 1: CriarContaInvestimento sempre cria com Origem = Manual e Tipo = Investimento

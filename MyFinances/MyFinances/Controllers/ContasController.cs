@@ -68,4 +68,12 @@ public class ContasController : ControllerBase
             return NotFound(new { erro = ex.Message });
         }
     }
+
+    [HttpGet("investimentos/total")]
+    public async Task<ActionResult<TotalInvestidoResponse>> ObterTotalInvestido()
+    {
+        var total = await _contaService.CalcularTotalInvestido();
+        var response = new TotalInvestidoResponse { TotalInvestido = total };
+        return Ok(response);
+    }
 }

@@ -1,16 +1,19 @@
 using MyFinances.Exceptions;
 using MyFinances.Models;
 using MyFinances.Repositories;
+using Microsoft.Extensions.Logging;
 
 namespace MyFinances.Services;
 
 public class ContaService : IContaService
 {
     private readonly IContaRepository _contaRepository;
+    private readonly ILogger<ContaService> _logger;
 
-    public ContaService(IContaRepository contaRepository)
+    public ContaService(IContaRepository contaRepository, ILogger<ContaService> logger)
     {
         _contaRepository = contaRepository;
+        _logger = logger;
     }
 
     public async Task<Conta> CriarContaInvestimento(string nome, decimal saldoInicial)
@@ -35,6 +38,24 @@ public class ContaService : IContaService
     {
         var contas = await _contaRepository.ListarPorTipo(TipoConta.Investimento);
         return contas.Where(c => c.Ativa);
+    }
+
+    public async Task<decimal> CalcularTotalInvestido()
+    {
+        var contasInvestimento = await ListarContasInvestimento();
+        decimal total = 0;
+
+        foreach (var conta in contasInvestimento)
+        {
+            if (conta.SaldoManual == null)
+            {
+                _logger.LogWarning("Conta de investimento {ContaId} ({ContaNome}) possui SaldoManual nulo. Tratando como zero.", conta.Id, conta.Nome);
+            }
+
+            total += conta.SaldoManual ?? 0;
+        }
+
+        return total;
     }
 
     public async Task AtualizarSaldoManual(Guid contaId, decimal novoSaldo)
