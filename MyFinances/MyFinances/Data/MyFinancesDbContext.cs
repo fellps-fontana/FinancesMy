@@ -15,5 +15,17 @@ public class MyFinancesDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Conta>()
+            .Property(c => c.Origem)
+            .HasConversion(
+                v => v.ToStorageValue(),
+                v => OrigemContaExtensions.FromStorageValue(v));
+
+        modelBuilder.Entity<Conta>()
+            .Property(c => c.Tipo)
+            .HasConversion(
+                v => v.HasValue ? v.Value.ToStorageValue() : null,
+                v => v == null ? null : TipoContaExtensions.FromStorageValue(v));
     }
 }

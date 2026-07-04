@@ -6,9 +6,9 @@ public class Conta
 
     public string Nome { get; set; } = string.Empty;
 
-    public string Origem { get; set; } = string.Empty;
+    public OrigemConta Origem { get; set; }
 
-    public string? Tipo { get; set; }
+    public TipoConta? Tipo { get; set; }
 
     public string? PierreAccountId { get; set; }
 
