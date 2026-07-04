@@ -68,7 +68,7 @@ RETORNO ESPERADO: contrato de API documentado (rota, verbo, body de entrada, sha
 
 ## TASK-005 — Testes: CRUD de conta investimento e regra de saldo manual
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (14 testes de integracao HTTP no Controller; regra de negocio ja coberta na TASK-003 com 17 testes no Service)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-004
