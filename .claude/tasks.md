@@ -82,7 +82,7 @@ RETORNO ESPERADO: testes passando; se falhar por bug de codigo (nao de teste), r
 
 ## TASK-006 — Calculo do total investido
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-003
