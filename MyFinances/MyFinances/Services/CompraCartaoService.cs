@@ -21,7 +21,7 @@ public class CompraCartaoService
         Guid contaId,
         CriarCompraRequest request)
     {
-        var validacao = await ValidarCriacaoCompraAsync(contaId, request);
+        var validacao = await ValidarCompraAsync(contaId, request.Descricao, request.Valor);
         if (!validacao.Valido)
         {
             return (false, null, validacao.Erro);
@@ -75,10 +75,20 @@ public class CompraCartaoService
             return (false, null, "Compra nao encontrada");
         }
 
-        var validacao = await ValidarEdicaoCompraAsync(contaId, request);
+        var validacao = await ValidarCompraAsync(contaId, request.Descricao, request.Valor);
         if (!validacao.Valido)
         {
             return (false, null, validacao.Erro);
+        }
+
+        // Validar que fatura atualmente vinculada nao esta PAGA antes de qualquer edicao
+        var faturaAtual = await _context.Faturas
+            .AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == compra.FaturaId);
+
+        if (faturaAtual?.Status == FaturaStatusConstants.Paga)
+        {
+            return (false, null, "Compra vinculada a fatura ja paga, nao pode ser editada");
         }
 
         var dataMudou = compra.Data != request.Data;
@@ -105,7 +115,7 @@ public class CompraCartaoService
         return (true, compra, null);
     }
 
-    private async Task<(bool Valido, string? Erro)> ValidarCriacaoCompraAsync(Guid contaId, CriarCompraRequest request)
+    private async Task<(bool Valido, string? Erro)> ValidarCompraAsync(Guid contaId, string descricao, decimal valor)
     {
         var conta = await _context.Contas
             .AsNoTracking()
@@ -121,58 +131,16 @@ public class CompraCartaoService
             return (false, "Conta nao e do tipo CARTAO");
         }
 
-        if (string.IsNullOrWhiteSpace(request.Descricao))
+        if (string.IsNullOrWhiteSpace(descricao))
         {
             return (false, "Descricao e obrigatoria");
         }
 
-        if (request.Valor <= 0)
+        if (valor <= 0)
         {
             return (false, "Valor deve ser positivo");
         }
 
         return (true, null);
     }
-
-    private async Task<(bool Valido, string? Erro)> ValidarEdicaoCompraAsync(Guid contaId, EditarCompraRequest request)
-    {
-        var conta = await _context.Contas
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == contaId);
-
-        if (conta == null)
-        {
-            return (false, "Conta nao encontrada");
-        }
-
-        if (conta.Tipo != TipoContaConstants.Cartao)
-        {
-            return (false, "Conta nao e do tipo CARTAO");
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Descricao))
-        {
-            return (false, "Descricao e obrigatoria");
-        }
-
-        if (request.Valor <= 0)
-        {
-            return (false, "Valor deve ser positivo");
-        }
-
-        return (true, null);
-    }
-}
-
-public static class TipoLancamentoConstants
-{
-    public const string Debit = "DEBIT";
-    public const string Credit = "CREDIT";
-}
-
-public static class LancamentoStatusConstants
-{
-    public const string Pendente = "PENDENTE";
-    public const string Sugerido = "SUGERIDO";
-    public const string Pago = "PAGO";
 }

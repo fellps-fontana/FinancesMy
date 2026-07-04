@@ -166,6 +166,11 @@ public class FaturaCicloService
             conta.DiaFechamento.Value,
             conta.DiaVencimento.Value);
 
+        // LACUNA: Se data for muito retroativa e nenhuma fatura existir para esse ciclo,
+        // cria-se uma fatura ABERTA com data_fechamento no passado. A regra ainda nao define
+        // o comportamento correto (deveria rejeitar ciclos muito antigos? aceitar? criar com
+        // status diferente?). Por enquanto, segue a logica de "criar ABERTA".
+
         var faturaExistente = await _context.Faturas
             .FirstOrDefaultAsync(f =>
                 f.ContaId == contaId &&

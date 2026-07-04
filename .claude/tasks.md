@@ -89,7 +89,7 @@ DEPENDENCIAS: TASK-006
 CONTEXTO A LER: regra-de-negocio.md item 12 (paragrafo "Compra" + clarificacao "Status do lancamento de compra") e item 2 (regra de sinal)
 
 ### TASK-010 — Revisao TASK-009
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO apos 1 ciclo de correcao — bug critico: edicao de valor/descricao numa compra com fatura ja PAGA passava sem validacao quando a data nao mudava; corrigido para revalidar sempre. Tambem: validacao duplicada unificada, constantes movidas p/ Domain/)
 AGENT: style
 ESCOPO: Garantir que a compra nunca e marcada como transferencia, nunca entra em endpoint de fluxo de caixa por engano, e que status e sempre PAGO fixo (nunca PENDENTE/SUGERIDO).
 ARQUIVOS: os do TASK-009
