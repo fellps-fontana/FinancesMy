@@ -57,7 +57,7 @@ DEPENDENCIAS: TASK-004
 CONTEXTO A LER: regra-de-negocio.md itens 10, 12
 
 ### TASK-006 — Servico de ciclo de fatura (fatura vigente / criacao sob demanda)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (calculo de ciclo com virada de mes/ano tratada; invariante "nunca 2 ABERTA simultaneas" garantida so em codigo por ora — constraint de unicidade no banco sinalizada como pendencia p/ TASK-007/015; typo de nome de metodo corrigido inline pelo Kira)
 AGENT: levi
 ESCOPO: Dado uma conta CARTAO e uma data, resolver a fatura ABERTA correspondente ao ciclo (dia_fechamento -> dia_vencimento), criando-a se nao existir.
 ARQUIVOS: MyFinances/MyFinances/Services/FaturaCicloService.cs
