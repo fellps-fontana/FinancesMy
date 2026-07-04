@@ -40,7 +40,7 @@ RETORNO ESPERADO: migration aplicavel, tabela `conta` criada no Postgres com os 
 
 ## TASK-003 — Repository + Service de Conta (investimento)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-002
