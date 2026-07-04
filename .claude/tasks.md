@@ -34,7 +34,8 @@ modulo cartao-credito-tasks).
 - **Transferencia manual exige as DUAS contas com `Origem = MANUAL`.** Conta
   Open Finance e dado imutavel (item 1, "o sistema apenas le, nunca edita")
   — criar uma perna de Lancamento sintetica dentro dela conflitaria com essa
-  regra. Ver duvida em aberto sobre pagamento de fatura partindo de conta OF.
+  regra. Ver secao "Decisoes do usuario", item 3, para o status dessa decisao
+  (adiada, nao resolvida).
 - **Exclusao de lancamento manual = HARD DELETE**, diferente do soft-delete
   do item 4 (que e exclusivo de Open Finance, cujo racional explicito e
   "nao ser reimportado pelo sync" — nao se aplica a lancamento manual, que
@@ -103,7 +104,7 @@ AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-001
 CONTEXTO A LER: regra-de-negocio.md item 1 (conta manual e fonte da verdade; OF imutavel), item 2 (regra de sinal), item 5 (paragrafo "Conta de pagamento manual", para os status aceitos)
-ESCOPO: `LancamentoManualService` com Criar/Editar/Listar/Excluir para lancamento em conta `Origem=MANUAL`; `LancamentosController` com POST/PUT/GET/DELETE em `/api/lancamentos`. Criar/editar exige `Tipo` (DEBIT|CREDIT) explicito no request (nunca inferido do sinal de `Valor`, sempre armazenado como magnitude positiva); `Status` aceita apenas PENDENTE ou PAGO. Excluir e HARD DELETE, bloqueado se `TransferenciaId`, `FaturaId` ou `ConciliadoCom` estiverem preenchidos.
+ESCOPO: `LancamentoManualService` com Criar/Editar/Listar/Excluir para lancamento em conta `Origem=MANUAL`; `LancamentosController` com POST/PUT/GET/DELETE em `/api/lancamentos`. Criar/editar exige `Tipo` (DEBIT|CREDIT) explicito no request (nunca inferido do sinal de `Valor`, sempre armazenado como magnitude positiva); `Status` aceita apenas PENDENTE ou PAGO. Excluir e HARD DELETE (confirmado pelo usuario em 2026-07-04 — ver secao "Decisoes do usuario"), bloqueado se `TransferenciaId`, `FaturaId` ou `ConciliadoCom` estiverem preenchidos.
 ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/LancamentoManualService.cs (novo), MyFinances/MyFinances/Controllers/LancamentosController.cs (novo), MyFinances/MyFinances/Dtos/CriarLancamentoRequest.cs (novo), MyFinances/MyFinances/Dtos/EditarLancamentoRequest.cs (novo)
 NAO FAZER: nao permitir criar/editar lancamento em conta com `Origem=OPEN_FINANCE` (item 1); nao permitir setar `Status=SUGERIDO` nem preencher `ConciliadoCom`/`TransferenciaId`/`FaturaId` via este endpoint (geridos por outros fluxos); nao permitir mover lancamento entre contas na edicao.
 RETORNO ESPERADO: contrato de API dos 4 endpoints (rota, verbo, body, retorno) + servico testavel isoladamente.
@@ -137,7 +138,7 @@ DEPENDENCIAS: TASK-001
 CONTEXTO A LER: regra-de-negocio.md item 3 (transferencias de mesma titularidade, modelo de duas pernas)
 ESCOPO: `TransferenciaService.CriarAsync` cria um registro `Transferencia` + duas `Lancamento` (saida DEBIT na conta origem, entrada CREDIT na conta destino) compartilhando `TransferenciaId`, `Manual=true`, `Status=PAGO`, mesma magnitude de valor nas duas pernas, criadas atomicamente (mesma transacao); `TransferenciasController` com POST `/api/transferencias`. Validar: ambas as contas existem, `Origem=MANUAL` nas duas, contas diferentes entre si, valor > 0.
 ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/TransferenciaService.cs (novo), MyFinances/MyFinances/Controllers/TransferenciasController.cs (novo), MyFinances/MyFinances/Dtos/CriarTransferenciaRequest.cs (novo)
-NAO FAZER: nao aceitar conta com `Origem=OPEN_FINANCE` em nenhuma perna (ver duvida em aberto sobre pagamento de fatura); nao implementar cancelamento/estorno de transferencia; nao duplicar a logica de pagamento de fatura do modulo cartao (aquele modulo pode reaproveitar este servico quando as duas contas forem MANUAL, mas a decisao e dele).
+NAO FAZER: nao aceitar conta com `Origem=OPEN_FINANCE` em nenhuma perna (Open Finance em transferencia fica fora de escopo por decisao do usuario em 2026-07-04 — ver secao "Decisoes do usuario"; e adiamento deliberado, nao lacuna nem omissao da task); nao implementar cancelamento/estorno de transferencia; nao duplicar a logica de pagamento de fatura do modulo cartao (aquele modulo pode reaproveitar este servico quando as duas contas forem MANUAL, mas a decisao e dele).
 RETORNO ESPERADO: contrato do endpoint + servico testavel; garantia de atomicidade das duas pernas.
 
 ### TASK-008 — Revisao TASK-007
@@ -193,32 +194,27 @@ RETORNO ESPERADO: testes passando; relatorio se bug de codigo.
 
 ---
 
-## Duvida em aberto para o usuario
+## Decisoes do usuario (confirmadas em 2026-07-04)
 
-1. **Delete de lancamento manual (TASK-004).** Assumi HARD DELETE porque o
-   racional do soft-delete do item 4 e explicitamente "nao ser reimportado
-   pelo sync" — nao existe risco equivalente pra lancamento manual. Mas a
-   regra e omissa sobre isso especificamente (so fala de exclusao de OF).
-   Se voce quiser auditoria/historico tambem pra lancamento manual excluido,
-   isso muda a task (viraria soft-delete generico, nao so pra OF).
+1. **Delete de lancamento manual = HARD DELETE.** Confirmado ("SIM").
+   Bloqueado se `TransferenciaId`, `FaturaId` ou `ConciliadoCom` estiverem
+   preenchidos. Ja registrado em `regra-de-negocio.md` item 4 (paragrafo
+   complementar "Exclusao de lancamento MANUAL"). TASK-004 nao muda.
 
-2. **Status na criacao manual (PENDENTE|PAGO) e o item 5/6.** Modelei o CRUD
-   generico assumindo que "conta a pagar" (item 5) e a MESMA tabela
-   `lancamento` com `Status=PENDENTE`, e que este CRUD e o caminho de
-   criacao que o futuro modulo de conciliacao/conta-fixa vai usar. Se esse
-   modulo (ainda nao arquitetado) precisar de um fluxo/tabela proprios em
-   vez de reaproveitar este CRUD generico, a TASK-004 precisa ser revista.
+2. **Status na criacao manual (PENDENTE|PAGO) reaproveitando a tabela
+   `lancamento`.** Confirmado ("creio que sim" — reserva do usuario, nao
+   certeza absoluta). Isso e decisao de MODELAGEM TECNICA, nao regra de
+   dominio — nao entra em `regra-de-negocio.md`. Fica registrado aqui: se o
+   futuro modulo de conciliacao/conta-fixa (ainda nao arquitetado) provar que
+   precisa de fluxo ou tabela propria em vez de reaproveitar este CRUD
+   generico, TASK-004 volta pra revisao entao. Ate la, TASK-004 esta correta
+   como esta.
 
-3. **Transferencia envolvendo conta Open Finance.** O pagamento de fatura de
-   cartao (item 12) e modelado como transferencia de duas pernas partindo da
-   conta corrente. Se essa conta corrente for Open Finance (sincronizada via
-   Pierre), criar uma perna de `Lancamento` manual sintetica dentro dela
-   conflita com a regra de imutabilidade do item 1 ("o sistema apenas le,
-   nunca edita"). Esta lista restringe o endpoint de transferencia a
-   MANUAL-MANUAL exatamente para nao decidir isso sozinha. Fica pro modulo
-   cartao (`PagamentoFaturaService`, ja tarefado como TASK-018 no worktree
-   cartao-credito-tasks) resolver — mas o usuario precisa decidir a regra:
-   o pagamento cria uma perna sintetica no lado do banco OF mesmo assim, ou
-   o modelo so registra a perna do lado do cartao e deixa o lado do banco
-   ser refletido organicamente pelo proprio sync (evitando dado sintetico
-   dentro de uma conta que deveria ser somente leitura)?
+3. **Transferencia envolvendo conta Open Finance.** Decisao: adiar. Fica como
+   segundo objetivo, fora de escopo da v1 — nao bloqueia esta lista de tasks.
+   Registrado em `regra-de-negocio.md`, secao "Pendencias a definir". NAO
+   FOI DECIDIDO como vai funcionar (nem o killua, nem o Kira, nem o levi
+   assume qual das duas abordagens — perna sintetica dentro da conta OF, ou
+   reflexo organico via sync). Quando o modulo cartao chegar em TASK-018
+   (`PagamentoFaturaService`, worktree cartao-credito-tasks) e essa conta for
+   Open Finance, a task para ali e volta pro usuario decidir.

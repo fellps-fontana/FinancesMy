@@ -67,6 +67,16 @@ O usuario pode ocultar um lancamento vindo do Open Finance.
 o `pierre_txn_id` e NUNCA re-importar um lancamento ja marcado como oculto.
 Nao deletar fisicamente — o sync traria de volta.
 
+**Exclusao de lancamento MANUAL:** regra distinta da acima, porque nao ha
+fonte externa que possa reimportar a linha.
+
+**Regra:** exclusao e HARD DELETE (remove a linha fisicamente). Bloqueada se
+o lancamento tiver `TransferenciaId`, `FaturaId` ou `ConciliadoCom`
+preenchidos — nesses casos ele esta vinculado a outra estrutura
+(transferencia, fatura de cartao ou conciliacao) e a remocao direta quebraria
+a integridade do vinculo. O usuario precisa desfazer o vinculo primeiro (ex.:
+cancelar a transferencia) antes de excluir.
+
 ---
 
 ## 5. Conciliacao (conta a pagar -> pagamento real)
@@ -267,3 +277,11 @@ Entra como modulo isolado, sem mexer no que ja funciona na v1.
   NAO e compra — ignorar ou tratar como estorno.
 - Ciclo da fatura: como capturar `data_fechamento` e `data_vencimento` do cartao
   (fixo por cartao ou lido do import).
+- Transferencia envolvendo conta Open Finance (ex.: pagamento de fatura de
+  cartao saindo de conta corrente sincronizada via Pierre — item 3 e item 12):
+  decisao do usuario (2026-07-04) foi adiar. Fica como segundo objetivo, fora
+  de escopo por enquanto — nao bloqueia a v1. Ainda SEM DEFINICAO de como vai
+  funcionar (se cria uma perna sintetica de Lancamento dentro da conta OF, ou
+  se so registra a perna do lado do cartao e deixa o lado do banco ser
+  refletido organicamente pelo sync). Nao assumir nenhuma das duas ate o
+  usuario decidir.
