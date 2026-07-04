@@ -145,7 +145,7 @@ DEPENDENCIAS: TASK-015
 CONTEXTO A LER: regra-de-negocio.md item 12
 
 ### TASK-017 — Testes TASK-015
-STATUS: PENDENTE
+STATUS: CONCLUIDA (7 testes novos, 50/50 total: mecanica de transicao ABERTA->FECHADA, reutilizacao sem duplicar, rejeicao de ciclo muito retroativo via ambos os metodos, listagem via DTO)
 AGENT: mike
 ESCOPO: Cobrir transicao de estado ABERTA -> FECHADA e bloqueio de compra em fatura fechada.
 ARQUIVOS: MyFinances/MyFinances.Tests/FaturaFechamentoTests.cs
