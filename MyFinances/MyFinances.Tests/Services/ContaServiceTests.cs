@@ -384,4 +384,176 @@ public class ContaServiceTests
     }
 
     #endregion
+
+    #region Regra 9: CalcularTotalInvestido soma corretamente SaldoManual de contas ativas
+
+    [Fact]
+    public async Task CalcularTotalInvestido_SomaCorretamenteMultiplasContasAtivas()
+    {
+        // Arrange
+        var contasNoRepositorio = new List<Conta>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Cofrinho Mercado Pago",
+                Tipo = TipoConta.Investimento,
+                Origem = OrigemConta.Manual,
+                SaldoManual = 100m,
+                Ativa = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Investimentos XP",
+                Tipo = TipoConta.Investimento,
+                Origem = OrigemConta.Manual,
+                SaldoManual = 200m,
+                Ativa = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Carteira de Acoes",
+                Tipo = TipoConta.Investimento,
+                Origem = OrigemConta.Manual,
+                SaldoManual = 300m,
+                Ativa = true
+            }
+        };
+
+        _mockRepository
+            .Setup(r => r.ListarPorTipo(TipoConta.Investimento))
+            .ReturnsAsync(contasNoRepositorio);
+
+        // Act
+        var total = await _service.CalcularTotalInvestido();
+
+        // Assert
+        Assert.Equal(600m, total);
+    }
+
+    [Fact]
+    public async Task CalcularTotalInvestido_RetornaZeroQuandoNenhumaContaCadastrada()
+    {
+        // Arrange
+        _mockRepository
+            .Setup(r => r.ListarPorTipo(TipoConta.Investimento))
+            .ReturnsAsync(new List<Conta>());
+
+        // Act
+        var total = await _service.CalcularTotalInvestido();
+
+        // Assert
+        Assert.Equal(0m, total);
+    }
+
+    [Fact]
+    public async Task CalcularTotalInvestido_IgnoraContasDesativadas()
+    {
+        // Arrange
+        var contasNoRepositorio = new List<Conta>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Investimento Ativo",
+                Tipo = TipoConta.Investimento,
+                Origem = OrigemConta.Manual,
+                SaldoManual = 100m,
+                Ativa = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Investimento Desativado",
+                Tipo = TipoConta.Investimento,
+                Origem = OrigemConta.Manual,
+                SaldoManual = 500m,
+                Ativa = false
+            }
+        };
+
+        // ListarPorTipo retorna todas com Tipo = Investimento
+        // ListarContasInvestimento filtra por Ativa = true
+        _mockRepository
+            .Setup(r => r.ListarPorTipo(TipoConta.Investimento))
+            .ReturnsAsync(contasNoRepositorio);
+
+        // Act
+        var total = await _service.CalcularTotalInvestido();
+
+        // Assert - deve somar so a ativa (100), ignorando a desativada (500)
+        Assert.Equal(100m, total);
+    }
+
+    [Fact]
+    public async Task CalcularTotalInvestido_IgnoraContasDeOutroTipo()
+    {
+        // Arrange
+        var contasInvestimento = new List<Conta>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Cofrinho",
+                Tipo = TipoConta.Investimento,
+                Origem = OrigemConta.Manual,
+                SaldoManual = 100m,
+                Ativa = true
+            }
+        };
+
+        // Simulamos que o repositorio retorna so contas Tipo = Investimento
+        // E ignoramos contas de outro tipo (listaPorTipo ja filtra por tipo)
+        _mockRepository
+            .Setup(r => r.ListarPorTipo(TipoConta.Investimento))
+            .ReturnsAsync(contasInvestimento);
+
+        // Act
+        var total = await _service.CalcularTotalInvestido();
+
+        // Assert - mesmo que tivessemos contas Banco/Cartao no banco,
+        // ListarPorTipo(Investimento) retorna so Investimento (100)
+        Assert.Equal(100m, total);
+    }
+
+    [Fact]
+    public async Task CalcularTotalInvestido_TrataSaldoNuloComoZero()
+    {
+        // Arrange
+        var contasNoRepositorio = new List<Conta>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Cofrinho com Saldo",
+                Tipo = TipoConta.Investimento,
+                Origem = OrigemConta.Manual,
+                SaldoManual = 100m,
+                Ativa = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Cofrinho com Saldo Nulo",
+                Tipo = TipoConta.Investimento,
+                Origem = OrigemConta.Manual,
+                SaldoManual = null,
+                Ativa = true
+            }
+        };
+
+        _mockRepository
+            .Setup(r => r.ListarPorTipo(TipoConta.Investimento))
+            .ReturnsAsync(contasNoRepositorio);
+
+        // Act
+        var total = await _service.CalcularTotalInvestido();
+
+        // Assert - nula e tratada como zero, total = 100 + 0 = 100
+        Assert.Equal(100m, total);
+    }
+
+    #endregion
 }

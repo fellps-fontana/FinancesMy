@@ -534,4 +534,121 @@ public class ContasControllerTests
     }
 
     #endregion
+
+    #region GET /api/contas/investimentos/total - Obter total investido
+
+    [Fact]
+    public async Task ObterTotalInvestido_ComMultiplasContasAtivas_Retorna200ComTotalCorreto()
+    {
+        await _fixture.ClearAsync();
+        // Arrange
+        var conta1 = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Cofrinho Mercado Pago",
+            Tipo = TipoConta.Investimento,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 100m,
+            Ativa = true
+        };
+
+        var conta2 = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Investimentos XP",
+            Tipo = TipoConta.Investimento,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 200m,
+            Ativa = true
+        };
+
+        var conta3 = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Carteira de Acoes",
+            Tipo = TipoConta.Investimento,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 300m,
+            Ativa = true
+        };
+
+        await _fixture.AddContaAsync(conta1);
+        await _fixture.AddContaAsync(conta2);
+        await _fixture.AddContaAsync(conta3);
+
+        // Act
+        var response = await _fixture.Client.GetAsync("/api/contas/investimentos/total");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var totalResponse = JsonSerializer.Deserialize<Dictionary<string, decimal>>(responseBody, ContasControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(totalResponse);
+        Assert.True(totalResponse.ContainsKey("totalInvestido"));
+        Assert.Equal(600m, totalResponse["totalInvestido"]);
+    }
+
+    [Fact]
+    public async Task ObterTotalInvestido_SemNenhumaConta_Retorna200ComZero()
+    {
+        await _fixture.ClearAsync();
+        // Act
+        var response = await _fixture.Client.GetAsync("/api/contas/investimentos/total");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var totalResponse = JsonSerializer.Deserialize<Dictionary<string, decimal>>(responseBody, ContasControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(totalResponse);
+        Assert.True(totalResponse.ContainsKey("totalInvestido"));
+        Assert.Equal(0m, totalResponse["totalInvestido"]);
+    }
+
+    [Fact]
+    public async Task ObterTotalInvestido_IgnoraContasDesativadas()
+    {
+        await _fixture.ClearAsync();
+        // Arrange
+        var contaAuditada = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Cofrinho Ativo",
+            Tipo = TipoConta.Investimento,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 100m,
+            Ativa = true
+        };
+
+        var contaDesativada = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Cofrinho Desativado",
+            Tipo = TipoConta.Investimento,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 500m,
+            Ativa = false
+        };
+
+        await _fixture.AddContaAsync(contaAuditada);
+        await _fixture.AddContaAsync(contaDesativada);
+
+        // Act
+        var response = await _fixture.Client.GetAsync("/api/contas/investimentos/total");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var totalResponse = JsonSerializer.Deserialize<Dictionary<string, decimal>>(responseBody, ContasControllerTestsFixture.JsonOptions);
+
+        // Total deve ser so a conta ativa (100), ignorando a desativada (500)
+        Assert.NotNull(totalResponse);
+        Assert.Equal(100m, totalResponse["totalInvestido"]);
+    }
+
+    #endregion
 }
