@@ -41,7 +41,7 @@ DEPENDENCIAS: TASK-002
 CONTEXTO A LER: stack.md (convencao "Migrations versionadas pelo EF")
 
 ### TASK-004 — Endpoint criar conta CARTAO
-STATUS: PENDENTE
+STATUS: CONCLUIDA (POST /api/contas, validacao condicional CARTAO; 1 ciclo de correcao via style — nomes de metodo enganosos + comentario acentuado)
 AGENT: levi
 ESCOPO: POST /api/contas aceitando tipo CARTAO com validacao condicional obrigando dia_fechamento e dia_vencimento.
 ARQUIVOS: MyFinances/MyFinances/Controllers/ContasController.cs, Services/ContaService.cs
@@ -49,7 +49,7 @@ DEPENDENCIAS: TASK-003
 CONTEXTO A LER: regra-de-negocio.md item 12 (conta CARTAO); schema.dbml tabela conta
 
 ### TASK-005 — Revisao TASK-004
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO apos correcao; regra de negocio ok desde a 1a versao — pendencia registrada: saldo_manual obrigatorio ou nao na criacao de conta BANCO/INVESTIMENTO, nao decidida)
 AGENT: style
 ESCOPO: Validar que criacao de conta CARTAO sem os dois campos de ciclo e rejeitada e que saldo_manual nao e aceito para CARTAO (saldo e calculado, item 10).
 ARQUIVOS: os mesmos do TASK-004 (leitura + veredito)
