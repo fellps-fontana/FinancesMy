@@ -17,7 +17,7 @@ Formato: STATUS (PENDENTE | CONCLUIDA | BLOQUEADA).
 ---
 
 ### TASK-001 — Setup de infraestrutura (EF Core + projeto de testes)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (EF Core/Npgsql em 10.0.9/10.0.2, alinhado ao net10.0 do csproj; build OK)
 AGENT: levi
 ESCOPO: Adicionar pacotes EF Core/Npgsql ao projeto, criar `AppDbContext` vazio, configurar connection string e criar o projeto de testes xUnit referenciando o projeto principal.
 ARQUIVOS: MyFinances/MyFinances/MyFinances.csproj, MyFinances/MyFinances/Program.cs, MyFinances/MyFinances/appsettings.json, MyFinances/MyFinances/appsettings.Development.json, MyFinances/MyFinances/Data/AppDbContext.cs, MyFinances/MyFinances.Tests/MyFinances.Tests.csproj (novo), MyFinances/MyFinances.sln
