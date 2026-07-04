@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MyFinances.Models;
 
 namespace MyFinances.Data;
 
@@ -8,6 +9,8 @@ public class MyFinancesDbContext : DbContext
         : base(options)
     {
     }
+
+    public DbSet<Conta> Contas { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
