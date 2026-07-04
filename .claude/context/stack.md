@@ -2,7 +2,7 @@
 
 ## Stack
 
-- **Backend:** .NET 8, API REST.
+- **Backend:** .NET 10, API REST.
 - **ORM:** Entity Framework Core + Npgsql.
 - **Banco:** PostgreSQL.
 - **Frontend:** React (TypeScript) + Vite.

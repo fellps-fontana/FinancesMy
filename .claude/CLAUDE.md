@@ -1,7 +1,7 @@
 # Financeiro Pessoal
 
 App de financas pessoais que consome a API REST do Pierre (Open Finance) e
-combina com contas manuais. Stack: .NET 8 (API) + React/TypeScript/Vite (front) + PostgreSQL.
+combina com contas manuais. Stack: .NET 10 (API) + React/TypeScript/Vite (front) + PostgreSQL.
 
 ---
 

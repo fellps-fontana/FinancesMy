@@ -32,6 +32,11 @@ mesmo sendo gasto.
 - DEBIT = saida (gasto)
 - CREDIT = entrada (recebimento), EXCETO pagamento de fatura de cartao
 
+Pagamento de fatura de cartao NAO e receita nem despesa: e transferencia
+conta corrente -> cartao (ver item 3 e item 12). As compras feitas no cartao
+seguem regime de competencia dentro da conta CARTAO e nao sao classificadas
+pelo sinal cru (ver item 12).
+
 ---
 
 ## 3. Transferencias de mesma titularidade
@@ -44,6 +49,13 @@ muda dinheiro de lugar.
   de gasto e de receita.
 - **Manual:** transferencia entre contas manuais e registrada explicitamente
   pelo usuario e tambem nao conta como gasto/receita.
+
+**Representacao (schema):** transferencia e modelada como DUAS pernas — dois
+lancamentos (saida na origem, entrada no destino) que compartilham o mesmo
+`transferencia_id` (tabela `transferencia`). No fluxo de caixa a transferencia
+aparece como uma unica linha logica; no calculo de gasto/receita as duas pernas
+sao excluidas. O pagamento de fatura de cartao usa exatamente essa estrutura
+(item 12).
 
 ---
 
@@ -127,6 +139,11 @@ saldo_projetado = total_recebido_no_mes - (total_pago + total_a_pagar)
 Considera todas as contas do mes, de PENDENTE ate PAGO, e todo valor recebido
 no mes.
 
+O cartao de credito entra na projecao como UMA conta a pagar = total da fatura
+atual do mes, com status pago / nao pago (ver item 12). As compras individuais
+do cartao NAO entram na projecao — sao competencia e aparecem apenas no
+relatorio por categoria.
+
 ---
 
 ## 10. Saldo de conta
@@ -145,6 +162,57 @@ no mes.
   desde a ultima sync -> deduplicar por `pierre_txn_id` -> inserir novas ->
   rodar conciliacao -> aplicar de-para de categoria.
 - Respeitar oculto (item 4) e janela de conciliacao de 1 dia (item 5).
+
+---
+
+## 12. Cartao de credito
+
+Modelo estilo Organizze. O cartao e uma CONTA propria (tipo CARTAO) e separa
+COMPETENCIA (a compra) de CAIXA (o pagamento da fatura). Essa separacao e o que
+evita dupla contagem: a compra vive numa visao, o pagamento vive na outra.
+
+Tres tipos de lancamento na conta CARTAO:
+
+- **Compra:** lancamento vinculado a conta CARTAO, com categoria e data. Regime
+  de COMPETENCIA — a divida nasceu, mas o dinheiro ainda nao saiu. NAO aparece
+  no lancamento geral / fluxo de caixa. Aparece so na visao por categoria.
+- **Pagamento de fatura:** um unico lancamento de TRANSFERENCIA conta corrente
+  -> cartao (mesma titularidade, item 3). E a unica linha que sai no lancamento
+  geral. Nao tem categoria de despesa.
+- **Estorno:** compra negativa dentro do cartao.
+
+**Duas visoes (nucleo do modelo):**
+
+- **Lancamento geral / fluxo de caixa (CAIXA):** mostra o pagamento da fatura
+  como saida real. Nao lista as compras individuais.
+- **Categorico / gasto por categoria (COMPETENCIA):** ignora o pagamento (e
+  transferencia) e soma as compras do cartao, cada uma pela sua categoria.
+
+Como cada compra vive so na visao categorica e o pagamento so no fluxo, nunca ha
+dupla contagem.
+
+**Fatura:** recorte das compras por ciclo (`data_fechamento` -> `data_vencimento`).
+Serve para agrupar as compras e para casar com o pagamento.
+
+**Saldo do cartao** = compras - pagamentos - estornos. CALCULADO, nao armazenado
+(mesma logica do item 10).
+
+**Pagamento x fatura:** o pagamento fecha o saldo da fatura como um todo, NUNCA
+compra a compra (igual Organizze).
+
+**Projecao:** o cartao entra na projecao do mes como UMA linha = total da fatura
+atual, com status pago / nao pago, tratado como conta a pagar (ver item 9). As
+compras individuais nao entram na projecao.
+
+**Origem das compras:** manual por enquanto; futuramente via import da fatura
+Nubank (ver Pendencias). O de-para de categoria (item 7) roda sobre a
+`descricao` da compra em vez da `category` do Pierre.
+
+**Status do lancamento de compra:** a maquina de estado PENDENTE/SUGERIDO/PAGO
+(item 5) e para conciliacao de conta a pagar e nao se aplica a compra
+individual de cartao — quem e conta a pagar e a fatura inteira (ver acima e
+item 9). Toda compra de cartao nasce com `status = PAGO`, fixo, desde a
+criacao.
 
 ---
 
@@ -177,3 +245,9 @@ Entra como modulo isolado, sem mexer no que ja funciona na v1.
 - Paginacao do get-transactions (confirmar se ha cursor ou se vem tudo).
 - Quantos meses a frente a conta fixa gera.
 - Tratamento de PENDING vs POSTED no painel (mostrar separado?).
+- Import da fatura Nubank (item 12): definir dedup sem `pierre_txn_id`
+  (sugestao: hash de `data + valor + descricao`, ou so importar linhas apos a
+  data da ultima importacao). A linha "Pagamento recebido" do CSV da fatura
+  NAO e compra — ignorar ou tratar como estorno.
+- Ciclo da fatura: como capturar `data_fechamento` e `data_vencimento` do cartao
+  (fixo por cartao ou lido do import).
