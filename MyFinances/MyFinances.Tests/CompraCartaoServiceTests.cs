@@ -65,7 +65,7 @@ public class CompraCartaoServiceTests
     {
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
-        var service = new CompraCartaoService(context, new FaturaCicloService(context));
+        var service = new CompraCartaoService(context, new FaturaCicloService(context), new ValidacaoCartaoService(context));
 
         var request = new CriarCompraRequest
         {
@@ -103,7 +103,7 @@ public class CompraCartaoServiceTests
     public async Task CriarCompraAsync_ContaNaoExiste_Rejeitado()
     {
         using var context = CreateInMemoryContext();
-        var service = new CompraCartaoService(context, new FaturaCicloService(context));
+        var service = new CompraCartaoService(context, new FaturaCicloService(context), new ValidacaoCartaoService(context));
 
         var contaIdInvalida = Guid.NewGuid();
         var request = new CriarCompraRequest
@@ -127,7 +127,7 @@ public class CompraCartaoServiceTests
     {
         using var context = CreateInMemoryContext();
         var contaBanco = CriarContaBanco(context);
-        var service = new CompraCartaoService(context, new FaturaCicloService(context));
+        var service = new CompraCartaoService(context, new FaturaCicloService(context), new ValidacaoCartaoService(context));
 
         var request = new CriarCompraRequest
         {
@@ -150,7 +150,7 @@ public class CompraCartaoServiceTests
     {
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context);
-        var service = new CompraCartaoService(context, new FaturaCicloService(context));
+        var service = new CompraCartaoService(context, new FaturaCicloService(context), new ValidacaoCartaoService(context));
 
         var request = new CriarCompraRequest
         {
@@ -173,7 +173,7 @@ public class CompraCartaoServiceTests
     {
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context);
-        var service = new CompraCartaoService(context, new FaturaCicloService(context));
+        var service = new CompraCartaoService(context, new FaturaCicloService(context), new ValidacaoCartaoService(context));
 
         var request = new CriarCompraRequest
         {
@@ -196,7 +196,7 @@ public class CompraCartaoServiceTests
     {
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context);
-        var service = new CompraCartaoService(context, new FaturaCicloService(context));
+        var service = new CompraCartaoService(context, new FaturaCicloService(context), new ValidacaoCartaoService(context));
 
         var request = new CriarCompraRequest
         {
@@ -219,7 +219,7 @@ public class CompraCartaoServiceTests
     {
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context);
-        var service = new CompraCartaoService(context, new FaturaCicloService(context));
+        var service = new CompraCartaoService(context, new FaturaCicloService(context), new ValidacaoCartaoService(context));
 
         var request = new CriarCompraRequest
         {
@@ -243,7 +243,7 @@ public class CompraCartaoServiceTests
     {
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
-        var service = new CompraCartaoService(context, new FaturaCicloService(context));
+        var service = new CompraCartaoService(context, new FaturaCicloService(context), new ValidacaoCartaoService(context));
 
         // Criar uma fatura PAGA para o ciclo que contem data 05/03
         // Data 05/03 com diaFechamento=10: 05 < 10 => ciclo = 03/10 - 03/20
@@ -283,7 +283,7 @@ public class CompraCartaoServiceTests
     {
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
-        var service = new CompraCartaoService(context, new FaturaCicloService(context));
+        var service = new CompraCartaoService(context, new FaturaCicloService(context), new ValidacaoCartaoService(context));
 
         // Criar uma fatura FECHADA para o ciclo 10/03 - 20/03
         var faturaFechada = new Fatura
@@ -323,7 +323,8 @@ public class CompraCartaoServiceTests
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
         var faturaCicloService = new FaturaCicloService(context);
-        var service = new CompraCartaoService(context, faturaCicloService);
+        var validacaoCartaoService = new ValidacaoCartaoService(context);
+        var service = new CompraCartaoService(context, faturaCicloService, validacaoCartaoService);
 
         // Criar fatura PAGA
         var faturaAntiga = new Fatura
@@ -384,7 +385,8 @@ public class CompraCartaoServiceTests
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
         var faturaCicloService = new FaturaCicloService(context);
-        var service = new CompraCartaoService(context, faturaCicloService);
+        var validacaoCartaoService = new ValidacaoCartaoService(context);
+        var service = new CompraCartaoService(context, faturaCicloService, validacaoCartaoService);
 
         // Criar fatura PAGA
         var faturaAntiga = new Fatura
@@ -445,7 +447,8 @@ public class CompraCartaoServiceTests
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
         var faturaCicloService = new FaturaCicloService(context);
-        var service = new CompraCartaoService(context, faturaCicloService);
+        var validacaoCartaoService = new ValidacaoCartaoService(context);
+        var service = new CompraCartaoService(context, faturaCicloService, validacaoCartaoService);
 
         // Criar fatura ABERTA
         var faturaAberta = new Fatura
@@ -507,7 +510,8 @@ public class CompraCartaoServiceTests
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
         var faturaCicloService = new FaturaCicloService(context);
-        var service = new CompraCartaoService(context, faturaCicloService);
+        var validacaoCartaoService = new ValidacaoCartaoService(context);
+        var service = new CompraCartaoService(context, faturaCicloService, validacaoCartaoService);
 
         // Criar fatura FECHADA
         var faturaFechada = new Fatura
@@ -571,7 +575,8 @@ public class CompraCartaoServiceTests
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
         var faturaCicloService = new FaturaCicloService(context);
-        var service = new CompraCartaoService(context, faturaCicloService);
+        var validacaoCartaoService = new ValidacaoCartaoService(context);
+        var service = new CompraCartaoService(context, faturaCicloService, validacaoCartaoService);
 
         // Criar fatura ABERTA para 05/03 (ciclo 03/10 - 03/20)
         var faturaAtual = new Fatura
@@ -646,7 +651,8 @@ public class CompraCartaoServiceTests
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
         var faturaCicloService = new FaturaCicloService(context);
-        var service = new CompraCartaoService(context, faturaCicloService);
+        var validacaoCartaoService = new ValidacaoCartaoService(context);
+        var service = new CompraCartaoService(context, faturaCicloService, validacaoCartaoService);
 
         // Criar fatura ABERTA primeira (03/10 - 03/20)
         var faturaMarco = new Fatura
@@ -715,7 +721,8 @@ public class CompraCartaoServiceTests
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
         var faturaCicloService = new FaturaCicloService(context);
-        var service = new CompraCartaoService(context, faturaCicloService);
+        var validacaoCartaoService = new ValidacaoCartaoService(context);
+        var service = new CompraCartaoService(context, faturaCicloService, validacaoCartaoService);
 
         // Criar fatura ABERTA para 15/04 (ciclo 05/10 - 05/20, pois 15 >= 10)
         var faturaAberta = new Fatura
@@ -789,7 +796,7 @@ public class CompraCartaoServiceTests
     {
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context);
-        var service = new CompraCartaoService(context, new FaturaCicloService(context));
+        var service = new CompraCartaoService(context, new FaturaCicloService(context), new ValidacaoCartaoService(context));
 
         var compraIdInvalida = Guid.NewGuid();
         var request = new EditarCompraRequest
@@ -814,7 +821,8 @@ public class CompraCartaoServiceTests
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context);
         var faturaCicloService = new FaturaCicloService(context);
-        var service = new CompraCartaoService(context, faturaCicloService);
+        var validacaoCartaoService = new ValidacaoCartaoService(context);
+        var service = new CompraCartaoService(context, faturaCicloService, validacaoCartaoService);
 
         // Criar fatura e compra
         var fatura = await faturaCicloService.ResolverFaturaAbertaVigenteAsync(conta.Id, new DateOnly(2026, 3, 15));
@@ -863,7 +871,8 @@ public class CompraCartaoServiceTests
         using var context = CreateInMemoryContext();
         var conta = CriarContaCartao(context);
         var faturaCicloService = new FaturaCicloService(context);
-        var service = new CompraCartaoService(context, faturaCicloService);
+        var validacaoCartaoService = new ValidacaoCartaoService(context);
+        var service = new CompraCartaoService(context, faturaCicloService, validacaoCartaoService);
 
         // Criar fatura e compra
         var fatura = await faturaCicloService.ResolverFaturaAbertaVigenteAsync(conta.Id, new DateOnly(2026, 3, 15));

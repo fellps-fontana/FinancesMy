@@ -105,7 +105,7 @@ DEPENDENCIAS: TASK-010
 CONTEXTO A LER: regra-de-negocio.md item 12
 
 ### TASK-012 — Endpoint estorno
-STATUS: PENDENTE
+STATUS: CONCLUIDA (POST /api/cartoes/{contaId}/estornos, Lancamento com valor negativo, mesma regra de fatura da compra. 1 ciclo de correcao: extraido ValidacaoCartaoService compartilhado para remover acoplamento entre EstornoCartaoService e CompraCartaoService)
 AGENT: levi
 ESCOPO: POST /api/cartoes/{contaId}/estornos cria lancamento de compra negativa vinculado a fatura correspondente.
 ARQUIVOS: MyFinances/MyFinances/Controllers/CartaoComprasController.cs, Services/EstornoCartaoService.cs
@@ -113,7 +113,7 @@ DEPENDENCIAS: TASK-009
 CONTEXTO A LER: regra-de-negocio.md item 12 (paragrafo "Estorno")
 
 ### TASK-013 — Revisao TASK-012
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO apos 1 ciclo de correcao — regra de negocio ja estava correta desde a 1a versao; achado foi de design/acoplamento)
 AGENT: style
 ESCOPO: Confirmar que estorno reduz saldo/fatura corretamente e nao e confundido com pagamento.
 ARQUIVOS: os do TASK-012

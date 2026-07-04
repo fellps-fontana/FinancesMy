@@ -5,17 +5,19 @@ using MyFinances.Services;
 namespace MyFinances.Controllers;
 
 [ApiController]
-[Route("api/cartoes/{contaId}/compras")]
+[Route("api/cartoes/{contaId}")]
 public class CartaoComprasController : ControllerBase
 {
     private readonly CompraCartaoService _compraCartaoService;
+    private readonly EstornoCartaoService _estornoCartaoService;
 
-    public CartaoComprasController(CompraCartaoService compraCartaoService)
+    public CartaoComprasController(CompraCartaoService compraCartaoService, EstornoCartaoService estornoCartaoService)
     {
         _compraCartaoService = compraCartaoService;
+        _estornoCartaoService = estornoCartaoService;
     }
 
-    [HttpPost]
+    [HttpPost("compras")]
     public async Task<IActionResult> CriarCompra(
         Guid contaId,
         [FromBody] CriarCompraRequest request)
@@ -30,7 +32,7 @@ public class CartaoComprasController : ControllerBase
         return CreatedAtAction(nameof(CriarCompra), new { contaId, id = compra!.Id }, compra);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("compras/{id}")]
     public async Task<IActionResult> EditarCompra(
         Guid contaId,
         Guid id,
@@ -44,5 +46,20 @@ public class CartaoComprasController : ControllerBase
         }
 
         return Ok(compra);
+    }
+
+    [HttpPost("estornos")]
+    public async Task<IActionResult> CriarEstorno(
+        Guid contaId,
+        [FromBody] CriarEstornoRequest request)
+    {
+        var (sucesso, estorno, erro) = await _estornoCartaoService.CriarEstornoAsync(contaId, request);
+
+        if (!sucesso)
+        {
+            return BadRequest(new { erro });
+        }
+
+        return CreatedAtAction(nameof(CriarEstorno), new { contaId, id = estorno!.Id }, estorno);
     }
 }

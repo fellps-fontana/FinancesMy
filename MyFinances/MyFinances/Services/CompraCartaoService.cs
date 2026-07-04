@@ -10,24 +10,31 @@ public class CompraCartaoService
 {
     private readonly AppDbContext _context;
     private readonly FaturaCicloService _faturaCicloService;
+    private readonly ValidacaoCartaoService _validacaoCartaoService;
 
-    public CompraCartaoService(AppDbContext context, FaturaCicloService faturaCicloService)
+    public CompraCartaoService(
+        AppDbContext context,
+        FaturaCicloService faturaCicloService,
+        ValidacaoCartaoService validacaoCartaoService)
     {
         _context = context;
         _faturaCicloService = faturaCicloService;
+        _validacaoCartaoService = validacaoCartaoService;
     }
 
     public async Task<(bool Sucesso, Lancamento? Compra, string? Erro)> CriarCompraAsync(
         Guid contaId,
         CriarCompraRequest request)
     {
-        var validacao = await ValidarCompraAsync(contaId, request.Descricao, request.Valor);
-        if (!validacao.Valido)
-        {
-            return (false, null, validacao.Erro);
-        }
+        var (valido, conta, erro) = await _validacaoCartaoService.ValidarOperacaoCartaoAsync(
+            contaId,
+            request.Descricao,
+            request.Valor);
 
-        var conta = await _context.Contas.FirstOrDefaultAsync(c => c.Id == contaId);
+        if (!valido)
+        {
+            return (false, null, erro);
+        }
 
         var (fatura, rejeitada, motivo) = await _faturaCicloService.ResolverFaturaParaLancamentoAsync(contaId, request.Data);
 
@@ -75,10 +82,14 @@ public class CompraCartaoService
             return (false, null, "Compra nao encontrada");
         }
 
-        var validacao = await ValidarCompraAsync(contaId, request.Descricao, request.Valor);
-        if (!validacao.Valido)
+        var (valido, _, erro) = await _validacaoCartaoService.ValidarOperacaoCartaoAsync(
+            contaId,
+            request.Descricao,
+            request.Valor);
+
+        if (!valido)
         {
-            return (false, null, validacao.Erro);
+            return (false, null, erro);
         }
 
         // Validar que fatura atualmente vinculada nao esta PAGA antes de qualquer edicao
@@ -113,34 +124,5 @@ public class CompraCartaoService
         await _context.SaveChangesAsync();
 
         return (true, compra, null);
-    }
-
-    private async Task<(bool Valido, string? Erro)> ValidarCompraAsync(Guid contaId, string descricao, decimal valor)
-    {
-        var conta = await _context.Contas
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == contaId);
-
-        if (conta == null)
-        {
-            return (false, "Conta nao encontrada");
-        }
-
-        if (conta.Tipo != TipoContaConstants.Cartao)
-        {
-            return (false, "Conta nao e do tipo CARTAO");
-        }
-
-        if (string.IsNullOrWhiteSpace(descricao))
-        {
-            return (false, "Descricao e obrigatoria");
-        }
-
-        if (valor <= 0)
-        {
-            return (false, "Valor deve ser positivo");
-        }
-
-        return (true, null);
     }
 }
