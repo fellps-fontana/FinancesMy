@@ -96,7 +96,7 @@ RETORNO ESPERADO: endpoint retornando `{ totalInvestido: decimal }`, funcao de c
 
 ## TASK-007 — Teste do calculo de total investido
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (8 testes novos, 39 no total, todos passando)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-006
