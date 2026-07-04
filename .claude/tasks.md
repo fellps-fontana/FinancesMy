@@ -73,7 +73,7 @@ DEPENDENCIAS: TASK-006
 CONTEXTO A LER: regra-de-negocio.md item 12
 
 ### TASK-008 — Testes TASK-006
-STATUS: PENDENTE
+STATUS: CONCLUIDA (11/11 testes passando: ciclo normal, virada mes curto->longo, virada de ano, reaproveitamento, dia exato do fechamento, validacoes de erro)
 AGENT: mike
 ESCOPO: Cobrir maquina de estado de resolucao/criacao de fatura (ciclo normal, virada de ano, chamada concorrente nao duplicando fatura ABERTA).
 ARQUIVOS: MyFinances/MyFinances.Tests/FaturaCicloServiceTests.cs
