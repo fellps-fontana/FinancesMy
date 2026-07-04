@@ -825,7 +825,7 @@ public class CompraCartaoServiceTests
         var service = new CompraCartaoService(context, faturaCicloService, validacaoCartaoService);
 
         // Criar fatura e compra
-        var fatura = await faturaCicloService.ResolverFaturaAbertaVigenteAsync(conta.Id, new DateOnly(2026, 3, 15));
+        var (fatura, _, _) = await faturaCicloService.ResolverFaturaAbertaVigenteAsync(conta.Id, new DateOnly(2026, 3, 15));
 
         var compra = new Lancamento
         {
@@ -840,7 +840,7 @@ public class CompraCartaoServiceTests
             Manual = true,
             Oculto = false,
             PierreTxnId = null,
-            FaturaId = fatura.Id,
+            FaturaId = fatura!.Id,
             TransferenciaId = null,
             ConciliadoCom = null,
             ContaFixaId = null
@@ -875,7 +875,7 @@ public class CompraCartaoServiceTests
         var service = new CompraCartaoService(context, faturaCicloService, validacaoCartaoService);
 
         // Criar fatura e compra
-        var fatura = await faturaCicloService.ResolverFaturaAbertaVigenteAsync(conta.Id, new DateOnly(2026, 3, 15));
+        var (fatura, _, _) = await faturaCicloService.ResolverFaturaAbertaVigenteAsync(conta.Id, new DateOnly(2026, 3, 15));
 
         var compra = new Lancamento
         {
@@ -890,7 +890,7 @@ public class CompraCartaoServiceTests
             Manual = true,
             Oculto = false,
             PierreTxnId = null,
-            FaturaId = fatura.Id,
+            FaturaId = fatura!.Id,
             TransferenciaId = null,
             ConciliadoCom = null,
             ContaFixaId = null
@@ -912,5 +912,47 @@ public class CompraCartaoServiceTests
         Assert.Null(compraEditada);
         Assert.NotNull(erro);
         Assert.Contains("positivo", erro);
+    }
+
+    // Caso: Evitar crash de constraint quando fatura ABERTA mais recente ja existe
+    // Este teste verifica que a rejeicao controlada previne DbUpdateException
+    [Fact]
+    public async Task CriarCompraAsync_CompraRetroativaComABERTAMaisRecente_RejeitaControladamente()
+    {
+        using var context = CreateInMemoryContext();
+        var conta = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
+
+        // Criar fatura ABERTA manualmente para ciclo mais recente
+        var faturaAbertaMaisRecente = new Fatura
+        {
+            Id = Guid.NewGuid(),
+            ContaId = conta.Id,
+            Conta = conta,
+            DataFechamento = new DateOnly(2026, 7, 10),
+            DataVencimento = new DateOnly(2026, 7, 20),
+            Status = FaturaStatusConstants.Aberta,
+            TransferenciaId = null
+        };
+        context.Faturas.Add(faturaAbertaMaisRecente);
+        context.SaveChanges();
+
+        // Tentar criar compra para ciclo muito retroativo
+        var service = new CompraCartaoService(context, new FaturaCicloService(context), new ValidacaoCartaoService(context));
+
+        var request = new CriarCompraRequest
+        {
+            Descricao = "Compra retroativa",
+            Valor = 100.00m,
+            Data = new DateOnly(2026, 3, 5),
+            CategoriaId = null
+        };
+
+        var (sucesso, compra, erro) = await service.CriarCompraAsync(conta.Id, request);
+
+        // Esperado: rejeicao controlada, nao crash
+        Assert.False(sucesso);
+        Assert.Null(compra);
+        Assert.NotNull(erro);
+        Assert.Contains("retroativa", erro, StringComparison.OrdinalIgnoreCase);
     }
 }

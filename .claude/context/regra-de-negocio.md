@@ -222,6 +222,11 @@ cai no ciclo de uma fatura:
 - **Sem fatura ainda para aquele ciclo (ciclo atual ou futuro):** resolve/cria
   a fatura normalmente com status ABERTA (comportamento padrao de resolucao
   de ciclo).
+- **Sem fatura ainda para um ciclo MUITO retroativo (anterior a uma fatura
+  ABERTA mais recente ja existente para a mesma conta):** REJEITADA de forma
+  definitiva. So pode existir uma fatura ABERTA por conta; nao ha suporte a
+  compra retroativa alem do ciclo ainda aberto mais antigo. Usuario recebe
+  erro claro e ajusta a data.
 
 **Pagamento x fatura:** o pagamento fecha o saldo da fatura como um todo, NUNCA
 compra a compra (igual Organizze).
