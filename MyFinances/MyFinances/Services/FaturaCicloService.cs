@@ -126,6 +126,78 @@ public class FaturaCicloService
         return new DateOnly(year, month, diaAjustado);
     }
 
+    /// <summary>
+    /// Resolve a Fatura mais apropriada para registrar um lancamento (compra) em um cartao.
+    ///
+    /// Regra:
+    /// - Se existe Fatura com Status == PAGA: REJEITA (fatura ja foi paga)
+    /// - Se existe Fatura com Status == FECHADA ou ABERTA: ACEITA (mesmo retroativa)
+    /// - Se nao existe Fatura: cria nova com status ABERTA
+    ///
+    /// Retorna tuple (Fatura, Rejeitada, Motivo):
+    /// - Fatura: a fatura resolvida (nao-null se nao rejeitada)
+    /// - Rejeitada: true se fatura PAGA, false caso contrario
+    /// - Motivo: mensagem de erro se rejeitada, null caso contrario
+    /// </summary>
+    public async Task<(Fatura? Fatura, bool Rejeitada, string? Motivo)> ResolverFaturaParaLancamentoAsync(
+        Guid contaId,
+        DateOnly data)
+    {
+        var conta = await _context.Contas
+            .FirstOrDefaultAsync(c => c.Id == contaId);
+
+        if (conta == null)
+        {
+            throw new InvalidOperationException($"Conta {contaId} nao encontrada");
+        }
+
+        if (!EhContaCartao(conta))
+        {
+            throw new InvalidOperationException($"Conta {contaId} nao e do tipo CARTAO");
+        }
+
+        if (!conta.DiaFechamento.HasValue || !conta.DiaVencimento.HasValue)
+        {
+            throw new InvalidOperationException($"Conta CARTAO {contaId} nao tem dia_fechamento ou dia_vencimento configurados");
+        }
+
+        var (dataFechamento, dataVencimento) = CalcularDatasCiclo(
+            data,
+            conta.DiaFechamento.Value,
+            conta.DiaVencimento.Value);
+
+        var faturaExistente = await _context.Faturas
+            .FirstOrDefaultAsync(f =>
+                f.ContaId == contaId &&
+                f.DataFechamento == dataFechamento);
+
+        if (faturaExistente != null)
+        {
+            if (faturaExistente.Status == FaturaStatusConstants.Paga)
+            {
+                return (null, true, "Fatura ja foi paga, nao aceita mais lancamentos");
+            }
+
+            return (faturaExistente, false, null);
+        }
+
+        var novaFatura = new Fatura
+        {
+            Id = Guid.NewGuid(),
+            ContaId = contaId,
+            Conta = conta,
+            DataFechamento = dataFechamento,
+            DataVencimento = dataVencimento,
+            Status = FaturaStatusConstants.Aberta,
+            TransferenciaId = null
+        };
+
+        _context.Faturas.Add(novaFatura);
+        await _context.SaveChangesAsync();
+
+        return (novaFatura, false, null);
+    }
+
     private static bool EhContaCartao(Conta conta)
     {
         return conta.Tipo == TipoContaConstants.Cartao;

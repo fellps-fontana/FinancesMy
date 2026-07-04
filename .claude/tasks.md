@@ -81,7 +81,7 @@ DEPENDENCIAS: TASK-007
 CONTEXTO A LER: regra-de-negocio.md item 12
 
 ### TASK-009 — Endpoint criar/editar compra
-STATUS: PENDENTE
+STATUS: CONCLUIDA (POST/PUT /api/cartoes/{contaId}/compras; FaturaId resolvido pela data da compra via novo metodo ResolverFaturaParaLancamentoAsync — rejeita fatura PAGA, aceita FECHADA retroativa, cria ABERTA se nao existir; regra confirmada pelo usuario e documentada. Testes existentes (TASK-008) continuam passando 11/11)
 AGENT: levi
 ESCOPO: POST/PUT /api/cartoes/{contaId}/compras cria lancamento com categoria_id, data, valor, tipo=DEBIT, manual=true, status=PAGO (fixo — ver clarificacao no item 12), associado a fatura resolvida pelo TASK-006.
 ARQUIVOS: MyFinances/MyFinances/Controllers/CartaoComprasController.cs, Services/CompraCartaoService.cs

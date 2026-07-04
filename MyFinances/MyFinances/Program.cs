@@ -17,6 +17,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Add application services
 builder.Services.AddScoped<ContaService>();
 builder.Services.AddScoped<FaturaCicloService>();
+builder.Services.AddScoped<CompraCartaoService>();
 
 var app = builder.Build();
 

@@ -204,6 +204,15 @@ mesmo dia).
 **Saldo do cartao** = compras - pagamentos - estornos. CALCULADO, nao armazenado
 (mesma logica do item 10).
 
+**Compra em fatura ja fechada/paga:** uma compra (nova ou editada) cuja data
+cai no ciclo de uma fatura:
+- **PAGA:** REJEITADA. Fatura paga nao aceita mais lancamento.
+- **FECHADA (nao paga):** ACEITA, mesmo sendo retroativa — vincula normalmente
+  a essa fatura ja fechada.
+- **Sem fatura ainda para aquele ciclo (ciclo atual ou futuro):** resolve/cria
+  a fatura normalmente com status ABERTA (comportamento padrao de resolucao
+  de ciclo).
+
 **Pagamento x fatura:** o pagamento fecha o saldo da fatura como um todo, NUNCA
 compra a compra (igual Organizze).
 
