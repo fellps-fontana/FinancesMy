@@ -12,7 +12,7 @@ ainda. As primeiras tasks criam essa base.
 
 ## TASK-001 — Setup EF Core + Npgsql + DbContext
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
@@ -26,7 +26,7 @@ RETORNO ESPERADO: projeto compila, `DbContext` registrado via DI, connection str
 
 ## TASK-002 — Entidade Conta + migration inicial
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-001
