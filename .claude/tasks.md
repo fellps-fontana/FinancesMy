@@ -97,7 +97,7 @@ DEPENDENCIAS: TASK-009
 CONTEXTO A LER: regra-de-negocio.md item 12
 
 ### TASK-011 — Testes TASK-009
-STATUS: PENDENTE
+STATUS: CONCLUIDA (30/30 testes: criar/editar compra, fatura PAGA/FECHADA/ABERTA em ambos os fluxos, incluindo regressao do bug corrigido na TASK-010)
 AGENT: mike
 ESCOPO: Cobrir classificacao da compra (nunca some no fluxo de caixa, sempre soma na visao categorica), vinculo correto de fatura_id e status sempre PAGO.
 ARQUIVOS: MyFinances/MyFinances.Tests/CompraCartaoServiceTests.cs
