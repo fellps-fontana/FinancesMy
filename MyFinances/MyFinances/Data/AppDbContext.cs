@@ -151,6 +151,10 @@ public class AppDbContext : DbContext
                 .WithOne(l => l.Fatura)
                 .HasForeignKey(l => l.FaturaId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => e.ContaId)
+                .IsUnique()
+                .HasFilter("\"Status\" = 'ABERTA'");
         });
     }
 }

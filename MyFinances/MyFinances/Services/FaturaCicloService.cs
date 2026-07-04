@@ -18,14 +18,19 @@ public class FaturaCicloService
     /// Resolve a Fatura ABERTA vigente para um ciclo de cartao.
     ///
     /// Ciclo: Dado dia_fechamento e dia_vencimento da conta CARTAO:
-    /// - Se dataReferencia.Day < dia_fechamento: ciclo fecha neste mes, vence no proximo
-    /// - Se dataReferencia.Day >= dia_fechamento: ciclo fecha no proximo mes, vence no mes seguinte
+    /// - Se dataReferencia.Day < dia_fechamento: ciclo fecha neste mes
+    /// - Se dataReferencia.Day >= dia_fechamento: ciclo fecha no proximo mes
+    ///
+    /// Vencimento pode cair no mesmo mes ou no mes seguinte, dependendo se
+    /// dia_vencimento > dia_fechamento (mesmo mes) ou dia_vencimento <= dia_fechamento (proximo mes).
     ///
     /// Exemplos:
     /// - dia_fechamento=10, dia_vencimento=20, dataReferencia=05/03 (5 de marco)
-    ///   => fecha=10/03, vence=20/04
+    ///   => fecha=10/03, vence=20/03 (mesmo mes, pois 20 > 10)
+    /// - dia_fechamento=10, dia_vencimento=05, dataReferencia=05/03 (5 de marco)
+    ///   => fecha=10/03, vence=05/04 (proximo mes, pois 05 <= 10)
     /// - dia_fechamento=10, dia_vencimento=20, dataReferencia=15/03 (15 de marco)
-    ///   => fecha=10/04, vence=20/05
+    ///   => fecha=10/04, vence=20/04 (mesmo mes, pois 20 > 10)
     ///
     /// Se ja existe Fatura ABERTA para esse ciclo, reaproveita.
     /// Se nao existe, cria nova com status=ABERTA.
@@ -95,14 +100,16 @@ public class FaturaCicloService
 
         if (dataReferencia >= dataFechamento)
         {
-            dataFechamento = dataFechamento.AddMonths(1);
+            var proximoMes = dataReferencia.AddMonths(1);
+            dataFechamento = CriarDataValida(proximoMes.Year, proximoMes.Month, diaFechamento);
         }
 
         var dataVencimento = CriarDataValida(dataFechamento.Year, dataFechamento.Month, diaVencimento);
 
         if (dataVencimento <= dataFechamento)
         {
-            dataVencimento = dataVencimento.AddMonths(1);
+            var proximoMes = dataFechamento.AddMonths(1);
+            dataVencimento = CriarDataValida(proximoMes.Year, proximoMes.Month, diaVencimento);
         }
 
         return (dataFechamento, dataVencimento);
@@ -123,11 +130,4 @@ public class FaturaCicloService
     {
         return conta.Tipo == TipoContaConstants.Cartao;
     }
-}
-
-public static class FaturaStatusConstants
-{
-    public const string Aberta = "ABERTA";
-    public const string Fechada = "FECHADA";
-    public const string Paga = "PAGA";
 }

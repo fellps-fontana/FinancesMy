@@ -57,7 +57,7 @@ DEPENDENCIAS: TASK-004
 CONTEXTO A LER: regra-de-negocio.md itens 10, 12
 
 ### TASK-006 — Servico de ciclo de fatura (fatura vigente / criacao sob demanda)
-STATUS: CONCLUIDA (calculo de ciclo com virada de mes/ano tratada; invariante "nunca 2 ABERTA simultaneas" garantida so em codigo por ora — constraint de unicidade no banco sinalizada como pendencia p/ TASK-007/015; typo de nome de metodo corrigido inline pelo Kira)
+STATUS: CONCLUIDA (calculo de ciclo com virada de mes/ano corrigido apos revisao — bug real de rollover sobre data clampada; indice unico parcial no banco adicionado, elimina race condition; FaturaStatusConstants movido p/ Domain/)
 AGENT: levi
 ESCOPO: Dado uma conta CARTAO e uma data, resolver a fatura ABERTA correspondente ao ciclo (dia_fechamento -> dia_vencimento), criando-a se nao existir.
 ARQUIVOS: MyFinances/MyFinances/Services/FaturaCicloService.cs
@@ -65,7 +65,7 @@ DEPENDENCIAS: TASK-004
 CONTEXTO A LER: regra-de-negocio.md item 12 (paragrafo "Fatura"); schema.dbml tabela fatura
 
 ### TASK-007 — Revisao TASK-006
-STATUS: PENDENTE
+STATUS: CONCLUIDA (PRECISA CORRIGIR -> corrigido: bug de rollover de data, constraint de unicidade, organizacao de constantes, docstring incorreto. Duas lacunas de regra confirmadas pelo usuario e documentadas na regra-de-negocio.md)
 AGENT: style
 ESCOPO: Checar calculo de datas de ciclo (virada de mes, ano) e que nunca existam duas faturas ABERTA simultaneas para a mesma conta.
 ARQUIVOS: os do TASK-006

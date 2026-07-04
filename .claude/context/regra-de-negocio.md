@@ -194,6 +194,13 @@ dupla contagem.
 **Fatura:** recorte das compras por ciclo (`data_fechamento` -> `data_vencimento`).
 Serve para agrupar as compras e para casar com o pagamento.
 
+**Calculo do ciclo:** `data_vencimento` pode cair no MESMO mes do fechamento
+quando `dia_vencimento` (numerico) for maior que `dia_fechamento` (ex: fecha
+dia 10, vence dia 20 -> mesmo mes); caso contrario cai no mes seguinte. Uma
+compra feita EXATAMENTE no dia do fechamento ja cai na proxima fatura (o
+fechamento daquele dia e considerado consumado, nao aceita mais compra no
+mesmo dia).
+
 **Saldo do cartao** = compras - pagamentos - estornos. CALCULADO, nao armazenado
 (mesma logica do item 10).
 
