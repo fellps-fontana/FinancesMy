@@ -28,14 +28,9 @@ public class PagamentoFaturaService
             return (false, null, "Fatura nao encontrada");
         }
 
-        if (fatura.Status == FaturaStatusConstants.Aberta)
+        if (!EStatusValidoParaPagamento(fatura.Status))
         {
-            return (false, null, "Nao e possivel pagar fatura ainda ABERTA");
-        }
-
-        if (fatura.Status == FaturaStatusConstants.Paga)
-        {
-            return (false, null, "Fatura ja foi paga");
+            return (false, null, "Apenas faturas ABERTA ou FECHADA podem ser pagas. Fatura atual: " + fatura.Status);
         }
 
         if (request.ContaOrigemId == fatura.ContaId)
@@ -54,6 +49,11 @@ public class PagamentoFaturaService
         if (contaOrigem.Tipo != TipoContaConstants.Banco)
         {
             return (false, null, "Conta de origem deve ser do tipo BANCO");
+        }
+
+        if (contaOrigem.Origem == OrigemConstants.OpenFinance)
+        {
+            return (false, null, "Nao e permitido pagar fatura com conta Open Finance nesta versao");
         }
 
         var valorPagamento = await CalcularValorPagamentoAsync(faturaId);
@@ -134,5 +134,11 @@ public class PagamentoFaturaService
             .ToListAsync();
 
         return lancamentos.Sum(l => l.Valor);
+    }
+
+    private bool EStatusValidoParaPagamento(string status)
+    {
+        return status == FaturaStatusConstants.Aberta ||
+               status == FaturaStatusConstants.Fechada;
     }
 }

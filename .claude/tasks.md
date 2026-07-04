@@ -169,7 +169,7 @@ DEPENDENCIAS: TASK-018
 CONTEXTO A LER: regra-de-negocio.md itens 3, 12
 
 ### TASK-020 — Testes TASK-018
-STATUS: PENDENTE
+STATUS: CONCLUIDA (10 testes novos, 60/60 total: sucesso com soma correta, ABERTA/PAGA/inexistente rejeitados, tipo de conta origem, origem==destino, fatura sem lancamentos)
 AGENT: mike
 ESCOPO: Cobrir que o pagamento nao duplica com as compras (regra de sinal/dupla contagem) e que fecha o saldo da fatura como um todo.
 ARQUIVOS: MyFinances/MyFinances.Tests/PagamentoFaturaServiceTests.cs
