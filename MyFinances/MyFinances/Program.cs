@@ -22,6 +22,7 @@ builder.Services.AddScoped<CompraCartaoService>();
 builder.Services.AddScoped<EstornoCartaoService>();
 builder.Services.AddScoped<PagamentoFaturaService>();
 builder.Services.AddScoped<SaldoCartaoService>();
+builder.Services.AddScoped<FluxoCaixaService>();
 
 var app = builder.Build();
 
