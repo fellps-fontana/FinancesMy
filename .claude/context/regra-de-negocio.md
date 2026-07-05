@@ -18,6 +18,12 @@ O sistema opera com DUAS fontes que convivem no mesmo painel:
 Toda CONTA tem o campo `origem` (OPEN_FINANCE | MANUAL).
 Todo LANCAMENTO tem a flag `manual` (true | false), exibida como simbolo no UI.
 
+**v1 opera SO com MANUAL** (decisao registrada em "Escopo: v1 vs v2"). O campo
+`origem` e o schema ja preveem OPEN_FINANCE (inclusive `pierre_txn_id` ja
+migrado em Conta/Lancamento), mas nenhum agent deve implementar sync,
+conciliacao ou exclusao especificas de Open Finance (itens 4, 5, 11) na v1.
+Decisao nao-retroativa: o schema existente com `pierre_txn_id` fica como esta.
+
 ---
 
 ## 2. Regra de sinal (CRITICA)
@@ -61,6 +67,10 @@ sao excluidas. O pagamento de fatura de cartao usa exatamente essa estrutura
 
 ## 4. Exclusao de lancamento Open Finance
 
+**FORA DE ESCOPO v1** — depende de sync ativo com Pierre (item 11), adiado
+para v2 (ver "Escopo: v1 vs v2"). Regra mantida documentada para quando a
+integracao entrar.
+
 O usuario pode ocultar um lancamento vindo do Open Finance.
 
 **Regra:** exclusao e SOFT-DELETE. Marca `oculto = true`. O sync deve verificar
@@ -71,22 +81,25 @@ Nao deletar fisicamente — o sync traria de volta.
 
 ## 5. Conciliacao (conta a pagar -> pagamento real)
 
+**Em v1, so existe o caminho manual** (branch Open Finance abaixo fica para
+v2, junto do sync — ver "Escopo: v1 vs v2").
+
 Contas a pagar nascem como lancamento PENDENTE. O fechamento depende da origem
 da conta de pagamento:
 
-- **Conta de pagamento Open Finance:** o sistema NAO marca como paga sozinho.
-  No sync, busca uma transacao OF real que bata com a conta pendente:
+- **Conta de pagamento Open Finance (v2):** o sistema NAO marca como paga
+  sozinho. No sync, busca uma transacao OF real que bata com a conta pendente:
   - mesmo `valor`
   - data da transacao dentro de +/- 1 dia do vencimento
   Se achar -> status vira SUGERIDO e o sistema PROPOE o vinculo.
   O usuario CONFIRMA -> status vira PAGO e os dois lancamentos sao vinculados
   (`conciliado_com`). Se nao achar -> permanece PENDENTE.
 
-- **Conta de pagamento manual:** ao marcar como paga, sai automatico. O usuario
-  e a fonte da verdade, nao ha o que conferir.
+- **Conta de pagamento manual (v1):** ao marcar como paga, sai automatico. O
+  usuario e a fonte da verdade, nao ha o que conferir.
 
-Estados do lancamento: PENDENTE -> SUGERIDO -> PAGO.
-(Manual pula SUGERIDO: PENDENTE -> PAGO direto.)
+Estados do lancamento em v1: PENDENTE -> PAGO direto (SUGERIDO so existe
+quando a branch Open Finance entrar em v2).
 
 ---
 
@@ -157,6 +170,9 @@ relatorio por categoria.
 
 ## 11. Sincronizacao (sync)
 
+**FORA DE ESCOPO v1** — integracao real com Pierre inteira adiada para v2
+(ver "Escopo: v1 vs v2"). Nao implementar nenhum item abaixo na v1.
+
 - Nao precisa ser tempo real. Polling agendado (sugestao: a cada 6h).
 - Fluxo: forcar atualizacao no Pierre (manual-update) -> buscar transacoes
   desde a ultima sync -> deduplicar por `pierre_txn_id` -> inserir novas ->
@@ -212,8 +228,30 @@ Nubank (ver Pendencias). O de-para de categoria (item 7) roda sobre a
 
 ## Escopo: v1 vs v2
 
-**Modulo de investimento detalhado fica para a v2 — decisao consciente, nao
-esquecimento.**
+**Integracao real com Pierre (Open Finance) fica para a v2 — decisao
+consciente do usuario em 2026-07-05, nao esquecimento.**
+
+Racional: nenhuma integracao com a API do Pierre foi codada ate a decisao (sem
+HTTP client, sem service de sync, sem regra de Open Finance implementada) —
+so existe o campo `origem` e a coluna/indice `pierre_txn_id`, ja migrados em
+Conta/Lancamento nos modulos cartao, lancamento e investimentos, como scaffold
+de schema. Decisao NAO-retroativa: esse schema fica como esta, nao ha
+migration de remocao. O que muda e o que entra na v1 daqui pra frente:
+
+- **v1:** so contas MANUAL. Sem sync (item 11), sem exclusao/conciliacao
+  Open Finance (itens 4 e 5, branch OF), sem endpoint de integracao com
+  Pierre. Pendencias de rate limit/paginacao do Pierre (ver "Pendencias a
+  definir") saem da v1 tambem — so voltam a importar quando a integracao
+  entrar.
+- **v2:** integracao Pierre completa (sync polling, dedup por
+  `pierre_txn_id`, conciliacao automatica com transacao OF real, exclusao
+  soft-delete de lancamento OF) entra como modulo isolado, sem mexer no que
+  ja funciona na v1. Entra junto com o modulo de investimento detalhado
+  abaixo, ou em fase propria — a ordem entre os dois fica a criterio do
+  usuario quando a v2 comecar.
+
+**Modulo de investimento detalhado tambem fica para a v2 — decisao consciente,
+nao esquecimento.**
 
 Racional: o investimento detalhado (acoes individuais, cotacao ao vivo via API
 externa, rentabilidade, preco medio, dividendos) e de natureza diferente dos
@@ -235,8 +273,8 @@ Entra como modulo isolado, sem mexer no que ja funciona na v1.
 
 ## Pendencias a definir
 
-- Rate limit dos endpoints do Pierre (testar com a key real).
-- Paginacao do get-transactions (confirmar se ha cursor ou se vem tudo).
+- (v2) Rate limit dos endpoints do Pierre (testar com a key real).
+- (v2) Paginacao do get-transactions (confirmar se ha cursor ou se vem tudo).
 - Quantos meses a frente a conta fixa gera.
 - Tratamento de PENDING vs POSTED no painel (mostrar separado?).
 - Import da fatura Nubank (item 12): definir dedup sem `pierre_txn_id`
