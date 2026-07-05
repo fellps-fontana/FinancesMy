@@ -1,111 +1,115 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/inter";
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+/*
+ * Tokens de identidade-visual.md. Nao adicionar cor crua fora daqui —
+ * todo componente consome estas variaveis via classe utilitaria do Tailwind.
+ * O app tem um unico tema (escuro); nao ha alternancia light/dark.
+ */
+@theme inline {
+  --font-sans: "Inter Variable", sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* semantica de dominio (status/origem) — ver regra-de-negocio.md */
+  --color-positivo: var(--positivo);
+  --color-negativo: var(--negativo);
+  --color-alerta: var(--alerta);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-soft: var(--accent-soft);
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+  /* forma: cards 12-16px, elementos menores 8-10px, badges 5px */
+  --radius-badge: 5px;
+  --radius-sm: calc(var(--radius) * 0.8);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.3);
+  --radius-xl: calc(var(--radius) * 1.6);
+}
+
+:root,
+.dark {
+  color-scheme: dark;
+
+  /* bases */
+  --background: #0e0d13;
+  --foreground: #f2f0f7;
+  --card: #17151f;
+  --card-foreground: #f2f0f7;
+  --popover: #17151f;
+  --popover-foreground: #f2f0f7;
+
+  /* acao/destaque (roxo) */
+  --primary: #7f77dd;
+  --primary-foreground: #f2f0f7;
+  --accent: #221f2d;
+  --accent-foreground: #e8e6ef;
+  --accent-deep: #26215c;
+  --accent-soft: #afa9ec;
+
+  /* superficies e neutros */
+  --secondary: #221f2d;
+  --secondary-foreground: #e8e6ef;
+  --muted: #221f2d;
+  --muted-foreground: #8b8794;
+
+  /* semantica de dominio */
+  --positivo: #5dcaa5;
+  --negativo: #e0807a;
+  --alerta: #ba7517;
+  --destructive: #e0807a;
+
+  /* bordas e foco */
+  --border: #2a2636;
+  --input: #2a2636;
+  --ring: #7f77dd;
+
+  /* base de raio 8px -> sm 6.4px, md 8px, lg 10.4px (botao/input, "elementos
+     menores 8-10px"), xl 12.8px (card, piso da faixa "cards 12-16px") */
+  --radius: 0.5rem;
+
+  /* sidebar (nao usado nesta etapa, mantido consistente com o tema) */
+  --sidebar: #17151f;
+  --sidebar-foreground: #f2f0f7;
+  --sidebar-primary: #7f77dd;
+  --sidebar-primary-foreground: #f2f0f7;
+  --sidebar-accent: #221f2d;
+  --sidebar-accent-foreground: #e8e6ef;
+  --sidebar-border: #2a2636;
+  --sidebar-ring: #7f77dd;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  body {
+    @apply bg-background text-foreground font-sans font-normal;
+    font-size: 14px;
   }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }
