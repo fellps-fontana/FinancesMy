@@ -225,7 +225,7 @@ DEPENDENCIAS: TASK-024, TASK-025
 CONTEXTO A LER: regra-de-negocio.md item 12 inteiro
 
 ### TASK-027 — Testes conjuntos TASK-024 + TASK-025
-STATUS: PENDENTE
+STATUS: CONCLUIDA (9 testes novos, 76/76 total: cenario central sem dupla contagem, Oculto, transferencia so DEBIT, estorno, sem categoria sem crash, fora do mes, filtro por conta)
 AGENT: mike
 ESCOPO: Cenario com N compras + 1 pagamento no mes: comprovar que a soma do CAIXA e so o pagamento e a soma do COMPETENCIA e so as compras, sem sobreposicao de valor total.
 ARQUIVOS: MyFinances/MyFinances.Tests/VisoesCartaoTests.cs
