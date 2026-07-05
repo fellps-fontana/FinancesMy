@@ -52,7 +52,7 @@ public class ContasControllerTestsFixture : IAsyncLifetime
     {
         PropertyNameCaseInsensitive = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+        Converters = { new JsonStringEnumConverter() }
     };
 
     public ContasControllerTestsFixture()
@@ -156,6 +156,10 @@ public class ContasControllerTests
         Assert.Equal(OrigemConta.Manual, contaResponse.Origem);
         Assert.Equal(1000m, contaResponse.SaldoManual);
         Assert.True(contaResponse.Ativa);
+
+        // Verify raw JSON contains enum as string, not as integer
+        Assert.Contains("\"tipo\":\"Investimento\"", responseBody);
+        Assert.Contains("\"origem\":\"Manual\"", responseBody);
     }
 
     [Fact]
@@ -497,7 +501,7 @@ public class ContasControllerTests
         var responseAntes = await _fixture.Client.GetAsync("/api/contas?tipo=investimento");
         var contasAntes = JsonSerializer.Deserialize<List<ContaResponse>>(
             await responseAntes.Content.ReadAsStringAsync(),
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            ContasControllerTestsFixture.JsonOptions);
         Assert.NotNull(contasAntes);
         Assert.Single(contasAntes);
 
