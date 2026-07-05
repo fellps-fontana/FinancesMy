@@ -124,7 +124,7 @@ RETORNO ESPERADO: hook tipado (sem `any`) retornando lista de contas e total inv
 
 ## TASK-009 — UI: lista de contas de investimento + total
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-008
