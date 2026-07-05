@@ -110,13 +110,13 @@ RETORNO ESPERADO: testes passando cobrindo os 3 casos citados; relatorio de bug 
 
 ## TASK-008 — Camada de dados no front (hook de contas de investimento)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style; ja inclui os hooks de mutation criar/atualizar-saldo/desativar, entao TASK-010 so consome, nao recria)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-004, TASK-006
 CONTEXTO A LER: stack.md secao "Frontend (React)"; clean-code.md secao "Organizacao (React)"
 ESCOPO: criar hook/data layer (`useContasInvestimento`) que consome `GET /contas?tipo=INVESTIMENTO` e `GET /contas/investimentos/total`, sem fetch solto em componente.
-ARQUIVOS PERMITIDOS: `frontend/src/features/investimentos/api/*.ts` (novo — caminho a confirmar conforme estrutura real do front, ainda inexistente)
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/**` (projeto real trazido da main, nao `frontend/` que foi descartado)
 NAO FAZER: nao colocar chamada de fetch dentro de componente de UI (isso e TASK-009/010).
 RETORNO ESPERADO: hook tipado (sem `any`) retornando lista de contas e total investido, com estado de loading/erro.
 
@@ -130,7 +130,7 @@ FLUXO: Implementacao
 DEPENDENCIAS: TASK-008
 CONTEXTO A LER: identidade-visual.md (se existir); regra-de-negocio.md secao 8
 ESCOPO: tela listando as contas de investimento (nome, saldo atual) com o total investido em destaque.
-ARQUIVOS PERMITIDOS: `frontend/src/features/investimentos/ListaContasInvestimento.tsx` (novo, caminho a confirmar)
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/*.tsx` (novo; use os hooks ja existentes em `hooks/`, nao recrie)
 NAO FAZER: nao exibir campos de CARTAO (dia_fechamento/vencimento) nem qualquer dado de ativo/ticker (v2).
 RETORNO ESPERADO: componente de apresentacao consumindo o hook da TASK-008, sem logica de calculo embutida.
 
@@ -144,7 +144,7 @@ FLUXO: Implementacao
 DEPENDENCIAS: TASK-008
 CONTEXTO A LER: regra-de-negocio.md secao 8 e secao 10
 ESCOPO: formulario para criar conta de investimento (nome + saldo inicial), editar `saldo_manual` e acao de desativar.
-ARQUIVOS PERMITIDOS: `frontend/src/features/investimentos/FormContaInvestimento.tsx` (novo, caminho a confirmar)
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/*.tsx` (novo; use os hooks de mutation ja existentes em `hooks/` — useCriarContaInvestimento, useAtualizarSaldoConta, useDesativarConta — nao recrie)
 NAO FAZER: nao permitir escolher `origem` no form (sempre MANUAL, implicito); nao expor campo de tipo de ativo/ticker (v2).
 RETORNO ESPERADO: componente de formulario chamando o hook da TASK-008 para POST/PATCH.
 
