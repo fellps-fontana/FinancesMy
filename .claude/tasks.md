@@ -361,7 +361,7 @@ DEPENDENCIAS: TASK-038
 CONTEXTO A LER: regra-de-negocio.md item 12
 
 ### TASK-040 — Testes TASK-038
-STATUS: PENDENTE
+STATUS: CONCLUIDA (6 testes novos, 82/82 total: pagamento parcial FECHADA e ABERTA, overpayment, fatura ja quitada, fluxos combinados de fechamento de ciclo com quitacao parcial/integral)
 AGENT: mike
 ESCOPO: Cobrir pagamento antecipado (ABERTA), pagamento parcial (2+
 pagamentos ate quitar), rejeicao de overpayment, rejeicao de pagamento

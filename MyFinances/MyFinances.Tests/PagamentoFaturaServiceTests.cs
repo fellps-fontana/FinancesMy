@@ -438,4 +438,354 @@ public class PagamentoFaturaServiceTests
         Assert.NotNull(erro);
         Assert.Contains("lancamentos", erro);
     }
+
+    // Caso 10: Fatura FECHADA com saldo 300 - Pagamento PARCIAL (100), depois segundo pagamento (200)
+    // Esperado: primeiro pag nao muda status (FECHADA), segundo pag muda para PAGA
+    // e tem 2 Transferencias vinculadas a fatura
+    [Fact]
+    public async Task PagarFaturaAsync_FaturaFechadaPagamentoParcialDepois100e200_DuasTransferenciasStatusMudaSoPrimeira()
+    {
+        using var context = CreateInMemoryContext();
+        var contaBanco = CriarContaBanco(context, "Banco Origem");
+        var contaCartao = CriarContaCartao(context, "Cartao Credito");
+        var fatura = CriarFatura(context, contaCartao.Id, FaturaStatusConstants.Fechada);
+
+        // Criar lancamento de 300
+        var lancamento = CriarLancamento(context, contaCartao.Id, fatura.Id, 300.00m);
+
+        var service = new PagamentoFaturaService(context);
+
+        // Primeiro pagamento: 100
+        var request1 = new PagarFaturaRequest
+        {
+            ContaOrigemId = contaBanco.Id,
+            Data = new DateOnly(2026, 3, 20),
+            Valor = 100.00m
+        };
+
+        var (sucesso1, faturaRetorno1, erro1) = await service.PagarFaturaAsync(fatura.Id, request1);
+
+        Assert.True(sucesso1);
+        Assert.Null(erro1);
+        Assert.NotNull(faturaRetorno1);
+        // Status deve continuar FECHADA apos pagamento parcial
+        Assert.Equal(FaturaStatusConstants.Fechada, faturaRetorno1.Status);
+
+        // Recarregar fatura para verificar saldo pendente
+        var faturaAposFirstPag = await context.Faturas
+            .Include(f => f.Lancamentos)
+            .Include(f => f.Transferencias)
+            .FirstOrDefaultAsync(f => f.Id == fatura.Id);
+
+        var saldoAposPrimeiro = FaturaSaldoCalculator.Calcular(faturaAposFirstPag);
+        Assert.Equal(300.00m, saldoAposPrimeiro.ValorTotal);
+        Assert.Equal(100.00m, saldoAposPrimeiro.ValorPago);
+        Assert.Equal(200.00m, saldoAposPrimeiro.ValorPendente);
+
+        // Segundo pagamento: 200
+        var request2 = new PagarFaturaRequest
+        {
+            ContaOrigemId = contaBanco.Id,
+            Data = new DateOnly(2026, 3, 21),
+            Valor = 200.00m
+        };
+
+        var (sucesso2, faturaRetorno2, erro2) = await service.PagarFaturaAsync(fatura.Id, request2);
+
+        Assert.True(sucesso2);
+        Assert.Null(erro2);
+        Assert.NotNull(faturaRetorno2);
+        // Status deve mudar para PAGA apos quitacao total
+        Assert.Equal(FaturaStatusConstants.Paga, faturaRetorno2.Status);
+
+        // Recarregar fatura para verificar estado final
+        var faturaAposFinalPag = await context.Faturas
+            .Include(f => f.Lancamentos)
+            .Include(f => f.Transferencias)
+            .FirstOrDefaultAsync(f => f.Id == fatura.Id);
+
+        var saldoFinal = FaturaSaldoCalculator.Calcular(faturaAposFinalPag);
+        Assert.Equal(300.00m, saldoFinal.ValorTotal);
+        Assert.Equal(300.00m, saldoFinal.ValorPago);
+        Assert.Equal(0.00m, saldoFinal.ValorPendente);
+
+        // Verificar que tem 2 Transferencias vinculadas
+        Assert.Equal(2, faturaAposFinalPag.Transferencias.Count);
+
+        // Verificar que cada transferencia tem seu proprio valor
+        var transferencias = faturaAposFinalPag.Transferencias.OrderBy(t => t.Data).ToList();
+        Assert.Equal(100.00m, transferencias[0].Valor);
+        Assert.Equal(200.00m, transferencias[1].Valor);
+    }
+
+    // Caso 11: Fatura ABERTA com saldo 300 - Pagamento PARCIAL (100), depois (200)
+    // Esperado: ambos os pagamentos nao mudam status (continua ABERTA)
+    [Fact]
+    public async Task PagarFaturaAsync_FaturaAbertaPagamentoParcialDepois100e200_StatusContinuaAberta()
+    {
+        using var context = CreateInMemoryContext();
+        var contaBanco = CriarContaBanco(context, "Banco Origem");
+        var contaCartao = CriarContaCartao(context, "Cartao Credito");
+        var fatura = CriarFatura(context, contaCartao.Id, FaturaStatusConstants.Aberta);
+
+        // Criar lancamento de 300
+        var lancamento = CriarLancamento(context, contaCartao.Id, fatura.Id, 300.00m);
+
+        var service = new PagamentoFaturaService(context);
+
+        // Primeiro pagamento: 100
+        var request1 = new PagarFaturaRequest
+        {
+            ContaOrigemId = contaBanco.Id,
+            Data = new DateOnly(2026, 3, 20),
+            Valor = 100.00m
+        };
+
+        var (sucesso1, faturaRetorno1, erro1) = await service.PagarFaturaAsync(fatura.Id, request1);
+
+        Assert.True(sucesso1);
+        Assert.Null(erro1);
+        Assert.Equal(FaturaStatusConstants.Aberta, faturaRetorno1.Status);
+
+        // Segundo pagamento: 200 (quitando totalmente)
+        var request2 = new PagarFaturaRequest
+        {
+            ContaOrigemId = contaBanco.Id,
+            Data = new DateOnly(2026, 3, 21),
+            Valor = 200.00m
+        };
+
+        var (sucesso2, faturaRetorno2, erro2) = await service.PagarFaturaAsync(fatura.Id, request2);
+
+        Assert.True(sucesso2);
+        Assert.Null(erro2);
+        // Status continua ABERTA mesmo apos quitacao total (conforme regra revisada)
+        Assert.Equal(FaturaStatusConstants.Aberta, faturaRetorno2.Status);
+
+        // Recarregar para confirmar saldo zero
+        var faturaFinal = await context.Faturas
+            .Include(f => f.Lancamentos)
+            .Include(f => f.Transferencias)
+            .FirstOrDefaultAsync(f => f.Id == fatura.Id);
+
+        var saldoFinal = FaturaSaldoCalculator.Calcular(faturaFinal);
+        Assert.Equal(300.00m, saldoFinal.ValorTotal);
+        Assert.Equal(300.00m, saldoFinal.ValorPago);
+        Assert.Equal(0.00m, saldoFinal.ValorPendente);
+    }
+
+    // Caso 12: Overpayment - tentar pagar valor maior que saldo pendente
+    // Esperado: rejeitado com mensagem clara, nenhuma Transferencia criada
+    [Fact]
+    public async Task PagarFaturaAsync_OverpaymentMaiorQueSaldo_Rejeitado()
+    {
+        using var context = CreateInMemoryContext();
+        var contaBanco = CriarContaBanco(context, "Banco Origem");
+        var contaCartao = CriarContaCartao(context, "Cartao Credito");
+        var fatura = CriarFatura(context, contaCartao.Id, FaturaStatusConstants.Fechada);
+
+        // Criar lancamento de 100
+        var lancamento = CriarLancamento(context, contaCartao.Id, fatura.Id, 100.00m);
+
+        var service = new PagamentoFaturaService(context);
+
+        // Tentar pagar 150 (excede saldo de 100)
+        var request = new PagarFaturaRequest
+        {
+            ContaOrigemId = contaBanco.Id,
+            Data = new DateOnly(2026, 3, 20),
+            Valor = 150.00m
+        };
+
+        var (sucesso, faturaRetorno, erro) = await service.PagarFaturaAsync(fatura.Id, request);
+
+        Assert.False(sucesso);
+        Assert.Null(faturaRetorno);
+        Assert.NotNull(erro);
+        Assert.Contains("excede", erro);
+
+        // Verificar que nenhuma Transferencia foi criada
+        var transferenciasCount = await context.Transferencias
+            .Where(t => t.FaturaId == fatura.Id)
+            .CountAsync();
+
+        Assert.Equal(0, transferenciasCount);
+    }
+
+    // Caso 13: Tentar pagar fatura ja totalmente quitada (saldoPendente == 0)
+    // Cenario: fatura com compra de 100, ja paga 100, tentando pagar de novo
+    // Esperado: rejeitado, nenhuma transferencia nova
+    [Fact]
+    public async Task PagarFaturaAsync_FaturaJaTotalmentePaga_Rejeitado()
+    {
+        using var context = CreateInMemoryContext();
+        var contaBanco = CriarContaBanco(context, "Banco Origem");
+        var contaCartao = CriarContaCartao(context, "Cartao Credito");
+        var fatura = CriarFatura(context, contaCartao.Id, FaturaStatusConstants.Fechada);
+
+        // Criar lancamento de 100
+        CriarLancamento(context, contaCartao.Id, fatura.Id, 100.00m);
+
+        // Criar uma transferencia ja vinculada (primeiro pagamento de 100)
+        var transferencia = new Transferencia
+        {
+            Id = Guid.NewGuid(),
+            Data = new DateOnly(2026, 3, 20),
+            Valor = 100.00m,
+            ContaOrigemId = contaBanco.Id,
+            ContaDestinoId = contaCartao.Id,
+            FaturaId = fatura.Id,
+            Descricao = "Pagamento anterior",
+            ContaOrigem = contaBanco,
+            ContaDestino = contaCartao
+        };
+
+        context.Transferencias.Add(transferencia);
+        context.SaveChanges();
+
+        var service = new PagamentoFaturaService(context);
+
+        // Tentar pagar novamente (saldo ja eh zero)
+        var request = new PagarFaturaRequest
+        {
+            ContaOrigemId = contaBanco.Id,
+            Data = new DateOnly(2026, 3, 21),
+            Valor = 50.00m
+        };
+
+        var (sucesso, faturaRetorno, erro) = await service.PagarFaturaAsync(fatura.Id, request);
+
+        Assert.False(sucesso);
+        Assert.Null(faturaRetorno);
+        Assert.NotNull(erro);
+        Assert.Contains("quitada", erro);
+
+        // Verificar que so existe uma transferencia (a original)
+        var transferenciasCount = await context.Transferencias
+            .Where(t => t.FaturaId == fatura.Id)
+            .CountAsync();
+
+        Assert.Equal(1, transferenciasCount);
+    }
+
+    // Caso 14: Fluxo combinado - fatura ABERTA, paga parcialmente (nao quita),
+    // depois ciclo fecha -> vira FECHADA (nao PAGA)
+    [Fact]
+    public async Task PagarFaturaAsync_FaturaAbertaPagaParcialmenteMaisCicloFecha_FechaComoFechada()
+    {
+        using var context = CreateInMemoryContext();
+        var contaBanco = CriarContaBanco(context, "Banco Origem");
+        var contaCartao = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
+
+        // Criar fatura do ciclo marco (10/03 - 20/03) como ABERTA
+        var faturaMarco = CriarFatura(
+            context,
+            contaCartao.Id,
+            FaturaStatusConstants.Aberta,
+            new DateOnly(2026, 3, 10),
+            new DateOnly(2026, 3, 20)
+        );
+
+        // Criar lancamento de 300
+        CriarLancamento(context, contaCartao.Id, faturaMarco.Id, 300.00m);
+
+        var service = new PagamentoFaturaService(context);
+
+        // Pagamento parcial de 100 (deixa 200 pendentes)
+        var requestPagParcial = new PagarFaturaRequest
+        {
+            ContaOrigemId = contaBanco.Id,
+            Data = new DateOnly(2026, 3, 15),
+            Valor = 100.00m
+        };
+
+        var (sucessoPagParcial, _, _) = await service.PagarFaturaAsync(faturaMarco.Id, requestPagParcial);
+        Assert.True(sucessoPagParcial);
+
+        // Verificar que continua ABERTA apos pagamento parcial
+        var faturaAposPagParcial = await context.Faturas
+            .FirstOrDefaultAsync(f => f.Id == faturaMarco.Id);
+        Assert.Equal(FaturaStatusConstants.Aberta, faturaAposPagParcial.Status);
+
+        // Agora simular ciclo fechamento ao chamar ResolverFaturaAbertaVigente para novo ciclo
+        var serviceCiclo = new FaturaCicloService(context);
+        var dataReferenciaAbril = new DateOnly(2026, 4, 15);
+        await serviceCiclo.ResolverFaturaAbertaVigenteAsync(contaCartao.Id, dataReferenciaAbril);
+
+        // Recarregar fatura de marco e verificar que vira FECHADA (nao PAGA)
+        // porque ainda tem saldo pendente de 200
+        var faturaMarcoAposCicloFecha = await context.Faturas
+            .Include(f => f.Lancamentos)
+            .Include(f => f.Transferencias)
+            .FirstOrDefaultAsync(f => f.Id == faturaMarco.Id);
+
+        Assert.NotNull(faturaMarcoAposCicloFecha);
+        Assert.Equal(FaturaStatusConstants.Fechada, faturaMarcoAposCicloFecha.Status);
+
+        var saldoFinal = FaturaSaldoCalculator.Calcular(faturaMarcoAposCicloFecha);
+        Assert.Equal(200.00m, saldoFinal.ValorPendente);
+    }
+
+    // Caso 15: Fluxo combinado - fatura ABERTA, paga INTEGRALMENTE (saldo = 0, status = ABERTA),
+    // depois ciclo fecha -> vira PAGA direto (nao FECHADA)
+    [Fact]
+    public async Task PagarFaturaAsync_FaturaAbertaPagaIntegralmenteMaisCicloFecha_FechaComoPagaDireto()
+    {
+        using var context = CreateInMemoryContext();
+        var contaBanco = CriarContaBanco(context, "Banco Origem");
+        var contaCartao = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
+
+        // Criar fatura do ciclo marco (10/03 - 20/03) como ABERTA
+        var faturaMarco = CriarFatura(
+            context,
+            contaCartao.Id,
+            FaturaStatusConstants.Aberta,
+            new DateOnly(2026, 3, 10),
+            new DateOnly(2026, 3, 20)
+        );
+
+        // Criar lancamento de 300
+        CriarLancamento(context, contaCartao.Id, faturaMarco.Id, 300.00m);
+
+        var service = new PagamentoFaturaService(context);
+
+        // Pagamento integral de 300
+        var requestPagIntegral = new PagarFaturaRequest
+        {
+            ContaOrigemId = contaBanco.Id,
+            Data = new DateOnly(2026, 3, 15),
+            Valor = 300.00m
+        };
+
+        var (sucessoPagIntegral, _, _) = await service.PagarFaturaAsync(faturaMarco.Id, requestPagIntegral);
+        Assert.True(sucessoPagIntegral);
+
+        // Verificar que continua ABERTA apos pagamento integral (conforme regra revisada)
+        var faturaAposPagIntegral = await context.Faturas
+            .FirstOrDefaultAsync(f => f.Id == faturaMarco.Id);
+        Assert.Equal(FaturaStatusConstants.Aberta, faturaAposPagIntegral.Status);
+
+        // Verificar que saldo eh zero
+        var faturaComRelacoes = await context.Faturas
+            .Include(f => f.Lancamentos)
+            .Include(f => f.Transferencias)
+            .FirstOrDefaultAsync(f => f.Id == faturaMarco.Id);
+
+        var saldoAposPag = FaturaSaldoCalculator.Calcular(faturaComRelacoes);
+        Assert.Equal(0.00m, saldoAposPag.ValorPendente);
+
+        // Agora simular ciclo fechamento
+        var serviceCiclo = new FaturaCicloService(context);
+        var dataReferenciaAbril = new DateOnly(2026, 4, 15);
+        await serviceCiclo.ResolverFaturaAbertaVigenteAsync(contaCartao.Id, dataReferenciaAbril);
+
+        // Recarregar fatura de marco e verificar que vira PAGA direto
+        var faturaMarcoAposCicloFecha = await context.Faturas
+            .Include(f => f.Lancamentos)
+            .Include(f => f.Transferencias)
+            .FirstOrDefaultAsync(f => f.Id == faturaMarco.Id);
+
+        Assert.NotNull(faturaMarcoAposCicloFecha);
+        Assert.Equal(FaturaStatusConstants.Paga, faturaMarcoAposCicloFecha.Status);
+    }
 }
