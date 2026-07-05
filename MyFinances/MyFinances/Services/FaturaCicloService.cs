@@ -177,8 +177,7 @@ public class FaturaCicloService
             Conta = conta,
             DataFechamento = novaDataFechamento,
             DataVencimento = novaDataVencimento,
-            Status = FaturaStatusConstants.Aberta,
-            TransferenciaId = null
+            Status = FaturaStatusConstants.Aberta
         };
 
         _context.Faturas.Add(novaFatura);
@@ -228,6 +227,8 @@ public class FaturaCicloService
     private async Task FecharFaturaAbertaAnteriorAsync(Guid contaId, DateOnly novaDataFechamento)
     {
         var faturaAnterior = await _context.Faturas
+            .Include(f => f.Lancamentos)
+            .Include(f => f.Transferencias)
             .FirstOrDefaultAsync(f =>
                 f.ContaId == contaId &&
                 f.Status == FaturaStatusConstants.Aberta &&
@@ -235,7 +236,21 @@ public class FaturaCicloService
 
         if (faturaAnterior != null)
         {
-            faturaAnterior.Status = FaturaStatusConstants.Fechada;
+            var valorTotalFatura = faturaAnterior.Lancamentos.Sum(l => l.Valor);
+            var valorJaPago = faturaAnterior.Transferencias.Sum(t => t.Valor);
+            var saldoPendente = valorTotalFatura - valorJaPago;
+
+            // So considera "quitada antecipadamente" se realmente houve algo cobrado
+            // (valorTotalFatura > 0). Fatura sem nenhum lancamento tem saldoPendente=0
+            // por ausencia de movimento, nao por quitacao - deve fechar como FECHADA normal.
+            if (valorTotalFatura > 0 && saldoPendente <= 0)
+            {
+                faturaAnterior.Status = FaturaStatusConstants.Paga;
+            }
+            else
+            {
+                faturaAnterior.Status = FaturaStatusConstants.Fechada;
+            }
         }
     }
 

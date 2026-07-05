@@ -75,7 +75,6 @@ public class PagamentoFaturaServiceTests
             DataFechamento = dataFechamento.Value,
             DataVencimento = dataVencimento.Value,
             Status = status,
-            TransferenciaId = null,
             Conta = conta
         };
 
@@ -136,7 +135,8 @@ public class PagamentoFaturaServiceTests
         var request = new PagarFaturaRequest
         {
             ContaOrigemId = contaBanco.Id,
-            Data = new DateOnly(2026, 3, 20)
+            Data = new DateOnly(2026, 3, 20),
+            Valor = 100.00m
         };
 
         var (sucesso, faturaRetorno, erro) = await service.PagarFaturaAsync(fatura.Id, request);
@@ -145,10 +145,9 @@ public class PagamentoFaturaServiceTests
         Assert.Null(erro);
         Assert.NotNull(faturaRetorno);
         Assert.Equal(FaturaStatusConstants.Paga, faturaRetorno.Status);
-        Assert.NotNull(faturaRetorno.TransferenciaId);
 
         // Verificar que a transferencia foi criada
-        var transferencia = await context.Transferencias.FirstOrDefaultAsync(t => t.Id == faturaRetorno.TransferenciaId);
+        var transferencia = await context.Transferencias.FirstOrDefaultAsync(t => t.FaturaId == faturaRetorno.Id);
         Assert.NotNull(transferencia);
         Assert.Equal(100.00m, transferencia.Valor);
         Assert.Equal(contaBanco.Id, transferencia.ContaOrigemId);
@@ -205,7 +204,8 @@ public class PagamentoFaturaServiceTests
         var request = new PagarFaturaRequest
         {
             ContaOrigemId = contaBanco.Id,
-            Data = new DateOnly(2026, 3, 25)
+            Data = new DateOnly(2026, 3, 25),
+            Valor = 195.00m
         };
 
         var (sucesso, faturaRetorno, erro) = await service.PagarFaturaAsync(fatura.Id, request);
@@ -215,7 +215,7 @@ public class PagamentoFaturaServiceTests
         Assert.NotNull(faturaRetorno);
 
         // Verificar que a transferencia tem o valor correto (soma dos lancamentos)
-        var transferencia = await context.Transferencias.FirstOrDefaultAsync(t => t.Id == faturaRetorno.TransferenciaId);
+        var transferencia = await context.Transferencias.FirstOrDefaultAsync(t => t.FaturaId == faturaRetorno.Id);
         Assert.NotNull(transferencia);
         Assert.Equal(195.00m, transferencia.Valor);
 
@@ -227,9 +227,9 @@ public class PagamentoFaturaServiceTests
         Assert.All(lancamentos, l => Assert.Equal(195.00m, l.Valor));
     }
 
-    // Caso 3: Pagar fatura ABERTA -> rejeitado com mensagem clara
+    // Caso 3: Pagar fatura ABERTA -> agora permitido (pagamento antecipado)
     [Fact]
-    public async Task PagarFaturaAsync_FaturaAberta_Rejeitado()
+    public async Task PagarFaturaAsync_FaturaAberta_PagamentoAntecipadoPermitido()
     {
         using var context = CreateInMemoryContext();
         var contaBanco = CriarContaBanco(context);
@@ -241,15 +241,16 @@ public class PagamentoFaturaServiceTests
         var request = new PagarFaturaRequest
         {
             ContaOrigemId = contaBanco.Id,
-            Data = new DateOnly(2026, 3, 20)
+            Data = new DateOnly(2026, 3, 20),
+            Valor = 100.00m
         };
 
         var (sucesso, faturaRetorno, erro) = await service.PagarFaturaAsync(fatura.Id, request);
 
-        Assert.False(sucesso);
-        Assert.Null(faturaRetorno);
-        Assert.NotNull(erro);
-        Assert.Contains("ABERTA", erro);
+        Assert.True(sucesso);
+        Assert.Null(erro);
+        Assert.NotNull(faturaRetorno);
+        Assert.Equal(FaturaStatusConstants.Aberta, faturaRetorno.Status);
     }
 
     // Caso 4: Pagar fatura ja PAGA -> rejeitado com mensagem clara
@@ -266,7 +267,8 @@ public class PagamentoFaturaServiceTests
         var request = new PagarFaturaRequest
         {
             ContaOrigemId = contaBanco.Id,
-            Data = new DateOnly(2026, 3, 20)
+            Data = new DateOnly(2026, 3, 20),
+            Valor = 100.00m
         };
 
         var (sucesso, faturaRetorno, erro) = await service.PagarFaturaAsync(fatura.Id, request);
@@ -288,7 +290,8 @@ public class PagamentoFaturaServiceTests
         var request = new PagarFaturaRequest
         {
             ContaOrigemId = contaBanco.Id,
-            Data = new DateOnly(2026, 3, 20)
+            Data = new DateOnly(2026, 3, 20),
+            Valor = 100.00m
         };
 
         var faturaIdInexistente = Guid.NewGuid();
@@ -424,7 +427,8 @@ public class PagamentoFaturaServiceTests
         var request = new PagarFaturaRequest
         {
             ContaOrigemId = contaBanco.Id,
-            Data = new DateOnly(2026, 3, 20)
+            Data = new DateOnly(2026, 3, 20),
+            Valor = 100.00m
         };
 
         var (sucesso, faturaRetorno, erro) = await service.PagarFaturaAsync(fatura.Id, request);

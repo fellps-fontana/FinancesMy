@@ -24,6 +24,8 @@ public class FaturasController : ControllerBase
     {
         var faturas = await _context.Faturas
             .Where(f => f.ContaId == contaId)
+            .Include(f => f.Lancamentos)
+            .Include(f => f.Transferencias)
             .OrderByDescending(f => f.DataFechamento)
             .ToListAsync();
 
@@ -34,7 +36,9 @@ public class FaturasController : ControllerBase
             DataFechamento = f.DataFechamento,
             DataVencimento = f.DataVencimento,
             Status = f.Status,
-            TransferenciaId = f.TransferenciaId
+            ValorTotal = f.Lancamentos.Sum(l => l.Valor),
+            ValorPago = f.Transferencias.Sum(t => t.Valor),
+            ValorPendente = f.Lancamentos.Sum(l => l.Valor) - f.Transferencias.Sum(t => t.Valor)
         });
 
         return Ok(dto);
@@ -47,7 +51,7 @@ public class FaturasController : ControllerBase
 
         if (!sucesso)
         {
-            return BadRequest(new { error = erro });
+            return BadRequest(new { erro });
         }
 
         var dto = new FaturaResponseDto
@@ -57,7 +61,9 @@ public class FaturasController : ControllerBase
             DataFechamento = fatura.DataFechamento,
             DataVencimento = fatura.DataVencimento,
             Status = fatura.Status,
-            TransferenciaId = fatura.TransferenciaId
+            ValorTotal = fatura.Lancamentos.Sum(l => l.Valor),
+            ValorPago = fatura.Transferencias.Sum(t => t.Valor),
+            ValorPendente = fatura.Lancamentos.Sum(l => l.Valor) - fatura.Transferencias.Sum(t => t.Valor)
         };
 
         return Ok(dto);

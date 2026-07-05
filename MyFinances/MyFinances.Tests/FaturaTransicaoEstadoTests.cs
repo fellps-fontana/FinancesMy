@@ -210,7 +210,6 @@ public class FaturaTransicaoEstadoTests
             DataFechamento = new DateOnly(2026, 7, 10),
             DataVencimento = new DateOnly(2026, 7, 20),
             Status = FaturaStatusConstants.Aberta,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaAbertaRecente);
         context.SaveChanges();
@@ -245,7 +244,6 @@ public class FaturaTransicaoEstadoTests
             DataFechamento = new DateOnly(2026, 7, 10),
             DataVencimento = new DateOnly(2026, 7, 20),
             Status = FaturaStatusConstants.Aberta,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaAbertaRecente);
         context.SaveChanges();
@@ -279,7 +277,6 @@ public class FaturaTransicaoEstadoTests
             DataFechamento = new DateOnly(2026, 3, 10),
             DataVencimento = new DateOnly(2026, 3, 20),
             Status = FaturaStatusConstants.Fechada,
-            TransferenciaId = null
         };
 
         var faturaAbril = new Fatura
@@ -290,7 +287,6 @@ public class FaturaTransicaoEstadoTests
             DataFechamento = new DateOnly(2026, 4, 10),
             DataVencimento = new DateOnly(2026, 4, 20),
             Status = FaturaStatusConstants.Aberta,
-            TransferenciaId = null
         };
 
         var faturaFevereiro = new Fatura
@@ -301,7 +297,6 @@ public class FaturaTransicaoEstadoTests
             DataFechamento = new DateOnly(2026, 2, 10),
             DataVencimento = new DateOnly(2026, 2, 20),
             Status = FaturaStatusConstants.Fechada,
-            TransferenciaId = null
         };
 
         context.Faturas.Add(faturaMarco);
@@ -323,7 +318,9 @@ public class FaturaTransicaoEstadoTests
             DataFechamento = f.DataFechamento,
             DataVencimento = f.DataVencimento,
             Status = f.Status,
-            TransferenciaId = f.TransferenciaId
+            ValorTotal = 0,
+            ValorPago = 0,
+            ValorPendente = 0
         }).ToList();
 
         // Verificacoes
@@ -343,7 +340,7 @@ public class FaturaTransicaoEstadoTests
         // Os DTOs nao tem essas propriedades
         foreach (var dto in dtos)
         {
-            // DTO so tem: Id, ContaId, DataFechamento, DataVencimento, Status, TransferenciaId
+            // DTO so tem: Id, ContaId, DataFechamento, DataVencimento, Status, ValorTotal, ValorPago, ValorPendente
             // Nenhuma propriedade de navegacao
             Assert.NotEqual(Guid.Empty, dto.Id);
             Assert.Equal(conta.Id, dto.ContaId);
@@ -368,7 +365,6 @@ public class FaturaTransicaoEstadoTests
             DataFechamento = new DateOnly(2026, 3, 10),
             DataVencimento = new DateOnly(2026, 3, 20),
             Status = FaturaStatusConstants.Aberta,
-            TransferenciaId = null
         };
         context.Faturas.Add(fatura);
         context.SaveChanges();

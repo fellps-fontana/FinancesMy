@@ -71,8 +71,7 @@ public class SaldoCartaoServiceTests
             Conta = conta,
             DataFechamento = dataFechamento,
             DataVencimento = dataVencimento,
-            Status = status,
-            TransferenciaId = null
+            Status = status
         };
 
         context.Faturas.Add(fatura);

@@ -255,7 +255,6 @@ public class CompraCartaoServiceTests
             DataFechamento = new DateOnly(2026, 3, 10),
             DataVencimento = new DateOnly(2026, 3, 20),
             Status = FaturaStatusConstants.Paga,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaAntiga);
         context.SaveChanges();
@@ -294,7 +293,6 @@ public class CompraCartaoServiceTests
             DataFechamento = new DateOnly(2026, 3, 10),
             DataVencimento = new DateOnly(2026, 3, 20),
             Status = FaturaStatusConstants.Fechada,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaFechada);
         context.SaveChanges();
@@ -335,7 +333,6 @@ public class CompraCartaoServiceTests
             DataFechamento = new DateOnly(2026, 3, 10),
             DataVencimento = new DateOnly(2026, 3, 20),
             Status = FaturaStatusConstants.Paga,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaAntiga);
         context.SaveChanges();
@@ -397,7 +394,6 @@ public class CompraCartaoServiceTests
             DataFechamento = new DateOnly(2026, 3, 10),
             DataVencimento = new DateOnly(2026, 3, 20),
             Status = FaturaStatusConstants.Paga,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaAntiga);
         context.SaveChanges();
@@ -459,7 +455,6 @@ public class CompraCartaoServiceTests
             DataFechamento = new DateOnly(2026, 3, 10),
             DataVencimento = new DateOnly(2026, 3, 20),
             Status = FaturaStatusConstants.Aberta,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaAberta);
         context.SaveChanges();
@@ -522,7 +517,6 @@ public class CompraCartaoServiceTests
             DataFechamento = new DateOnly(2026, 3, 10),
             DataVencimento = new DateOnly(2026, 3, 20),
             Status = FaturaStatusConstants.Fechada,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaFechada);
         context.SaveChanges();
@@ -587,7 +581,6 @@ public class CompraCartaoServiceTests
             DataFechamento = new DateOnly(2026, 3, 10),
             DataVencimento = new DateOnly(2026, 3, 20),
             Status = FaturaStatusConstants.Aberta,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaAtual);
 
@@ -600,7 +593,6 @@ public class CompraCartaoServiceTests
             DataFechamento = new DateOnly(2026, 5, 10),
             DataVencimento = new DateOnly(2026, 5, 20),
             Status = FaturaStatusConstants.Paga,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaAlvo);
         context.SaveChanges();
@@ -663,7 +655,6 @@ public class CompraCartaoServiceTests
             DataFechamento = new DateOnly(2026, 3, 10),
             DataVencimento = new DateOnly(2026, 3, 20),
             Status = FaturaStatusConstants.Aberta,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaMarco);
         context.SaveChanges();
@@ -733,7 +724,6 @@ public class CompraCartaoServiceTests
             DataFechamento = new DateOnly(2026, 5, 10),
             DataVencimento = new DateOnly(2026, 5, 20),
             Status = FaturaStatusConstants.Aberta,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaAberta);
 
@@ -746,7 +736,6 @@ public class CompraCartaoServiceTests
             DataFechamento = new DateOnly(2026, 3, 10),
             DataVencimento = new DateOnly(2026, 3, 20),
             Status = FaturaStatusConstants.Fechada,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaFechada);
         context.SaveChanges();
@@ -931,7 +920,6 @@ public class CompraCartaoServiceTests
             DataFechamento = new DateOnly(2026, 7, 10),
             DataVencimento = new DateOnly(2026, 7, 20),
             Status = FaturaStatusConstants.Aberta,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaAbertaMaisRecente);
         context.SaveChanges();

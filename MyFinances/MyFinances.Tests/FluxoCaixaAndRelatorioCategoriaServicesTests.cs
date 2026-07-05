@@ -87,7 +87,6 @@ public class FluxoCaixaAndRelatorioCategoriaServicesTests
             DataFechamento = dataFechamento,
             DataVencimento = dataVencimento,
             Status = status,
-            TransferenciaId = transferenciaId
         };
         context.Faturas.Add(fatura);
         context.SaveChanges();
@@ -199,11 +198,19 @@ public class FluxoCaixaAndRelatorioCategoriaServicesTests
         context.SaveChanges();
 
         // Criar pagamento de fatura (transferencia CC -> CARTAO)
-        var transferencia = CriarTransferencia(context, contaBanco.Id, contaCartao.Id, 225m, new DateOnly(2026, 3, 20));
-
-        // Vincular transferencia na fatura
-        fatura.TransferenciaId = transferencia.Id;
-        context.Faturas.Update(fatura);
+        var transferencia = new Transferencia
+        {
+            Id = Guid.NewGuid(),
+            Data = new DateOnly(2026, 3, 20),
+            Valor = 225m,
+            ContaOrigemId = contaBanco.Id,
+            ContaOrigem = contaBanco,
+            ContaDestinoId = contaCartao.Id,
+            ContaDestino = contaCartao,
+            FaturaId = fatura.Id,
+            Descricao = "Pagamento de fatura"
+        };
+        context.Transferencias.Add(transferencia);
 
         // Adicionar as duas pernas da transferencia: DEBIT (saida CC), CREDIT (entrada CARTAO)
         var pernaDEBIT = new Lancamento

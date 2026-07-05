@@ -21,16 +21,13 @@ public class PagamentoFaturaService
     {
         var fatura = await _context.Faturas
             .Include(f => f.Conta)
+            .Include(f => f.Lancamentos)
+            .Include(f => f.Transferencias)
             .FirstOrDefaultAsync(f => f.Id == faturaId);
 
         if (fatura == null)
         {
             return (false, null, "Fatura nao encontrada");
-        }
-
-        if (fatura.Status == FaturaStatusConstants.Aberta)
-        {
-            return (false, null, "Nao e possivel pagar fatura ainda ABERTA");
         }
 
         if (fatura.Status == FaturaStatusConstants.Paga)
@@ -56,25 +53,38 @@ public class PagamentoFaturaService
             return (false, null, "Conta de origem deve ser do tipo BANCO");
         }
 
-        if (contaOrigem.Origem == OrigemConstants.OpenFinance)
+        if (request.Valor <= 0)
         {
-            return (false, null, "Nao e permitido pagar fatura com conta Open Finance nesta versao");
+            return (false, null, "Valor deve ser positivo");
         }
 
-        var valorPagamento = await CalcularValorPagamentoAsync(faturaId);
+        var valorTotalFatura = fatura.Lancamentos.Sum(l => l.Valor);
+        var valorJaPago = fatura.Transferencias.Sum(t => t.Valor);
+        var saldoPendente = valorTotalFatura - valorJaPago;
 
-        if (valorPagamento <= 0)
+        if (valorTotalFatura <= 0)
         {
             return (false, null, "Fatura nao possui lancamentos para pagar");
+        }
+
+        if (saldoPendente <= 0)
+        {
+            return (false, null, "Fatura ja esta quitada, nao aceita mais pagamento");
+        }
+
+        if (request.Valor > saldoPendente)
+        {
+            return (false, null, "Valor excede o saldo pendente da fatura");
         }
 
         var transferencia = new Transferencia
         {
             Id = Guid.NewGuid(),
             Data = request.Data,
-            Valor = valorPagamento,
+            Valor = request.Valor,
             ContaOrigemId = request.ContaOrigemId,
             ContaDestinoId = fatura.ContaId,
+            FaturaId = fatura.Id,
             Descricao = $"Pagamento de fatura - {fatura.DataFechamento:dd/MM/yyyy} a {fatura.DataVencimento:dd/MM/yyyy}",
             ContaOrigem = contaOrigem,
             ContaDestino = fatura.Conta
@@ -87,7 +97,7 @@ public class PagamentoFaturaService
             Conta = contaOrigem,
             CategoriaId = null,
             Descricao = transferencia.Descricao,
-            Valor = valorPagamento,
+            Valor = request.Valor,
             Tipo = TipoLancamentoConstants.Debit,
             Data = request.Data,
             Status = LancamentoStatusConstants.Pago,
@@ -107,7 +117,7 @@ public class PagamentoFaturaService
             Conta = fatura.Conta,
             CategoriaId = null,
             Descricao = transferencia.Descricao,
-            Valor = valorPagamento,
+            Valor = request.Valor,
             Tipo = TipoLancamentoConstants.Credit,
             Data = request.Data,
             Status = LancamentoStatusConstants.Pago,
@@ -120,24 +130,22 @@ public class PagamentoFaturaService
             FaturaId = null
         };
 
-        fatura.Status = FaturaStatusConstants.Paga;
-        fatura.TransferenciaId = transferencia.Id;
-
         _context.Transferencias.Add(transferencia);
         _context.Lancamentos.Add(lancamentoSaida);
         _context.Lancamentos.Add(lancamentoEntrada);
 
+        var novoSaldoPendente = saldoPendente - request.Valor;
+
+        if (novoSaldoPendente <= 0)
+        {
+            if (fatura.Status == FaturaStatusConstants.Fechada)
+            {
+                fatura.Status = FaturaStatusConstants.Paga;
+            }
+        }
+
         await _context.SaveChangesAsync();
 
         return (true, fatura, null);
-    }
-
-    private async Task<decimal> CalcularValorPagamentoAsync(Guid faturaId)
-    {
-        var lancamentos = await _context.Lancamentos
-            .Where(l => l.FaturaId == faturaId)
-            .ToListAsync();
-
-        return lancamentos.Sum(l => l.Valor);
     }
 }
