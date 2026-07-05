@@ -18,7 +18,8 @@ public class FluxoCaixaService
     {
         var query = _context.Lancamentos
             .Where(l => l.FaturaId == null)
-            .Where(l => l.TransferenciaId == null || l.Tipo == TipoLancamentoConstants.Debit);
+            .Where(l => l.TransferenciaId == null || l.Tipo == TipoLancamentoConstants.Debit)
+            .Where(l => !l.Oculto);
 
         if (contaId.HasValue)
         {

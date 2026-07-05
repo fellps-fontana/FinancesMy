@@ -201,7 +201,7 @@ DEPENDENCIAS: TASK-022
 CONTEXTO A LER: regra-de-negocio.md itens 10, 12
 
 ### TASK-024 — Endpoint visao fluxo de caixa (CAIXA)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (GET /api/lancamentos?visao=caixa; exclui compras FaturaId!=null, transferencia mostra so a perna DEBIT. 1 ciclo de correcao: filtro de Oculto faltando)
 AGENT: levi
 ESCOPO: GET /api/lancamentos?visao=caixa — lista lancamentos gerais mostrando o pagamento de fatura como saida, excluindo as compras individuais do cartao.
 ARQUIVOS: MyFinances/MyFinances/Controllers/LancamentosController.cs, Services/FluxoCaixaService.cs
@@ -209,7 +209,7 @@ DEPENDENCIAS: TASK-018
 CONTEXTO A LER: regra-de-negocio.md item 12 (paragrafo "Duas visoes" + "Lancamento geral / fluxo de caixa")
 
 ### TASK-025 — Endpoint visao categorica (COMPETENCIA)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (GET /api/relatorios/categorias?mes=YYYY-MM; agrupa compras FaturaId!=null por CategoriaId, filtra por Lancamento.Data (competencia). 1 ciclo de correcao: clean-code + bug de NullReferenceException introduzido no fix, corrigido pelo Kira com ternario em expression tree)
 AGENT: levi
 ESCOPO: GET /api/relatorios/categorias?mes= — soma compras do cartao por categoria, ignorando pagamento/transferencia.
 ARQUIVOS: MyFinances/MyFinances/Controllers/RelatoriosController.cs, Services/RelatorioCategoriaService.cs
@@ -217,7 +217,7 @@ DEPENDENCIAS: TASK-009
 CONTEXTO A LER: regra-de-negocio.md item 12 (paragrafo "Duas visoes" + "Categorico / gasto por categoria"), item 7 (categoria)
 
 ### TASK-026 — Revisao conjunta TASK-024 + TASK-025 (nucleo do modelo)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (nucleo critico CAIXA/COMPETENCIA correto desde a 1a versao, sem sobreposicao nem dupla contagem. Achado real: Oculto nunca era filtrado em nenhuma query do projeto)
 AGENT: style
 ESCOPO: Validar lado a lado as duas queries — nenhuma compra pode aparecer no CAIXA, nenhum pagamento pode aparecer no COMPETENCIA. Regra critica do item 12; revisao isolada de cada endpoint nao basta.
 ARQUIVOS: os do TASK-024 e TASK-025
