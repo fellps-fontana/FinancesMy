@@ -324,7 +324,7 @@ para 1:N. Regra atualizada em regra-de-negocio.md ("Pagamento x fatura
 (revisado)") e schema.dbml.
 
 ### TASK-038 — Rework do pagamento de fatura (antecipado + parcial)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (Fatura-Transferencia 1:1->1:N, valor vem do request, saldo_pendente calculado, rejeita overpayment/quitada. Interrompida por limite de sessao no meio, retomada pelo Kira: corrigiu 7 testes com ordem de validacao errada e um bug real de "fatura sem lancamento virando PAGA")
 AGENT: levi
 ESCOPO: Mudar Fatura-Transferencia de 1:1 para 1:N (Transferencia.FaturaId,
 migration nova). PagamentoFaturaService: valor vem do client (nao mais
@@ -350,7 +350,7 @@ CONTEXTO A LER: regra-de-negocio.md item 12 ("Pagamento x fatura
 (revisado)"), item 10, schema.dbml tabelas fatura/transferencia
 
 ### TASK-039 — Revisao TASK-038
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO apos 1 ciclo — achado real: fatura com compra+estorno cancelando exatamente virava "fatura zumbi" presa em FECHADA para sempre; formula de saldo duplicada em 4 lugares, extraida para FaturaSaldoCalculator; teste morto com "diario de bordo" da sessao interrompida removido)
 AGENT: style
 ESCOPO: Validar saldo_pendente calculado corretamente, rejeicao de
 overpayment, transicoes de status (FECHADA+quitada->PAGA,

@@ -236,14 +236,16 @@ public class FaturaCicloService
 
         if (faturaAnterior != null)
         {
-            var valorTotalFatura = faturaAnterior.Lancamentos.Sum(l => l.Valor);
-            var valorJaPago = faturaAnterior.Transferencias.Sum(t => t.Valor);
-            var saldoPendente = valorTotalFatura - valorJaPago;
+            var saldo = FaturaSaldoCalculator.Calcular(faturaAnterior);
 
-            // So considera "quitada antecipadamente" se realmente houve algo cobrado
-            // (valorTotalFatura > 0). Fatura sem nenhum lancamento tem saldoPendente=0
-            // por ausencia de movimento, nao por quitacao - deve fechar como FECHADA normal.
-            if (valorTotalFatura > 0 && saldoPendente <= 0)
+            // Se nao tem nenhum lancamento: fecha como FECHADA (nunca foi cobrado).
+            // Se tem lancamento(s) E saldoPendente <= 0: fecha como PAGA (quitada, mesmo com cancelamento exato).
+            // Caso contrario: fecha como FECHADA.
+            if (!faturaAnterior.Lancamentos.Any())
+            {
+                faturaAnterior.Status = FaturaStatusConstants.Fechada;
+            }
+            else if (saldo.ValorPendente <= 0)
             {
                 faturaAnterior.Status = FaturaStatusConstants.Paga;
             }

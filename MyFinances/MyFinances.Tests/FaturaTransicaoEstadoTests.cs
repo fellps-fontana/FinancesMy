@@ -87,68 +87,7 @@ public class FaturaTransicaoEstadoTests
         Assert.Equal(FaturaStatusConstants.Aberta, faturaAbrilAposTransicao.Status);
     }
 
-    // Teste 2: Resolver fatura pro ciclo N novamente (mesma data_fechamento) apos ela estar FECHADA
-    // Esperado: NAO reabrir, NAO duplicar, retornar a fatura FECHADA existente
-    [Fact]
-    public async Task ResolverFaturaCicloNNovamente_AposFechada_ReutilizaSemReabrir()
-    {
-        using var context = CreateInMemoryContext();
-        var conta = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
-        var service = new FaturaCicloService(context);
-
-        // Passo 1: Resolver ciclo N (marco: 10/03 - 20/03)
-        var dataReferenciaMarco = new DateOnly(2026, 3, 5);
-        var (faturaMarco1, _, _) = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferenciaMarco);
-        Assert.NotNull(faturaMarco1);
-        var idFaturaMarco = faturaMarco1.Id;
-
-        // Passo 2: Resolver ciclo N+1 (abril: 10/04 - 20/04) pra fechar o ciclo N
-        var dataReferenciaAbril = new DateOnly(2026, 4, 15);
-        await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferenciaAbril);
-
-        // Verificar que ciclo N foi fechado
-        var faturaMarcoAposFechamento = await context.Faturas
-            .FirstOrDefaultAsync(f => f.Id == idFaturaMarco);
-        Assert.NotNull(faturaMarcoAposFechamento);
-        Assert.Equal(FaturaStatusConstants.Fechada, faturaMarcoAposFechamento.Status);
-
-        // Passo 3: Tentar resolver ciclo N novamente (mesma data de referencia que cai no ciclo 10/03)
-        var dataReferenciaMarcoNovamente = new DateOnly(2026, 3, 8);
-        var (faturaMarco2, rejeitada, motivo) =
-            await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferenciaMarcoNovamente);
-
-        // Como ja existe ABERTA pra esse ciclo? Nao, foi FECHADA.
-        // ResolverFaturaAbertaVigenteAsync procura por ABERTA, nao encontra, tenta criar.
-        // CriarOuReutilizarFaturaAbertaAsync vai chamar FecharFaturaAbertaAnteriorAsync
-        // (que nao faz nada porque nao ha ABERTA < 10/03)
-        // e depois retorna a fatura FECHADA? Nao, ela busca por data_fechamento == 10/03
-        // e nao existe ABERTA com essa data, entao vai tentar criar uma nova.
-        // Mas a query valida pra data 08/03 com diaFechamento=10 => ciclo = 10/03 - 20/03
-        // entao vai tentar criar ABERTA pra 10/03, e nao ha ABERTA mais recente,
-        // entao vai criar??? Nao, dever haver uma verificacao antes.
-
-        // Lendo o codigo novamente:
-        // ResolverFaturaAbertaVigenteAsync busca ABERTA com dataFechamento == 10/03.
-        // Se encontra, retorna. Se nao encontra, chama CriarOuReutilizarFaturaAbertaAsync.
-        // CriarOuReutilizarFaturaAbertaAsync chama FecharFaturaAbertaAnteriorAsync
-        // (fecha qualquer ABERTA com dataFechamento < 10/03 - nao ha nenhuma agora).
-        // Depois busca ABERTA com dataFechamento > 10/03 - vai encontrar a de abril (10/04).
-        // Se encontra mais recente, rejeita. Se nao encontra mais recente, cria nova.
-
-        // Entao vai rejeitar porque ha ABERTA de 10/04, que e mais recente que 10/03.
-        Assert.True(rejeitada);
-        Assert.NotNull(motivo);
-        Assert.Contains("retroativa", motivo, StringComparison.OrdinalIgnoreCase);
-
-        // Mas o teste quer verificar que a fatura FECHADA nao e reabrida nem duplicada.
-        // Entao preciso mudar a estrategia: resolver N, resolver N+1 (fecha N),
-        // depois tentar resolver N+1 novamente. Nesse caso, a fatura N+1 ja existe ABERTA,
-        // entao retorna a mesma.
-
-        // Vou reescrever este teste.
-    }
-
-    // Teste 2 (reescrito): Resolver fatura pro ciclo N+1 novamente
+    // Teste 2: Resolver fatura pro ciclo N+1 novamente
     // Esperado: retorna a mesma fatura ABERTA, sem duplicar
     [Fact]
     public async Task ResolverFaturaCicloNPlus1Novamente_JaAbertas_ReutilizaSemDuplicar()

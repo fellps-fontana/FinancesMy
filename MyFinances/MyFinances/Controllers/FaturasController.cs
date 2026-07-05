@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyFinances.Data;
+using MyFinances.Domain;
 using MyFinances.Dtos;
 using MyFinances.Services;
 
@@ -29,16 +30,20 @@ public class FaturasController : ControllerBase
             .OrderByDescending(f => f.DataFechamento)
             .ToListAsync();
 
-        var dto = faturas.Select(f => new FaturaResponseDto
+        var dto = faturas.Select(f =>
         {
-            Id = f.Id,
-            ContaId = f.ContaId,
-            DataFechamento = f.DataFechamento,
-            DataVencimento = f.DataVencimento,
-            Status = f.Status,
-            ValorTotal = f.Lancamentos.Sum(l => l.Valor),
-            ValorPago = f.Transferencias.Sum(t => t.Valor),
-            ValorPendente = f.Lancamentos.Sum(l => l.Valor) - f.Transferencias.Sum(t => t.Valor)
+            var saldo = FaturaSaldoCalculator.Calcular(f);
+            return new FaturaResponseDto
+            {
+                Id = f.Id,
+                ContaId = f.ContaId,
+                DataFechamento = f.DataFechamento,
+                DataVencimento = f.DataVencimento,
+                Status = f.Status,
+                ValorTotal = saldo.ValorTotal,
+                ValorPago = saldo.ValorPago,
+                ValorPendente = saldo.ValorPendente
+            };
         });
 
         return Ok(dto);
@@ -54,6 +59,7 @@ public class FaturasController : ControllerBase
             return BadRequest(new { erro });
         }
 
+        var saldo = FaturaSaldoCalculator.Calcular(fatura!);
         var dto = new FaturaResponseDto
         {
             Id = fatura!.Id,
@@ -61,9 +67,9 @@ public class FaturasController : ControllerBase
             DataFechamento = fatura.DataFechamento,
             DataVencimento = fatura.DataVencimento,
             Status = fatura.Status,
-            ValorTotal = fatura.Lancamentos.Sum(l => l.Valor),
-            ValorPago = fatura.Transferencias.Sum(t => t.Valor),
-            ValorPendente = fatura.Lancamentos.Sum(l => l.Valor) - fatura.Transferencias.Sum(t => t.Valor)
+            ValorTotal = saldo.ValorTotal,
+            ValorPago = saldo.ValorPago,
+            ValorPendente = saldo.ValorPendente
         };
 
         return Ok(dto);

@@ -58,21 +58,19 @@ public class PagamentoFaturaService
             return (false, null, "Valor deve ser positivo");
         }
 
-        var valorTotalFatura = fatura.Lancamentos.Sum(l => l.Valor);
-        var valorJaPago = fatura.Transferencias.Sum(t => t.Valor);
-        var saldoPendente = valorTotalFatura - valorJaPago;
-
-        if (valorTotalFatura <= 0)
+        if (!fatura.Lancamentos.Any())
         {
             return (false, null, "Fatura nao possui lancamentos para pagar");
         }
 
-        if (saldoPendente <= 0)
+        var saldo = FaturaSaldoCalculator.Calcular(fatura);
+
+        if (saldo.ValorPendente <= 0)
         {
             return (false, null, "Fatura ja esta quitada, nao aceita mais pagamento");
         }
 
-        if (request.Valor > saldoPendente)
+        if (request.Valor > saldo.ValorPendente)
         {
             return (false, null, "Valor excede o saldo pendente da fatura");
         }
@@ -134,7 +132,7 @@ public class PagamentoFaturaService
         _context.Lancamentos.Add(lancamentoSaida);
         _context.Lancamentos.Add(lancamentoEntrada);
 
-        var novoSaldoPendente = saldoPendente - request.Valor;
+        var novoSaldoPendente = saldo.ValorPendente - request.Valor;
 
         if (novoSaldoPendente <= 0)
         {

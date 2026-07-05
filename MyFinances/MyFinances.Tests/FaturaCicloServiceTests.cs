@@ -261,4 +261,91 @@ public class FaturaCicloServiceTests
         Assert.Equal(new DateOnly(2024, 2, 29), fatura.DataFechamento);
         Assert.Equal(new DateOnly(2024, 3, 15), fatura.DataVencimento);
     }
+
+    // Cenario: Compra + Estorno cancelando exatamente (valorTotalFatura == 0 mas TEM lancamentos)
+    // Esperado: fatura fecha como PAGA, nao FECHADA (bug "fatura zumbi")
+    [Fact]
+    public async Task FecharFaturaAberta_CompraEEstornoCancelando_FechaComoPaga()
+    {
+        using var context = CreateInMemoryContext();
+        var conta = CriarContaCartao(context, diaFechamento: 10, diaVencimento: 20);
+        var service = new FaturaCicloService(context);
+
+        // Passo 1: Resolver ciclo N (marco: 10/03 - 20/03)
+        var dataReferenciaMarco = new DateOnly(2026, 3, 5);
+        var (faturaMarco, rejeitadaMarco, _) = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferenciaMarco);
+        Assert.False(rejeitadaMarco);
+        Assert.NotNull(faturaMarco);
+        var idFaturaMarco = faturaMarco.Id;
+
+        // Passo 2: Adicionar uma compra de R$100 e um estorno de -R$100
+        var lancamentoCompra = new Lancamento
+        {
+            Id = Guid.NewGuid(),
+            ContaId = conta.Id,
+            Conta = conta,
+            CategoriaId = null,
+            Descricao = "Compra teste",
+            Valor = 100m,
+            Tipo = TipoLancamentoConstants.Debit,
+            Data = new DateOnly(2026, 3, 8),
+            Status = LancamentoStatusConstants.Pago,
+            Manual = true,
+            Oculto = false,
+            PierreTxnId = null,
+            ContaFixaId = null,
+            ConciliadoCom = null,
+            TransferenciaId = null,
+            FaturaId = idFaturaMarco
+        };
+
+        var lancamentoEstorno = new Lancamento
+        {
+            Id = Guid.NewGuid(),
+            ContaId = conta.Id,
+            Conta = conta,
+            CategoriaId = null,
+            Descricao = "Estorno teste",
+            Valor = -100m,
+            Tipo = TipoLancamentoConstants.Debit,
+            Data = new DateOnly(2026, 3, 9),
+            Status = LancamentoStatusConstants.Pago,
+            Manual = true,
+            Oculto = false,
+            PierreTxnId = null,
+            ContaFixaId = null,
+            ConciliadoCom = null,
+            TransferenciaId = null,
+            FaturaId = idFaturaMarco
+        };
+
+        context.Lancamentos.Add(lancamentoCompra);
+        context.Lancamentos.Add(lancamentoEstorno);
+        context.SaveChanges();
+
+        // Passo 3: Verificar que a fatura tem lancamentos mas valorTotal == 0
+        faturaMarco = await context.Faturas
+            .Include(f => f.Lancamentos)
+            .Include(f => f.Transferencias)
+            .FirstOrDefaultAsync(f => f.Id == idFaturaMarco);
+        Assert.NotNull(faturaMarco);
+        Assert.True(faturaMarco.Lancamentos.Any(), "Fatura deve ter lancamentos");
+        var saldoMarco = FaturaSaldoCalculator.Calcular(faturaMarco);
+        Assert.Equal(0m, saldoMarco.ValorTotal);
+        Assert.Equal(0m, saldoMarco.ValorPendente);
+
+        // Passo 4: Resolver ciclo N+1 (abril: 10/04 - 20/04) para fechar o ciclo N
+        var dataReferenciaAbril = new DateOnly(2026, 4, 15);
+        var (faturaAbril, rejeitadaAbril, _) = await service.ResolverFaturaAbertaVigenteAsync(conta.Id, dataReferenciaAbril);
+        Assert.False(rejeitadaAbril);
+        Assert.NotNull(faturaAbril);
+
+        // Passo 5: Verificar que fatura de marco foi FECHADA -> PAGA (nao FECHADA)
+        var faturaMarcoAposFechamento = await context.Faturas
+            .Include(f => f.Lancamentos)
+            .Include(f => f.Transferencias)
+            .FirstOrDefaultAsync(f => f.Id == idFaturaMarco);
+        Assert.NotNull(faturaMarcoAposFechamento);
+        Assert.Equal(FaturaStatusConstants.Paga, faturaMarcoAposFechamento.Status);
+    }
 }
