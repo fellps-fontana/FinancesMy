@@ -9,10 +9,12 @@ namespace MyFinances.Controllers;
 public class ContasController : ControllerBase
 {
     private readonly ContaService _contaService;
+    private readonly SaldoCartaoService _saldoCartaoService;
 
-    public ContasController(ContaService contaService)
+    public ContasController(ContaService contaService, SaldoCartaoService saldoCartaoService)
     {
         _contaService = contaService;
+        _saldoCartaoService = saldoCartaoService;
     }
 
     [HttpPost]
@@ -26,5 +28,24 @@ public class ContasController : ControllerBase
         }
 
         return CreatedAtAction(nameof(CriarConta), new { id = conta!.Id }, conta);
+    }
+
+    [HttpGet("{id}/saldo")]
+    public async Task<ActionResult<SaldoCartaoResponseDto>> ObterSaldo(Guid id)
+    {
+        var (sucesso, saldo, erro) = await _saldoCartaoService.CalcularSaldoAsync(id);
+
+        if (!sucesso)
+        {
+            return BadRequest(new { erro });
+        }
+
+        var dto = new SaldoCartaoResponseDto
+        {
+            ContaId = id,
+            Saldo = saldo
+        };
+
+        return Ok(dto);
     }
 }

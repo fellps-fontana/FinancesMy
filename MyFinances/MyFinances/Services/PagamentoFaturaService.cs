@@ -28,9 +28,14 @@ public class PagamentoFaturaService
             return (false, null, "Fatura nao encontrada");
         }
 
-        if (!EStatusValidoParaPagamento(fatura.Status))
+        if (fatura.Status == FaturaStatusConstants.Aberta)
         {
-            return (false, null, "Apenas faturas ABERTA ou FECHADA podem ser pagas. Fatura atual: " + fatura.Status);
+            return (false, null, "Nao e possivel pagar fatura ainda ABERTA");
+        }
+
+        if (fatura.Status == FaturaStatusConstants.Paga)
+        {
+            return (false, null, "Fatura ja foi paga");
         }
 
         if (request.ContaOrigemId == fatura.ContaId)
@@ -134,11 +139,5 @@ public class PagamentoFaturaService
             .ToListAsync();
 
         return lancamentos.Sum(l => l.Valor);
-    }
-
-    private bool EStatusValidoParaPagamento(string status)
-    {
-        return status == FaturaStatusConstants.Aberta ||
-               status == FaturaStatusConstants.Fechada;
     }
 }

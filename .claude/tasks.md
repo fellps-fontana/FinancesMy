@@ -177,7 +177,7 @@ DEPENDENCIAS: TASK-019
 CONTEXTO A LER: regra-de-negocio.md itens 2, 3, 12
 
 ### TASK-021 — Saldo calculado do cartao
-STATUS: PENDENTE
+STATUS: CONCLUIDA (GET /api/contas/{id}/saldo = SUM compras/estornos por FaturaId - SUM pagamentos CREDIT por TransferenciaId. 1 ciclo de correcao: duplicacao de validacao extraida pra ValidacaoCartaoService, contrato de erro padronizado)
 AGENT: levi
 ESCOPO: GET /api/contas/{id}/saldo para conta CARTAO retornando compras - pagamentos - estornos, calculado em tempo real, nunca armazenado.
 ARQUIVOS: MyFinances/MyFinances/Services/SaldoCartaoService.cs, Controllers/ContasController.cs
@@ -185,7 +185,7 @@ DEPENDENCIAS: TASK-018 (precisa de compra, pagamento e estorno ja existentes)
 CONTEXTO A LER: regra-de-negocio.md itens 10, 12 (paragrafo "Saldo do cartao")
 
 ### TASK-022 — Revisao TASK-021
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO apos 1 ciclo — formula correta desde a 1a versao; achado de clean-code corrigido. Pendencia registrada, nao bloqueante: ContasController.CriarConta ainda retorna entity Conta crua, precisa de DTO proprio numa task futura)
 AGENT: style
 ESCOPO: Confirmar que o calculo nao soma valor cru (item 2) e que nenhuma linha e lida duas vezes (compra + estorno da mesma compra, pagamento).
 ARQUIVOS: os do TASK-021

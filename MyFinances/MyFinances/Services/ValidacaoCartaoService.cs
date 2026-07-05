@@ -20,12 +20,9 @@ public class ValidacaoCartaoService
     }
 
     /// <summary>
-    /// Valida operacao em cartao e retorna a Conta ja carregada.
+    /// Valida se a conta existe e e do tipo CARTAO. Retorna Conta ja carregada.
     /// </summary>
-    public async Task<(bool Valido, Conta? Conta, string? Erro)> ValidarOperacaoCartaoAsync(
-        Guid contaId,
-        string descricao,
-        decimal valor)
+    public async Task<(bool Valido, Conta? Conta, string? Erro)> ValidarContaCartaoAsync(Guid contaId)
     {
         var conta = await _context.Contas
             .FirstOrDefaultAsync(c => c.Id == contaId);
@@ -38,6 +35,24 @@ public class ValidacaoCartaoService
         if (conta.Tipo != TipoContaConstants.Cartao)
         {
             return (false, null, "Conta nao e do tipo CARTAO");
+        }
+
+        return (true, conta, null);
+    }
+
+    /// <summary>
+    /// Valida operacao em cartao e retorna a Conta ja carregada.
+    /// </summary>
+    public async Task<(bool Valido, Conta? Conta, string? Erro)> ValidarOperacaoCartaoAsync(
+        Guid contaId,
+        string descricao,
+        decimal valor)
+    {
+        var (validoCartao, conta, erroCartao) = await ValidarContaCartaoAsync(contaId);
+
+        if (!validoCartao)
+        {
+            return (false, null, erroCartao);
         }
 
         if (string.IsNullOrWhiteSpace(descricao))
