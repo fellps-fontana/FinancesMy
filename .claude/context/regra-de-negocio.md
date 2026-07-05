@@ -241,9 +241,17 @@ em vez de `fatura.transferencia_id`.
     fatura ja estiver com saldo_pendente <= 0 nesse momento (quitada
     antecipadamente), o Status vai direto pra PAGA em vez de FECHADA.
 
-**Projecao:** o cartao entra na projecao do mes como UMA linha = total da fatura
-atual, com status pago / nao pago, tratado como conta a pagar (ver item 9). As
-compras individuais nao entram na projecao.
+**Projecao:** o cartao entra na projecao do mes como UMA linha = a fatura cujo
+`data_vencimento` cai no mes pedido, com status pago / nao pago, tratado como
+conta a pagar (ver item 9). Com pagamento parcial (ver acima), "nao pago" usa
+o `saldo_pendente` restante (nao o total original) e "pago" so quando
+`saldo_pendente <= 0`. As compras individuais nao entram na projecao.
+
+**Escopo entre modulos:** o endpoint completo de projecao (saldo_projetado =
+recebido - pago - a_pagar) depende de dados que o modulo de cartao nao possui
+(lancamento avulso, conta fixa — de outro modulo). O modulo de cartao expoe
+so a sua fatia (GET /api/cartoes/{contaId}/projecao); o modulo responsavel
+pelo lancamento geral consome isso pra montar o saldo_projetado completo.
 
 **Origem das compras:** manual por enquanto; futuramente via import da fatura
 Nubank (ver Pendencias). O de-para de categoria (item 7) roda sobre a

@@ -235,10 +235,23 @@ CONTEXTO A LER: regra-de-negocio.md item 12
 ### TASK-028 — Endpoint projecao do mes (cartao como 1 linha)
 STATUS: PENDENTE
 AGENT: levi
-ESCOPO: GET /api/projecao?mes= — incorpora a fatura atual da conta CARTAO como uma unica linha (total + status pago/nao pago) dentro do calculo saldo_projetado = recebido - (pago + a_pagar); compras individuais nao entram.
+ESCOPO: REVISADO (decisao do usuario 2026-07-05): o endpoint completo de
+projecao (saldo_projetado = recebido - pago - a_pagar) depende de dados
+que este modulo nao possui (lancamento avulso, conta fixa — parece ser
+responsabilidade de outro modulo/sessao, ha indicio de um worktree
+"lancamento-geral-tasks" cuidando disso). Escopo reduzido: implementar
+GET /api/cartoes/{contaId}/projecao?mes=YYYY-MM que devolve SO a
+contribuicao do cartao pra projecao daquele mes — a fatura cujo
+data_vencimento cai dentro do mes pedido (0 ou 1 fatura), com valor e
+status pago/nao pago (usando FaturaSaldoCalculator: pago se
+ValorPendente<=0, senao "a pagar" com o ValorPendente restante, nao o
+ValorTotal original, ja que pagamento parcial existe agora). Compras
+individuais nao entram (regra ja garantida por FaturaId!=null nao
+aparecer aqui). Nao implementa o saldo_projetado completo, so a fatia do
+cartao — outro modulo consome isso.
 ARQUIVOS: MyFinances/MyFinances/Controllers/ProjecaoController.cs, Services/ProjecaoService.cs
-DEPENDENCIAS: TASK-015, TASK-018
-CONTEXTO A LER: regra-de-negocio.md itens 9 e 12 (paragrafo "Projecao")
+DEPENDENCIAS: TASK-015, TASK-018, TASK-038
+CONTEXTO A LER: regra-de-negocio.md itens 9 e 12 (paragrafo "Projecao") e 12 ("Pagamento x fatura (revisado)")
 
 ### TASK-029 — Revisao TASK-028
 STATUS: PENDENTE
