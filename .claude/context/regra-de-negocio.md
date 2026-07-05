@@ -218,8 +218,28 @@ cai no ciclo de uma fatura:
   compra retroativa alem do ciclo ainda aberto mais antigo. Usuario recebe
   erro claro e ajusta a data.
 
-**Pagamento x fatura:** o pagamento fecha o saldo da fatura como um todo, NUNCA
-compra a compra (igual Organizze).
+**Pagamento x fatura (revisado):** o pagamento pode ser ANTECIPADO (fatura
+ainda ABERTA) e PARCIAL (varios pagamentos ate quitar). Uma fatura passa a
+ter VARIAS Transferencias associadas (1:N, nao mais 1:1) — `transferencia.fatura_id`
+em vez de `fatura.transferencia_id`.
+
+- **Valor do pagamento:** informado pelo client (nao mais calculado
+  automaticamente como o total). Validado contra o saldo pendente da fatura
+  (`saldo_pendente = total_lancamentos_da_fatura - soma_dos_pagamentos_ja_feitos`).
+  Pagamento com valor > saldo_pendente e REJEITADO (overpayment). Pagamento
+  com valor <= 0 e REJEITADO.
+- **Faturas pagaveis:** ABERTA ou FECHADA, desde que `saldo_pendente > 0`.
+  Fatura com `saldo_pendente <= 0` (ja quitada) REJEITA novo pagamento,
+  independente do Status rotulado.
+- **Transicao de Status apos pagamento:**
+  - Se a fatura estava FECHADA e o pagamento zera o saldo pendente -> Status
+    vira PAGA.
+  - Se a fatura estava ABERTA e o pagamento zera o saldo pendente -> Status
+    CONTINUA ABERTA (nao pula pra PAGA). Continua aceitando compra normalmente
+    ate o ciclo fechar.
+  - Quando o ciclo fecha (transicao lazy ABERTA->FECHADA, ver acima): se a
+    fatura ja estiver com saldo_pendente <= 0 nesse momento (quitada
+    antecipadamente), o Status vai direto pra PAGA em vez de FECHADA.
 
 **Projecao:** o cartao entra na projecao do mes como UMA linha = total da fatura
 atual, com status pago / nao pago, tratado como conta a pagar (ver item 9). As

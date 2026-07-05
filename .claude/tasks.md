@@ -311,3 +311,62 @@ ESCOPO: Garantir que nenhuma tela recalcula saldo/classificacao no cliente e que
 ARQUIVOS: frontend/src/features/cartao/ (todos os arquivos das tasks 032-036)
 DEPENDENCIAS: TASK-032, TASK-033, TASK-034, TASK-035, TASK-036
 CONTEXTO A LER: regra-de-negocio.md item 12
+
+---
+
+## Rework: pagamento antecipado/parcial de fatura
+
+Decisao do usuario (2026-07-05): pagamento de fatura pode ser ANTECIPADO
+(fatura ainda ABERTA) e PARCIAL (varios pagamentos ate quitar). Isso
+substitui o comportamento da TASK-018 original (so fatura FECHADA, valor
+sempre o total, 1 pagamento por fatura). Fatura-Transferencia muda de 1:1
+para 1:N. Regra atualizada em regra-de-negocio.md ("Pagamento x fatura
+(revisado)") e schema.dbml.
+
+### TASK-038 — Rework do pagamento de fatura (antecipado + parcial)
+STATUS: PENDENTE
+AGENT: levi
+ESCOPO: Mudar Fatura-Transferencia de 1:1 para 1:N (Transferencia.FaturaId,
+migration nova). PagamentoFaturaService: valor vem do client (nao mais
+calculado auto), calcula saldo_pendente = total_lancamentos - soma_pagamentos,
+rejeita valor <= 0 e valor > saldo_pendente (overpayment), rejeita se
+saldo_pendente <= 0 (ja quitada). Permite pagar ABERTA ou FECHADA. Se
+FECHADA e zera saldo -> PAGA. Se ABERTA e zera saldo -> continua ABERTA.
+FaturaCicloService: ao fechar ciclo (ABERTA->FECHADA), se saldo_pendente
+ja for <= 0 nesse momento, vai direto pra PAGA em vez de FECHADA. Precisa
+atualizar tambem os testes existentes que quebrarem de compilar por causa
+da mudanca de shape (FaturaCicloServiceTests, PagamentoFaturaServiceTests,
+FaturaTransicaoEstadoTests, SaldoCartaoServiceTests, CompraCartaoServiceTests,
+EstornoCartaoServiceTests — qualquer um que construa Fatura/Transferencia
+direto).
+ARQUIVOS: Models/Fatura.cs, Models/Transferencia.cs, Data/AppDbContext.cs,
+Migrations/ (nova), Services/PagamentoFaturaService.cs,
+Services/FaturaCicloService.cs, Dtos/PagarFaturaRequest.cs,
+Dtos/FaturaResponseDto.cs (se precisar expor saldo_pendente),
+Controllers/FaturasController.cs, arquivos de teste existentes (so ajuste
+de compilacao, nao mudar o que os testes verificam)
+DEPENDENCIAS: TASK-018, TASK-021
+CONTEXTO A LER: regra-de-negocio.md item 12 ("Pagamento x fatura
+(revisado)"), item 10, schema.dbml tabelas fatura/transferencia
+
+### TASK-039 — Revisao TASK-038
+STATUS: PENDENTE
+AGENT: style
+ESCOPO: Validar saldo_pendente calculado corretamente, rejeicao de
+overpayment, transicoes de status (FECHADA+quitada->PAGA,
+ABERTA+quitada->continua ABERTA, fechamento de ciclo com quitacao
+antecipada->PAGA direto), e que nenhum teste existente foi perdido/alterado
+alem do necessario pra compilar.
+DEPENDENCIAS: TASK-038
+CONTEXTO A LER: regra-de-negocio.md item 12
+
+### TASK-040 — Testes TASK-038
+STATUS: PENDENTE
+AGENT: mike
+ESCOPO: Cobrir pagamento antecipado (ABERTA), pagamento parcial (2+
+pagamentos ate quitar), rejeicao de overpayment, rejeicao de pagamento
+apos quitada, e a transicao correta de status nos 3 cenarios (FECHADA
+quitada, ABERTA quitada continua aberta, fechamento de ciclo com fatura
+ja quitada antecipadamente vira PAGA direto).
+DEPENDENCIAS: TASK-039
+CONTEXTO A LER: regra-de-negocio.md item 12
