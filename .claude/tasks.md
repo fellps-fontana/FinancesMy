@@ -193,7 +193,7 @@ DEPENDENCIAS: TASK-021
 CONTEXTO A LER: regra-de-negocio.md itens 2, 10, 12
 
 ### TASK-023 — Testes TASK-021
-STATUS: PENDENTE
+STATUS: CONCLUIDA (7 testes novos, 67/67 total: saldo zero, so compras, compras+estorno, compras+pagamento historico, conta invalida/nao-CARTAO, cenario combinado com 2 faturas)
 AGENT: mike
 ESCOPO: Cobrir o calculo do saldo com combinacoes de compra/pagamento/estorno.
 ARQUIVOS: MyFinances/MyFinances.Tests/SaldoCartaoServiceTests.cs
