@@ -1,0 +1,23 @@
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  max-width: 340px;
+}
+
+.topo {
+  align-items: center;
+  color: var(--accent-soft);
+  display: flex;
+  justify-content: space-between;
+}
+
+.nome {
+  font-size: var(--font-size-label);
+}
+
+.numero {
+  color: var(--text-primary);
+  font-size: 16px;
+  letter-spacing: 2px;
+}

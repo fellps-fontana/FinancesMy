@@ -1,0 +1,21 @@
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 100vh;
+  padding: 56px 40px;
+}
+
+.titulo {
+  color: var(--text-primary);
+  font-size: var(--font-size-titulo);
+  font-weight: var(--font-weight-medium);
+  margin: 0;
+}
+
+.conteudo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 340px;
+}

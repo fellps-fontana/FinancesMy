@@ -278,7 +278,7 @@ DEPENDENCIAS: nenhuma (paralelo ao backend, mas telas de cartao dependem dos end
 CONTEXTO A LER: stack.md (secao Frontend React)
 
 ### TASK-032 — Tela conta cartao
-STATUS: PENDENTE
+STATUS: CONCLUIDA (ContaCartaoPage: form de criacao + saldo calculado exibido. Lacuna real de backend anotada: nao existe GET /api/contas nem GET /api/contas/{id}, front usa localStorage como workaround temporario ate esse endpoint existir)
 AGENT: hanzo
 ESCOPO: Criar/listar conta CARTAO e exibir saldo calculado (GET /api/contas/{id}/saldo).
 ARQUIVOS: frontend/src/features/cartao/ContaCartaoPage.tsx, frontend/src/features/cartao/api.ts

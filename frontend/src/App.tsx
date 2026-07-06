@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { ContaCartaoPage } from './features/cartao/ContaCartaoPage';
 import { PlaceholderPage } from './shared/components/PlaceholderPage';
 
 /**
@@ -13,7 +14,7 @@ export function App(): ReactElement {
       <Route path="/" element={<Navigate to="/inicio" replace />} />
       <Route path="/inicio" element={<PlaceholderPage title="Inicio" />} />
       <Route path="/lancamentos" element={<PlaceholderPage title="Lancamentos" />} />
-      <Route path="/cartao" element={<PlaceholderPage title="Cartao de credito" />} />
+      <Route path="/cartao" element={<ContaCartaoPage />} />
       <Route path="/contas" element={<PlaceholderPage title="Contas" />} />
     </Routes>
   );

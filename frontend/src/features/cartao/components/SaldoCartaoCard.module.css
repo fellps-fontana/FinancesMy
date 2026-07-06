@@ -1,0 +1,27 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 340px;
+}
+
+.label {
+  color: var(--text-muted);
+  font-size: var(--font-size-label);
+}
+
+.valor {
+  color: var(--text-primary);
+  font-size: var(--font-size-valor);
+  font-weight: var(--font-weight-medium);
+}
+
+.estado {
+  color: var(--text-faint);
+  font-size: var(--font-size-corpo);
+}
+
+.estadoErro {
+  color: var(--negativo);
+  font-size: var(--font-size-corpo);
+}
