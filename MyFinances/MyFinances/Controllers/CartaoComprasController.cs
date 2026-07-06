@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using MyFinances.Dtos;
+using MyFinances.DTOs;
 using MyFinances.Services;
 
 namespace MyFinances.Controllers;
