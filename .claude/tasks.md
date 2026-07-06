@@ -270,7 +270,7 @@ DEPENDENCIAS: TASK-029
 CONTEXTO A LER: regra-de-negocio.md itens 9, 12
 
 ### TASK-031 — Scaffold do projeto frontend (Vite + React + TS)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (Vite+React+TS strict, axios, React Query, react-router, tokens de tema em CSS vars fiel ao identidade-visual.md, rotas placeholder. Ajustei porta do backend no fallback da baseURL. Pendencia anotada: campo "limite de credito" do mockup nao existe no backend, nao implementado)
 AGENT: hanzo
 ESCOPO: Criar o projeto Vite/React/TypeScript na raiz do repo, estrutura de pastas por feature, camada de dados via React Query (ou hook proprio) conforme stack.md.
 ARQUIVOS: frontend/ (novo — package.json, vite.config.ts, tsconfig.json, src/)
