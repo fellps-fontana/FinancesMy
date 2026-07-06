@@ -10,8 +10,8 @@ export function Home() {
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-4 bg-background px-4 text-center">
       <div>
-        <p className="text-[19px] font-medium text-foreground">Ola, {usuario?.username}</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-[19px] font-medium text-text-primary">Ola, {usuario?.username}</p>
+        <p className="text-sm text-text-body">
           Guarda de rota funcionando. Modulos ainda nao implementados.
         </p>
       </div>
