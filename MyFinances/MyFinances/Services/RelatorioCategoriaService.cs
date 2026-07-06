@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MyFinances.Data;
-using MyFinances.Dtos;
+using MyFinances.DTOs;
 
 namespace MyFinances.Services;
 
