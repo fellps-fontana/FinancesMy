@@ -310,7 +310,7 @@ DEPENDENCIAS: TASK-031, TASK-018
 CONTEXTO A LER: regra-de-negocio.md itens 3, 12
 
 ### TASK-036 — Tela visao por categoria do cartao
-STATUS: PENDENTE
+STATUS: CONCLUIDA (RelatorioCategoriaPage em rota propria /cartao/relatorio, separada da conta cartao pra nao misturar competencia com caixa. Categoria null tratada como "Sem categoria")
 AGENT: hanzo
 ESCOPO: Relatorio categorico consumindo GET /api/relatorios/categorias, sem misturar com a visao de fluxo de caixa.
 ARQUIVOS: frontend/src/features/cartao/RelatorioCategoriaPage.tsx

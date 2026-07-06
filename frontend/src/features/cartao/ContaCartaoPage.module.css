@@ -20,6 +20,17 @@
   max-width: 340px;
 }
 
+.linkRelatorio {
+  color: var(--accent-soft);
+  font-size: var(--font-size-label);
+  text-decoration: none;
+  width: fit-content;
+}
+
+.linkRelatorio:hover {
+  color: var(--accent);
+}
+
 .botaoLancarCompra {
   align-self: flex-start;
   background: var(--accent);

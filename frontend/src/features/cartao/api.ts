@@ -96,6 +96,26 @@ export interface PagarFaturaRequest {
   valor: number;
 }
 
+/**
+ * Espelha Dtos/RelatorioCategoriaResponseDto.cs. Visao CATEGORICA/COMPETENCIA
+ * (regra de negocio item 12, "Duas visoes"): soma as compras do cartao por
+ * categoria dentro do mes, ignorando o pagamento de fatura (que e transferencia
+ * e vive so no fluxo de caixa). `categoriaId`/`nomeCategoria` vem `null` quando
+ * a compra nao tem categoria vinculada (regra de negocio item 7) — o item
+ * continua no relatorio, nao e descartado.
+ */
+export interface RelatorioCategoriaItem {
+  categoriaId: string | null;
+  nomeCategoria: string | null;
+  total: number;
+}
+
+export interface RelatorioCategoriaResponse {
+  itens: RelatorioCategoriaItem[];
+  mes: number;
+  ano: number;
+}
+
 interface ErroApiResponse {
   erro: string;
 }
@@ -159,6 +179,23 @@ export async function pagarFatura(
   request: PagarFaturaRequest,
 ): Promise<FaturaResponse> {
   const { data } = await httpClient.post<FaturaResponse>(`/faturas/${faturaId}/pagamento`, request);
+  return data;
+}
+
+/**
+ * GET /api/relatorios/categorias — visao categorica/competencia (regra de
+ * negocio item 12). `mes` no formato "yyyy-MM" (o backend faz o split e
+ * valida internamente, ver RelatoriosController.ObterGastoPorCategoria).
+ * `contaId` opcional filtra para uma unica conta CARTAO; sem ele, o backend
+ * soma todas as contas com compras no periodo.
+ */
+export async function obterRelatorioCategoria(
+  mes: string,
+  contaId?: string,
+): Promise<RelatorioCategoriaResponse> {
+  const { data } = await httpClient.get<RelatorioCategoriaResponse>('/relatorios/categorias', {
+    params: contaId ? { mes, contaId } : { mes },
+  });
   return data;
 }
 

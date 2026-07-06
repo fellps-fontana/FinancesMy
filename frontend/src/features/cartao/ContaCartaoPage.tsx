@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ReactElement } from 'react';
+import { Link } from 'react-router-dom';
 import { extrairMensagemErroApi } from './api';
 import { CartaoVisual } from './components/CartaoVisual';
 import { CriarContaCartaoForm } from './components/CriarContaCartaoForm';
@@ -91,6 +92,17 @@ export function ContaCartaoPage(): ReactElement {
             Lancar compra
           </button>
           <FaturaPage contaId={contaCartaoAtual.id} />
+
+          {/*
+            Link para a visao categorica/competencia (regra de negocio item
+            12, "Duas visoes"). Rota propria (/cartao/relatorio) em vez de
+            secao aqui: e um RELATORIO, conceitualmente distinto de uma acao
+            sobre o cartao (ver RelatorioCategoriaPage.tsx para o raciocinio
+            completo) — so um link de saida para nao deixar a rota orfa.
+          */}
+          <Link className={styles.linkRelatorio} to="/cartao/relatorio">
+            Ver relatorio por categoria
+          </Link>
         </div>
       )}
 

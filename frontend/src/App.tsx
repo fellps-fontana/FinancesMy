@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ContaCartaoPage } from './features/cartao/ContaCartaoPage';
+import { RelatorioCategoriaPage } from './features/cartao/RelatorioCategoriaPage';
 import { PlaceholderPage } from './shared/components/PlaceholderPage';
 
 /**
@@ -15,6 +16,7 @@ export function App(): ReactElement {
       <Route path="/inicio" element={<PlaceholderPage title="Inicio" />} />
       <Route path="/lancamentos" element={<PlaceholderPage title="Lancamentos" />} />
       <Route path="/cartao" element={<ContaCartaoPage />} />
+      <Route path="/cartao/relatorio" element={<RelatorioCategoriaPage />} />
       <Route path="/contas" element={<PlaceholderPage title="Contas" />} />
     </Routes>
   );

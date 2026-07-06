@@ -1,0 +1,140 @@
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 100vh;
+  padding: 56px 40px;
+}
+
+.voltar {
+  color: var(--text-muted);
+  font-size: var(--font-size-label);
+  text-decoration: none;
+  width: fit-content;
+}
+
+.voltar:hover {
+  color: var(--accent-soft);
+}
+
+.cabecalho {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 480px;
+}
+
+.titulo {
+  color: var(--text-primary);
+  font-size: var(--font-size-titulo);
+  font-weight: var(--font-weight-medium);
+  margin: 0;
+}
+
+.subtitulo {
+  color: var(--text-muted);
+  font-size: var(--font-size-label);
+  margin: 0;
+}
+
+.seletorMes {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.seletorMesLabel {
+  color: var(--text-faint);
+  font-size: var(--font-size-meta);
+}
+
+.inputMes {
+  background: var(--bg-surface);
+  border: var(--border-width-subtle) solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-body);
+  font-family: var(--font-family);
+  font-size: var(--font-size-label);
+  padding: 8px 12px;
+}
+
+.estado {
+  color: var(--text-faint);
+  font-size: var(--font-size-corpo);
+}
+
+.estadoErro {
+  color: var(--negativo);
+  font-size: var(--font-size-corpo);
+}
+
+.totalCard {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 340px;
+}
+
+.totalLabel {
+  color: var(--text-muted);
+  font-size: var(--font-size-label);
+}
+
+.totalValor {
+  color: var(--text-primary);
+  font-size: var(--font-size-valor);
+  font-weight: var(--font-weight-medium);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  list-style: none;
+  margin: 0;
+  max-width: 480px;
+  padding: 0;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.itemCabecalho {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.itemNome {
+  color: var(--text-body);
+  font-size: var(--font-size-corpo);
+}
+
+.itemValor {
+  color: var(--text-primary);
+  font-size: var(--font-size-corpo);
+  font-weight: var(--font-weight-medium);
+}
+
+.barraTrilho {
+  background: var(--bg-surface-alt);
+  border-radius: var(--radius-badge);
+  height: 6px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.barraPreenchida {
+  background: var(--accent);
+  border-radius: var(--radius-badge);
+  height: 100%;
+}
+
+.itemPercentual {
+  color: var(--text-faint);
+  font-size: var(--font-size-meta);
+}
