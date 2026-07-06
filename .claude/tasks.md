@@ -286,7 +286,7 @@ DEPENDENCIAS: TASK-031, TASK-004, TASK-021
 CONTEXTO A LER: regra-de-negocio.md item 12; identidade-visual.md se existir
 
 ### TASK-033 — Tela lancar compra
-STATUS: PENDENTE
+STATUS: CONCLUIDA (LancarCompraForm como modal integrado a ContaCartaoPage; invalida saldo apos sucesso. Categoria desabilitada com aviso — backend nao tem endpoint de listagem de categorias)
 AGENT: hanzo
 ESCOPO: Formulario de compra (categoria, data, valor, descricao), mostrando a fatura vigente a qual a compra vai pertencer.
 ARQUIVOS: frontend/src/features/cartao/LancarCompraForm.tsx

@@ -34,6 +34,35 @@ export interface SaldoCartaoResponse {
   saldo: number;
 }
 
+/**
+ * Espelha Dtos/CriarCompraRequest.cs. `categoriaId` e opcional no backend
+ * (Guid?) — hoje sempre enviado como null porque nao ha endpoint de listagem
+ * de categorias (regra de negocio item 7), ver LancarCompraForm.tsx.
+ * `data` trafega como string ISO (yyyy-MM-dd), formato que o DateOnly do
+ * backend aceita e que <input type="date"> ja produz nativamente.
+ */
+export interface CriarCompraRequest {
+  categoriaId: string | null;
+  descricao: string;
+  valor: number;
+  data: string;
+}
+
+/**
+ * Campos da compra (Lancamento) usados pelo front apos a criacao. O backend
+ * devolve a entidade completa, mas so consumimos os campos abaixo — o
+ * restante do saldo/visao vem de queries dedicadas (useSaldoCartao).
+ */
+export interface CompraResponse {
+  id: string;
+  contaId: string;
+  categoriaId: string | null;
+  descricao: string | null;
+  valor: number;
+  data: string;
+  faturaId: string | null;
+}
+
 interface ErroApiResponse {
   erro: string;
 }
@@ -51,6 +80,19 @@ export async function criarContaCartao(request: CriarContaCartaoRequest): Promis
  */
 export async function obterSaldoCartao(contaId: string): Promise<SaldoCartaoResponse> {
   const { data } = await httpClient.get<SaldoCartaoResponse>(`/contas/${contaId}/saldo`);
+  return data;
+}
+
+/**
+ * POST /api/cartoes/{contaId}/compras — lanca uma compra na conta CARTAO
+ * (regra de negocio item 12: regime de COMPETENCIA, muda o saldo calculado
+ * do cartao mas nao entra no fluxo de caixa/lancamento geral).
+ */
+export async function criarCompra(
+  contaId: string,
+  request: CriarCompraRequest,
+): Promise<CompraResponse> {
+  const { data } = await httpClient.post<CompraResponse>(`/cartoes/${contaId}/compras`, request);
   return data;
 }
 

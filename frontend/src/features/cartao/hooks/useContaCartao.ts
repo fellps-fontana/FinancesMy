@@ -3,7 +3,7 @@ import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 import { criarContaCartao, obterSaldoCartao } from '../api';
 import type { ContaResponse, CriarContaCartaoRequest, SaldoCartaoResponse } from '../api';
 
-const CHAVE_SALDO_CARTAO = 'saldo-cartao';
+export const CHAVE_SALDO_CARTAO = 'saldo-cartao';
 
 /**
  * Camada de estado de servidor da conta cartao (React Query). Nenhum fetch

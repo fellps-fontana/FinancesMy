@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { extrairMensagemErroApi } from './api';
 import { CartaoVisual } from './components/CartaoVisual';
@@ -6,6 +7,9 @@ import type { NovaContaCartaoInput } from './components/CriarContaCartaoForm';
 import { SaldoCartaoCard } from './components/SaldoCartaoCard';
 import { useCriarContaCartao, useSaldoCartao } from './hooks/useContaCartao';
 import { useContaCartaoAtual } from './hooks/useContaCartaoAtual';
+import { useLancarCompra } from './hooks/useLancarCompra';
+import { LancarCompraForm } from './LancarCompraForm';
+import type { NovaCompraInput } from './LancarCompraForm';
 import styles from './ContaCartaoPage.module.css';
 
 /**
@@ -20,6 +24,8 @@ export function ContaCartaoPage(): ReactElement {
   const { contaCartaoAtual, setContaCartaoAtual } = useContaCartaoAtual();
   const criarContaCartao = useCriarContaCartao();
   const saldoQuery = useSaldoCartao(contaCartaoAtual?.id ?? null);
+  const lancarCompra = useLancarCompra();
+  const [formularioCompraAberto, setFormularioCompraAberto] = useState(false);
 
   function handleCriarConta(input: NovaContaCartaoInput): void {
     criarContaCartao.mutate(
@@ -31,6 +37,27 @@ export function ContaCartaoPage(): ReactElement {
       },
       {
         onSuccess: (conta) => setContaCartaoAtual({ id: conta.id, nome: conta.nome }),
+      },
+    );
+  }
+
+  function handleLancarCompra(input: NovaCompraInput): void {
+    if (contaCartaoAtual === null) {
+      return;
+    }
+
+    lancarCompra.mutate(
+      {
+        contaId: contaCartaoAtual.id,
+        request: {
+          categoriaId: input.categoriaId,
+          descricao: input.descricao,
+          valor: input.valor,
+          data: input.data,
+        },
+      },
+      {
+        onSuccess: () => setFormularioCompraAberto(false),
       },
     );
   }
@@ -55,7 +82,23 @@ export function ContaCartaoPage(): ReactElement {
             carregando={saldoQuery.isLoading}
             erro={saldoQuery.isError}
           />
+          <button
+            className={styles.botaoLancarCompra}
+            type="button"
+            onClick={() => setFormularioCompraAberto(true)}
+          >
+            Lancar compra
+          </button>
         </div>
+      )}
+
+      {formularioCompraAberto && (
+        <LancarCompraForm
+          onSubmit={handleLancarCompra}
+          onFechar={() => setFormularioCompraAberto(false)}
+          enviando={lancarCompra.isPending}
+          mensagemErro={lancarCompra.isError ? extrairMensagemErroApi(lancarCompra.error) : null}
+        />
       )}
     </div>
   );
