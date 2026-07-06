@@ -262,7 +262,7 @@ DEPENDENCIAS: TASK-028
 CONTEXTO A LER: regra-de-negocio.md itens 9, 12
 
 ### TASK-030 — Testes TASK-028
-STATUS: PENDENTE
+STATUS: CONCLUIDA (7 testes novos, 89/89 total: pendente/parcial/quitada, sem fatura no mes, conta invalida/nao-CARTAO, compras nao aparecem isoladas)
 AGENT: mike
 ESCOPO: Cobrir que a projecao do mes soma o cartao como exatamente 1 linha independente de quantas compras existam na fatura.
 ARQUIVOS: MyFinances/MyFinances.Tests/ProjecaoServiceTests.cs
