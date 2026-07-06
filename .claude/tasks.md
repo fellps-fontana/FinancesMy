@@ -233,7 +233,7 @@ DEPENDENCIAS: TASK-026
 CONTEXTO A LER: regra-de-negocio.md item 12
 
 ### TASK-028 — Endpoint projecao do mes (cartao como 1 linha)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (GET /api/cartoes/{contaId}/projecao?mes=YYYY-MM; escopo reduzido pra so a fatia do cartao. 1 ciclo de correcao: strings magicas, nome em espanhol, e uma lacuna real registrada como log — mais de uma fatura vencendo no mesmo mes pode esconder saldo, decisao de produto pendente)
 AGENT: levi
 ESCOPO: REVISADO (decisao do usuario 2026-07-05): o endpoint completo de
 projecao (saldo_projetado = recebido - pago - a_pagar) depende de dados
@@ -254,7 +254,7 @@ DEPENDENCIAS: TASK-015, TASK-018, TASK-038
 CONTEXTO A LER: regra-de-negocio.md itens 9 e 12 (paragrafo "Projecao") e 12 ("Pagamento x fatura (revisado)")
 
 ### TASK-029 — Revisao TASK-028
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO apos 1 ciclo — achado real: multiplas faturas vencendo no mesmo mes eram descartadas silenciosamente, agora logado como lacuna pendente de decisao do usuario. Tambem: strings magicas e nome em espanhol)
 AGENT: style
 ESCOPO: Confirmar que so a fatura atual entra (nao faturas passadas/futuras) e que compras nao vazam para a projecao.
 ARQUIVOS: os do TASK-028

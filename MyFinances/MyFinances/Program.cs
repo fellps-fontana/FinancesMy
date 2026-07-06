@@ -24,6 +24,7 @@ builder.Services.AddScoped<PagamentoFaturaService>();
 builder.Services.AddScoped<SaldoCartaoService>();
 builder.Services.AddScoped<FluxoCaixaService>();
 builder.Services.AddScoped<RelatorioCategoriaService>();
+builder.Services.AddScoped<ProjecaoService>();
 
 var app = builder.Build();
 
