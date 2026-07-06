@@ -27,8 +27,8 @@ export function LoginPage() {
     <div className="flex min-h-svh items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-[19px]">Entrar no MyFinances</CardTitle>
-          <CardDescription>Acesse com seu usuario ou email</CardDescription>
+          <CardTitle className="text-[19px] text-text-primary">Entrar no MyFinances</CardTitle>
+          <CardDescription className="text-text-body">Acesse com seu usuario ou email</CardDescription>
         </CardHeader>
         <CardContent>
           <LoginForm
