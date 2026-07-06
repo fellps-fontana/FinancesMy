@@ -83,6 +83,19 @@ export interface CompraResponse {
   faturaId: string | null;
 }
 
+/**
+ * Espelha Dtos/PagarFaturaRequest.cs. `data` segue o mesmo formato ISO
+ * (yyyy-MM-dd) usado em CriarCompraRequest. `valor` pode ser MENOR que o
+ * `valorPendente` da fatura (regra de negocio item 12, "Pagamento x fatura
+ * (revisado)": pagamento parcial e permitido — o backend so rejeita valor
+ * <= 0 ou valor que exceda o saldo pendente).
+ */
+export interface PagarFaturaRequest {
+  contaOrigemId: string;
+  data: string;
+  valor: number;
+}
+
 interface ErroApiResponse {
   erro: string;
 }
@@ -131,6 +144,21 @@ export async function criarCompra(
  */
 export async function listarFaturas(contaId: string): Promise<FaturaResponse[]> {
   const { data } = await httpClient.get<FaturaResponse[]>(`/cartoes/${contaId}/faturas`);
+  return data;
+}
+
+/**
+ * POST ~/api/faturas/{id}/pagamento — rota ABSOLUTA (fora do prefixo
+ * /api/cartoes/{contaId}), ver FaturasController.PagarFatura. Registra o
+ * pagamento (parcial ou total, regra de negocio item 12 revisado) e devolve
+ * a fatura com `valorPago`/`valorPendente` ja recalculados — o front nao
+ * soma nada, so invalida as queries dependentes (ver usePagarFatura).
+ */
+export async function pagarFatura(
+  faturaId: string,
+  request: PagarFaturaRequest,
+): Promise<FaturaResponse> {
+  const { data } = await httpClient.post<FaturaResponse>(`/faturas/${faturaId}/pagamento`, request);
   return data;
 }
 

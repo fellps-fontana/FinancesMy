@@ -302,7 +302,7 @@ DEPENDENCIAS: TASK-031, TASK-015
 CONTEXTO A LER: regra-de-negocio.md item 12
 
 ### TASK-035 — Acao marcar fatura como paga
-STATUS: PENDENTE
+STATUS: CONCLUIDA (PagarFaturaModal suporta pagamento parcial/antecipado conforme regra revisada. Lacuna documentada: sem endpoint de listagem/criacao de conta BANCO, campo de conta origem e texto livre com aviso)
 AGENT: hanzo
 ESCOPO: Botao/fluxo de pagamento de fatura, escolhendo a conta corrente de origem, chamando POST /api/faturas/{id}/pagamento.
 ARQUIVOS: frontend/src/features/cartao/PagarFaturaModal.tsx

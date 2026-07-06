@@ -87,3 +87,17 @@
   font-size: var(--font-size-meta);
   margin: 0;
 }
+
+.botaoPagar {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--bg-base);
+  cursor: pointer;
+  font-family: var(--font-family);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
+  margin-top: 10px;
+  padding: 8px 14px;
+  width: fit-content;
+}

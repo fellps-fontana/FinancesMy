@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { Badge } from '../../shared/components/Badge';
 import type { BadgeTone } from '../../shared/components/Badge';
 import { Card } from '../../shared/components/Card';
 import { formatarMoeda } from '../../shared/format/moeda';
+import { extrairMensagemErroApi } from './api';
 import type { FaturaResponse, StatusFatura } from './api';
 import { useFaturas } from './hooks/useFaturas';
+import { usePagarFatura } from './hooks/usePagarFatura';
+import { PagarFaturaModal } from './PagarFaturaModal';
+import type { PagarFaturaInput } from './PagarFaturaModal';
 import styles from './FaturaPage.module.css';
 
 /**
@@ -50,6 +55,25 @@ interface FaturaPageProps {
  */
 export function FaturaPage({ contaId }: FaturaPageProps): ReactElement {
   const faturasQuery = useFaturas(contaId);
+  const pagarFatura = usePagarFatura();
+  const [faturaEmPagamento, setFaturaEmPagamento] = useState<FaturaResponse | null>(null);
+
+  function handlePagar(input: PagarFaturaInput): void {
+    if (faturaEmPagamento === null) {
+      return;
+    }
+
+    pagarFatura.mutate(
+      {
+        faturaId: faturaEmPagamento.id,
+        contaId,
+        request: input,
+      },
+      {
+        onSuccess: () => setFaturaEmPagamento(null),
+      },
+    );
+  }
 
   return (
     <section className={styles.secao}>
@@ -68,17 +92,36 @@ export function FaturaPage({ contaId }: FaturaPageProps): ReactElement {
       {faturasQuery.isSuccess && faturasQuery.data.length > 0 && (
         <ul className={styles.lista}>
           {faturasQuery.data.map((fatura) => (
-            <FaturaItem key={fatura.id} fatura={fatura} />
+            <FaturaItem
+              key={fatura.id}
+              fatura={fatura}
+              onPagar={() => setFaturaEmPagamento(fatura)}
+            />
           ))}
         </ul>
       )}
 
       <p className={styles.hintCompras}>Compras individuais nao disponiveis nesta versao.</p>
+
+      {faturaEmPagamento !== null && (
+        <PagarFaturaModal
+          valorPendente={faturaEmPagamento.valorPendente}
+          onSubmit={handlePagar}
+          onFechar={() => setFaturaEmPagamento(null)}
+          enviando={pagarFatura.isPending}
+          mensagemErro={pagarFatura.isError ? extrairMensagemErroApi(pagarFatura.error) : null}
+        />
+      )}
     </section>
   );
 }
 
-function FaturaItem({ fatura }: { fatura: FaturaResponse }): ReactElement {
+interface FaturaItemProps {
+  fatura: FaturaResponse;
+  onPagar: () => void;
+}
+
+function FaturaItem({ fatura, onPagar }: FaturaItemProps): ReactElement {
   const badge = BADGE_POR_STATUS[fatura.status];
 
   return (
@@ -103,6 +146,12 @@ function FaturaItem({ fatura }: { fatura: FaturaResponse }): ReactElement {
             <strong className={styles.valorAlerta}>{formatarMoeda(fatura.valorPendente)}</strong>
           </span>
         </div>
+
+        {fatura.valorPendente > 0 && (
+          <button className={styles.botaoPagar} type="button" onClick={onPagar}>
+            Pagar
+          </button>
+        )}
       </Card>
     </li>
   );
