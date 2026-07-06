@@ -87,11 +87,12 @@ if (app.Environment.IsDevelopment())
     var seedContext = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
     var seedHasher = seedScope.ServiceProvider.GetRequiredService<IPasswordHasherService>();
     await DevUserSeeder.SeedAsync(seedContext, seedHasher);
-}
+
 
 if (!app.Environment.IsEnvironment("Testing"))
 {
     app.UseHttpsRedirection();
+
 }
 
 app.UseAuthentication();
