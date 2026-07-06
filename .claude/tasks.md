@@ -166,7 +166,7 @@ RETORNO ESPERADO: migration aplicavel; tabelas `ativo` e `movimentacao_ativo` cr
 
 ## TASK-012 — Repository de Ativo
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-011
