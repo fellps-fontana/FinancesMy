@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MyFinances.Data;
-using MyFinances.Dtos.Conta;
+using MyFinances.DTOs.Conta;
 using MyFinances.DTOs;
 using MyFinances.Models;
 using Xunit;

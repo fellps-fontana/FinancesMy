@@ -1,6 +1,6 @@
 using MyFinances.Models;
 
-namespace MyFinances.Dtos.Conta;
+namespace MyFinances.DTOs.Conta;
 
 public class ContaResponse
 {
