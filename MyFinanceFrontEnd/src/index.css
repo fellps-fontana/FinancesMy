@@ -43,6 +43,15 @@
   --color-accent-deep: var(--accent-deep);
   --color-accent-soft: var(--accent-soft);
 
+  /* escala de texto (identidade-visual.md) — 4 niveis de hierarquia.
+     --foreground/--muted-foreground seguem sendo consumidos pelos
+     componentes shadcn; estes tokens sao a fonte semantica de dominio
+     usada explicitamente nas telas (titulo/corpo/label/meta). */
+  --color-text-primary: var(--text-primary);
+  --color-text-body: var(--text-body);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+
   /* forma: cards 12-16px, elementos menores 8-10px, badges 5px */
   --radius-badge: 5px;
   --radius-sm: calc(var(--radius) * 0.8);
@@ -76,6 +85,14 @@
   --secondary-foreground: #e8e6ef;
   --muted: #221f2d;
   --muted-foreground: #8b8794;
+
+  /* escala de texto — 4 niveis (identidade-visual.md).
+     primary = titulos/valores principais; body = texto comum;
+     muted = labels/secundario; faint = metadados/hints. */
+  --text-primary: var(--foreground);
+  --text-body: #e8e6ef;
+  --text-muted: var(--muted-foreground);
+  --text-faint: #6f6b7a;
 
   /* semantica de dominio */
   --positivo: #5dcaa5;

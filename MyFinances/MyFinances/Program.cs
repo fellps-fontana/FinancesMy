@@ -72,6 +72,11 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.UseCors(FrontendDevCorsPolicy);
+
+    using var seedScope = app.Services.CreateScope();
+    var seedContext = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var seedHasher = seedScope.ServiceProvider.GetRequiredService<IPasswordHasherService>();
+    await DevUserSeeder.SeedAsync(seedContext, seedHasher);
 }
 
 app.UseHttpsRedirection();
