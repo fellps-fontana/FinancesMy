@@ -1,4 +1,4 @@
-namespace MyFinances.Dtos.Conta;
+namespace MyFinances.DTOs.Conta;
 
 public class TotalInvestidoResponse
 {

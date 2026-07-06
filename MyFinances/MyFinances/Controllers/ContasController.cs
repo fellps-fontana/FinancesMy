@@ -1,4 +1,4 @@
-using MyFinances.Dtos.Conta;
+using MyFinances.DTOs.Conta;
 using MyFinances.Exceptions;
 using MyFinances.Services;
 using Microsoft.AspNetCore.Mvc;
