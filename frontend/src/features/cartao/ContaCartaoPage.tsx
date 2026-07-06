@@ -5,6 +5,7 @@ import { CartaoVisual } from './components/CartaoVisual';
 import { CriarContaCartaoForm } from './components/CriarContaCartaoForm';
 import type { NovaContaCartaoInput } from './components/CriarContaCartaoForm';
 import { SaldoCartaoCard } from './components/SaldoCartaoCard';
+import { FaturaPage } from './FaturaPage';
 import { useCriarContaCartao, useSaldoCartao } from './hooks/useContaCartao';
 import { useContaCartaoAtual } from './hooks/useContaCartaoAtual';
 import { useLancarCompra } from './hooks/useLancarCompra';
@@ -89,6 +90,7 @@ export function ContaCartaoPage(): ReactElement {
           >
             Lancar compra
           </button>
+          <FaturaPage contaId={contaCartaoAtual.id} />
         </div>
       )}
 

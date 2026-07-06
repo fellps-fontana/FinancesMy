@@ -294,7 +294,7 @@ DEPENDENCIAS: TASK-031, TASK-009
 CONTEXTO A LER: regra-de-negocio.md item 12
 
 ### TASK-034 — Tela fechar/ver fatura
-STATUS: PENDENTE
+STATUS: CONCLUIDA (FaturaPage integrada como secao na ContaCartaoPage, lista faturas com totais e badge de status. Lacuna documentada: backend nao tem endpoint de compras por fatura, so o agregado)
 AGENT: hanzo
 ESCOPO: Listar faturas da conta CARTAO com status (ABERTA/FECHADA/PAGA) e detalhe das compras de cada fatura.
 ARQUIVOS: frontend/src/features/cartao/FaturaPage.tsx

@@ -34,6 +34,26 @@ export interface SaldoCartaoResponse {
   saldo: number;
 }
 
+/** Espelha o `Status` de Fatura no backend (Models/Fatura.cs). */
+export type StatusFatura = 'ABERTA' | 'FECHADA' | 'PAGA';
+
+/**
+ * Espelha Dtos/FaturaResponseDto.cs. Ciclo da fatura (regra de negocio item
+ * 12: recorte das compras por `dataFechamento` -> `dataVencimento`), com os
+ * valores ja calculados pelo backend (`FaturaSaldoCalculator`) — o front nao
+ * recalcula nada disso.
+ */
+export interface FaturaResponse {
+  id: string;
+  contaId: string;
+  dataFechamento: string;
+  dataVencimento: string;
+  status: StatusFatura;
+  valorTotal: number;
+  valorPago: number;
+  valorPendente: number;
+}
+
 /**
  * Espelha Dtos/CriarCompraRequest.cs. `categoriaId` e opcional no backend
  * (Guid?) — hoje sempre enviado como null porque nao ha endpoint de listagem
@@ -93,6 +113,24 @@ export async function criarCompra(
   request: CriarCompraRequest,
 ): Promise<CompraResponse> {
   const { data } = await httpClient.post<CompraResponse>(`/cartoes/${contaId}/compras`, request);
+  return data;
+}
+
+/**
+ * GET /api/cartoes/{contaId}/faturas — lista as faturas da conta CARTAO
+ * (regra de negocio item 12: recorte das compras por ciclo de fechamento ->
+ * vencimento). O backend ordena por `dataFechamento` desc; ver useFaturas
+ * para a decisao de reordenar (ou nao) por vencimento no front.
+ *
+ * LIMITACAO CONHECIDA (documentada para o Kira): nao ha endpoint para listar
+ * as compras individuais de uma fatura especifica — so o agregado (totais)
+ * por fatura. A visao compra-a-compra existe hoje apenas na visao
+ * categorica (GET /api/relatorios/categorias), que agrega por categoria e
+ * mes, nao por fatura. Ate esse endpoint existir, esta tela nao pode listar
+ * "as compras desta fatura".
+ */
+export async function listarFaturas(contaId: string): Promise<FaturaResponse[]> {
+  const { data } = await httpClient.get<FaturaResponse[]>(`/cartoes/${contaId}/faturas`);
   return data;
 }
 
