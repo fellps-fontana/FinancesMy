@@ -318,7 +318,7 @@ DEPENDENCIAS: TASK-031, TASK-025
 CONTEXTO A LER: regra-de-negocio.md item 12
 
 ### TASK-037 — Revisao conjunta do frontend cartao
-STATUS: PENDENTE
+STATUS: CONCLUIDA (nucleo critico correto — nenhum componente recalcula regra de negocio, CAIXA/COMPETENCIA nunca se misturam. Achados reais: useLancarCompra nao invalidava a query de faturas apos criar compra, deixando total desatualizado na tela; numero magico de font-size furando a escala tipografica. Corrigidos)
 AGENT: style
 ESCOPO: Garantir que nenhuma tela recalcula saldo/classificacao no cliente e que a UI nao mistura visao CAIXA com COMPETENCIA (item 12 e critico tambem na apresentacao, nao so no backend).
 ARQUIVOS: frontend/src/features/cartao/ (todos os arquivos das tasks 032-036)

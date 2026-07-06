@@ -18,6 +18,6 @@
 
 .numero {
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: var(--font-size-corpo);
   letter-spacing: 2px;
 }
