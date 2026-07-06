@@ -316,7 +316,7 @@ public class FaturaTransicaoEstadoTests
             .ToListAsync();
 
         // Mapear pra DTO (como o controller faz)
-        var dtos = faturas.Select(f => new MyFinances.Dtos.FaturaResponseDto
+        var dtos = faturas.Select(f => new MyFinances.DTOs.FaturaResponseDto
         {
             Id = f.Id,
             ContaId = f.ContaId,

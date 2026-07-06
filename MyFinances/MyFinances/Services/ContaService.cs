@@ -1,6 +1,6 @@
 using MyFinances.Data;
 using MyFinances.Domain;
-using MyFinances.Dtos;
+using MyFinances.DTOs;
 using MyFinances.Models;
 
 namespace MyFinances.Services;

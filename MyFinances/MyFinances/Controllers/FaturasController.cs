@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyFinances.Data;
-using MyFinances.Dtos;
+using MyFinances.DTOs;
 
 namespace MyFinances.Controllers;
 

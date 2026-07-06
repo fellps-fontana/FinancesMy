@@ -1,6 +1,6 @@
-namespace MyFinances.Dtos;
+namespace MyFinances.DTOs;
 
-public class EditarCompraRequest
+public class CriarCompraRequest
 {
     public Guid? CategoriaId { get; set; }
     public required string Descricao { get; set; }
