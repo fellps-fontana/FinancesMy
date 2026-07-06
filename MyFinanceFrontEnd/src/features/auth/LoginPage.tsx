@@ -29,6 +29,8 @@ export function LoginPage() {
   }
 
   return (
+
+
     <div className="flex min-h-svh flex-col bg-background lg:flex-row">
       <LoginBrandPanel />
 
@@ -50,7 +52,6 @@ export function LoginPage() {
             <h1 className="text-[19px] font-medium text-text-primary">Entrar</h1>
             <p className="mt-1 text-[13px] text-text-muted">Acesse sua conta</p>
           </div>
-
           <LoginForm
             usernameOrEmail={usernameOrEmail}
             senha={senha}

@@ -25,7 +25,7 @@ export class ApiError extends Error {
 }
 
 type RequestOptions = {
-  method: "GET" | "POST" | "PUT" | "DELETE"
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
   body?: unknown
 }
 
@@ -68,5 +68,7 @@ export const apiClient = {
     request<TResponse>(path, { method: "POST", body }),
   put: <TResponse>(path: string, body?: unknown) =>
     request<TResponse>(path, { method: "PUT", body }),
+  patch: <TResponse>(path: string, body?: unknown) =>
+    request<TResponse>(path, { method: "PATCH", body }),
   delete: <TResponse>(path: string) => request<TResponse>(path, { method: "DELETE" }),
 }
