@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MyFinances.Data;
 using MyFinances.Domain;
-using MyFinances.DTOs;
+using MyFinances.Dtos;
 using MyFinances.Models;
 
 namespace MyFinances.Services;

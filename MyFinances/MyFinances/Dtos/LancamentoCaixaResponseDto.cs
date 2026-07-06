@@ -1,4 +1,4 @@
-namespace MyFinances.DTOs;
+namespace MyFinances.Dtos;
 
 public class LancamentoCaixaResponseDto
 {
