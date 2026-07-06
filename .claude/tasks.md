@@ -217,7 +217,7 @@ FLUXO: Implementacao
 DEPENDENCIAS: TASK-013
 CONTEXTO A LER: clean-code.md "Organizacao (.NET)"; regra-de-negocio.md secao 8
 ESCOPO: criar `AtivosController` com `GET /api/contas/{contaId}/ativos` (lista ativos `ativa=true`), `POST /api/contas/{contaId}/ativos/compras` (compra — cria ou incrementa), `POST /api/contas/{contaId}/ativos/{ativoId}/vendas` (venda). DTOs de entrada/saida, nunca a entity. Traducao de excecoes: `ContaNaoEncontradaException`->404, `ContaNaoEhInvestimentoException`->422, `AtivoNaoEncontradoException`->404, `QuantidadeVendaInvalidaException`->422.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Controllers/AtivosController.cs` (novo), `MyFinances/MyFinances/Dtos/Ativo/*.cs` (novo: `RegistrarCompraRequest`, `RegistrarVendaRequest`, `AtivoResponse`)
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Controllers/AtivosController.cs` (novo), `MyFinances/MyFinances/DTOs/Ativo/*.cs` (novo: `RegistrarCompraRequest`, `RegistrarVendaRequest`, `AtivoResponse`)
 NAO FAZER: nao expor `preco_medio` como campo editavel no DTO de entrada (e sempre calculado); nao criar endpoint de "marcar a mercado" (pendencia, fora de v1).
 RETORNO ESPERADO: contrato de API documentado (rota, verbo, body, shape de retorno) para os 3 endpoints.
 
@@ -245,7 +245,7 @@ FLUXO: Correcao (extensao de codigo ja existente, nao feature nova)
 DEPENDENCIAS: TASK-012, TASK-006
 CONTEXTO A LER: regra-de-negocio.md secao 8 (paragrafo "Conta com carteira de ativos"), secao 10 (saldo de conta, versao atualizada), secao 8.4
 ESCOPO: atualizar `ContaService` (injetando `IAtivoRepository`) para que uma conta INVESTIMENTO com ao menos um Ativo deixe de usar `saldo_manual` e passe a usar a soma de `quantidade x preco_atual` dos ativos `ativa=true`, tanto em `ListarContasInvestimento` (saldo por conta) quanto em `CalcularTotalInvestido` (soma total). Adicionar campo `Saldo` (decimal, sempre populado) em `ContaResponse`; `SaldoManual` continua no DTO so como informativo (null quando a conta tem ativos, igual o schema ja documenta). DECISAO JA CONFIRMADA PELO USUARIO: uma vez que a conta recebeu seu primeiro Ativo, ela fica PERMANENTEMENTE no modo calculado (mesmo que todos os ativos sejam vendidos e o saldo va a zero) — nunca volta a aceitar `saldo_manual`.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/ContaService.cs`, `MyFinances/MyFinances/Services/IContaService.cs`, `MyFinances/MyFinances/Dtos/Conta/ContaResponse.cs`, `MyFinances/MyFinances/Controllers/ContasController.cs`
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/ContaService.cs`, `MyFinances/MyFinances/Services/IContaService.cs`, `MyFinances/MyFinances/DTOs/Conta/ContaResponse.cs`, `MyFinances/MyFinances/Controllers/ContasController.cs`
 NAO FAZER: nao alterar a regra de conta simples (sem ativos) — continua em `saldo_manual`. Nao implementar patrimonio total do app (mantem o mesmo escopo estrito de investimento da TASK-006). Nao fazer o saldo voltar a `saldo_manual` mesmo se todos os ativos forem vendidos.
 RETORNO ESPERADO: `GET /contas?tipo=investimento` retornando saldo correto por conta (calculado ou manual conforme o caso); `GET /contas/investimentos/total` somando o saldo correto de cada conta.
 
@@ -273,7 +273,7 @@ FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
 CONTEXTO A LER: regra-de-negocio.md secao 8 (paragrafo do grafico) e "Escopo: v1 vs v2"; stack.md secao "Cotacao"
 ESCOPO: criar servico de proxy que consulta a API Brapi (ou equivalente) para historico de cotacao de um ticker, exposto via `GET /api/ativos/cotacao/{ticker}/historico?range=...`, SEM persistir nada no banco (chamada sob demanda, sem sync/polling). Tratar erro de API externa (timeout, ticker invalido, rate limit) sem quebrar a aplicacao.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/ICotacaoExternaService.cs` (novo), `MyFinances/MyFinances/Services/CotacaoExternaService.cs` (novo), `MyFinances/MyFinances/Controllers/CotacaoController.cs` (novo), `MyFinances/MyFinances/Dtos/Cotacao/*.cs` (novo), `MyFinances/MyFinances/Program.cs` (registro de `HttpClient` nomeado), `MyFinances/MyFinances/appsettings.json`/`appsettings.Development.json` (base URL/chave, se exigir)
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/ICotacaoExternaService.cs` (novo), `MyFinances/MyFinances/Services/CotacaoExternaService.cs` (novo), `MyFinances/MyFinances/Controllers/CotacaoController.cs` (novo), `MyFinances/MyFinances/DTOs/Cotacao/*.cs` (novo), `MyFinances/MyFinances/Program.cs` (registro de `HttpClient` nomeado), `MyFinances/MyFinances/appsettings.json`/`appsettings.Development.json` (base URL/chave, se exigir)
 NAO FAZER: nao persistir cotacao no banco; nao criar `BackgroundService`/polling; nao expor API key da Brapi no frontend — e exatamente por isso que o proxy vive no backend.
 RETORNO ESPERADO: contrato do endpoint (rota, query params, shape — serie de pontos data/preco) documentado; erro de API externa tratado com status HTTP apropriado (ex: 502/504) e mensagem, nunca stack trace cru.
 
