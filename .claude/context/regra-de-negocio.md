@@ -286,6 +286,21 @@ essencial — ver o total investido no patrimonio.
 integracao com API de cotacao (ex: Brapi), aba de carteira com rentabilidade.
 Entra como modulo isolado, sem mexer no que ja funciona na v1.
 
+**A integracao Open Finance (Pierre) tambem fica para a v2 — decisao consciente,
+nao esquecimento.**
+
+Na v1, o app opera SOMENTE com contas e lancamentos manuais. Os itens 1, 4, 5,
+7 e 11 (fonte Open Finance, exclusao de lancamento OF, conciliacao com conta OF,
+de-para de categoria Pierre, sincronizacao) descrevem a REGRA de como o sistema
+deve se comportar quando a integracao existir, mas nao sao construidos na v1 —
+sem Pierre conectado, nao ha o que sincronizar nem categoria de origem externa
+para vincular.
+
+Consequencia direta na v1: toda CONTA tem `origem = MANUAL`, todo LANCAMENTO
+tem `manual = true`. A tela de de-para de categoria (item 7) so entra em pauta
+quando a integracao Pierre for implementada, junto com sync, conciliacao
+automatica (item 5) e exclusao soft-delete de lancamento OF (item 4).
+
 ---
 
 ## Pendencias a definir
