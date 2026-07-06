@@ -152,7 +152,7 @@ RETORNO ESPERADO: componente de formulario chamando o hook da TASK-008 para POST
 
 ## TASK-011 — Entidades Ativo e MovimentacaoAtivo + migration
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-002
