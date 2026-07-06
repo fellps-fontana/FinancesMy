@@ -12,6 +12,10 @@ public class MyFinancesDbContext : DbContext
 
     public DbSet<Conta> Contas { get; set; }
 
+    public DbSet<Ativo> Ativos { get; set; }
+
+    public DbSet<MovimentacaoAtivo> MovimentacoesAtivo { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -27,5 +31,11 @@ public class MyFinancesDbContext : DbContext
             .HasConversion(
                 v => v.HasValue ? v.Value.ToStorageValue() : null,
                 v => v == null ? null : TipoContaExtensions.FromStorageValue(v));
+
+        modelBuilder.Entity<MovimentacaoAtivo>()
+            .Property(m => m.Tipo)
+            .HasConversion(
+                v => v.ToStorageValue(),
+                v => TipoMovimentacaoAtivoExtensions.FromStorageValue(v));
     }
 }
