@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -9,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MyFinances.Data;
 using MyFinances.Dtos.Conta;
+using MyFinances.DTOs;
 using MyFinances.Models;
 using Xunit;
 
@@ -39,6 +42,13 @@ public class ContasControllerWebApplicationFactory : WebApplicationFactory<Progr
 
                 services.AddDbContext<MyFinancesDbContext>(options =>
                     options.UseInMemoryDatabase("ContasControllerTestDb"));
+
+                // AppDbContext (modulo de usuario) tambem precisa virar InMemory
+                // aqui, senao a remocao ampla acima (prefixo Microsoft.EntityFrameworkCore)
+                // o deixa sem provider registrado - e o login usado para autenticar
+                // os testes deste controller (ver InitializeAsync) depende dele.
+                services.AddDbContext<AppDbContext>(options =>
+                    options.UseInMemoryDatabase("ContasControllerTestDb_AppDb"));
             });
     }
 }
@@ -73,6 +83,39 @@ public class ContasControllerTestsFixture : IAsyncLifetime
         {
             throw new InvalidOperationException($"Failed to initialize test database: {ex.Message}", ex);
         }
+
+        await AutenticarClientAsync();
+    }
+
+    // Endpoints de conta agora exigem usuario autenticado (FallbackPolicy do
+    // modulo de usuario). Registra um usuario de teste, faz login, e anexa o
+    // token Bearer no client compartilhado - sem isso todo teste receberia 401.
+    private async Task AutenticarClientAsync()
+    {
+        var registerRequest = new RegistrarUsuarioRequest
+        {
+            Username = $"contas_test_{Guid.NewGuid():N}",
+            Email = $"contas_test_{Guid.NewGuid():N}@example.com",
+            Senha = "SenhaForteDeTeste123!"
+        };
+
+        var registerResponse = await Client.PostAsJsonAsync("/api/auth/registrar", registerRequest);
+        registerResponse.EnsureSuccessStatusCode();
+
+        var loginRequest = new LoginRequest
+        {
+            UsernameOrEmail = registerRequest.Username,
+            Senha = registerRequest.Senha
+        };
+
+        var loginResponse = await Client.PostAsJsonAsync("/api/auth/login", loginRequest);
+        loginResponse.EnsureSuccessStatusCode();
+
+        var loginBody = await loginResponse.Content.ReadAsStringAsync();
+        var loginData = JsonSerializer.Deserialize<LoginResponse>(loginBody, JsonOptions);
+
+        Client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", loginData!.Token);
     }
 
     public async Task DisposeAsync()

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Write(src/**)",
+      "Edit(src/**)",
+      "Write(.claude/tasks.md)",
+      "Edit(.claude/tasks.md)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git checkout*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(dotnet build*)",
+      "Bash(dotnet test*)",
+      "Bash(dotnet run*)",
+      "Bash(npm run*)",
+      "Bash(npm install*)",
+      "Bash(npx*)"
+    ],
+    "deny": [
+      "Bash(git merge*)",
+      "Bash(git rebase*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean*)",
+      "Bash(rm -rf*)",
+      "Write(.env*)",
+      "Edit(.env*)",
+      "Write(*.secret*)",
+      "Write(appsettings.Production*)"
+    ],
+    "ask": [
+      "Bash(git push*)",
+      "Bash(git merge*)"
+    ],
+    "defaultMode": "acceptEdits"
+  }
+}
