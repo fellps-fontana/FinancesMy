@@ -138,7 +138,7 @@ RETORNO ESPERADO: componente de apresentacao consumindo o hook da TASK-008, sem 
 
 ## TASK-010 — UI: criar/editar/desativar conta de investimento
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style de primeira)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-008
