@@ -180,7 +180,7 @@ RETORNO ESPERADO: repository testavel, metodos nomeados por intencao, sem if sol
 
 ## TASK-013 — AtivoService: compra e venda (regra critica)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-012
