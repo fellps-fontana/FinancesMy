@@ -12,6 +12,8 @@ public class MyFinancesDbContext : DbContext
 
     public DbSet<Conta> Contas { get; set; }
 
+    public DbSet<Categoria> Categorias { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -27,5 +29,17 @@ public class MyFinancesDbContext : DbContext
             .HasConversion(
                 v => v.HasValue ? v.Value.ToStorageValue() : null,
                 v => v == null ? null : TipoContaExtensions.FromStorageValue(v));
+
+        modelBuilder.Entity<Categoria>()
+            .Property(c => c.Tipo)
+            .HasConversion(
+                v => v.ToStorageValue(),
+                v => TipoCategoriaExtensions.FromStorageValue(v));
+
+        modelBuilder.Entity<Categoria>()
+            .HasOne(c => c.Parent)
+            .WithMany(c => c.Subcategorias)
+            .HasForeignKey(c => c.ParentId)
+            .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
     }
 }
