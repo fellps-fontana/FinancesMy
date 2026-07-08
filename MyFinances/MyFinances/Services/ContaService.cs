@@ -44,46 +44,14 @@ public class ContaService : IContaService
 
     public async Task<decimal> CalcularTotalInvestido()
     {
-        var contasInvestimento = await ListarContasInvestimento();
-        var saldosCalculados = await ObterSaldosContasInvestimento();
-        decimal total = 0;
-
-        foreach (var conta in contasInvestimento)
-        {
-            decimal saldo = ObterSaldoContaInvestimento(conta, saldosCalculados);
-            total += saldo;
-        }
-
-        return total;
+        var saldos = await ObterSaldosContasInvestimento();
+        return saldos.Values.Sum();
     }
 
     public async Task<Dictionary<Guid, decimal>> ObterSaldosContasInvestimento()
     {
-        var contasInvestimento = await ListarContasInvestimento();
-        var contaIds = contasInvestimento.Select(c => c.Id).ToList();
-
-        if (!contaIds.Any())
-        {
-            return new Dictionary<Guid, decimal>();
-        }
-
-        var saldosCalculados = await _ativoRepository.SomarValorAtivosPorConta(contaIds);
-        var modsCarteira = await VerificarContasEmModoCarteira(contaIds);
-        var resultado = new Dictionary<Guid, decimal>();
-
-        foreach (var conta in contasInvestimento)
-        {
-            if (modsCarteira[conta.Id])
-            {
-                resultado[conta.Id] = saldosCalculados.ContainsKey(conta.Id) ? saldosCalculados[conta.Id] : 0m;
-            }
-            else
-            {
-                resultado[conta.Id] = conta.SaldoManual ?? 0m;
-            }
-        }
-
-        return resultado;
+        var saldosComModo = await ObterSaldosComModoContasInvestimento();
+        return saldosComModo.ToDictionary(kv => kv.Key, kv => kv.Value.saldo);
     }
 
     public async Task<Dictionary<Guid, bool>> VerificarContasEmModoCarteira(IEnumerable<Guid> contaIds)
@@ -149,20 +117,5 @@ public class ContaService : IContaService
         }
 
         return conta;
-    }
-
-    private decimal ObterSaldoContaInvestimento(Conta conta, Dictionary<Guid, decimal> saldosCalculados)
-    {
-        if (saldosCalculados.ContainsKey(conta.Id))
-        {
-            return saldosCalculados[conta.Id];
-        }
-
-        if (conta.SaldoManual == null)
-        {
-            _logger.LogWarning("Conta de investimento {ContaId} ({ContaNome}) nao esta em modo carteira e possui SaldoManual nulo. Tratando como zero.", conta.Id, conta.Nome);
-        }
-
-        return conta.SaldoManual ?? 0m;
     }
 }
