@@ -50,25 +50,32 @@ Table lancamento {
 // dois lancamentos (saida na origem, entrada no destino) compartilham o mesmo
 // transferencia_id. Nao conta como gasto nem receita. Pagamento de fatura de
 // cartao e uma transferencia conta corrente -> conta CARTAO (item 12).
+// fatura_id: 1:N (nao 1:1) porque o pagamento de fatura pode ser PARCIAL
+// (varias transferencias quitando a mesma fatura aos poucos) e ANTECIPADO
+// (transferencia antes do ciclo fechar). Por isso a FK fica na transferencia
+// e nao na fatura.
 Table transferencia {
   id uuid [pk]
   data date [not null]
   valor decimal [not null]
   conta_origem_id uuid [ref: > conta.id, not null]
   conta_destino_id uuid [ref: > conta.id, not null]
+  fatura_id uuid [ref: > fatura.id, note: 'null se nao for pagamento de fatura de cartao (item 12)']
   descricao varchar
 }
 
 // Ciclo de fatura do cartao (item 12). Agrupa as compras (lancamento.fatura_id)
-// e vincula o pagamento (transferencia). Saldo do cartao e calculado, nao
-// armazenado: compras - pagamentos - estornos.
+// e os pagamentos (transferencia.fatura_id, 1:N — pagamento parcial/antecipado
+// gera varias transferencias para a mesma fatura). Saldo do cartao e
+// calculado, nao armazenado: compras - pagamentos - estornos. Saldo pendente
+// da fatura = soma das compras da fatura - soma das transferencias
+// (pagamentos) vinculadas a ela.
 Table fatura {
   id uuid [pk]
   conta_id uuid [ref: > conta.id, not null, note: 'conta do tipo CARTAO']
   data_fechamento date [not null]
   data_vencimento date [not null]
-  status varchar [not null, note: 'ABERTA | FECHADA | PAGA']
-  transferencia_id uuid [ref: - transferencia.id, note: 'pagamento vinculado; null enquanto nao paga']
+  status varchar [not null, note: 'ABERTA | FECHADA | PAGA — PAGA so quando o saldo pendente chega a zero']
 }
 
 Table conta_fixa {

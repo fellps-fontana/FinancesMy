@@ -240,8 +240,14 @@ Serve para agrupar as compras e para casar com o pagamento.
 **Saldo do cartao** = compras - pagamentos - estornos. CALCULADO, nao armazenado
 (mesma logica do item 10).
 
-**Pagamento x fatura:** o pagamento fecha o saldo da fatura como um todo, NUNCA
-compra a compra (igual Organizze).
+**Pagamento x fatura:** o pagamento pode ser PARCIAL (nao precisa quitar o
+saldo pendente de uma vez — podem existir varios pagamentos ate a fatura ser
+quitada) e ANTECIPADO (pode ocorrer antes do fechamento do ciclo ou do
+vencimento, com a fatura ainda ABERTA). Cada pagamento continua fechando saldo
+da fatura como um todo, NUNCA compra a compra especifica (igual Organizze) —
+so que agora em incrementos. A fatura so recebe status PAGA quando o saldo
+pendente (total das compras da fatura menos a soma dos pagamentos ja feitos)
+chega a zero.
 
 **Projecao:** o cartao entra na projecao do mes como UMA linha = total da fatura
 atual, com status pago / nao pago, tratado como conta a pagar (ver item 9). As
