@@ -8,7 +8,7 @@ Table conta {
   origem varchar [not null, note: 'OPEN_FINANCE | MANUAL']
   tipo varchar [note: 'BANCO | CARTAO | INVESTIMENTO']
   pierre_account_id varchar [note: 'null se manual']
-  saldo_manual decimal [note: 'null se Open Finance ou CARTAO (saldo e calculado)']
+  saldo_manual decimal [note: 'null se Open Finance, CARTAO, ou INVESTIMENTO com ativos (nesses casos saldo e calculado)']
   dia_fechamento int [note: 'so CARTAO; dia de fechamento da fatura']
   dia_vencimento int [note: 'so CARTAO; dia de vencimento da fatura']
   ativa boolean [not null, default: true]
@@ -89,6 +89,34 @@ Table parcela {
   valor decimal [not null]
   vencimento date [not null]
   paga boolean [not null, default: false]
+}
+
+// Ativo (item 8). Existe dentro de uma conta tipo INVESTIMENTO. Quando uma
+// conta tem ao menos um ativo, o saldo da conta deixa de vir de saldo_manual
+// e passa a ser calculado (item 10): soma(quantidade x preco_atual) dos
+// ativos com ativa=true.
+Table ativo {
+  id uuid [pk]
+  conta_id uuid [ref: > conta.id, not null, note: 'conta deve ser tipo INVESTIMENTO; validado no Service, nao via FK/CHECK']
+  ticker varchar [not null]
+  nome varchar [note: 'nome de exibicao do ativo, opcional']
+  quantidade decimal [not null, note: 'posicao atual (pos-venda); atualizada em toda compra/venda']
+  preco_medio decimal [not null, note: 'custo medio ponderado sobre a posicao atual; recalcula so em COMPRA (item 8); venda NUNCA altera']
+  preco_atual decimal [not null, note: 'informado manualmente pelo usuario a cada compra; usado no calculo de patrimonio e no grafico de diferenca (item 8)']
+  ativa boolean [not null, default: true, note: 'false quando quantidade chega a zero por venda total (item 8); soft-delete, mesmo padrao de conta.ativa/categoria.arquivada/lancamento.oculto']
+  criado_em timestamp [not null, default: `now()`]
+}
+
+// Historico de compra/venda por ativo (item 8). Necessario para recalcular
+// preco_medio corretamente apos venda parcial, e serve de extrato auditavel.
+Table movimentacao_ativo {
+  id uuid [pk]
+  ativo_id uuid [ref: > ativo.id, not null]
+  tipo varchar [not null, note: 'COMPRA | VENDA']
+  quantidade decimal [not null]
+  preco_unitario decimal [not null, note: 'preco de compra ou de venda informado naquela operacao']
+  data date [not null]
+  observacao varchar
 }
 
 Table limite_gasto {

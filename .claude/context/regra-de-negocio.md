@@ -134,10 +134,37 @@ a uma categoria do usuario (DE_PARA_CATEGORIA).
 ## 8. Cofrinho, investimentos e acoes
 
 Nao classificar por nome de transacao. Cada um e uma CONTA MANUAL separada:
-- Cofrinho Mercado Pago -> conta manual propria, saldo atualizado pelo usuario.
+- Cofrinho Mercado Pago -> conta manual propria.
 - Investimentos XP -> conta manual propria.
-- Carteira de acoes -> conta manual; cotacao atual via API externa (ex: Brapi),
-  fora do escopo do Pierre.
+- Carteira de acoes -> conta manual propria.
+
+Cada conta de investimento opera em um dos dois modos abaixo. Sao mutuamente
+exclusivos ao longo do tempo (ver regra de transicao):
+
+**Modo simples:** saldo e o campo `saldo_manual`, editado direto pelo usuario.
+Sem ativo, sem ticker. Usado quando o usuario nao quer detalhar posicao (ex:
+cofrinho, valor generico).
+
+**Modo carteira de ativos (v1):** em vez de editar um saldo, o usuario registra
+COMPRA e VENDA de ativos individuais (ticker, quantidade, preco unitario,
+data). O saldo da conta deixa de ser `saldo_manual` e passa a ser CALCULADO:
+soma de `quantidade x preco_atual` de cada ativo ativo na carteira.
+
+- **Transicao:** uma vez que a conta recebe seu primeiro ativo, ela fica
+  PERMANENTEMENTE no modo carteira (nunca volta a `saldo_manual`, mesmo que
+  toda a posicao seja vendida e o saldo va a zero).
+- **Preco medio:** recalculado a cada compra do mesmo ticker, ponderado pela
+  quantidade e preco medio ja existentes na posicao. O preco da nova compra
+  passa a valer pra toda a posicao, nao so pra leva comprada.
+- **Venda:** reduz a quantidade; preco medio NUNCA muda numa venda. Venda nao
+  gera lancamento nem transferencia em nenhuma outra conta — fora de escopo v1
+  ligar a venda do ativo a uma entrada de caixa em outra conta.
+- **Cotacao atual:** via API externa (ex: Brapi), fora do escopo do Pierre;
+  consultada sob demanda (chamada direta), sem persistir nem sincronizar em
+  background.
+- **Grafico de rentabilidade:** cada ativo mostra visualmente a DIFERENCA entre
+  o preco medio pago e o preco atual (ganho/perda da posicao) — nao e so um
+  historico de cotacao, e a comparacao contra o preco medio do usuario.
 
 ---
 
@@ -238,36 +265,38 @@ Conta/Lancamento nos modulos cartao, lancamento e investimentos, como scaffold
 de schema. Decisao NAO-retroativa: esse schema fica como esta, nao ha
 migration de remocao. O que muda e o que entra na v1 daqui pra frente:
 
-- **v1:** so contas MANUAL. Sem sync (item 11), sem exclusao/conciliacao
+- **v1:** contas MANUAL, incluindo investimento em modo carteira de ativos
+  (ver item 8 — compra/venda, preco medio, saldo calculado, cotacao Brapi sob
+  demanda, grafico de diferenca). Sem sync (item 11), sem exclusao/conciliacao
   Open Finance (itens 4 e 5, branch OF), sem endpoint de integracao com
   Pierre. Pendencias de rate limit/paginacao do Pierre (ver "Pendencias a
   definir") saem da v1 tambem — so voltam a importar quando a integracao
   entrar.
-- **v2:** integracao Pierre completa (sync polling, dedup por
-  `pierre_txn_id`, conciliacao automatica com transacao OF real, exclusao
-  soft-delete de lancamento OF) entra como modulo isolado, sem mexer no que
-  ja funciona na v1. Entra junto com o modulo de investimento detalhado
-  abaixo, ou em fase propria — a ordem entre os dois fica a criterio do
-  usuario quando a v2 comecar.
+- **v2:** so a integracao real com Pierre (Open Finance) — sync polling, dedup
+  por `pierre_txn_id`, conciliacao automatica com transacao OF real, exclusao
+  soft-delete de lancamento OF. Modulo isolado, sem mexer no que ja funciona
+  na v1.
 
-**Modulo de investimento detalhado tambem fica para a v2 — decisao consciente,
-nao esquecimento.**
+**Modulo de investimento detalhado ENTRA NA v1 — decisao revista em
+2026-07-07, substitui a decisao anterior de 2026-07-05 abaixo.**
 
-Racional: o investimento detalhado (acoes individuais, cotacao ao vivo via API
-externa, rentabilidade, preco medio, dividendos) e de natureza diferente dos
-demais modulos. Os outros giram em torno de `lancamento` e fluxo de caixa
-(entrou/saiu, pago/pendente). O investimento gira em torno de POSICAO (X ativos
-a um preco medio cujo valor flutua sem nenhum lancamento ocorrer) e depende de
-fonte externa de cotacao. Misturar isso na v1 contaminaria o schema de fluxo de
-caixa.
+Racional da reversao: saldo agregado (`saldo_manual`) sozinho nao basta nem na
+v1 — o usuario quer comprar/vender ativo por ativo, com preco medio
+recalculado, cotacao atual e grafico de diferenca (preco medio x preco atual)
+desde a primeira versao. Regra completa em item 8, modo "carteira de ativos".
 
-**Na v1**, investimento e representado como CONTA MANUAL (ver item 8): cofrinho,
-XP e carteira entram com saldo atualizado pelo usuario. Isso ja cobre o
-essencial — ver o total investido no patrimonio.
+O unico motivo pelo qual isso ainda ficava fora era acoplamento com o
+fluxo de caixa — e nao ha: `ativo`/`movimentacao_ativo` nao tocam
+`lancamento`/`transferencia`, entao o modulo continua isolado do restante do
+dominio mesmo entrando na v1. O que segue fora da v1 e so o que depende da API
+real do Pierre (ver lista acima) — nao tem relacao com investimento.
 
-**Na v2**, entra o modulo dedicado: tabela de ativos (ticker, qtd, preco medio),
-integracao com API de cotacao (ex: Brapi), aba de carteira com rentabilidade.
-Entra como modulo isolado, sem mexer no que ja funciona na v1.
+Historico (decisao original de 2026-07-05, mantida como registro): a v1 devia
+ter so `saldo_manual` porque investimento gira em torno de POSICAO (nao
+LANCAMENTO) e depende de fonte externa de cotacao — julgado, na epoca, um
+risco de contaminar o schema de fluxo de caixa. Esse racional de isolamento de
+schema segue valido (por isso as tabelas nao se cruzam), mas deixou de ser
+motivo pra adiar pra v2.
 
 ---
 
