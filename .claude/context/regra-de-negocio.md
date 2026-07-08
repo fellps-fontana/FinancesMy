@@ -123,11 +123,34 @@ As categorias sao DO USUARIO, nao do Pierre.
 - Subcategoria pode ser arquivada (`arquivada = true`), nao deletada.
 - A `category` que vem do Pierre e apenas sugestao.
 
+**Decisoes confirmadas pelo usuario em 2026-07-08 (modulo Categorias, v1):**
+
+- **Hierarquia tem no maximo 1 nivel.** Categoria -> subcategoria, e para.
+  Subcategoria nao pode ter filha propria (`parent_id` de uma categoria cujo
+  `parent_id` ja e preenchido e invalido).
+- **Subcategoria herda o `tipo` do pai obrigatoriamente.** Nao e permitido
+  criar/editar subcategoria com `tipo` diferente da categoria pai (ex:
+  categoria pai DESPESA nao pode ter filha RECEITA).
+- **Arquivar categoria-pai CASCATEIA para as subcategorias.** Arquivar uma
+  categoria com filhas ativas arquiva as filhas junto, automaticamente.
+- **Categoria arquivada nao pode ser usada em lancamento NOVO.** O historico
+  de lancamentos antigos que ja apontam pra ela permanece intacto (arquivar
+  nunca e hard-delete). Regra vale para quando o modulo de lancamento for
+  implementado/estendido — o CRUD de lancamento deve rejeitar `categoria_id`
+  de categoria arquivada na criacao.
+- **Nome de categoria duplicado e permitido.** Sem constraint de unicidade —
+  duas categorias com o mesmo nome (ex: "Outros" em DESPESA e em RECEITA)
+  podem coexistir.
+
 **De-para:** existe uma tela/aba para vincular a string de categoria do Pierre
 a uma categoria do usuario (DE_PARA_CATEGORIA).
 - Se existe vinculo cadastrado -> aplica a categoria do usuario no import.
 - Se NAO existe vinculo -> lancamento fica com `categoria_id = null`
   (sem categoria) e aparece na aba de vinculo pendente.
+- **Vinculo e 1:1 (confirmado 2026-07-08):** `categoria_pierre` tem
+  constraint UNIQUE — uma mesma string do Pierre so pode apontar para uma
+  categoria do usuario por vez. Criar um segundo vinculo com a mesma string
+  deve ser rejeitado (editar o vinculo existente, nao duplicar).
 
 ---
 
