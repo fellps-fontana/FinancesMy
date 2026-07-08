@@ -1,0 +1,44 @@
+/*
+  Tokens de identidade visual — Financeiro Pessoal.
+  Fonte: .claude/context/identidade-visual.md
+  Nao usar hex cru fora daqui; todo componente consome via var(--token).
+*/
+
+:root {
+  /* Base (dark) */
+  --bg-base: #0e0d13;
+  --bg-surface: #17151f;
+  --bg-surface-alt: #221f2d;
+  --border-subtle: #2a2636;
+
+  /* Texto */
+  --text-primary: #f2f0f7;
+  --text-body: #e8e6ef;
+  --text-muted: #8b8794;
+  --text-faint: #6f6b7a;
+
+  /* Acento e semantica */
+  --accent: #7f77dd;
+  --accent-deep: #26215c;
+  --accent-soft: #afa9ec;
+  --positivo: #5dcaa5;
+  --negativo: #e0807a;
+  --alerta: #ba7517;
+
+  /* Tipografia */
+  --font-family: 'Inter', sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+
+  --font-size-valor: 28px;
+  --font-size-titulo: 19px;
+  --font-size-corpo: 14px;
+  --font-size-label: 13px;
+  --font-size-meta: 12px;
+
+  /* Forma e espaco */
+  --radius-card: 16px;
+  --radius-sm: 8px;
+  --radius-badge: 5px;
+  --border-width-subtle: 0.5px;
+}

@@ -1,0 +1,103 @@
+.secao {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 340px;
+}
+
+.titulo {
+  color: var(--text-primary);
+  font-size: var(--font-size-titulo);
+  font-weight: var(--font-weight-medium);
+  margin: 0;
+}
+
+.estado {
+  color: var(--text-faint);
+  font-size: var(--font-size-corpo);
+}
+
+.estadoErro {
+  color: var(--negativo);
+  font-size: var(--font-size-corpo);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+}
+
+.cabecalho {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.periodo {
+  color: var(--text-muted);
+  font-size: var(--font-size-label);
+}
+
+.valorTotal {
+  color: var(--text-primary);
+  font-size: var(--font-size-titulo);
+  font-weight: var(--font-weight-medium);
+  margin-top: 4px;
+}
+
+.vencimento {
+  color: var(--text-faint);
+  font-size: var(--font-size-meta);
+}
+
+.detalhes {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.detalhe {
+  color: var(--text-muted);
+  font-size: var(--font-size-meta);
+}
+
+.valorPositivo {
+  color: var(--positivo);
+  font-weight: var(--font-weight-regular);
+}
+
+.valorAlerta {
+  color: var(--alerta);
+  font-weight: var(--font-weight-regular);
+}
+
+.hintCompras {
+  color: var(--text-faint);
+  font-size: var(--font-size-meta);
+  margin: 0;
+}
+
+.botaoPagar {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--bg-base);
+  cursor: pointer;
+  font-family: var(--font-family);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
+  margin-top: 10px;
+  padding: 8px 14px;
+  width: fit-content;
+}

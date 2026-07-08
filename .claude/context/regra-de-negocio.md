@@ -67,16 +67,6 @@ O usuario pode ocultar um lancamento vindo do Open Finance.
 o `pierre_txn_id` e NUNCA re-importar um lancamento ja marcado como oculto.
 Nao deletar fisicamente — o sync traria de volta.
 
-**Exclusao de lancamento MANUAL:** regra distinta da acima, porque nao ha
-fonte externa que possa reimportar a linha.
-
-**Regra:** exclusao e HARD DELETE (remove a linha fisicamente). Bloqueada se
-o lancamento tiver `TransferenciaId`, `FaturaId` ou `ConciliadoCom`
-preenchidos — nesses casos ele esta vinculado a outra estrutura
-(transferencia, fatura de cartao ou conciliacao) e a remocao direta quebraria
-a integridade do vinculo. O usuario precisa desfazer o vinculo primeiro (ex.:
-cancelar a transferencia) antes de excluir.
-
 ---
 
 ## 5. Conciliacao (conta a pagar -> pagamento real)
@@ -228,12 +218,40 @@ cai no ciclo de uma fatura:
   compra retroativa alem do ciclo ainda aberto mais antigo. Usuario recebe
   erro claro e ajusta a data.
 
-**Pagamento x fatura:** o pagamento fecha o saldo da fatura como um todo, NUNCA
-compra a compra (igual Organizze).
+**Pagamento x fatura (revisado):** o pagamento pode ser ANTECIPADO (fatura
+ainda ABERTA) e PARCIAL (varios pagamentos ate quitar). Uma fatura passa a
+ter VARIAS Transferencias associadas (1:N, nao mais 1:1) — `transferencia.fatura_id`
+em vez de `fatura.transferencia_id`.
 
-**Projecao:** o cartao entra na projecao do mes como UMA linha = total da fatura
-atual, com status pago / nao pago, tratado como conta a pagar (ver item 9). As
-compras individuais nao entram na projecao.
+- **Valor do pagamento:** informado pelo client (nao mais calculado
+  automaticamente como o total). Validado contra o saldo pendente da fatura
+  (`saldo_pendente = total_lancamentos_da_fatura - soma_dos_pagamentos_ja_feitos`).
+  Pagamento com valor > saldo_pendente e REJEITADO (overpayment). Pagamento
+  com valor <= 0 e REJEITADO.
+- **Faturas pagaveis:** ABERTA ou FECHADA, desde que `saldo_pendente > 0`.
+  Fatura com `saldo_pendente <= 0` (ja quitada) REJEITA novo pagamento,
+  independente do Status rotulado.
+- **Transicao de Status apos pagamento:**
+  - Se a fatura estava FECHADA e o pagamento zera o saldo pendente -> Status
+    vira PAGA.
+  - Se a fatura estava ABERTA e o pagamento zera o saldo pendente -> Status
+    CONTINUA ABERTA (nao pula pra PAGA). Continua aceitando compra normalmente
+    ate o ciclo fechar.
+  - Quando o ciclo fecha (transicao lazy ABERTA->FECHADA, ver acima): se a
+    fatura ja estiver com saldo_pendente <= 0 nesse momento (quitada
+    antecipadamente), o Status vai direto pra PAGA em vez de FECHADA.
+
+**Projecao:** o cartao entra na projecao do mes como UMA linha = a fatura cujo
+`data_vencimento` cai no mes pedido, com status pago / nao pago, tratado como
+conta a pagar (ver item 9). Com pagamento parcial (ver acima), "nao pago" usa
+o `saldo_pendente` restante (nao o total original) e "pago" so quando
+`saldo_pendente <= 0`. As compras individuais nao entram na projecao.
+
+**Escopo entre modulos:** o endpoint completo de projecao (saldo_projetado =
+recebido - pago - a_pagar) depende de dados que o modulo de cartao nao possui
+(lancamento avulso, conta fixa — de outro modulo). O modulo de cartao expoe
+so a sua fatia (GET /api/cartoes/{contaId}/projecao); o modulo responsavel
+pelo lancamento geral consome isso pra montar o saldo_projetado completo.
 
 **Origem das compras:** manual por enquanto; futuramente via import da fatura
 Nubank (ver Pendencias). O de-para de categoria (item 7) roda sobre a
@@ -268,6 +286,21 @@ essencial — ver o total investido no patrimonio.
 integracao com API de cotacao (ex: Brapi), aba de carteira com rentabilidade.
 Entra como modulo isolado, sem mexer no que ja funciona na v1.
 
+**A integracao Open Finance (Pierre) tambem fica para a v2 — decisao consciente,
+nao esquecimento.**
+
+Na v1, o app opera SOMENTE com contas e lancamentos manuais. Os itens 1, 4, 5,
+7 e 11 (fonte Open Finance, exclusao de lancamento OF, conciliacao com conta OF,
+de-para de categoria Pierre, sincronizacao) descrevem a REGRA de como o sistema
+deve se comportar quando a integracao existir, mas nao sao construidos na v1 —
+sem Pierre conectado, nao ha o que sincronizar nem categoria de origem externa
+para vincular.
+
+Consequencia direta na v1: toda CONTA tem `origem = MANUAL`, todo LANCAMENTO
+tem `manual = true`. A tela de de-para de categoria (item 7) so entra em pauta
+quando a integracao Pierre for implementada, junto com sync, conciliacao
+automatica (item 5) e exclusao soft-delete de lancamento OF (item 4).
+
 ---
 
 ## Pendencias a definir
@@ -282,11 +315,3 @@ Entra como modulo isolado, sem mexer no que ja funciona na v1.
   NAO e compra — ignorar ou tratar como estorno.
 - Ciclo da fatura: como capturar `data_fechamento` e `data_vencimento` do cartao
   (fixo por cartao ou lido do import).
-- Transferencia envolvendo conta Open Finance (ex.: pagamento de fatura de
-  cartao saindo de conta corrente sincronizada via Pierre — item 3 e item 12):
-  decisao do usuario (2026-07-04) foi adiar. Fica como segundo objetivo, fora
-  de escopo por enquanto — nao bloqueia a v1. Ainda SEM DEFINICAO de como vai
-  funcionar (se cria uma perna sintetica de Lancamento dentro da conta OF, ou
-  se so registra a perna do lado do cartao e deixa o lado do banco ser
-  refletido organicamente pelo sync). Nao assumir nenhuma das duas ate o
-  usuario decidir.

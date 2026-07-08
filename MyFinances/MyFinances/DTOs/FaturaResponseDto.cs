@@ -7,5 +7,7 @@ public class FaturaResponseDto
     public DateOnly DataFechamento { get; set; }
     public DateOnly DataVencimento { get; set; }
     public string Status { get; set; } = string.Empty;
-    public Guid? TransferenciaId { get; set; }
+    public decimal ValorTotal { get; set; }
+    public decimal ValorPago { get; set; }
+    public decimal ValorPendente { get; set; }
 }

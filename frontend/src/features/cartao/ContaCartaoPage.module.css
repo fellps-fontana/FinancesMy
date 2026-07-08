@@ -1,0 +1,45 @@
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 100vh;
+  padding: 56px 40px;
+}
+
+.titulo {
+  color: var(--text-primary);
+  font-size: var(--font-size-titulo);
+  font-weight: var(--font-weight-medium);
+  margin: 0;
+}
+
+.conteudo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 340px;
+}
+
+.linkRelatorio {
+  color: var(--accent-soft);
+  font-size: var(--font-size-label);
+  text-decoration: none;
+  width: fit-content;
+}
+
+.linkRelatorio:hover {
+  color: var(--accent);
+}
+
+.botaoLancarCompra {
+  align-self: flex-start;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--bg-base);
+  cursor: pointer;
+  font-family: var(--font-family);
+  font-size: var(--font-size-corpo);
+  font-weight: var(--font-weight-medium);
+  padding: 10px 16px;
+}

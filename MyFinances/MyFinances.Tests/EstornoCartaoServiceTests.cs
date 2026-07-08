@@ -258,7 +258,6 @@ public class EstornoCartaoServiceTests
             DataFechamento = new DateOnly(2026, 3, 10),
             DataVencimento = new DateOnly(2026, 3, 20),
             Status = FaturaStatusConstants.Paga,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaAntiga);
         context.SaveChanges();
@@ -297,7 +296,6 @@ public class EstornoCartaoServiceTests
             DataFechamento = new DateOnly(2026, 3, 10),
             DataVencimento = new DateOnly(2026, 3, 20),
             Status = FaturaStatusConstants.Fechada,
-            TransferenciaId = null
         };
         context.Faturas.Add(faturaFechada);
         context.SaveChanges();

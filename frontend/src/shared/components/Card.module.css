@@ -1,0 +1,13 @@
+.card {
+  border-radius: var(--radius-card);
+  padding: 20px;
+}
+
+.surface {
+  background: var(--bg-surface);
+  border: var(--border-width-subtle) solid var(--border-subtle);
+}
+
+.accent {
+  background: var(--accent-deep);
+}

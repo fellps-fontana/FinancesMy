@@ -128,6 +128,11 @@ public class AppDbContext : DbContext
                 .HasForeignKey(e => e.ContaDestinoId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            entity.HasOne(e => e.Fatura)
+                .WithMany(f => f.Transferencias)
+                .HasForeignKey(e => e.FaturaId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             entity.HasMany(e => e.Lancamentos)
                 .WithOne(l => l.Transferencia)
                 .HasForeignKey(l => l.TransferenciaId)
@@ -142,9 +147,9 @@ public class AppDbContext : DbContext
             entity.Property(e => e.DataVencimento).IsRequired();
             entity.Property(e => e.Status).IsRequired().HasMaxLength(50); // ABERTA | FECHADA | PAGA
 
-            entity.HasOne(e => e.Transferencia)
+            entity.HasMany(e => e.Transferencias)
                 .WithOne(t => t.Fatura)
-                .HasForeignKey<Fatura>(e => e.TransferenciaId)
+                .HasForeignKey(t => t.FaturaId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasMany(e => e.Lancamentos)

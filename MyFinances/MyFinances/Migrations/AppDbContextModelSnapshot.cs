@@ -117,17 +117,11 @@ namespace MyFinances.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<Guid?>("TransferenciaId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ContaId")
                         .IsUnique()
                         .HasFilter("\"Status\" = 'ABERTA'");
-
-                    b.HasIndex("TransferenciaId")
-                        .IsUnique();
 
                     b.ToTable("Faturas");
                 });
@@ -229,6 +223,9 @@ namespace MyFinances.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<Guid?>("FaturaId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal>("Valor")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -238,6 +235,8 @@ namespace MyFinances.Migrations
                     b.HasIndex("ContaDestinoId");
 
                     b.HasIndex("ContaOrigemId");
+
+                    b.HasIndex("FaturaId");
 
                     b.ToTable("Transferencias");
                 });
@@ -260,14 +259,7 @@ namespace MyFinances.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("MyFinances.Models.Transferencia", "Transferencia")
-                        .WithOne("Fatura")
-                        .HasForeignKey("MyFinances.Models.Fatura", "TransferenciaId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Conta");
-
-                    b.Navigation("Transferencia");
                 });
 
             modelBuilder.Entity("MyFinances.Models.Lancamento", b =>
@@ -323,9 +315,16 @@ namespace MyFinances.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MyFinances.Models.Fatura", "Fatura")
+                        .WithMany("Transferencias")
+                        .HasForeignKey("FaturaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("ContaDestino");
 
                     b.Navigation("ContaOrigem");
+
+                    b.Navigation("Fatura");
                 });
 
             modelBuilder.Entity("MyFinances.Models.Categoria", b =>
@@ -349,6 +348,8 @@ namespace MyFinances.Migrations
             modelBuilder.Entity("MyFinances.Models.Fatura", b =>
                 {
                     b.Navigation("Lancamentos");
+
+                    b.Navigation("Transferencias");
                 });
 
             modelBuilder.Entity("MyFinances.Models.Lancamento", b =>
@@ -358,8 +359,6 @@ namespace MyFinances.Migrations
 
             modelBuilder.Entity("MyFinances.Models.Transferencia", b =>
                 {
-                    b.Navigation("Fatura");
-
                     b.Navigation("Lancamentos");
                 });
 #pragma warning restore 612, 618

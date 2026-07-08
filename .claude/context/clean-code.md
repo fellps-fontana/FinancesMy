@@ -43,6 +43,12 @@ A fonte e a mesma — codigo escrito e codigo revisado seguem o mesmo criterio.
 
 - Falha de sync ou de API externa nao pode quebrar o app silenciosamente.
 - Logar com contexto suficiente para diagnostico.
+- Nunca decidir fluxo de erro comparando .Message de exception por string
+  (ex: .Contains("violates unique constraint")). Mensagem de driver/banco
+  muda com locale, idioma e versao - quebra silenciosamente em producao se o
+  ambiente diferir do dev. Use o tipo/codigo estruturado que a excecao
+  carrega (ex: PostgresException.SqlState, codigo HTTP, enum de erro
+  proprio da aplicacao).
 
 ## O que evitar
 

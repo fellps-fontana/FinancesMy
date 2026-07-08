@@ -7,6 +7,7 @@ public class Transferencia
     public required decimal Valor { get; set; }
     public Guid ContaOrigemId { get; set; }
     public Guid ContaDestinoId { get; set; }
+    public Guid? FaturaId { get; set; } // vinculo com fatura de cartao; null se transferencia regular
     public string? Descricao { get; set; }
 
     // Relacionamentos
