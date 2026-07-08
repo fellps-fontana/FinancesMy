@@ -56,13 +56,13 @@ public class AtivoService : IAtivoService
         return ativoExistente;
     }
 
-    public async Task<Ativo> RegistrarVenda(Guid ativoId, decimal quantidade, decimal precoUnitario, DateOnly data, string? observacao)
+    public async Task<Ativo> RegistrarVenda(Guid contaId, Guid ativoId, decimal quantidade, decimal precoUnitario, DateOnly data, string? observacao)
     {
         ValidarValorPositivo(quantidade, nameof(quantidade));
         ValidarValorPositivo(precoUnitario, nameof(precoUnitario));
 
         var ativo = await _ativoRepository.ObterPorId(ativoId);
-        if (ativo == null || !ativo.Ativa)
+        if (ativo == null || !ativo.Ativa || ativo.ContaId != contaId)
         {
             throw new AtivoNaoEncontradoException(ativoId);
         }
@@ -87,7 +87,8 @@ public class AtivoService : IAtivoService
 
     public async Task<IEnumerable<Ativo>> ListarAtivosPorConta(Guid contaId)
     {
-        await ObterContaOuFalhar(contaId);
+        var conta = await ObterContaOuFalhar(contaId);
+        ValidarContaInvestimento(contaId, conta);
         return await _ativoRepository.ListarAtivosAtivosPorConta(contaId);
     }
 

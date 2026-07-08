@@ -184,7 +184,7 @@ public class AtivoServiceTests
             .ReturnsAsync(ativoApos2Compra);
 
         // Act venda
-        var ativoAposVenda = await _service.RegistrarVenda(ativoId, 50m, 20m, new DateOnly(2026, 7, 3), null);
+        var ativoAposVenda = await _service.RegistrarVenda(contaId, ativoId, 50m, 20m, new DateOnly(2026, 7, 3), null);
 
         // Assert venda
         Assert.Equal(100m, ativoAposVenda.Quantidade);
@@ -228,12 +228,14 @@ public class AtivoServiceTests
     public async Task RegistrarVenda_NaoAlteraPrecoAtual()
     {
         // Arrange
+        var contaId = Guid.NewGuid();
         var ativoId = Guid.NewGuid();
         var precoAtualAntes = 25.50m;
 
         var ativo = new Ativo
         {
             Id = ativoId,
+            ContaId = contaId,
             Quantidade = 100m,
             PrecoMedio = 20m,
             PrecoAtual = precoAtualAntes,
@@ -245,7 +247,7 @@ public class AtivoServiceTests
             .ReturnsAsync(ativo);
 
         // Act
-        var ativoAposVenda = await _service.RegistrarVenda(ativoId, 30m, 18m, new DateOnly(2026, 7, 5), null);
+        var ativoAposVenda = await _service.RegistrarVenda(contaId, ativoId, 30m, 18m, new DateOnly(2026, 7, 5), null);
 
         // Assert
         Assert.Equal(precoAtualAntes, ativoAposVenda.PrecoAtual);
@@ -259,6 +261,7 @@ public class AtivoServiceTests
     public async Task RegistrarVenda_Parcial_ApenasReduzQuantidade()
     {
         // Arrange
+        var contaId = Guid.NewGuid();
         var ativoId = Guid.NewGuid();
         var precoMedioAntes = 22.35m;
         var precoAtualAntes = 25m;
@@ -266,6 +269,7 @@ public class AtivoServiceTests
         var ativo = new Ativo
         {
             Id = ativoId,
+            ContaId = contaId,
             Quantidade = 100m,
             PrecoMedio = precoMedioAntes,
             PrecoAtual = precoAtualAntes,
@@ -277,7 +281,7 @@ public class AtivoServiceTests
             .ReturnsAsync(ativo);
 
         // Act
-        var ativoAposVenda = await _service.RegistrarVenda(ativoId, 40m, 24m, new DateOnly(2026, 7, 6), null);
+        var ativoAposVenda = await _service.RegistrarVenda(contaId, ativoId, 40m, 24m, new DateOnly(2026, 7, 6), null);
 
         // Assert
         Assert.Equal(60m, ativoAposVenda.Quantidade);
@@ -294,11 +298,13 @@ public class AtivoServiceTests
     public async Task RegistrarVenda_Completa_SetaAtivaFalse()
     {
         // Arrange
+        var contaId = Guid.NewGuid();
         var ativoId = Guid.NewGuid();
 
         var ativo = new Ativo
         {
             Id = ativoId,
+            ContaId = contaId,
             Quantidade = 50m,
             PrecoMedio = 20m,
             PrecoAtual = 22m,
@@ -310,7 +316,7 @@ public class AtivoServiceTests
             .ReturnsAsync(ativo);
 
         // Act
-        var ativoAposVenda = await _service.RegistrarVenda(ativoId, 50m, 21m, new DateOnly(2026, 7, 7), null);
+        var ativoAposVenda = await _service.RegistrarVenda(contaId, ativoId, 50m, 21m, new DateOnly(2026, 7, 7), null);
 
         // Assert
         Assert.Equal(0m, ativoAposVenda.Quantidade);
@@ -325,12 +331,14 @@ public class AtivoServiceTests
     public async Task RegistrarVenda_QuantidadeMaiorQueDisponivel_LancaExcecaoESemAlteracao()
     {
         // Arrange
+        var contaId = Guid.NewGuid();
         var ativoId = Guid.NewGuid();
         var quantidadeDisponivel = 50m;
 
         var ativo = new Ativo
         {
             Id = ativoId,
+            ContaId = contaId,
             Quantidade = quantidadeDisponivel,
             PrecoMedio = 20m,
             PrecoAtual = 22m,
@@ -345,7 +353,7 @@ public class AtivoServiceTests
 
         // Act & Assert
         var excecao = await Assert.ThrowsAsync<QuantidadeVendaInvalidaException>(
-            () => _service.RegistrarVenda(ativoId, quantidadeVenda, 21m, new DateOnly(2026, 7, 8), null));
+            () => _service.RegistrarVenda(contaId, ativoId, quantidadeVenda, 21m, new DateOnly(2026, 7, 8), null));
 
         Assert.Equal(ativoId, excecao.AtivoId);
         Assert.Equal(quantidadeVenda, excecao.QuantidadeVenda);
@@ -407,11 +415,13 @@ public class AtivoServiceTests
     public async Task RegistrarVenda_NaoTocaIContaRepository()
     {
         // Arrange
+        var contaId = Guid.NewGuid();
         var ativoId = Guid.NewGuid();
 
         var ativo = new Ativo
         {
             Id = ativoId,
+            ContaId = contaId,
             Quantidade = 100m,
             PrecoMedio = 20m,
             PrecoAtual = 22m,
@@ -423,7 +433,7 @@ public class AtivoServiceTests
             .ReturnsAsync(ativo);
 
         // Act
-        await _service.RegistrarVenda(ativoId, 30m, 21m, new DateOnly(2026, 7, 10), null);
+        await _service.RegistrarVenda(contaId, ativoId, 30m, 21m, new DateOnly(2026, 7, 10), null);
 
         // Assert
         _mockContaRepository.Verify(r => r.ObterPorId(It.IsAny<Guid>()), Times.Never);
@@ -592,11 +602,12 @@ public class AtivoServiceTests
     public async Task RegistrarVenda_QuantidadeZero_LancaValorInvalidoException()
     {
         // Arrange
+        var contaId = Guid.NewGuid();
         var ativoId = Guid.NewGuid();
 
         // Act & Assert
         var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.RegistrarVenda(ativoId, 0m, 20m, new DateOnly(2026, 7, 17), null));
+            () => _service.RegistrarVenda(contaId, ativoId, 0m, 20m, new DateOnly(2026, 7, 17), null));
 
         Assert.Equal("quantidade", excecao.NomeCampo);
         _mockAtivoRepository.Verify(r => r.ObterPorId(It.IsAny<Guid>()), Times.Never);
@@ -606,11 +617,12 @@ public class AtivoServiceTests
     public async Task RegistrarVenda_QuantidadeNegativa_LancaValorInvalidoException()
     {
         // Arrange
+        var contaId = Guid.NewGuid();
         var ativoId = Guid.NewGuid();
 
         // Act & Assert
         var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.RegistrarVenda(ativoId, -30m, 20m, new DateOnly(2026, 7, 18), null));
+            () => _service.RegistrarVenda(contaId, ativoId, -30m, 20m, new DateOnly(2026, 7, 18), null));
 
         Assert.Equal("quantidade", excecao.NomeCampo);
     }
@@ -619,11 +631,12 @@ public class AtivoServiceTests
     public async Task RegistrarVenda_PrecoUnitarioZero_LancaValorInvalidoException()
     {
         // Arrange
+        var contaId = Guid.NewGuid();
         var ativoId = Guid.NewGuid();
 
         // Act & Assert
         var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.RegistrarVenda(ativoId, 50m, 0m, new DateOnly(2026, 7, 19), null));
+            () => _service.RegistrarVenda(contaId, ativoId, 50m, 0m, new DateOnly(2026, 7, 19), null));
 
         Assert.Equal("precoUnitario", excecao.NomeCampo);
     }
@@ -632,11 +645,12 @@ public class AtivoServiceTests
     public async Task RegistrarVenda_PrecoUnitarioNegativo_LancaValorInvalidoException()
     {
         // Arrange
+        var contaId = Guid.NewGuid();
         var ativoId = Guid.NewGuid();
 
         // Act & Assert
         var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.RegistrarVenda(ativoId, 50m, -18m, new DateOnly(2026, 7, 20), null));
+            () => _service.RegistrarVenda(contaId, ativoId, 50m, -18m, new DateOnly(2026, 7, 20), null));
 
         Assert.Equal("precoUnitario", excecao.NomeCampo);
     }
