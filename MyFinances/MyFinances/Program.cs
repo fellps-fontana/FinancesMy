@@ -1,9 +1,11 @@
 using System.Text;
 using MyFinances.Data;
+using MyFinances.Infrastructure.Filters;
+using MyFinances.Repositories;
 using MyFinances.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,7 +13,20 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers(options => options.Filters.Add<GlobalExceptionFilter>())
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
+const string FrontendDevCorsPolicy = "FrontendDev";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(FrontendDevCorsPolicy, policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -19,9 +34,15 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+builder.Services.AddDbContext<MyFinancesDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
 builder.Services.AddSingleton<IPasswordHasherService, PasswordHasherService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+
+builder.Services.AddScoped<IContaRepository, ContaRepository>();
+builder.Services.AddScoped<IContaService, ContaService>();
 
 // Authentication and Authorization configuration
 builder.Services.AddAuthentication(options =>
@@ -60,9 +81,21 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseCors(FrontendDevCorsPolicy);
+
+    using var seedScope = app.Services.CreateScope();
+    var seedContext = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var seedHasher = seedScope.ServiceProvider.GetRequiredService<IPasswordHasherService>();
+    await DevUserSeeder.SeedAsync(seedContext, seedHasher);
 }
 
-app.UseHttpsRedirection();
+
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    app.UseHttpsRedirection();
+
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

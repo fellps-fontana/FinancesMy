@@ -38,6 +38,12 @@ public class AuthWebApplicationFactory : WebApplicationFactory<Program>
             // Register InMemory DbContext
             services.AddDbContext<AppDbContext>(options =>
                 options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+
+            // MyFinancesDbContext (modulo de investimentos) tambem precisa
+            // ser trocado para InMemory aqui, senao a remocao ampla acima
+            // (Contains("DbContextOptions")) o deixa sem provider registrado.
+            services.AddDbContext<MyFinancesDbContext>(options =>
+                options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
         });
     }
 }

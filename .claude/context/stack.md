@@ -2,7 +2,7 @@
 
 ## Stack
 
-- **Backend:** .NET 8, API REST.
+- **Backend:** .NET 10, API REST. (ambiente de dev tem apenas SDK .NET 10 instalado; EF Core 8.0.4 e Npgsql 8.0.3 confirmados compativeis com o TFM net10.0)
 - **ORM:** Entity Framework Core + Npgsql.
 - **Banco:** PostgreSQL.
 - **Frontend:** React (TypeScript) + Vite.
@@ -32,6 +32,8 @@
 - Datas em UTC no banco; conversao na borda (UI).
 - Idioma do dominio em portugues (nomes de tabela/campo conforme schema.dbml);
   codigo de infraestrutura pode usar ingles.
+- DTOs: pasta e namespace em maiusculo — `DTOs/` e `MyFinances.DTOs`. Nunca
+  `Dtos`/`MyFinances.Dtos` (divergencia ja corrigida em 3 branches em 2026-07).
 
 ## Frontend (React)
 
