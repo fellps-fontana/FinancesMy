@@ -239,7 +239,7 @@ RETORNO ESPERADO: testes passando; relatorio estruturado se achar bug de codigo.
 
 ## TASK-017 — Saldo calculado da conta com ativos (extensao)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao - duplicacao e dead code em ContaService)
 AGENT: levi
 FLUXO: Correcao (extensao de codigo ja existente, nao feature nova)
 DEPENDENCIAS: TASK-012, TASK-006
@@ -253,7 +253,7 @@ RETORNO ESPERADO: `GET /contas?tipo=investimento` retornando saldo correto por c
 
 ## TASK-018 — Testes do saldo calculado com ativos
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (6 testes novos, 145 no total)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-017
