@@ -31,7 +31,7 @@ public class LancamentoManualService
             return (false, null, validacaoConta.Erro);
         }
 
-        var validacaoRequest = ValidarRequestCriacao(request);
+        var validacaoRequest = ValidarRequest(request.Tipo, request.Status, request.Valor, request.Descricao);
         if (!validacaoRequest.Valido)
         {
             return (false, null, validacaoRequest.Erro);
@@ -80,7 +80,7 @@ public class LancamentoManualService
             return (false, null, validacaoConta.Erro);
         }
 
-        var validacaoRequest = ValidarRequestEdicao(request);
+        var validacaoRequest = ValidarRequest(request.Tipo, request.Status, request.Valor, request.Descricao);
         if (!validacaoRequest.Valido)
         {
             return (false, null, validacaoRequest.Erro);
@@ -144,6 +144,18 @@ public class LancamentoManualService
         Guid contaId,
         Guid lancamentoId)
     {
+        var conta = await _context.Contas.FirstOrDefaultAsync(c => c.Id == contaId);
+        if (conta == null)
+        {
+            return (false, "Conta nao encontrada");
+        }
+
+        var validacaoConta = ValidarContaOrigemManual(conta);
+        if (!validacaoConta.Valido)
+        {
+            return (false, validacaoConta.Erro);
+        }
+
         var lancamento = await _context.Lancamentos
             .FirstOrDefaultAsync(l => l.Id == lancamentoId && l.ContaId == contaId);
 
@@ -174,69 +186,34 @@ public class LancamentoManualService
         return (true, null);
     }
 
-    private (bool Valido, string? Erro) ValidarRequestCriacao(CriarLancamentoRequest request)
+    private (bool Valido, string? Erro) ValidarRequest(string tipo, string status, decimal valor, string descricao)
     {
-        if (string.IsNullOrWhiteSpace(request.Tipo))
+        if (string.IsNullOrWhiteSpace(tipo))
         {
             return (false, "Tipo é obrigatório");
         }
 
-        if (!TipoValido(request.Tipo))
+        if (!TipoValido(tipo))
         {
-            return (false, $"Tipo '{request.Tipo}' inválido. Valores aceitos: DEBIT, CREDIT");
+            return (false, $"Tipo '{tipo}' inválido. Valores aceitos: DEBIT, CREDIT");
         }
 
-        if (string.IsNullOrWhiteSpace(request.Status))
-        {
-            return (false, "Status é obrigatório");
-        }
-
-        if (!StatusValido(request.Status))
-        {
-            return (false, $"Status '{request.Status}' inválido. Valores aceitos: PENDENTE, PAGO");
-        }
-
-        if (request.Valor <= 0)
-        {
-            return (false, "Valor deve ser maior que zero");
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Descricao))
-        {
-            return (false, "Descricao é obrigatória");
-        }
-
-        return (true, null);
-    }
-
-    private (bool Valido, string? Erro) ValidarRequestEdicao(EditarLancamentoRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.Tipo))
-        {
-            return (false, "Tipo é obrigatório");
-        }
-
-        if (!TipoValido(request.Tipo))
-        {
-            return (false, $"Tipo '{request.Tipo}' inválido. Valores aceitos: DEBIT, CREDIT");
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Status))
+        if (string.IsNullOrWhiteSpace(status))
         {
             return (false, "Status é obrigatório");
         }
 
-        if (!StatusValido(request.Status))
+        if (!StatusValido(status))
         {
-            return (false, $"Status '{request.Status}' inválido. Valores aceitos: PENDENTE, PAGO");
+            return (false, $"Status '{status}' inválido. Valores aceitos: PENDENTE, PAGO");
         }
 
-        if (request.Valor <= 0)
+        if (valor <= 0)
         {
             return (false, "Valor deve ser maior que zero");
         }
 
-        if (string.IsNullOrWhiteSpace(request.Descricao))
+        if (string.IsNullOrWhiteSpace(descricao))
         {
             return (false, "Descricao é obrigatória");
         }
