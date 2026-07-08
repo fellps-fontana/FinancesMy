@@ -23,7 +23,7 @@ Formato: STATUS (PENDENTE | CONCLUIDA | BLOQUEADA).
 ---
 
 ### TASK-001 — Entidade Categoria + migration
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build ok, migration InitialCreateCategoria gerada; nao aplicada localmente por falta de Postgres rodando, estrutura SQL conferida)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
