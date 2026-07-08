@@ -63,6 +63,30 @@ public class AtivoRepository : IAtivoRepository
                 g => g.Sum(a => a.Quantidade * a.PrecoAtual));
     }
 
+    public async Task<Dictionary<Guid, bool>> VerificarContasComAtivos(IEnumerable<Guid> contaIds)
+    {
+        var contasList = contaIds.ToList();
+        var resultado = new Dictionary<Guid, bool>();
+
+        foreach (var contaId in contasList)
+        {
+            resultado[contaId] = false;
+        }
+
+        var contasComAtivos = await _context.Ativos
+            .Where(a => contaIds.Contains(a.ContaId))
+            .Select(a => a.ContaId)
+            .Distinct()
+            .ToListAsync();
+
+        foreach (var contaId in contasComAtivos)
+        {
+            resultado[contaId] = true;
+        }
+
+        return resultado;
+    }
+
     public async Task Salvar()
     {
         await _context.SaveChangesAsync();

@@ -33,7 +33,8 @@ public class ContasController : ControllerBase
         }
 
         var contas = await _contaService.ListarContasInvestimento();
-        var response = contas.Select(c => ContaResponse.FromConta(c));
+        var saldosComModo = await _contaService.ObterSaldosComModoContasInvestimento();
+        var response = contas.Select(c => ContaResponse.FromContaComSaldo(c, saldosComModo[c.Id].saldo, saldosComModo[c.Id].estaEmModoCarteira));
         return Ok(response);
     }
 

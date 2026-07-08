@@ -12,6 +12,8 @@ public class ContaResponse
 
     public OrigemConta Origem { get; set; }
 
+    public decimal Saldo { get; set; }
+
     public decimal? SaldoManual { get; set; }
 
     public bool Ativa { get; set; }
@@ -29,7 +31,27 @@ public class ContaResponse
             Nome = conta.Nome,
             Tipo = conta.Tipo.Value,
             Origem = conta.Origem,
+            Saldo = conta.SaldoManual ?? 0m,
             SaldoManual = conta.SaldoManual,
+            Ativa = conta.Ativa
+        };
+    }
+
+    public static ContaResponse FromContaComSaldo(Models.Conta conta, decimal saldo, bool estaEmModoCarteira)
+    {
+        if (conta.Tipo == null)
+        {
+            throw new InvalidOperationException($"Conta com ID {conta.Id} possui Tipo nulo, o que e um estado invalido.");
+        }
+
+        return new()
+        {
+            Id = conta.Id,
+            Nome = conta.Nome,
+            Tipo = conta.Tipo.Value,
+            Origem = conta.Origem,
+            Saldo = saldo,
+            SaldoManual = estaEmModoCarteira ? null : conta.SaldoManual,
             Ativa = conta.Ativa
         };
     }
