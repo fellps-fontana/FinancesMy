@@ -197,7 +197,7 @@ RETORNO ESPERADO: `AtivoService` testavel isoladamente; formula de preco medio i
 
 ## TASK-014 — Testes: compra, venda e recalculo de preco medio
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (19 testes novos, 123 no total, todos passando)
 AGENT: mike
 FLUXO: Implementacao (automatico apos regra critica)
 DEPENDENCIAS: TASK-013
