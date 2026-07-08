@@ -19,6 +19,10 @@ public class MyFinancesDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<Conta>()
+            .Property(c => c.Ativa)
+            .HasDefaultValue(true);
+
+        modelBuilder.Entity<Conta>()
             .Property(c => c.Origem)
             .HasConversion(
                 v => v.ToStorageValue(),
@@ -29,6 +33,10 @@ public class MyFinancesDbContext : DbContext
             .HasConversion(
                 v => v.HasValue ? v.Value.ToStorageValue() : null,
                 v => v == null ? null : TipoContaExtensions.FromStorageValue(v));
+
+        modelBuilder.Entity<Categoria>()
+            .Property(c => c.Arquivada)
+            .HasDefaultValue(false);
 
         modelBuilder.Entity<Categoria>()
             .Property(c => c.Tipo)
