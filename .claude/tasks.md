@@ -211,7 +211,7 @@ RETORNO ESPERADO: testes passando cobrindo os 7 casos; relatorio estruturado (ar
 
 ## TASK-015 — Controller REST de Ativo
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style apos 2 rodadas - achou bug real: venda ignorava contaId da rota)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-013
