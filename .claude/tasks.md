@@ -225,7 +225,7 @@ RETORNO ESPERADO: contrato de API documentado (rota, verbo, body, shape de retor
 
 ## TASK-016 — Testes de integracao HTTP do AtivosController
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (15 testes novos, 138 no total, inclui teste de regressao do bug de contaId da TASK-015)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-015
