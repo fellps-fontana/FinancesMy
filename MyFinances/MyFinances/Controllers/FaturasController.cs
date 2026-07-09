@@ -58,7 +58,8 @@ public class FaturasController : ControllerBase
             return BadRequest(new { erro });
         }
 
-        return Created($"/api/contas/{contaId}/faturas/{faturaId}/pagamentos/{pagamento!.Id}", pagamento);
+        var response = PagamentoResponse.FromTransferencia(pagamento!);
+        return Created($"/api/contas/{contaId}/faturas/{faturaId}/pagamentos/{response.Id}", response);
     }
 
     [HttpPost("estornos")]
@@ -73,6 +74,7 @@ public class FaturasController : ControllerBase
             return BadRequest(new { erro });
         }
 
-        return Created($"/api/contas/{contaId}/estornos/{estorno!.Id}", estorno);
+        var response = EstornoResponse.FromLancamento(estorno!);
+        return Created($"/api/contas/{contaId}/estornos/{response.Id}", response);
     }
 }

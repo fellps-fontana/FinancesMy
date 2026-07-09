@@ -25,7 +25,8 @@ public class CartaoComprasController : ControllerBase
             return BadRequest(new { erro });
         }
 
-        return Created($"/api/contas/{contaId}/compras/{compra!.Id}", compra);
+        var response = CompraResponse.FromLancamento(compra!);
+        return Created($"/api/contas/{contaId}/compras/{response.Id}", response);
     }
 
     [HttpPut("{compraId}")]
@@ -41,6 +42,7 @@ public class CartaoComprasController : ControllerBase
             return BadRequest(new { erro });
         }
 
-        return Ok(compra);
+        var response = CompraResponse.FromLancamento(compra!);
+        return Ok(response);
     }
 }

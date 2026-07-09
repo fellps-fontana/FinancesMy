@@ -44,11 +44,19 @@ public class ContasController : ControllerBase
         }
         else if (tipo.Equals("investimento", StringComparison.OrdinalIgnoreCase))
         {
-            contas = await _contaService.ListarContasInvestimento();
+            contas = await _contaService.ListarContasPorTipo(Models.TipoConta.Investimento);
+        }
+        else if (tipo.Equals("cartao", StringComparison.OrdinalIgnoreCase))
+        {
+            contas = await _contaService.ListarContasPorTipo(Models.TipoConta.Cartao);
+        }
+        else if (tipo.Equals("banco", StringComparison.OrdinalIgnoreCase))
+        {
+            contas = await _contaService.ListarContasPorTipo(Models.TipoConta.Banco);
         }
         else
         {
-            return BadRequest(new { erro = $"Tipo '{tipo}' nao e suportado. Use 'investimento'." });
+            return BadRequest(new { erro = $"Tipo '{tipo}' nao e suportado. Use 'investimento', 'cartao' ou 'banco'." });
         }
 
         var response = contas.Select(c => ContaResponse.FromConta(c));

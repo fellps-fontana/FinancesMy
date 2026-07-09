@@ -80,10 +80,15 @@ public class ContaService : IContaService
         return conta;
     }
 
+    public async Task<IEnumerable<Conta>> ListarContasPorTipo(TipoConta tipo)
+    {
+        var contas = await _contaRepository.ListarPorTipo(tipo);
+        return contas.Where(c => c.Ativa);
+    }
+
     public async Task<IEnumerable<Conta>> ListarContasInvestimento()
     {
-        var contas = await _contaRepository.ListarPorTipo(TipoConta.Investimento);
-        return contas.Where(c => c.Ativa);
+        return await ListarContasPorTipo(TipoConta.Investimento);
     }
 
     public async Task<decimal> CalcularTotalInvestido()
@@ -139,13 +144,14 @@ public class ContaService : IContaService
 
     private static TipoConta? ConverterTipoConta(string tipo)
     {
-        return tipo.ToUpperInvariant() switch
+        try
         {
-            "BANCO" => TipoConta.Banco,
-            "CARTAO" => TipoConta.Cartao,
-            "INVESTIMENTO" => TipoConta.Investimento,
-            _ => null
-        };
+            return TipoContaExtensions.FromStorageValue(tipo.ToUpperInvariant());
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static (bool Valido, string? Erro) ValidarCartao(CriarContaRequest request)

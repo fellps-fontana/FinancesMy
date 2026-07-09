@@ -27,7 +27,7 @@ public class FaturaCicloService
         var faturaAberta = await _faturaRepository.ObterFaturaAbertaPorConta(contaId);
         if (faturaAberta != null)
         {
-            if (dataLancamento >= faturaAberta.DataFechamento && dataLancamento <= faturaAberta.DataVencimento)
+            if (dataLancamento < faturaAberta.DataFechamento)
             {
                 return (faturaAberta, false, null);
             }

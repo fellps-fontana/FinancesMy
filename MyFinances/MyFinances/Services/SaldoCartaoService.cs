@@ -1,3 +1,4 @@
+using MyFinances.Domain;
 using MyFinances.Models;
 using MyFinances.Repositories;
 
@@ -32,8 +33,8 @@ public class SaldoCartaoService
         decimal saldoTotal = 0;
         foreach (var fatura in faturas)
         {
-            var saldoFatura = fatura.Lancamentos.Sum(l => l.Valor) - fatura.Transferencias.Sum(t => t.Valor);
-            saldoTotal += saldoFatura;
+            var saldo = FaturaSaldoCalculator.Calcular(fatura);
+            saldoTotal += saldo.ValorPendente;
         }
 
         return (true, saldoTotal, null);

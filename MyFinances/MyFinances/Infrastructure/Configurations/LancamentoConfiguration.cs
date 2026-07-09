@@ -100,12 +100,6 @@ public class LancamentoConfiguration : IEntityTypeConfiguration<Lancamento>
             .HasForeignKey(l => l.FaturaId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        // Indice unico: uma fatura aberta por conta
-        builder.HasIndex(l => new { l.ContaId, l.FaturaId, l.Status })
-            .HasFilter("fatura_id IS NOT NULL AND status = 'ABERTA'")
-            .IsUnique()
-            .HasDatabaseName("IX_lancamento_conta_fatura_aberta");
-
         // Indice para PierreTxnId se nao nulo (dedup)
         builder.HasIndex(l => l.PierreTxnId)
             .HasFilter("pierre_txn_id IS NOT NULL")

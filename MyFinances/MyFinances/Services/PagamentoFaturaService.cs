@@ -9,15 +9,18 @@ public class PagamentoFaturaService
 {
     private readonly IFaturaRepository _faturaRepository;
     private readonly ITransferenciaRepository _transferenciaRepository;
+    private readonly ILancamentoRepository _lancamentoRepository;
     private readonly IContaRepository _contaRepository;
 
     public PagamentoFaturaService(
         IFaturaRepository faturaRepository,
         ITransferenciaRepository transferenciaRepository,
+        ILancamentoRepository lancamentoRepository,
         IContaRepository contaRepository)
     {
         _faturaRepository = faturaRepository;
         _transferenciaRepository = transferenciaRepository;
+        _lancamentoRepository = lancamentoRepository;
         _contaRepository = contaRepository;
     }
 
@@ -66,6 +69,37 @@ public class PagamentoFaturaService
 
         await _transferenciaRepository.Adicionar(transferencia);
 
+        var lancamentoSaida = new Lancamento
+        {
+            Id = Guid.NewGuid(),
+            ContaId = request.ContaOrigemId,
+            Descricao = transferencia.Descricao,
+            Valor = request.Valor,
+            Tipo = TipoLancamento.Debit,
+            Data = request.Data,
+            Status = StatusLancamento.Pago,
+            Manual = true,
+            Oculto = false,
+            TransferenciaId = transferencia.Id
+        };
+
+        var lancamentoEntrada = new Lancamento
+        {
+            Id = Guid.NewGuid(),
+            ContaId = fatura.ContaId,
+            Descricao = transferencia.Descricao,
+            Valor = request.Valor,
+            Tipo = TipoLancamento.Credit,
+            Data = request.Data,
+            Status = StatusLancamento.Pago,
+            Manual = true,
+            Oculto = false,
+            TransferenciaId = transferencia.Id
+        };
+
+        await _lancamentoRepository.Adicionar(lancamentoSaida);
+        await _lancamentoRepository.Adicionar(lancamentoEntrada);
+
         var novoSaldoPendente = saldoFatura.ValorPendente - request.Valor;
         if (novoSaldoPendente <= 0)
         {
@@ -73,7 +107,7 @@ public class PagamentoFaturaService
         }
 
         await _faturaRepository.Atualizar(fatura);
-        await _transferenciaRepository.Salvar();
+        await _lancamentoRepository.Salvar();
 
         return (true, transferencia, null);
     }
