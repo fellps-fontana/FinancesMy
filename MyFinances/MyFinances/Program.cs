@@ -47,6 +47,14 @@ builder.Services.AddScoped<IContaService, ContaService>();
 builder.Services.AddScoped<IAtivoRepository, AtivoRepository>();
 builder.Services.AddScoped<IAtivoService, AtivoService>();
 
+builder.Services.AddHttpClient<ICotacaoExternaService, CotacaoExternaService>(client =>
+{
+    var brapiConfig = builder.Configuration.GetSection("Brapi");
+    var baseUrl = brapiConfig["BaseUrl"] ?? "https://brapi.dev/";
+    client.BaseAddress = new Uri(baseUrl);
+    client.DefaultRequestHeaders.Add("User-Agent", "MyFinances/1.0");
+});
+
 // Authentication and Authorization configuration
 builder.Services.AddAuthentication(options =>
 {
