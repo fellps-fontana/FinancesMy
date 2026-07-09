@@ -66,7 +66,7 @@ Formato: STATUS (PENDENTE | CONCLUIDA | BLOQUEADA).
 ---
 
 ### TASK-001 — Servico de classificacao de lancamento (regra de sinal, item 2 CRITICA)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (levi; build ok; style aprovou apos 1 rodada de correcao — constante DEBIT duplicada)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
@@ -77,7 +77,7 @@ NAO FAZER: nao ler ou somar `Valor` para decidir sinal; nao implementar aqui os 
 RETORNO ESPERADO: funcao pura, sem dependencia de `AppDbContext`, testavel isoladamente, cobrindo os 4 casos de classificacao.
 
 ### TASK-002 — Revisao TASK-001
-STATUS: PENDENTE
+STATUS: CONCLUIDA (style aprovou)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-001
@@ -88,7 +88,7 @@ NAO FAZER: nao editar codigo — devolver tarefa de correcao no esquema padrao s
 RETORNO ESPERADO: veredito (APROVADO | PRECISA CORRIGIR) + tarefa de correcao se reprovado.
 
 ### TASK-003 — Testes TASK-001
-STATUS: PENDENTE
+STATUS: CONCLUIDA (mike; 6 testes novos, 95/95 passando)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-002 (aprovado)
@@ -99,7 +99,9 @@ NAO FAZER: nao alterar o servico pra fazer o teste passar sem reportar — bug d
 RETORNO ESPERADO: testes passando; relatorio estruturado se falhar por bug de codigo.
 
 ### TASK-004 — Servico + endpoint CRUD de lancamento manual
-STATUS: PENDENTE
+STATUS: CONCLUIDA (levi; style aprovou apos 1 rodada de correcao — gate de origem MANUAL faltando em Excluir + duplicacao de validacao)
+
+NOTA (Kira): `LancamentosController.cs` ja existia (herdado do sync com cartao-credito-tasks, `GET /api/lancamentos?visao=caixa`). GET foi bifurcado por query string `visao` em vez de criar action nova — sem `visao`, listagem crua desta task.
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-001
@@ -110,7 +112,7 @@ NAO FAZER: nao permitir criar/editar lancamento em conta com `Origem=OPEN_FINANC
 RETORNO ESPERADO: contrato de API dos 4 endpoints (rota, verbo, body, retorno) + servico testavel isoladamente.
 
 ### TASK-005 — Revisao TASK-004
-STATUS: PENDENTE
+STATUS: CONCLUIDA (style aprovou apos 1 rodada de correcao)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-004
@@ -120,7 +122,7 @@ ARQUIVOS PERMITIDOS: os do TASK-004
 RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 
 ### TASK-006 — Testes TASK-004
-STATUS: PENDENTE
+STATUS: CONCLUIDA (mike; 26 testes novos, 121/121 passando)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-005 (aprovado)
