@@ -67,7 +67,7 @@ RETORNO ESPERADO: contrato dos 4 endpoints (rota, verbo, body, retorno) + servic
 ---
 
 ### TASK-004 — Revisao TASK-003
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO apos 1 rodada de correcao — achado real: Editar nao validava categoria com subcategorias proprias, permitia criar hierarquia de 2 niveis via edicao; corrigido + ValidarParent unificado)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-003
