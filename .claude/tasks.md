@@ -80,7 +80,7 @@ RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 ---
 
 ### TASK-005 — Testes TASK-003
-STATUS: PENDENTE
+STATUS: CONCLUIDA (25 testes, todos passando: criacao raiz/subcategoria, tipo herdado, hierarquia 1 nivel, parent arquivada, listar com filtros, editar, auto-referencia, regressao do bug da TASK-004, cascata no arquivar, nome duplicado)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-004 (aprovado)
