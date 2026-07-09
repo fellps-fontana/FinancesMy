@@ -36,7 +36,7 @@ RETORNO ESPERADO: model + migration aplicavel; enum com conversion validada cont
 ---
 
 ### TASK-002 — Revisao TASK-001
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO apos 1 rodada de correcao — migration regenerada pelo EF removeu sem querer o default de banco Conta.Ativa=true, e Categoria.Arquivada nunca ganhou default=false por ser o default do CLR; corrigido com HasDefaultValue explicito + migration corretiva 20260708223212)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-001
