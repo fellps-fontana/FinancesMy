@@ -10,13 +10,16 @@ public class LancamentosController : ControllerBase
 {
     private readonly FluxoCaixaService _fluxoCaixaService;
     private readonly LancamentoManualService _lancamentoManualService;
+    private readonly LancamentoOcultacaoService _lancamentoOcultacaoService;
 
     public LancamentosController(
         FluxoCaixaService fluxoCaixaService,
-        LancamentoManualService lancamentoManualService)
+        LancamentoManualService lancamentoManualService,
+        LancamentoOcultacaoService lancamentoOcultacaoService)
     {
         _fluxoCaixaService = fluxoCaixaService;
         _lancamentoManualService = lancamentoManualService;
+        _lancamentoOcultacaoService = lancamentoOcultacaoService;
     }
 
     [HttpGet]
@@ -88,6 +91,19 @@ public class LancamentosController : ControllerBase
         var (sucesso, erro) = await _lancamentoManualService.ExcluirLancamentoAsync(
             contaId,
             id);
+
+        if (!sucesso)
+        {
+            return BadRequest(erro);
+        }
+
+        return NoContent();
+    }
+
+    [HttpPatch("{id}/ocultar")]
+    public async Task<IActionResult> OcultarLancamento([FromRoute] Guid id)
+    {
+        var (sucesso, erro) = await _lancamentoOcultacaoService.OcultarAsync(id);
 
         if (!sucesso)
         {

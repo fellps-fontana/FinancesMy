@@ -27,6 +27,7 @@ builder.Services.AddScoped<RelatorioCategoriaService>();
 builder.Services.AddScoped<ProjecaoService>();
 builder.Services.AddScoped<LancamentoManualService>();
 builder.Services.AddScoped<TransferenciaService>();
+builder.Services.AddScoped<LancamentoOcultacaoService>();
 
 var app = builder.Build();
 
