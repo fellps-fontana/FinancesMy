@@ -14,6 +14,8 @@ public class MyFinancesDbContext : DbContext
 
     public DbSet<Categoria> Categorias { get; set; }
 
+    public DbSet<DeParaCategoria> DeParaCategories { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -49,5 +51,15 @@ public class MyFinancesDbContext : DbContext
             .WithMany(c => c.Subcategorias)
             .HasForeignKey(c => c.ParentId)
             .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<DeParaCategoria>()
+            .HasOne(d => d.Categoria)
+            .WithMany()
+            .HasForeignKey(d => d.CategoriaId)
+            .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<DeParaCategoria>()
+            .HasIndex(d => d.CategoriaPierre)
+            .IsUnique();
     }
 }
