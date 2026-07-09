@@ -49,6 +49,11 @@ public class CategoriaService : ICategoriaService
             throw new InvalidOperationException("Uma categoria nao pode ser parent de si mesma.");
         }
 
+        if (parentId.HasValue && categoria.Subcategorias.Any())
+        {
+            throw new InvalidOperationException("Nao e permitido vincular uma categoria que possui subcategorias. Remova as subcategorias ou arquive-as antes.");
+        }
+
         if (parentId.HasValue)
         {
             await ValidarParentParaEditar(parentId.Value, categoria.Tipo);
@@ -78,31 +83,22 @@ public class CategoriaService : ICategoriaService
 
     private async Task ValidarParentParaCriar(Guid parentId, TipoCategoria novoTipo)
     {
-        var parent = await ObterCategoriaOuFalhar(parentId);
-
-        if (parent.Arquivada)
-        {
-            throw new InvalidOperationException("Nao e permitido criar subcategoria de uma categoria arquivada.");
-        }
-
-        if (parent.ParentId.HasValue)
-        {
-            throw new InvalidOperationException("Nao e permitido criar subcategoria de uma subcategoria. Hierarquia maxima: 1 nivel.");
-        }
-
-        if (novoTipo != parent.Tipo)
-        {
-            throw new InvalidOperationException($"Subcategoria deve ter o mesmo tipo da categoria pai. Tipo do pai: {parent.Tipo}, tipo informado: {novoTipo}");
-        }
+        await ValidarParent(parentId, novoTipo, isEdicao: false);
     }
 
     private async Task ValidarParentParaEditar(Guid parentId, TipoCategoria tipoAtual)
+    {
+        await ValidarParent(parentId, tipoAtual, isEdicao: true);
+    }
+
+    private async Task ValidarParent(Guid parentId, TipoCategoria tipoCategoria, bool isEdicao)
     {
         var parent = await ObterCategoriaOuFalhar(parentId);
 
         if (parent.Arquivada)
         {
-            throw new InvalidOperationException("Nao e permitido vincular a uma categoria arquivada.");
+            var mensagem = isEdicao ? "Nao e permitido vincular a uma categoria arquivada." : "Nao e permitido criar subcategoria de uma categoria arquivada.";
+            throw new InvalidOperationException(mensagem);
         }
 
         if (parent.ParentId.HasValue)
@@ -110,9 +106,12 @@ public class CategoriaService : ICategoriaService
             throw new InvalidOperationException("Nao e permitido vincular a uma subcategoria. Hierarquia maxima: 1 nivel.");
         }
 
-        if (tipoAtual != parent.Tipo)
+        if (tipoCategoria != parent.Tipo)
         {
-            throw new InvalidOperationException($"Categoria deve manter o mesmo tipo do parent. Tipo atual: {tipoAtual}, tipo do parent: {parent.Tipo}");
+            var mensagem = isEdicao
+                ? $"Categoria deve manter o mesmo tipo do parent. Tipo atual: {tipoCategoria}, tipo do parent: {parent.Tipo}"
+                : $"Subcategoria deve ter o mesmo tipo da categoria pai. Tipo do pai: {parent.Tipo}, tipo informado: {tipoCategoria}";
+            throw new InvalidOperationException(mensagem);
         }
     }
 
