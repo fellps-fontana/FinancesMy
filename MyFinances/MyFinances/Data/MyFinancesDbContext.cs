@@ -14,7 +14,7 @@ public class MyFinancesDbContext : DbContext
 
     public DbSet<Categoria> Categorias { get; set; }
 
-    public DbSet<DeParaCategoria> DeParaCategories { get; set; }
+    public DbSet<DeParaCategoria> DeParaCategorias { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -12,7 +12,7 @@ namespace MyFinances.Migrations.MyFinancesDb
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "DeParaCategories",
+                name: "DeParaCategorias",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -21,9 +21,9 @@ namespace MyFinances.Migrations.MyFinancesDb
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeParaCategories", x => x.Id);
+                    table.PrimaryKey("PK_DeParaCategorias", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_DeParaCategories_Categorias_CategoriaId",
+                        name: "FK_DeParaCategorias_Categorias_CategoriaId",
                         column: x => x.CategoriaId,
                         principalTable: "Categorias",
                         principalColumn: "Id",
@@ -31,13 +31,13 @@ namespace MyFinances.Migrations.MyFinancesDb
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_DeParaCategories_CategoriaId",
-                table: "DeParaCategories",
+                name: "IX_DeParaCategorias_CategoriaId",
+                table: "DeParaCategorias",
                 column: "CategoriaId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_DeParaCategories_CategoriaPierre",
-                table: "DeParaCategories",
+                name: "IX_DeParaCategorias_CategoriaPierre",
+                table: "DeParaCategorias",
                 column: "CategoriaPierre",
                 unique: true);
         }
@@ -46,7 +46,7 @@ namespace MyFinances.Migrations.MyFinancesDb
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "DeParaCategories");
+                name: "DeParaCategorias");
         }
     }
 }

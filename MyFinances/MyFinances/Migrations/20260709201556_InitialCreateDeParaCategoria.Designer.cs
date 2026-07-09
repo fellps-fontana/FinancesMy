@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyFinances.Migrations.MyFinancesDb
 {
     [DbContext(typeof(MyFinancesDbContext))]
-    [Migration("20260709200359_InitialCreateDeParaCategoria")]
+    [Migration("20260709201556_InitialCreateDeParaCategoria")]
     partial class InitialCreateDeParaCategoria
     {
         /// <inheritdoc />
@@ -113,7 +113,7 @@ namespace MyFinances.Migrations.MyFinancesDb
                     b.HasIndex("CategoriaPierre")
                         .IsUnique();
 
-                    b.ToTable("DeParaCategories");
+                    b.ToTable("DeParaCategorias");
                 });
 
             modelBuilder.Entity("MyFinances.Models.Categoria", b =>

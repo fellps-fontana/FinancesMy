@@ -110,7 +110,7 @@ namespace MyFinances.Migrations
                     b.HasIndex("CategoriaPierre")
                         .IsUnique();
 
-                    b.ToTable("DeParaCategories");
+                    b.ToTable("DeParaCategorias");
                 });
 
             modelBuilder.Entity("MyFinances.Models.Categoria", b =>
