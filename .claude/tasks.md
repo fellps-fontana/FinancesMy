@@ -267,7 +267,7 @@ RETORNO ESPERADO: testes passando; relatorio estruturado se achar bug.
 
 ## TASK-019 — Endpoint proxy de cotacao historica (Brapi)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada - bug de DI que quebrava o endpoint sempre, corrigido e confirmado com chamada HTTP real)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
