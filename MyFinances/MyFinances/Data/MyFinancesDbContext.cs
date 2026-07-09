@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MyFinances.Infrastructure.Configurations;
 using MyFinances.Models;
 
 namespace MyFinances.Data;
@@ -11,6 +12,10 @@ public class MyFinancesDbContext : DbContext
     }
 
     public DbSet<Conta> Contas { get; set; }
+    public DbSet<Categoria> Categorias { get; set; }
+    public DbSet<Lancamento> Lancamentos { get; set; }
+    public DbSet<Transferencia> Transferencias { get; set; }
+    public DbSet<Fatura> Faturas { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,5 +32,10 @@ public class MyFinancesDbContext : DbContext
             .HasConversion(
                 v => v.HasValue ? v.Value.ToStorageValue() : null,
                 v => v == null ? null : TipoContaExtensions.FromStorageValue(v));
+
+        modelBuilder.ApplyConfiguration(new CategoriaConfiguration());
+        modelBuilder.ApplyConfiguration(new LancamentoConfiguration());
+        modelBuilder.ApplyConfiguration(new TransferenciaConfiguration());
+        modelBuilder.ApplyConfiguration(new FaturaConfiguration());
     }
 }

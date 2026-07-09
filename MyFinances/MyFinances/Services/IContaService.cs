@@ -1,9 +1,11 @@
+using MyFinances.DTOs.Conta;
 using MyFinances.Models;
 
 namespace MyFinances.Services;
 
 public interface IContaService
 {
+    Task<(bool Sucesso, Conta? Conta, string? Erro)> CriarContaAsync(CriarContaRequest request);
     Task<Conta> CriarContaInvestimento(string nome, decimal saldoInicial);
     Task<IEnumerable<Conta>> ListarContasInvestimento();
     Task<decimal> CalcularTotalInvestido();

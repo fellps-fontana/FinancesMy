@@ -1,0 +1,46 @@
+using MyFinances.DTOs;
+using MyFinances.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace MyFinances.Controllers;
+
+[ApiController]
+[Route("api/contas/{contaId}/compras")]
+public class CartaoComprasController : ControllerBase
+{
+    private readonly CompraCartaoService _compraCartaoService;
+
+    public CartaoComprasController(CompraCartaoService compraCartaoService)
+    {
+        _compraCartaoService = compraCartaoService;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CriarCompra(Guid contaId, [FromBody] CriarCompraRequest request)
+    {
+        var (sucesso, compra, erro) = await _compraCartaoService.CriarCompraAsync(contaId, request);
+
+        if (!sucesso)
+        {
+            return BadRequest(new { erro });
+        }
+
+        return Created($"/api/contas/{contaId}/compras/{compra!.Id}", compra);
+    }
+
+    [HttpPut("{compraId}")]
+    public async Task<IActionResult> EditarCompra(
+        Guid contaId,
+        Guid compraId,
+        [FromBody] EditarCompraRequest request)
+    {
+        var (sucesso, compra, erro) = await _compraCartaoService.EditarCompraAsync(contaId, compraId, request);
+
+        if (!sucesso)
+        {
+            return BadRequest(new { erro });
+        }
+
+        return Ok(compra);
+    }
+}
