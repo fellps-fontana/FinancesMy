@@ -49,7 +49,7 @@ RETORNO ESPERADO: veredito (APROVADO | PRECISA CORRIGIR) + tarefa de correcao se
 ---
 
 ### TASK-003 — Repository + Service + Controller de Categoria (CRUD)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (levi; build ok, aguardando revisao do style na TASK-004)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-001
