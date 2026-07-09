@@ -26,6 +26,7 @@ builder.Services.AddScoped<FluxoCaixaService>();
 builder.Services.AddScoped<RelatorioCategoriaService>();
 builder.Services.AddScoped<ProjecaoService>();
 builder.Services.AddScoped<LancamentoManualService>();
+builder.Services.AddScoped<TransferenciaService>();
 
 var app = builder.Build();
 
