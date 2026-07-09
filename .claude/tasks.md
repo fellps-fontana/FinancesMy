@@ -281,7 +281,7 @@ RETORNO ESPERADO: contrato do endpoint (rota, query params, shape — serie de p
 
 ## TASK-020 — Camada de dados no front: ativos e cotacao
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style de primeira)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-015, TASK-019
