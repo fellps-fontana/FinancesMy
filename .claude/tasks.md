@@ -133,7 +133,7 @@ NAO FAZER: nao alterar servico/controller para o teste passar sem reportar.
 RETORNO ESPERADO: testes passando; relatorio se bug de codigo.
 
 ### TASK-007 — Servico + endpoint transferencia entre contas manuais
-STATUS: PENDENTE
+STATUS: CONCLUIDA (levi; commit c49d639; build ok)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-001
@@ -144,7 +144,7 @@ NAO FAZER: nao aceitar conta com `Origem=OPEN_FINANCE` em nenhuma perna (Open Fi
 RETORNO ESPERADO: contrato do endpoint + servico testavel; garantia de atomicidade das duas pernas.
 
 ### TASK-008 — Revisao TASK-007
-STATUS: PENDENTE
+STATUS: CONCLUIDA (style aprovou de primeira)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-007
@@ -154,7 +154,7 @@ ARQUIVOS PERMITIDOS: os do TASK-007
 RETORNO ESPERADO: veredito + correcao se reprovado.
 
 ### TASK-009 — Testes TASK-007
-STATUS: PENDENTE
+STATUS: CONCLUIDA (mike; 10 testes novos, 131/131 passando; commit 0c3a23a)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-008 (aprovado)
