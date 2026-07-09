@@ -93,7 +93,7 @@ RETORNO ESPERADO: testes passando; relatorio estruturado se falhar por bug de co
 ---
 
 ### TASK-006 — Entidade DeParaCategoria + migration
-STATUS: PENDENTE
+STATUS: CONCLUIDA (levi; build ok, UNIQUE constraint confirmada na migration, defaults de Conta/Categoria preservados; aguardando revisao do style na TASK-007)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-001
