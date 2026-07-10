@@ -31,6 +31,9 @@ public class FaturaCicloService
             {
                 return (faturaAberta, false, null);
             }
+
+            faturaAberta.Status = StatusFatura.Fechada;
+            await _faturaRepository.Atualizar(faturaAberta);
         }
 
         var (novaDataFechamento, novaDataVencimento) = CalcularDatasCiclo(

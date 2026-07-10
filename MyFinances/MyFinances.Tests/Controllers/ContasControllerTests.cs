@@ -329,7 +329,7 @@ public class ContasControllerTests
     public async Task ListarContas_ComTipoInvalido_Retorna400()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/contas?tipo=banco");
+        var response = await _fixture.Client.GetAsync("/api/contas?tipo=xyz");
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
