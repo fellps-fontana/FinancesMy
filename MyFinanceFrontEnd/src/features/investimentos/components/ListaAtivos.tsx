@@ -14,6 +14,7 @@ import {
 } from "@/features/investimentos/lib/validarVendaAtivo"
 import { FormRegistrarCompraAtivo } from "@/features/investimentos/FormRegistrarCompraAtivo"
 import { FormRegistrarVendaAtivo } from "@/features/investimentos/FormRegistrarVendaAtivo"
+import { GraficoCotacaoAtivo } from "@/features/investimentos/GraficoCotacaoAtivo"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { ApiError } from "@/shared/api/client"
@@ -185,6 +186,9 @@ type AtivoLinhaProps = {
 // quantidade, o backend desativa o ativo (item 8.3) e a invalidacao de cache
 // de useRegistrarVendaAtivo faz o ativo sumir da lista - esta linha
 // simplesmente deixa de ser renderizada, sem tratamento especial aqui.
+// O toggle "Ver grafico" so monta GraficoCotacaoAtivo quando aberto - a busca
+// de cotacao (regra-de-negocio.md item 8) e sob demanda, entao fechar o
+// toggle desmonta o componente e nao ha polling em background.
 function AtivoLinha({ ativo, contaId }: AtivoLinhaProps) {
   const valorAtivo = calcularValorAtivo(ativo)
   const { mutate: registrarVenda, isPending: registrandoVenda } = useRegistrarVendaAtivo()
@@ -195,6 +199,7 @@ function AtivoLinha({ ativo, contaId }: AtivoLinhaProps) {
   const [data, setData] = useState(dataDeHoje)
   const [observacao, setObservacao] = useState("")
   const [erroFormulario, setErroFormulario] = useState<string | null>(null)
+  const [mostrarGrafico, setMostrarGrafico] = useState(false)
 
   function abrirFormularioVenda() {
     setQuantidade("")
@@ -251,7 +256,14 @@ function AtivoLinha({ ativo, contaId }: AtivoLinhaProps) {
     <li className="flex flex-col gap-2.5 rounded-lg border border-border bg-secondary px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-col">
-          <span className="text-sm font-medium text-secondary-foreground">{ativo.ticker}</span>
+          <button
+            type="button"
+            onClick={() => setMostrarGrafico((atual) => !atual)}
+            aria-expanded={mostrarGrafico}
+            className="w-fit text-left text-sm font-medium text-secondary-foreground underline-offset-2 hover:text-primary hover:underline"
+          >
+            {ativo.ticker}
+          </button>
           {ativo.nome && (
             <span className="text-[12px] text-muted-foreground">{ativo.nome}</span>
           )}
@@ -265,6 +277,8 @@ function AtivoLinha({ ativo, contaId }: AtivoLinhaProps) {
         <span>Preco medio {formatarMoeda(ativo.precoMedio)}</span>
         <span>Preco atual {formatarMoeda(ativo.precoAtual)}</span>
       </div>
+
+      {mostrarGrafico && <GraficoCotacaoAtivo ticker={ativo.ticker} />}
 
       {mostrarFormularioVenda ? (
         <FormRegistrarVendaAtivo
