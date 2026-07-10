@@ -1,13 +1,19 @@
 import { useState, type FormEvent } from "react"
 import { useAtivosDaConta } from "@/features/investimentos/hooks/useAtivosDaConta"
 import { useRegistrarCompraAtivo } from "@/features/investimentos/hooks/useRegistrarCompraAtivo"
+import { useRegistrarVendaAtivo } from "@/features/investimentos/hooks/useRegistrarVendaAtivo"
 import { calcularValorAtivo } from "@/features/investimentos/lib/calcularValorAtivo"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
 import {
   validarCompraAtivo,
   converterCompraParaNumero,
 } from "@/features/investimentos/lib/validarCompraAtivo"
+import {
+  validarVendaAtivo,
+  converterVendaParaNumero,
+} from "@/features/investimentos/lib/validarVendaAtivo"
 import { FormRegistrarCompraAtivo } from "@/features/investimentos/FormRegistrarCompraAtivo"
+import { FormRegistrarVendaAtivo } from "@/features/investimentos/FormRegistrarVendaAtivo"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { ApiError } from "@/shared/api/client"
@@ -30,12 +36,15 @@ type ListaAtivosProps = {
 }
 
 // Container: busca os ativos da conta (estado de servidor via
-// useAtivosDaConta), guarda o estado de UI do formulario de compra e aciona
-// useRegistrarCompraAtivo. A apresentacao pura fica em AtivoLinha e no
-// formulario (FormRegistrarCompraAtivo) - ver clean-code.md "Organizacao
-// (React)" (estado de servidor separado da apresentacao, calculo de dominio
-// fora do componente). So aparece dentro de uma conta em modo carteira, ja
-// que ListaAtivos so e renderizada nesse contexto (ver ContaInvestimentoCard).
+// useAtivosDaConta), guarda o estado de UI do formulario de compra (por
+// conta) e aciona useRegistrarCompraAtivo. O formulario de venda (por ativo)
+// e o toggle dele moram em AtivoLinha, ja que cada linha vende sua propria
+// posicao - ver comentario da funcao. A apresentacao dos formularios fica em
+// FormRegistrarCompraAtivo/FormRegistrarVendaAtivo - ver clean-code.md
+// "Organizacao (React)" (estado de servidor separado da apresentacao,
+// calculo de dominio fora do componente). So aparece dentro de uma conta em
+// modo carteira, ja que ListaAtivos so e renderizada nesse contexto (ver
+// ContaInvestimentoCard).
 export function ListaAtivos({ contaId }: ListaAtivosProps) {
   const { data: ativos, isLoading, error } = useAtivosDaConta(contaId)
   const { mutate: registrarCompra, isPending: registrandoCompra } = useRegistrarCompraAtivo()
@@ -127,7 +136,7 @@ export function ListaAtivos({ contaId }: ListaAtivosProps) {
       ) : (
         <ul className="flex flex-col gap-2">
           {ativos.map((ativo) => (
-            <AtivoLinha key={ativo.id} ativo={ativo} />
+            <AtivoLinha key={ativo.id} ativo={ativo} contaId={contaId} />
           ))}
         </ul>
       )}
@@ -162,16 +171,84 @@ export function ListaAtivos({ contaId }: ListaAtivosProps) {
 
 type AtivoLinhaProps = {
   ativo: AtivoResponse
+  contaId: string
 }
 
-// Apresentacao pura (burra) de um ativo: so exibe dado ja pronto. O valor da
-// posicao vem de calcularValorAtivo - nenhum calculo de dominio mora aqui
-// (regra-de-negocio.md item 8.1/8.4).
-function AtivoLinha({ ativo }: AtivoLinhaProps) {
+// Linha do ativo: alem de exibir o dado ja pronto (valor via
+// calcularValorAtivo - regra-de-negocio.md item 8.1/8.4), tambem guarda o
+// estado de UI do formulario de venda e aciona useRegistrarVendaAtivo. Venda
+// e por ativo (nao por conta, como a compra em ListaAtivos), entao o estado
+// do formulario mora aqui, escopado a esta linha - mesmo espirito de
+// container+apresentacao usado em ContaInvestimentoItem/ContaInvestimentoCard
+// (clean-code.md "Organizacao (React)"), so que sem arquivo separado porque o
+// escopo desta tarefa restringe os arquivos tocados. Quando a venda zera a
+// quantidade, o backend desativa o ativo (item 8.3) e a invalidacao de cache
+// de useRegistrarVendaAtivo faz o ativo sumir da lista - esta linha
+// simplesmente deixa de ser renderizada, sem tratamento especial aqui.
+function AtivoLinha({ ativo, contaId }: AtivoLinhaProps) {
   const valorAtivo = calcularValorAtivo(ativo)
+  const { mutate: registrarVenda, isPending: registrandoVenda } = useRegistrarVendaAtivo()
+
+  const [mostrarFormularioVenda, setMostrarFormularioVenda] = useState(false)
+  const [quantidade, setQuantidade] = useState("")
+  const [precoUnitario, setPrecoUnitario] = useState("")
+  const [data, setData] = useState(dataDeHoje)
+  const [observacao, setObservacao] = useState("")
+  const [erroFormulario, setErroFormulario] = useState<string | null>(null)
+
+  function abrirFormularioVenda() {
+    setQuantidade("")
+    setPrecoUnitario("")
+    setData(dataDeHoje())
+    setObservacao("")
+    setErroFormulario(null)
+    setMostrarFormularioVenda(true)
+  }
+
+  function fecharFormularioVenda() {
+    setMostrarFormularioVenda(false)
+    setErroFormulario(null)
+  }
+
+  function handleSubmitVenda(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const erroValidacao = validarVendaAtivo(quantidade, precoUnitario, data, ativo.quantidade)
+    if (erroValidacao) {
+      setErroFormulario(erroValidacao)
+      return
+    }
+
+    registrarVenda(
+      {
+        contaId,
+        ativoId: ativo.id,
+        request: {
+          quantidade: converterVendaParaNumero(quantidade),
+          precoUnitario: converterVendaParaNumero(precoUnitario),
+          data,
+          observacao: observacao.trim().length > 0 ? observacao.trim() : undefined,
+        },
+      },
+      {
+        onSuccess: fecharFormularioVenda,
+        onError: (erroVenda) => {
+          console.error(
+            `Falha ao registrar venda de ativo - contaId=${contaId}, ativoId=${ativo.id}`,
+            erroVenda,
+          )
+          setErroFormulario(
+            erroVenda instanceof ApiError
+              ? erroVenda.message
+              : "Nao foi possivel registrar a venda. Tente novamente.",
+          )
+        },
+      },
+    )
+  }
 
   return (
-    <li className="flex flex-col gap-1.5 rounded-lg border border-border bg-secondary px-3 py-2.5">
+    <li className="flex flex-col gap-2.5 rounded-lg border border-border bg-secondary px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-col">
           <span className="text-sm font-medium text-secondary-foreground">{ativo.ticker}</span>
@@ -188,6 +265,32 @@ function AtivoLinha({ ativo }: AtivoLinhaProps) {
         <span>Preco medio {formatarMoeda(ativo.precoMedio)}</span>
         <span>Preco atual {formatarMoeda(ativo.precoAtual)}</span>
       </div>
+
+      {mostrarFormularioVenda ? (
+        <FormRegistrarVendaAtivo
+          ativoId={ativo.id}
+          ticker={ativo.ticker}
+          quantidadeDisponivelFormatada={formatadorQuantidade.format(ativo.quantidade)}
+          quantidade={quantidade}
+          precoUnitario={precoUnitario}
+          data={data}
+          observacao={observacao}
+          isSubmitting={registrandoVenda}
+          errorMessage={erroFormulario}
+          onQuantidadeChange={setQuantidade}
+          onPrecoUnitarioChange={setPrecoUnitario}
+          onDataChange={setData}
+          onObservacaoChange={setObservacao}
+          onSubmit={handleSubmitVenda}
+          onCancelar={fecharFormularioVenda}
+        />
+      ) : (
+        <div className="flex justify-end">
+          <Button type="button" variant="ghost" size="sm" onClick={abrirFormularioVenda}>
+            Vender
+          </Button>
+        </div>
+      )}
     </li>
   )
 }
