@@ -21,30 +21,36 @@ public class CategoriaRepository : ICategoriaRepository
     public async Task<Categoria?> ObterPorId(Guid id)
     {
         return await _context.Categorias
-            .Include(c => c.Parent)
             .Include(c => c.Subcategorias)
             .FirstOrDefaultAsync(c => c.Id == id);
     }
 
-    public async Task<IEnumerable<Categoria>> ListarTodas()
+    public async Task<IEnumerable<Categoria>> Listar(TipoCategoria? tipo = null, bool? arquivada = null, Guid? parentId = null)
     {
-        return await _context.Categorias
+        var query = _context.Categorias
             .Include(c => c.Subcategorias)
-            .Where(c => c.ParentId == null)
-            .ToListAsync();
-    }
+            .AsQueryable();
 
-    public async Task<IEnumerable<Categoria>> ListarPorTipo(TipoCategoria tipo)
-    {
-        return await _context.Categorias
-            .Include(c => c.Subcategorias)
-            .Where(c => c.Tipo == tipo && c.ParentId == null && !c.Arquivada)
-            .ToListAsync();
-    }
+        if (tipo.HasValue)
+        {
+            query = query.Where(c => c.Tipo == tipo.Value);
+        }
 
-    public async Task Atualizar(Categoria categoria)
-    {
-        _context.Categorias.Update(categoria);
+        if (arquivada.HasValue)
+        {
+            query = query.Where(c => c.Arquivada == arquivada.Value);
+        }
+        else
+        {
+            query = query.Where(c => !c.Arquivada);
+        }
+
+        if (parentId.HasValue)
+        {
+            query = query.Where(c => c.ParentId == parentId.Value);
+        }
+
+        return await query.ToListAsync();
     }
 
     public async Task Salvar()

@@ -6,41 +6,11 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MyFinances.Migrations.MyFinancesDb
 {
     /// <inheritdoc />
-    public partial class AdicionaCartaoCategoriaLancamentoTransferenciaFatura : Migration
+    public partial class AdicionaLancamentoTransferenciaFaturaDoCartao : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<bool>(
-                name: "Ativa",
-                table: "Contas",
-                type: "boolean",
-                nullable: false,
-                oldClrType: typeof(bool),
-                oldType: "boolean",
-                oldDefaultValue: true);
-
-            migrationBuilder.CreateTable(
-                name: "categoria",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    nome = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    tipo = table.Column<string>(type: "text", nullable: false),
-                    parent_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    arquivada = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_categoria", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_categoria_categoria_parent_id",
-                        column: x => x.parent_id,
-                        principalTable: "categoria",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
             migrationBuilder.CreateTable(
                 name: "fatura",
                 columns: table => new
@@ -121,17 +91,17 @@ namespace MyFinances.Migrations.MyFinancesDb
                 {
                     table.PrimaryKey("PK_lancamento", x => x.id);
                     table.ForeignKey(
+                        name: "FK_lancamento_Categorias_categoria_id",
+                        column: x => x.categoria_id,
+                        principalTable: "Categorias",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
                         name: "FK_lancamento_Contas_conta_id",
                         column: x => x.conta_id,
                         principalTable: "Contas",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_lancamento_categoria_categoria_id",
-                        column: x => x.categoria_id,
-                        principalTable: "categoria",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_lancamento_fatura_fatura_id",
                         column: x => x.fatura_id,
@@ -153,11 +123,6 @@ namespace MyFinances.Migrations.MyFinancesDb
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_categoria_parent_id",
-                table: "categoria",
-                column: "parent_id");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_fatura_conta_aberta",
                 table: "fatura",
                 columns: new[] { "conta_id", "status" },
@@ -175,11 +140,9 @@ namespace MyFinances.Migrations.MyFinancesDb
                 column: "conciliado_com");
 
             migrationBuilder.CreateIndex(
-                name: "IX_lancamento_conta_fatura_aberta",
+                name: "IX_lancamento_conta_id",
                 table: "lancamento",
-                columns: new[] { "conta_id", "fatura_id", "status" },
-                unique: true,
-                filter: "fatura_id IS NOT NULL AND status = 'ABERTA'");
+                column: "conta_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_lancamento_fatura_id",
@@ -221,22 +184,10 @@ namespace MyFinances.Migrations.MyFinancesDb
                 name: "lancamento");
 
             migrationBuilder.DropTable(
-                name: "categoria");
-
-            migrationBuilder.DropTable(
                 name: "transferencia");
 
             migrationBuilder.DropTable(
                 name: "fatura");
-
-            migrationBuilder.AlterColumn<bool>(
-                name: "Ativa",
-                table: "Contas",
-                type: "boolean",
-                nullable: false,
-                defaultValue: true,
-                oldClrType: typeof(bool),
-                oldType: "boolean");
         }
     }
 }

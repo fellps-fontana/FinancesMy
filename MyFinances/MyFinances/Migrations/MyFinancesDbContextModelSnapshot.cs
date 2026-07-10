@@ -26,35 +26,29 @@ namespace MyFinances.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("Arquivada")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("arquivada");
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Nome")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("nome");
+                        .HasColumnType("text");
 
                     b.Property<Guid?>("ParentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("parent_id");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Tipo")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("tipo");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ParentId");
 
-                    b.ToTable("categoria", (string)null);
+                    b.ToTable("Categorias");
                 });
 
             modelBuilder.Entity("MyFinances.Models.Conta", b =>
@@ -64,7 +58,9 @@ namespace MyFinances.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<bool>("Ativa")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<int?>("DiaFechamento")
                         .HasColumnType("integer");
@@ -92,6 +88,29 @@ namespace MyFinances.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Contas");
+                });
+
+            modelBuilder.Entity("MyFinances.Models.DeParaCategoria", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoriaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CategoriaPierre")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId");
+
+                    b.HasIndex("CategoriaPierre")
+                        .IsUnique();
+
+                    b.ToTable("DeParaCategorias");
                 });
 
             modelBuilder.Entity("MyFinances.Models.Fatura", b =>
@@ -272,6 +291,17 @@ namespace MyFinances.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("MyFinances.Models.DeParaCategoria", b =>
+                {
+                    b.HasOne("MyFinances.Models.Categoria", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Categoria");
                 });
 
             modelBuilder.Entity("MyFinances.Models.Fatura", b =>

@@ -6,8 +6,6 @@ public interface ICategoriaRepository
 {
     Task Adicionar(Categoria categoria);
     Task<Categoria?> ObterPorId(Guid id);
-    Task<IEnumerable<Categoria>> ListarTodas();
-    Task<IEnumerable<Categoria>> ListarPorTipo(TipoCategoria tipo);
-    Task Atualizar(Categoria categoria);
+    Task<IEnumerable<Categoria>> Listar(TipoCategoria? tipo = null, bool? arquivada = null, Guid? parentId = null);
     Task Salvar();
 }

@@ -44,12 +44,17 @@ builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 // Repositories
 builder.Services.AddScoped<IContaRepository, ContaRepository>();
 builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
+builder.Services.AddScoped<IDeParaCategoriaRepository, DeParaCategoriaRepository>();
 builder.Services.AddScoped<ILancamentoRepository, LancamentoRepository>();
 builder.Services.AddScoped<ITransferenciaRepository, TransferenciaRepository>();
 builder.Services.AddScoped<IFaturaRepository, FaturaRepository>();
 
 // Services - Conta
 builder.Services.AddScoped<IContaService, ContaService>();
+
+// Services - Categoria
+builder.Services.AddScoped<ICategoriaService, CategoriaService>();
+builder.Services.AddScoped<IDeParaCategoriaService, DeParaCategoriaService>();
 
 // Services - Cartao
 builder.Services.AddScoped<ValidacaoCartaoService>();
