@@ -2,18 +2,21 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MyFinances.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace MyFinances.Migrations
+namespace MyFinances.Migrations.MyFinancesDb
 {
     [DbContext(typeof(MyFinancesDbContext))]
-    partial class MyFinancesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260708210902_InitialCreateCategoria")]
+    partial class InitialCreateCategoria
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -29,9 +32,7 @@ namespace MyFinances.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<bool>("Arquivada")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -58,9 +59,7 @@ namespace MyFinances.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<bool>("Ativa")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
+                        .HasColumnType("boolean");
 
                     b.Property<int?>("DiaFechamento")
                         .HasColumnType("integer");
@@ -90,29 +89,6 @@ namespace MyFinances.Migrations
                     b.ToTable("Contas");
                 });
 
-            modelBuilder.Entity("MyFinances.Models.DeParaCategoria", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CategoriaId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CategoriaPierre")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CategoriaId");
-
-                    b.HasIndex("CategoriaPierre")
-                        .IsUnique();
-
-                    b.ToTable("DeParaCategorias");
-                });
-
             modelBuilder.Entity("MyFinances.Models.Categoria", b =>
                 {
                     b.HasOne("MyFinances.Models.Categoria", "Parent")
@@ -121,17 +97,6 @@ namespace MyFinances.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Parent");
-                });
-
-            modelBuilder.Entity("MyFinances.Models.DeParaCategoria", b =>
-                {
-                    b.HasOne("MyFinances.Models.Categoria", "Categoria")
-                        .WithMany()
-                        .HasForeignKey("CategoriaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Categoria");
                 });
 
             modelBuilder.Entity("MyFinances.Models.Categoria", b =>

@@ -44,6 +44,12 @@ builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IContaRepository, ContaRepository>();
 builder.Services.AddScoped<IContaService, ContaService>();
 
+builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
+builder.Services.AddScoped<ICategoriaService, CategoriaService>();
+
+builder.Services.AddScoped<IDeParaCategoriaRepository, DeParaCategoriaRepository>();
+builder.Services.AddScoped<IDeParaCategoriaService, DeParaCategoriaService>();
+
 // Authentication and Authorization configuration
 builder.Services.AddAuthentication(options =>
 {

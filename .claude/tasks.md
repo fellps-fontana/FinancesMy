@@ -1,166 +1,175 @@
-# Tasks — Modulo de Investimentos (v1)
+# Tasks — Modulo Categorias (v1)
 
-Escopo confirmado: investimento como CONTA MANUAL (tipo INVESTIMENTO, origem
-MANUAL, saldo via `saldo_manual`). Sem ativos, ticker, preco medio, cotacao ou
-rentabilidade — isso e v2 e esta fora daqui (ver regra-de-negocio.md, secao
-"Escopo: v1 vs v2").
+Gerado por killua a partir de `regra-de-negocio.md` item 7 e `schema.dbml`
+(tabelas `categoria` e `de_para_categoria`, ja modeladas no schema, sem
+nenhuma linha de codigo ainda). Decisoes em aberto foram confirmadas pelo
+usuario em 2026-07-08 e ja estao registradas em `regra-de-negocio.md` item 7.
 
-Codebase e greenfield: nao ha EF Core, DbContext, entidades nem controllers
-ainda. As primeiras tasks criam essa base.
+Escopo desta lista: entidades, CRUD de categoria e CRUD de de-para. NAO inclui
+UI (hanzo) — fica pra depois. NAO inclui o consumo do de-para pelo modulo de
+lancamento/sync (integracao de outro modulo).
+
+Decisoes que fecham o escopo (ja no regra-de-negocio.md item 7):
+- Hierarquia: no maximo 1 nivel (subcategoria nao pode ter filha).
+- Subcategoria herda `tipo` do pai obrigatoriamente.
+- Arquivar categoria-pai CASCATEIA para as subcategorias.
+- Categoria arquivada nao pode ser usada em lancamento novo (regra pro futuro
+  modulo de lancamento consumir; aqui so listamos arquivada=false por padrao).
+- Nome duplicado permitido, sem constraint.
+- De-para e 1:1: `categoria_pierre` tem UNIQUE constraint.
+
+Formato: STATUS (PENDENTE | CONCLUIDA | BLOQUEADA).
 
 ---
 
-## TASK-001 — Setup EF Core + Npgsql + DbContext
-
-STATUS: CONCLUIDA
+### TASK-001 — Entidade Categoria + migration
+STATUS: CONCLUIDA (build ok, migration InitialCreateCategoria gerada; nao aplicada localmente por falta de Postgres rodando, estrutura SQL conferida)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
-CONTEXTO A LER: stack.md secao "Stack" e "Convencoes"
-ESCOPO: adicionar pacotes EF Core + Npgsql ao csproj, criar `MyFinancesDbContext` vazio e configurar a connection string via appsettings/variavel de ambiente.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/MyFinances.csproj`, `MyFinances/MyFinances/Program.cs`, `MyFinances/MyFinances/appsettings.json`, `MyFinances/MyFinances/appsettings.Development.json`, `MyFinances/MyFinances/Data/MyFinancesDbContext.cs` (novo)
-NAO FAZER: nao versionar credencial real de banco em `appsettings.json` (so em `appsettings.Development.json`, local); nao criar nenhum DbSet ainda (fica pra TASK-002); nao remover o endpoint `weatherforecast` (isso e limpeza, nao faz parte desta task).
-RETORNO ESPERADO: projeto compila, `DbContext` registrado via DI, connection string configuravel.
+CONTEXTO A LER: regra-de-negocio.md item 7 (Categorias, incluindo decisoes de 2026-07-08); schema.dbml tabela `categoria`; stack.md secao Convencoes (uuid, idioma do dominio, DTOs)
+ESCOPO: criar `Models/TipoCategoria.cs` (enum Despesa|Receita + conversion ToStorageValue/FromStorageValue, mesmo padrao de `TipoConta`), `Models/Categoria.cs` (Id, Nome, Tipo, ParentId, Parent, Subcategorias, Arquivada default false), configurar `Categoria` em `MyFinancesDbContext` (DbSet, conversion do Tipo, self-reference com `DeleteBehavior.Restrict`), gerar migration `InitialCreateCategoria`.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Models/TipoCategoria.cs (novo), MyFinances/MyFinances/Models/Categoria.cs (novo), MyFinances/MyFinances/Data/MyFinancesDbContext.cs (estender), MyFinances/MyFinances/Migrations/*InitialCreateCategoria* (novo)
+NAO FAZER: nao implementar service/repository/controller aqui; nao usar `AppDbContext`; nao adicionar constraint de nome unico (decisao: nome duplicado e permitido).
+RETORNO ESPERADO: model + migration aplicavel; enum com conversion validada contra os valores DESPESA/RECEITA do schema.
 
 ---
 
-## TASK-002 — Entidade Conta + migration inicial
+### TASK-002 — Revisao TASK-001
+STATUS: CONCLUIDA (APROVADO apos 1 rodada de correcao — migration regenerada pelo EF removeu sem querer o default de banco Conta.Ativa=true, e Categoria.Arquivada nunca ganhou default=false por ser o default do CLR; corrigido com HasDefaultValue explicito + migration corretiva 20260708223212)
+AGENT: style
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-001
+CONTEXTO A LER: regra-de-negocio.md item 7
+ESCOPO: confirmar `Arquivada` default false, FK self-reference com `Restrict` (nunca cascade delete no banco — a cascata de arquivamento e logica de aplicacao, TASK-003, nao FK cascade), conversion do enum compativel com o schema, nenhum caminho de hard-delete introduzido.
+ARQUIVOS PERMITIDOS: os do TASK-001 (leitura + veredito)
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito (APROVADO | PRECISA CORRIGIR) + tarefa de correcao se reprovado.
 
-STATUS: CONCLUIDA
+---
+
+### TASK-003 — Repository + Service + Controller de Categoria (CRUD)
+STATUS: CONCLUIDA (levi; build ok, aguardando revisao do style na TASK-004)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-001
-CONTEXTO A LER: schema.dbml tabela `conta`; regra-de-negocio.md secao 1 (origem OPEN_FINANCE/MANUAL) e secao 10 (saldo de conta)
-ESCOPO: criar a entidade `Conta` refletindo TODOS os campos da tabela `conta` do schema.dbml (nao so os de investimento) e gerar a migration inicial.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Models/Conta.cs` (novo), `MyFinances/MyFinances/Data/MyFinancesDbContext.cs`, `MyFinances/MyFinances/Migrations/**` (gerado pelo EF)
-NAO FAZER: nao criar entidade Lancamento, Transferencia, Fatura ou qualquer outra tabela do schema — so `conta`, que e a unica necessaria para este modulo. Nao implementar logica de servico aqui, so o modelo de dados.
-RETORNO ESPERADO: migration aplicavel, tabela `conta` criada no Postgres com os campos e tipos do schema.dbml.
+CONTEXTO A LER: regra-de-negocio.md item 7 (Categorias, TODAS as decisoes de 2026-07-08 — hierarquia 1 nivel, tipo herdado, cascata no arquivar); clean-code.md secao "Organizacao (.NET)"
+ESCOPO: `ICategoriaRepository`/`CategoriaRepository` (Adicionar, ObterPorId com Subcategorias incluidas, Listar com filtro tipo/arquivada/parentId, Salvar); `ICategoriaService`/`CategoriaService` com:
+- `Criar`: valida `parentId` (se informado) existe, nao esta arquivado, e NAO TEM parent proprio (hierarquia maxima de 1 nivel — bloquear criar subcategoria de subcategoria); se `parentId` informado, `Tipo` da nova categoria DEVE ser igual ao `Tipo` do pai (senao rejeitar).
+- `Listar`: filtra `arquivada=false` por padrao; parametro explicito derruba o filtro.
+- `Editar`: nome + parentId (mesmas validacoes de hierarquia/tipo do Criar); bloqueia parentId==id.
+- `Arquivar`: seta `Arquivada=true` na categoria E em TODAS as subcategorias dela (cascata, decisao confirmada); nunca remove linha.
+`CategoriasController` com POST/GET/PUT/PATCH `arquivar` em `/api/categorias`.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Repositories/ICategoriaRepository.cs (novo), MyFinances/MyFinances/Repositories/CategoriaRepository.cs (novo), MyFinances/MyFinances/Services/ICategoriaService.cs (novo), MyFinances/MyFinances/Services/CategoriaService.cs (novo), MyFinances/MyFinances/Controllers/CategoriasController.cs (novo), MyFinances/MyFinances/DTOs/Categoria/CriarCategoriaRequest.cs (novo), MyFinances/MyFinances/DTOs/Categoria/EditarCategoriaRequest.cs (novo), MyFinances/MyFinances/DTOs/Categoria/CategoriaResponse.cs (novo), MyFinances/MyFinances/Exceptions/CategoriaNaoEncontradaException.cs (novo)
+NAO FAZER: nao implementar hard-delete em nenhuma rota; nao permitir subcategoria de subcategoria (hierarquia maxima 1 nivel); nao permitir tipo diferente do pai; nao esquecer a cascata de arquivamento pras subcategorias; nao adicionar constraint de nome unico.
+RETORNO ESPERADO: contrato dos 4 endpoints (rota, verbo, body, retorno) + service testavel isoladamente.
 
 ---
 
-## TASK-003 — Repository + Service de Conta (investimento)
-
-STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
-AGENT: levi
-FLUXO: Implementacao
-DEPENDENCIAS: TASK-002
-CONTEXTO A LER: regra-de-negocio.md secao 8 (cofrinho/investimentos/acoes) e secao 10 (saldo de conta manual)
-ESCOPO: criar `ContaRepository` (acesso a dados via EF Core) e `ContaService` com metodos criar, listar (filtro por `tipo=INVESTIMENTO`), atualizar `saldo_manual` e desativar (`ativa=false`), validando que `tipo=INVESTIMENTO` sempre exige `origem=MANUAL`.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Repositories/ContaRepository.cs` (novo), `MyFinances/MyFinances/Services/ContaService.cs` (novo)
-NAO FAZER: nao implementar logica de conta BANCO/CARTAO (sync Pierre, saldo calculado por lancamento) — so o caminho MANUAL/INVESTIMENTO. Nao expor entity diretamente para fora da camada (isso e responsabilidade do controller/DTO na TASK-004). Nao implementar hard-delete — desativar e sempre soft (`ativa=false`), igual ao padrao de soft-delete ja usado no restante do dominio (item 4).
-RETORNO ESPERADO: `ContaService` testavel isoladamente (sem depender do controller), com metodos nomeados por intencao (nao if solto).
-
----
-
-## TASK-004 — Controller REST de Conta (investimento)
-
-STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
-AGENT: levi
+### TASK-004 — Revisao TASK-003
+STATUS: CONCLUIDA (APROVADO apos 1 rodada de correcao — achado real: Editar nao validava categoria com subcategorias proprias, permitia criar hierarquia de 2 niveis via edicao; corrigido + ValidarParent unificado)
+AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-003
-CONTEXTO A LER: clean-code.md secao "Organizacao (.NET)" (DTOs, camadas); regra-de-negocio.md secao 8
-ESCOPO: criar `ContasController` com endpoints `POST /contas`, `GET /contas?tipo=INVESTIMENTO`, `PATCH /contas/{id}/saldo`, `PATCH /contas/{id}/desativar`, usando DTOs de entrada/saida (nunca a entity).
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Controllers/ContasController.cs` (novo), `MyFinances/MyFinances/Dtos/Conta/*.cs` (novo)
-NAO FAZER: nao expor `dia_fechamento`/`dia_vencimento` no DTO (campos exclusivos de CARTAO, fora de escopo). Nao colocar regra de negocio no controller — so orquestra a chamada ao Service.
-RETORNO ESPERADO: contrato de API documentado (rota, verbo, body de entrada, shape de retorno) para os 4 endpoints.
+CONTEXTO A LER: regra-de-negocio.md item 7
+ESCOPO: confirmar que Arquivar nunca remove a linha e cascateia pras subcategorias; que Criar/Editar bloqueiam hierarquia > 1 nivel, tipo diferente do pai, e auto-referencia (parentId==id); que nenhuma regra nao-decidida foi silenciosamente assumida.
+ARQUIVOS PERMITIDOS: os do TASK-003
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 
 ---
 
-## TASK-005 — Testes: CRUD de conta investimento e regra de saldo manual
-
-STATUS: CONCLUIDA (14 testes de integracao HTTP no Controller; regra de negocio ja coberta na TASK-003 com 17 testes no Service)
+### TASK-005 — Testes TASK-003
+STATUS: CONCLUIDA (25 testes, todos passando: criacao raiz/subcategoria, tipo herdado, hierarquia 1 nivel, parent arquivada, listar com filtros, editar, auto-referencia, regressao do bug da TASK-004, cascata no arquivar, nome duplicado)
 AGENT: mike
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-004
-CONTEXTO A LER: regra-de-negocio.md secao 10 (saldo de conta manual); secao 8 (cada conta e separada, sem classificacao por nome)
-ESCOPO: escrever e rodar testes cobrindo: saldo da conta INVESTIMENTO e sempre `saldo_manual` (nunca calculado), criacao de multiplas contas de investimento distintas (cofrinho/XP/carteira) sem colisao, validacao que rejeita `tipo=INVESTIMENTO` com `origem=OPEN_FINANCE`, e que "desativar" so seta `ativa=false` (nao apaga linha).
-ARQUIVOS PERMITIDOS: pasta de testes definida em stack.md (criar se nao existir, ex: `MyFinances/MyFinances.Tests/`)
-NAO FAZER: nao alterar `ContaService`/`ContasController` para fazer o teste passar sem reportar — bug de codigo volta pro levi.
-RETORNO ESPERADO: testes passando; se falhar por bug de codigo (nao de teste), relatorio estruturado apontando arquivo e linha.
+DEPENDENCIAS: TASK-004 (aprovado)
+CONTEXTO A LER: regra-de-negocio.md item 7
+ESCOPO: cobrir criar categoria raiz e subcategoria (mesmo tipo do pai); rejeicao de subcategoria com tipo diferente do pai; rejeicao de criar subcategoria de subcategoria (hierarquia > 1 nivel); listar com filtros tipo/arquivada/parentId; editar nome e parentId; rejeicao de parentId inexistente; rejeicao de parentId==id; arquivar seta Arquivada=true na categoria E em todas as subcategorias, sem remover nenhuma linha.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/CategoriaServiceTests.cs (novo)
+NAO FAZER: nao alterar service para o teste passar sem reportar bug.
+RETORNO ESPERADO: testes passando; relatorio estruturado se falhar por bug de codigo.
 
 ---
 
-## TASK-006 — Calculo do total investido
-
-STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
+### TASK-006 — Entidade DeParaCategoria + migration
+STATUS: CONCLUIDA (levi; build ok, UNIQUE constraint confirmada na migration, defaults de Conta/Categoria preservados; aguardando revisao do style na TASK-007)
 AGENT: levi
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-003
-CONTEXTO A LER: regra-de-negocio.md secao "Escopo: v1 vs v2" (racional "ver o total investido no patrimonio"); secao 10
-ESCOPO: criar funcao nomeada e testavel no `ContaService` que soma `saldo_manual` de todas as contas ativas com `tipo=INVESTIMENTO`, e expor via `GET /contas/investimentos/total` no controller.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/ContaService.cs`, `MyFinances/MyFinances/Controllers/ContasController.cs`
-NAO FAZER: NAO tentar calcular "patrimonio total" do app (isso somaria tambem contas BANCO/CARTAO via Open Finance, cuja logica de saldo calculado por lancamento ainda nao existe — ver duvida em aberto no fim do arquivo). Escopo aqui e so o total das contas de investimento.
-RETORNO ESPERADO: endpoint retornando `{ totalInvestido: decimal }`, funcao de calculo isolada e nomeada (ex: `CalcularTotalInvestido`).
+DEPENDENCIAS: TASK-001
+CONTEXTO A LER: regra-de-negocio.md item 7 paragrafo "De-para" (incluindo decisao de 2026-07-08: vinculo 1:1); schema.dbml tabela `de_para_categoria`
+ESCOPO: criar `Models/DeParaCategoria.cs` (Id, CategoriaPierre, CategoriaId, Categoria), configurar em `MyFinancesDbContext` (DbSet, FK para Categoria com `DeleteBehavior.Restrict`, INDICE UNICO em `CategoriaPierre`), gerar migration `InitialCreateDeParaCategoria`.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Models/DeParaCategoria.cs (novo), MyFinances/MyFinances/Data/MyFinancesDbContext.cs (estender), MyFinances/MyFinances/Migrations/*InitialCreateDeParaCategoria* (novo)
+NAO FAZER: nao implementar service/controller aqui; nao deixar `CategoriaPierre` sem indice unico (decisao confirmada: vinculo 1:1).
+RETORNO ESPERADO: model + migration aplicavel, com constraint UNIQUE em `CategoriaPierre` visivel na migration gerada.
 
 ---
 
-## TASK-007 — Teste do calculo de total investido
-
-STATUS: CONCLUIDA (8 testes novos, 39 no total, todos passando)
-AGENT: mike
+### TASK-007 — Revisao TASK-006
+STATUS: CONCLUIDA (APROVADO apos 1 rodada de correcao — nomenclatura: DbSet/tabela "DeParaCategories" em ingles quebrava a convencao em portugues de Categorias/Contas; renomeado para "DeParaCategorias")
+AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-006
-CONTEXTO A LER: regra-de-negocio.md secao 10 e secao "Escopo: v1 vs v2"
-ESCOPO: testar que o total soma somente contas `tipo=INVESTIMENTO` E `ativa=true`, ignora contas desativadas e contas de outros tipos, e retorna zero sem contas cadastradas.
-ARQUIVOS PERMITIDOS: pasta de testes (mesma da TASK-005)
-NAO FAZER: nao testar patrimonio total do app — fora de escopo aqui.
-RETORNO ESPERADO: testes passando cobrindo os 3 casos citados; relatorio de bug se falhar por codigo.
+CONTEXTO A LER: regra-de-negocio.md item 7 paragrafo "De-para"
+ESCOPO: confirmar FK correta pra Categoria, `Restrict` no delete, e que a migration realmente cria indice/constraint UNIQUE em `CategoriaPierre` (nao so no modelo em memoria).
+ARQUIVOS PERMITIDOS: os do TASK-006
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 
 ---
 
-## TASK-008 — Camada de dados no front (hook de contas de investimento)
-
-STATUS: CONCLUIDA (aprovada pelo style; ja inclui os hooks de mutation criar/atualizar-saldo/desativar, entao TASK-010 so consome, nao recria)
-AGENT: hanzo
+### TASK-008 — Repository + Service + Controller de DeParaCategoria (CRUD)
+STATUS: CONCLUIDA (levi; build ok, aguardando revisao do style na TASK-009)
+AGENT: levi
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-004, TASK-006
-CONTEXTO A LER: stack.md secao "Frontend (React)"; clean-code.md secao "Organizacao (React)"
-ESCOPO: criar hook/data layer (`useContasInvestimento`) que consome `GET /contas?tipo=INVESTIMENTO` e `GET /contas/investimentos/total`, sem fetch solto em componente.
-ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/**` (projeto real trazido da main, nao `frontend/` que foi descartado)
-NAO FAZER: nao colocar chamada de fetch dentro de componente de UI (isso e TASK-009/010).
-RETORNO ESPERADO: hook tipado (sem `any`) retornando lista de contas e total investido, com estado de loading/erro.
+DEPENDENCIAS: TASK-001, TASK-003 (reaproveita ICategoriaRepository pra validar CategoriaId), TASK-006
+CONTEXTO A LER: regra-de-negocio.md item 7 paragrafo "De-para"
+ESCOPO: `IDeParaCategoriaRepository`/`DeParaCategoriaRepository` (Adicionar, ObterPorId, ObterPorCategoriaPierre, Listar, Remover, Salvar); `IDeParaCategoriaService`/`DeParaCategoriaService` com Criar (valida CategoriaId existente via ICategoriaRepository; rejeita se ja existe vinculo com o mesmo CategoriaPierre — retornar erro de conflito, nao deixar estourar so na constraint do banco), Listar, Editar (troca CategoriaId), Excluir (HARD DELETE — sem FK dependente na tabela, decisao registrada no desenho do killua); `DeParaCategoriasController` com POST/GET/PUT/DELETE em `/api/de-para-categorias`.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Repositories/IDeParaCategoriaRepository.cs (novo), MyFinances/MyFinances/Repositories/DeParaCategoriaRepository.cs (novo), MyFinances/MyFinances/Services/IDeParaCategoriaService.cs (novo), MyFinances/MyFinances/Services/DeParaCategoriaService.cs (novo), MyFinances/MyFinances/Controllers/DeParaCategoriasController.cs (novo), MyFinances/MyFinances/DTOs/DeParaCategoria/CriarDeParaCategoriaRequest.cs (novo), MyFinances/MyFinances/DTOs/DeParaCategoria/EditarDeParaCategoriaRequest.cs (novo), MyFinances/MyFinances/DTOs/DeParaCategoria/DeParaCategoriaResponse.cs (novo), MyFinances/MyFinances/Exceptions/DeParaCategoriaNaoEncontradoException.cs (novo)
+NAO FAZER: nao permitir CategoriaPierre duplicado (decisao: vinculo 1:1, rejeitar no service ANTES de bater na constraint do banco); nao consumir este de-para no fluxo de import/sync de lancamento (fora de escopo deste modulo).
+RETORNO ESPERADO: contrato dos 4 endpoints + service testavel isoladamente.
 
 ---
 
-## TASK-009 — UI: lista de contas de investimento + total
-
-STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
-AGENT: hanzo
+### TASK-009 — Revisao TASK-008
+STATUS: CONCLUIDA (APROVADO de primeira — validacao de duplicata no service, hard delete correto, nomenclatura em portugues consistente; observacao nao bloqueante: race condition rara de duplicata concorrente cairia em 500 cru, fora de escopo)
+AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-008
-CONTEXTO A LER: identidade-visual.md (se existir); regra-de-negocio.md secao 8
-ESCOPO: tela listando as contas de investimento (nome, saldo atual) com o total investido em destaque.
-ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/*.tsx` (novo; use os hooks ja existentes em `hooks/`, nao recrie)
-NAO FAZER: nao exibir campos de CARTAO (dia_fechamento/vencimento) nem qualquer dado de ativo/ticker (v2).
-RETORNO ESPERADO: componente de apresentacao consumindo o hook da TASK-008, sem logica de calculo embutida.
+CONTEXTO A LER: regra-de-negocio.md item 7 paragrafo "De-para"
+ESCOPO: confirmar validacao de CategoriaId existente no Criar/Editar, rejeicao de CategoriaPierre duplicado tratada no service (nao so na constraint do banco, pra dar erro legivel), hard-delete restrito a esta tabela (nao vaza pra Categoria).
+ARQUIVOS PERMITIDOS: os do TASK-008
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 
 ---
 
-## TASK-010 — UI: criar/editar/desativar conta de investimento
-
-STATUS: CONCLUIDA (aprovada pelo style de primeira)
-AGENT: hanzo
+### TASK-010 — Testes TASK-008
+STATUS: PENDENTE
+AGENT: mike
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-008
-CONTEXTO A LER: regra-de-negocio.md secao 8 e secao 10
-ESCOPO: formulario para criar conta de investimento (nome + saldo inicial), editar `saldo_manual` e acao de desativar.
-ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/*.tsx` (novo; use os hooks de mutation ja existentes em `hooks/` — useCriarContaInvestimento, useAtualizarSaldoConta, useDesativarConta — nao recrie)
-NAO FAZER: nao permitir escolher `origem` no form (sempre MANUAL, implicito); nao expor campo de tipo de ativo/ticker (v2).
-RETORNO ESPERADO: componente de formulario chamando o hook da TASK-008 para POST/PATCH.
+DEPENDENCIAS: TASK-009 (aprovado)
+CONTEXTO A LER: regra-de-negocio.md item 7 paragrafo "De-para"
+ESCOPO: cobrir criar vinculo; rejeicao de CategoriaId inexistente; rejeicao de CategoriaPierre duplicado; listar filtrando por CategoriaPierre; editar trocando CategoriaId; excluir remove a linha fisicamente (hard delete).
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/DeParaCategoriaServiceTests.cs (novo)
+NAO FAZER: nao alterar service para o teste passar sem reportar bug.
+RETORNO ESPERADO: testes passando; relatorio se bug de codigo.
 
 ---
 
-## Decisoes de modelagem (Killua)
+## Decisoes do usuario (confirmadas em 2026-07-08)
 
-- **Migration cria a tabela `conta` inteira**, nao so os campos de investimento. A tabela e compartilhada por BANCO/CARTAO/INVESTIMENTO no schema.dbml — criar uma versao parcial agora e recriar depois pra outros modulos seria retrabalho e schema fragmentado. Decisao que afeta outros modulos futuros (reaproveitam esta tabela, nao remigram).
-- **`tipo=INVESTIMENTO` implica `origem=MANUAL` sempre** — a regra de negocio so descreve investimento como manual (cofrinho, XP, carteira); nao ha mencao a investimento via Open Finance. Virou validacao explicita na Service (TASK-003).
-- **Total investido != patrimonio total do app.** A regra diz "ver o total investido no patrimonio", mas patrimonio completo somaria tambem contas BANCO/CARTAO com saldo calculado por lancamento (item 10) — e `lancamento` nao existe ainda no codebase (outro modulo). Escopo mantido estrito: so total de contas de investimento.
+Ja registradas em `regra-de-negocio.md` item 7 — replicadas aqui como
+referencia rapida da task queue:
 
-## Duvida em aberto para o usuario
+1. Hierarquia maxima de 1 nivel.
+2. Subcategoria herda `tipo` do pai obrigatoriamente.
+3. Arquivar categoria-pai cascateia pras subcategorias.
+4. Categoria arquivada nao pode ser usada em lancamento novo (contrato pro
+   futuro modulo de lancamento consumir; nao implementado aqui).
+5. Nome de categoria duplicado e permitido.
+6. De-para e 1:1 — `categoria_pierre` com UNIQUE constraint.
 
-Um "patrimonio total" de verdade (somando Open Finance + manual) depende de
-modulos que ainda nao existem (conta corrente, cartao, lancamento, sync
-Pierre). Vira modulo separado, ou o endpoint de total (TASK-006) ja deveria
-nascer com um contrato generico (ex: `/patrimonio`) pensado para acomodar
-outros tipos de conta depois? Nao assumido — mantido escopo estrito de
-investimento.
+Fora de escopo v1, nao tarefado: UI (hanzo), consumo do de-para pelo sync,
+enforcement de "categoria arquivada nao pode em lancamento novo" (isso e do
+modulo de lancamento, so o contrato fica documentado aqui).
