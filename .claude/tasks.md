@@ -106,7 +106,7 @@ RETORNO ESPERADO: model + migration aplicavel, com constraint UNIQUE em `Categor
 ---
 
 ### TASK-007 — Revisao TASK-006
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO apos 1 rodada de correcao — nomenclatura: DbSet/tabela "DeParaCategories" em ingles quebrava a convencao em portugues de Categorias/Contas; renomeado para "DeParaCategorias")
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-006
