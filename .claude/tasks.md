@@ -132,7 +132,7 @@ RETORNO ESPERADO: contrato dos 4 endpoints + service testavel isoladamente.
 ---
 
 ### TASK-009 — Revisao TASK-008
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO de primeira — validacao de duplicata no service, hard delete correto, nomenclatura em portugues consistente; observacao nao bloqueante: race condition rara de duplicata concorrente cairia em 500 cru, fora de escopo)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-008
