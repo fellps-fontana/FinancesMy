@@ -164,7 +164,7 @@ ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/TransferenciaServiceTests.cs (n
 RETORNO ESPERADO: testes passando; relatorio se bug de codigo.
 
 ### TASK-010 — Servico + endpoint ocultar lancamento Open Finance (soft-delete, item 4)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (levi; commit 2aff233; build ok)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-004 (mesmo arquivo Controllers/LancamentosController.cs — serializar)
@@ -175,7 +175,7 @@ NAO FAZER: nao apagar fisicamente a linha em nenhuma hipotese; nao implementar a
 RETORNO ESPERADO: contrato do endpoint; garantia de que `Oculto=true` e a UNICA mudanca de estado.
 
 ### TASK-011 — Revisao TASK-010
-STATUS: PENDENTE
+STATUS: CONCLUIDA (style aprovou apos 1 rodada de correcao — using MyFinances.Models)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-010
@@ -185,7 +185,7 @@ ARQUIVOS PERMITIDOS: os do TASK-010
 RETORNO ESPERADO: veredito + correcao se reprovado.
 
 ### TASK-012 — Testes TASK-010
-STATUS: PENDENTE
+STATUS: CONCLUIDA (mike; 4 testes novos, 135/135 passando — ultima task do modulo)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-011 (aprovado)
