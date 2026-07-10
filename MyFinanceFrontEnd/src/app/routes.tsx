@@ -3,6 +3,8 @@ import { LoginPage } from "@/features/auth/LoginPage"
 import { Home } from "@/app/Home"
 import { ProtectedRoute } from "@/app/ProtectedRoute"
 import { ListaContasInvestimento } from "@/features/investimentos/ListaContasInvestimento"
+import { ContaCartaoPage } from "@/features/cartao/ContaCartaoPage"
+import { RelatorioCategoriaPage } from "@/features/cartao/RelatorioCategoriaPage"
 
 export function AppRoutes() {
   return (
@@ -21,6 +23,22 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <ListaContasInvestimento />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/cartao"
+        element={
+          <ProtectedRoute>
+            <ContaCartaoPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/cartao/relatorio"
+        element={
+          <ProtectedRoute>
+            <RelatorioCategoriaPage />
           </ProtectedRoute>
         }
       />

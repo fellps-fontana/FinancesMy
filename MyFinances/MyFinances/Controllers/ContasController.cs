@@ -1,3 +1,4 @@
+using MyFinances.DTOs;
 using MyFinances.DTOs.Conta;
 using MyFinances.Exceptions;
 using MyFinances.Services;
@@ -10,30 +11,74 @@ namespace MyFinances.Controllers;
 public class ContasController : ControllerBase
 {
     private readonly IContaService _contaService;
+    private readonly SaldoCartaoService _saldoCartaoService;
 
-    public ContasController(IContaService contaService)
+    public ContasController(IContaService contaService, SaldoCartaoService saldoCartaoService)
     {
         _contaService = contaService;
+        _saldoCartaoService = saldoCartaoService;
     }
 
     [HttpPost]
-    public async Task<ActionResult<ContaResponse>> CriarContaInvestimento(CriarContaInvestimentoRequest request)
+    public async Task<ActionResult<ContaResponse>> CriarConta([FromBody] CriarContaRequest request)
     {
-        var conta = await _contaService.CriarContaInvestimento(request.Nome, request.SaldoInicial);
-        var response = ContaResponse.FromConta(conta);
+        var (sucesso, conta, erro) = await _contaService.CriarContaAsync(request);
+
+        if (!sucesso)
+        {
+            return BadRequest(new { erro });
+        }
+
+        var response = ContaResponse.FromConta(conta!);
         return Created($"/api/contas/{response.Id}", response);
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ContaResponse>>> ListarContas([FromQuery] string? tipo)
     {
-        if (tipo != null && tipo != "investimento")
+        IEnumerable<Models.Conta> contas;
+
+        if (string.IsNullOrWhiteSpace(tipo))
         {
-            return BadRequest(new { erro = "Tipo de conta invalido. Apenas 'investimento' e suportado nesta versao." });
+            contas = await _contaService.ListarContasInvestimento();
+        }
+        else if (tipo.Equals("investimento", StringComparison.OrdinalIgnoreCase))
+        {
+            contas = await _contaService.ListarContasPorTipo(Models.TipoConta.Investimento);
+        }
+        else if (tipo.Equals("cartao", StringComparison.OrdinalIgnoreCase))
+        {
+            contas = await _contaService.ListarContasPorTipo(Models.TipoConta.Cartao);
+        }
+        else if (tipo.Equals("banco", StringComparison.OrdinalIgnoreCase))
+        {
+            contas = await _contaService.ListarContasPorTipo(Models.TipoConta.Banco);
+        }
+        else
+        {
+            return BadRequest(new { erro = $"Tipo '{tipo}' nao e suportado. Use 'investimento', 'cartao' ou 'banco'." });
         }
 
-        var contas = await _contaService.ListarContasInvestimento();
         var response = contas.Select(c => ContaResponse.FromConta(c));
+        return Ok(response);
+    }
+
+    [HttpGet("{id}/saldo")]
+    public async Task<ActionResult<SaldoCartaoResponse>> ObterSaldo(Guid id)
+    {
+        var (sucesso, saldo, erro) = await _saldoCartaoService.CalcularSaldoAsync(id);
+
+        if (!sucesso)
+        {
+            return BadRequest(new { erro });
+        }
+
+        var response = new SaldoCartaoResponse
+        {
+            ContaId = id,
+            Saldo = saldo
+        };
+
         return Ok(response);
     }
 

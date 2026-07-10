@@ -15,4 +15,6 @@ public class Categoria
     public ICollection<Categoria> Subcategorias { get; set; } = new List<Categoria>();
 
     public bool Arquivada { get; set; } = false;
+
+    public ICollection<Lancamento> Lancamentos { get; set; } = new List<Lancamento>();
 }

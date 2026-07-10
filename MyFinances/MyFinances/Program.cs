@@ -41,14 +41,28 @@ builder.Services.AddSingleton<IPasswordHasherService, PasswordHasherService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
+// Repositories
 builder.Services.AddScoped<IContaRepository, ContaRepository>();
+builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
+builder.Services.AddScoped<IDeParaCategoriaRepository, DeParaCategoriaRepository>();
+builder.Services.AddScoped<ILancamentoRepository, LancamentoRepository>();
+builder.Services.AddScoped<ITransferenciaRepository, TransferenciaRepository>();
+builder.Services.AddScoped<IFaturaRepository, FaturaRepository>();
+
+// Services - Conta
 builder.Services.AddScoped<IContaService, ContaService>();
 
-builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
+// Services - Categoria
 builder.Services.AddScoped<ICategoriaService, CategoriaService>();
-
-builder.Services.AddScoped<IDeParaCategoriaRepository, DeParaCategoriaRepository>();
 builder.Services.AddScoped<IDeParaCategoriaService, DeParaCategoriaService>();
+
+// Services - Cartao
+builder.Services.AddScoped<ValidacaoCartaoService>();
+builder.Services.AddScoped<FaturaCicloService>();
+builder.Services.AddScoped<CompraCartaoService>();
+builder.Services.AddScoped<PagamentoFaturaService>();
+builder.Services.AddScoped<EstornoCartaoService>();
+builder.Services.AddScoped<SaldoCartaoService>();
 
 // Authentication and Authorization configuration
 builder.Services.AddAuthentication(options =>

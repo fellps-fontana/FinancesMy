@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MyFinances.Infrastructure.Configurations;
 using MyFinances.Models;
 
 namespace MyFinances.Data;
@@ -15,6 +16,10 @@ public class MyFinancesDbContext : DbContext
     public DbSet<Categoria> Categorias { get; set; }
 
     public DbSet<DeParaCategoria> DeParaCategorias { get; set; }
+
+    public DbSet<Lancamento> Lancamentos { get; set; }
+    public DbSet<Transferencia> Transferencias { get; set; }
+    public DbSet<Fatura> Faturas { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -50,16 +55,20 @@ public class MyFinancesDbContext : DbContext
             .HasOne(c => c.Parent)
             .WithMany(c => c.Subcategorias)
             .HasForeignKey(c => c.ParentId)
-            .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<DeParaCategoria>()
             .HasOne(d => d.Categoria)
             .WithMany()
             .HasForeignKey(d => d.CategoriaId)
-            .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<DeParaCategoria>()
             .HasIndex(d => d.CategoriaPierre)
             .IsUnique();
+
+        modelBuilder.ApplyConfiguration(new LancamentoConfiguration());
+        modelBuilder.ApplyConfiguration(new TransferenciaConfiguration());
+        modelBuilder.ApplyConfiguration(new FaturaConfiguration());
     }
 }
