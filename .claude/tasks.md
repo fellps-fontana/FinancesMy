@@ -323,7 +323,7 @@ RETORNO ESPERADO: componente chamando `useRegistrarCompraAtivo`, com validacao d
 
 ## TASK-023 — UI: acao de venda de ativo
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada - bug de ids de input duplicados)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-020, TASK-021
