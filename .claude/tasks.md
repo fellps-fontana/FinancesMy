@@ -337,7 +337,7 @@ RETORNO ESPERADO: componente chamando `useRegistrarVendaAtivo`; quando a quantid
 
 ## TASK-024 — UI: grafico de historico de cotacao do ativo
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada - polling herdado do QueryClient global corrigido). MODULO DE INVESTIMENTOS COMPLETO - 24/24 TASKS.
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-020, TASK-021
