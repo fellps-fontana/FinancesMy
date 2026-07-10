@@ -1,7 +1,16 @@
+import { useState, type FormEvent } from "react"
 import { useAtivosDaConta } from "@/features/investimentos/hooks/useAtivosDaConta"
+import { useRegistrarCompraAtivo } from "@/features/investimentos/hooks/useRegistrarCompraAtivo"
 import { calcularValorAtivo } from "@/features/investimentos/lib/calcularValorAtivo"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
+import {
+  validarCompraAtivo,
+  converterCompraParaNumero,
+} from "@/features/investimentos/lib/validarCompraAtivo"
+import { FormRegistrarCompraAtivo } from "@/features/investimentos/FormRegistrarCompraAtivo"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
+import { Button } from "@/shared/ui/button"
+import { ApiError } from "@/shared/api/client"
 import type { AtivoResponse } from "@/features/investimentos/types"
 
 // Quantidade nao e valor monetario (formatarMoeda nao serve aqui), mas ainda
@@ -12,22 +21,90 @@ const formatadorQuantidade = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 8,
 })
 
+function dataDeHoje(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 type ListaAtivosProps = {
   contaId: string
 }
 
-// Container leve: busca os ativos da conta (estado de servidor via
-// useAtivosDaConta) e delega a apresentacao pura para AtivoLinha - ver
-// clean-code.md "Organizacao (React)" (estado de servidor separado da
-// apresentacao, calculo de dominio fora do componente).
+// Container: busca os ativos da conta (estado de servidor via
+// useAtivosDaConta), guarda o estado de UI do formulario de compra e aciona
+// useRegistrarCompraAtivo. A apresentacao pura fica em AtivoLinha e no
+// formulario (FormRegistrarCompraAtivo) - ver clean-code.md "Organizacao
+// (React)" (estado de servidor separado da apresentacao, calculo de dominio
+// fora do componente). So aparece dentro de uma conta em modo carteira, ja
+// que ListaAtivos so e renderizada nesse contexto (ver ContaInvestimentoCard).
 export function ListaAtivos({ contaId }: ListaAtivosProps) {
   const { data: ativos, isLoading, error } = useAtivosDaConta(contaId)
+  const { mutate: registrarCompra, isPending: registrandoCompra } = useRegistrarCompraAtivo()
+
+  const [mostrarFormulario, setMostrarFormulario] = useState(false)
+  const [ticker, setTicker] = useState("")
+  const [nome, setNome] = useState("")
+  const [quantidade, setQuantidade] = useState("")
+  const [precoUnitario, setPrecoUnitario] = useState("")
+  const [data, setData] = useState(dataDeHoje)
+  const [erroFormulario, setErroFormulario] = useState<string | null>(null)
 
   // Log com contexto (qual conta falhou) antes da mensagem generica ao
   // usuario - mesmo padrao de ListaContasInvestimento.tsx (ver clean-code.md
   // "Tratamento de erro").
   if (error) {
     console.error(`Falha ao carregar ativos da conta de investimento - contaId=${contaId}`, error)
+  }
+
+  function abrirFormulario() {
+    setTicker("")
+    setNome("")
+    setQuantidade("")
+    setPrecoUnitario("")
+    setData(dataDeHoje())
+    setErroFormulario(null)
+    setMostrarFormulario(true)
+  }
+
+  function fecharFormulario() {
+    setMostrarFormulario(false)
+    setErroFormulario(null)
+  }
+
+  function handleSubmitCompra(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const erroValidacao = validarCompraAtivo(ticker, quantidade, precoUnitario, data)
+    if (erroValidacao) {
+      setErroFormulario(erroValidacao)
+      return
+    }
+
+    registrarCompra(
+      {
+        contaId,
+        request: {
+          ticker: ticker.trim(),
+          nome: nome.trim().length > 0 ? nome.trim() : undefined,
+          quantidade: converterCompraParaNumero(quantidade),
+          precoUnitario: converterCompraParaNumero(precoUnitario),
+          data,
+        },
+      },
+      {
+        onSuccess: fecharFormulario,
+        onError: (erroCompra) => {
+          console.error(
+            `Falha ao registrar compra de ativo - contaId=${contaId}, ticker=${ticker}`,
+            erroCompra,
+          )
+          setErroFormulario(
+            erroCompra instanceof ApiError
+              ? erroCompra.message
+              : "Nao foi possivel registrar a compra. Tente novamente.",
+          )
+        },
+      },
+    )
   }
 
   if (error) {
@@ -39,24 +116,47 @@ export function ListaAtivos({ contaId }: ListaAtivosProps) {
     )
   }
 
-  if (isLoading) {
-    return <p className="text-[13px] text-muted-foreground">Carregando ativos...</p>
-  }
-
-  if (!ativos || ativos.length === 0) {
-    return (
-      <p className="text-[13px] text-muted-foreground">
-        Nenhum ativo registrado nesta carteira ainda.
-      </p>
-    )
-  }
-
   return (
-    <ul className="flex flex-col gap-2">
-      {ativos.map((ativo) => (
-        <AtivoLinha key={ativo.id} ativo={ativo} />
-      ))}
-    </ul>
+    <div className="flex flex-col gap-3">
+      {isLoading ? (
+        <p className="text-[13px] text-muted-foreground">Carregando ativos...</p>
+      ) : !ativos || ativos.length === 0 ? (
+        <p className="text-[13px] text-muted-foreground">
+          Nenhum ativo registrado nesta carteira ainda.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {ativos.map((ativo) => (
+            <AtivoLinha key={ativo.id} ativo={ativo} />
+          ))}
+        </ul>
+      )}
+
+      {mostrarFormulario ? (
+        <FormRegistrarCompraAtivo
+          ticker={ticker}
+          nome={nome}
+          quantidade={quantidade}
+          precoUnitario={precoUnitario}
+          data={data}
+          isSubmitting={registrandoCompra}
+          errorMessage={erroFormulario}
+          onTickerChange={setTicker}
+          onNomeChange={setNome}
+          onQuantidadeChange={setQuantidade}
+          onPrecoUnitarioChange={setPrecoUnitario}
+          onDataChange={setData}
+          onSubmit={handleSubmitCompra}
+          onCancelar={fecharFormulario}
+        />
+      ) : (
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" size="sm" onClick={abrirFormulario}>
+            Comprar ativo
+          </Button>
+        </div>
+      )}
+    </div>
   )
 }
 
