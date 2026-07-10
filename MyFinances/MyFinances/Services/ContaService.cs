@@ -103,8 +103,23 @@ public class ContaService : IContaService
     {
         var conta = await ObterContaOuFalhar(contaId);
 
+        if (conta.Tipo == TipoConta.Investimento)
+        {
+            await ValidarDesativacaoDeContaInvestimento(contaId);
+        }
+
         conta.Ativa = false;
         await _contaRepository.Salvar();
+    }
+
+    private async Task ValidarDesativacaoDeContaInvestimento(Guid contaId)
+    {
+        var ativos = await _ativoRepository.ListarAtivosAtivosPorConta(contaId);
+
+        if (ativos.Any())
+        {
+            throw new ContaComAtivosNaoPodeSerDesativadaException(contaId);
+        }
     }
 
     private async Task<Conta> ObterContaOuFalhar(Guid contaId)

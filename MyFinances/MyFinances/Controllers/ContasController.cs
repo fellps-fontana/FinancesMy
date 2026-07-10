@@ -68,6 +68,10 @@ public class ContasController : ControllerBase
         {
             return NotFound(new { erro = ex.Message });
         }
+        catch (ContaComAtivosNaoPodeSerDesativadaException ex)
+        {
+            return UnprocessableEntity(new { erro = ex.Message });
+        }
     }
 
     [HttpGet("investimentos/total")]
