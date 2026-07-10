@@ -295,7 +295,7 @@ RETORNO ESPERADO: hooks tipados (sem `any`), com invalidacao de cache de `useCon
 
 ## TASK-021 — UI: lista de ativos da conta com saldo calculado
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style; achou e corrigiu no meio do caminho um gap real de backend - desativacao de conta com ativos nao era bloqueada)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-020
