@@ -145,7 +145,7 @@ RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 ---
 
 ### TASK-010 — Testes TASK-008
-STATUS: PENDENTE
+STATUS: CONCLUIDA (12 testes novos, 141/141 no total da solution, todos passando: criar/rejeitar duplicata/rejeitar categoria inexistente, listar com/sem filtro, editar, hard delete)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-009 (aprovado)
