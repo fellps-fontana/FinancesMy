@@ -119,7 +119,7 @@ RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 ---
 
 ### TASK-008 — Repository + Service + Controller de DeParaCategoria (CRUD)
-STATUS: PENDENTE
+STATUS: CONCLUIDA (levi; build ok, aguardando revisao do style na TASK-009)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-001, TASK-003 (reaproveita ICategoriaRepository pra validar CategoriaId), TASK-006
