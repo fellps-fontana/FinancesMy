@@ -309,7 +309,7 @@ RETORNO ESPERADO: componente de apresentacao consumindo `useAtivosDaConta`, sem 
 
 ## TASK-022 — UI: formulario de compra de ativo
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (aprovada pelo style de primeira)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-020
