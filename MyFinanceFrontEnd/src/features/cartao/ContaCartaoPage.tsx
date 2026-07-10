@@ -12,17 +12,23 @@ import { FaturasSection } from "@/features/cartao/components/FaturasSection"
 import { validarNovaContaCartao } from "@/features/cartao/lib/validarNovaContaCartao"
 import { validarCompra } from "@/features/cartao/lib/validarCompra"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Card, CardContent } from "@/shared/ui/card"
 import { Button } from "@/shared/ui/button"
 import { ApiError } from "@/shared/api/client"
 
 // Container: nao calcula nada de dominio (saldo vem pronto do backend), so
-// orquestra estado de servidor (React Query) e estado de UI (qual conta
-// cartao esta ativa, formularios abertos) e decide qual apresentacao mostrar.
-// Ver hooks/useContaCartaoAtual.ts para o GAP conhecido sobre a ausencia de
-// endpoint de listagem/consulta de contas por tipo=cartao.
+// orquestra estado de servidor (React Query) e estado de UI (formularios
+// abertos) e decide qual apresentacao mostrar. A conta CARTAO "atual" vem de
+// GET /api/contas?tipo=cartao (ver hooks/useContaCartaoAtual.ts) - apos criar
+// uma conta, a invalidacao de cache dentro de useCriarContaCartao ja faz essa
+// query refletir a conta nova, sem estado local proprio aqui.
 export function ContaCartaoPage() {
-  const { contaCartaoAtual, setContaCartaoAtual } = useContaCartaoAtual()
+  const {
+    contaCartaoAtual,
+    isLoading: carregandoContaCartao,
+    isError: erroContaCartao,
+  } = useContaCartaoAtual()
   const { mutate: criarContaCartao, isPending: criandoConta } = useCriarContaCartao()
   const {
     data: saldo,
@@ -64,8 +70,10 @@ export function ContaCartaoPage() {
         diaVencimento: Number(diaVencimento),
       },
       {
-        onSuccess: (conta) => {
-          setContaCartaoAtual({ id: conta.id, nome: conta.nome })
+        onSuccess: () => {
+          // A conta nova entra em useContaCartaoAtual pela invalidacao de
+          // cache dentro de useCriarContaCartao - nao precisa guardar estado
+          // local aqui.
           setErroFormularioConta(null)
         },
         onError: (erro) => {
@@ -135,7 +143,14 @@ export function ContaCartaoPage() {
         </p>
       </header>
 
-      {contaCartaoAtual === null ? (
+      {carregandoContaCartao ? (
+        <p className="text-sm text-text-muted">Carregando cartao...</p>
+      ) : erroContaCartao ? (
+        <Alert variant="destructive">
+          <AlertTitle>Nao foi possivel carregar o cartao</AlertTitle>
+          <AlertDescription>Verifique sua conexao e tente novamente.</AlertDescription>
+        </Alert>
+      ) : contaCartaoAtual === null ? (
         <CriarContaCartaoForm
           nome={nome}
           diaFechamento={diaFechamento}

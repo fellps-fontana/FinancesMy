@@ -1,54 +1,40 @@
-import { useCallback, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { listarContasCartao } from "@/features/cartao/api"
+import { cartaoKeys } from "@/features/cartao/query-keys"
+import type { ContaResponse } from "@/features/cartao/types"
 
-const CHAVE_STORAGE = "myfinances:contaCartaoAtual"
-
-export type ContaCartaoAtual = {
-  id: string
-  nome: string
-}
-
-function lerDoStorage(): ContaCartaoAtual | null {
-  const bruto = localStorage.getItem(CHAVE_STORAGE)
-  if (bruto === null) {
-    return null
-  }
-
-  try {
-    return JSON.parse(bruto) as ContaCartaoAtual
-  } catch {
-    return null
-  }
+export type UseContaCartaoAtualResult = {
+  contaCartaoAtual: ContaResponse | null
+  isLoading: boolean
+  isError: boolean
 }
 
 /**
- * Guarda qual conta CARTAO esta ativa nesta pagina.
+ * Conta CARTAO "atual" da pagina - GET /api/contas?tipo=cartao
+ * (ContasController.ListarContas -> IContaService.ListarContasPorTipo,
+ * endpoint confirmado no backend atual). Pega a primeira conta da lista: o
+ * dominio nao tem hoje um conceito de "cartao favorito/principal", so uma
+ * tela que assume uma conta ativa por vez (regra de negocio item 12 nao
+ * define multiplos cartoes simultaneos na v1).
  *
- * GAP CONHECIDO (verificado em ContasController.ListarContas): GET /api/contas
- * so aceita `tipo=investimento` (ou sem filtro, que tambem cai no default de
- * investimento) - qualquer outro valor, incluindo "cartao", devolve 400. Nao
- * existe tambem GET /api/contas/{id} para buscar uma conta especifica por id.
- * Ou seja, hoje nao ha como listar ou redescobrir a conta CARTAO ja
- * cadastrada no backend a partir do front.
+ * Lista vazia = ainda nao existe conta CARTAO cadastrada -> ContaCartaoPage
+ * mostra o formulario de criacao. Apos criar uma conta (useCriarContaCartao),
+ * a query e invalidada e esta lista e refeita automaticamente - sem precisar
+ * de estado local proprio.
  *
- * Workaround preservado da implementacao isolada de referencia (branch
- * cartao-credito): a conta criada (id + nome) fica persistida no
- * localStorage deste navegador assim que a criacao tem sucesso. Se o
- * localStorage for limpo, ou o acesso vier de outro navegador/dispositivo, a
- * pagina volta a pedir a criacao sem saber que a conta ja existe no banco -
- * risco de criar uma segunda conta CARTAO duplicada. Quando
- * GET /api/contas?tipo=cartao (ou GET /api/contas/{id}) existir, substituir
- * por uma query real (React Query) e remover esta persistencia local.
+ * Substitui o hack de localStorage usado antes desse endpoint existir no
+ * backend (GET /api/contas so aceitava tipo=investimento). O gap ficou
+ * resolvido no commit que adicionou IContaService.ListarContasPorTipo.
  */
-export function useContaCartaoAtual(): {
-  contaCartaoAtual: ContaCartaoAtual | null
-  setContaCartaoAtual: (conta: ContaCartaoAtual) => void
-} {
-  const [contaCartaoAtual, setContaCartaoAtualState] = useState<ContaCartaoAtual | null>(lerDoStorage)
+export function useContaCartaoAtual(): UseContaCartaoAtualResult {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: cartaoKeys.contasCartao(),
+    queryFn: listarContasCartao,
+  })
 
-  const setContaCartaoAtual = useCallback((conta: ContaCartaoAtual) => {
-    localStorage.setItem(CHAVE_STORAGE, JSON.stringify(conta))
-    setContaCartaoAtualState(conta)
-  }, [])
-
-  return { contaCartaoAtual, setContaCartaoAtual }
+  return {
+    contaCartaoAtual: data?.[0] ?? null,
+    isLoading,
+    isError,
+  }
 }

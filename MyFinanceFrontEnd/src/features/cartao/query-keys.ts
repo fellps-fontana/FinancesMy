@@ -3,6 +3,8 @@
 // sempre apontem para a mesma chave - mesmo padrao de investimentos/query-keys.ts.
 export const cartaoKeys = {
   all: ["cartao"] as const,
+  contasCartao: () => [...cartaoKeys.all, "contas-cartao"] as const,
+  contasBanco: () => [...cartaoKeys.all, "contas-banco"] as const,
   saldo: (contaId: string) => [...cartaoKeys.all, "saldo", contaId] as const,
   faturas: (contaId: string) => [...cartaoKeys.all, "faturas", contaId] as const,
   relatorioCategoria: (mes: string, contaId?: string) =>

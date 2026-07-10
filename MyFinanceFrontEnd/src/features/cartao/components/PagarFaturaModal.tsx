@@ -5,10 +5,13 @@ import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
+import type { ContaResponse } from "@/features/cartao/types"
 
 type PagarFaturaModalProps = {
   valorPendente: number
   contaOrigemId: string
+  contasBanco: ContaResponse[]
+  carregandoContasBanco: boolean
   valor: string
   data: string
   isSubmitting: boolean
@@ -29,16 +32,14 @@ type PagarFaturaModalProps = {
  * permitido, preservando a intencao da branch de referencia.
  *
  * Puramente apresentacao: guarda so o estado transiente exibido; a mutation,
- * o estado de envio e o erro vem do container (FaturasSection).
- *
- * GAP CONHECIDO: nao ha endpoint para listar contas BANCO (mesma limitacao
- * de GET /api/contas registrada em hooks/useContaCartaoAtual.ts) - a conta
- * de origem e informada como texto livre (id da conta), ate esse endpoint
- * existir.
+ * o estado de envio, o erro e a lista de contas BANCO (GET /api/contas?tipo=banco)
+ * vem do container (FaturasSection).
  */
 export function PagarFaturaModal({
   valorPendente,
   contaOrigemId,
+  contasBanco,
+  carregandoContasBanco,
   valor,
   data,
   isSubmitting,
@@ -88,18 +89,29 @@ export function PagarFaturaModal({
         )}
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="contaOrigemPagamento">Conta de origem (id)</Label>
-          <Input
-            id="contaOrigemPagamento"
-            placeholder="ID da conta bancaria de origem"
-            required
-            value={contaOrigemId}
-            onChange={(event) => onContaOrigemIdChange(event.target.value)}
-          />
-          <span className="text-[12px] text-text-faint">
-            Ainda nao ha selecao visual de contas - depende de um endpoint de listagem de contas
-            BANCO que nao existe no backend.
-          </span>
+          <Label htmlFor="contaOrigemPagamento">Conta de origem</Label>
+          {carregandoContasBanco ? (
+            <span className="text-sm text-text-muted">Carregando contas...</span>
+          ) : contasBanco.length === 0 ? (
+            <span className="text-sm text-text-muted">Nenhuma conta banco cadastrada ainda.</span>
+          ) : (
+            <select
+              id="contaOrigemPagamento"
+              required
+              value={contaOrigemId}
+              onChange={(event) => onContaOrigemIdChange(event.target.value)}
+              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-text-body outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <option value="" disabled>
+                Selecione a conta
+              </option>
+              {contasBanco.map((conta) => (
+                <option key={conta.id} value={conta.id}>
+                  {conta.nome}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -132,7 +144,7 @@ export function PagarFaturaModal({
           </span>
         </div>
 
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting || contasBanco.length === 0}>
           {isSubmitting ? "Pagando..." : "Pagar fatura"}
         </Button>
       </form>

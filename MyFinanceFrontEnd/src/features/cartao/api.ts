@@ -16,6 +16,20 @@ export function criarContaCartao(request: CriarContaCartaoRequest): Promise<Cont
   return apiClient.post<ContaResponse>("/api/contas", request)
 }
 
+// GET /api/contas?tipo=cartao (ContasController.ListarContas ->
+// IContaService.ListarContasPorTipo). Lista as contas CARTAO cadastradas -
+// endpoint confirmado no backend atual (antes so suportava tipo=investimento).
+export function listarContasCartao(): Promise<ContaResponse[]> {
+  return apiClient.get<ContaResponse[]>("/api/contas?tipo=cartao")
+}
+
+// GET /api/contas?tipo=banco - lista as contas BANCO cadastradas, usadas
+// como origem do pagamento de fatura (regra de negocio item 3: transferencia
+// de mesma titularidade conta corrente -> cartao).
+export function listarContasBanco(): Promise<ContaResponse[]> {
+  return apiClient.get<ContaResponse[]>("/api/contas?tipo=banco")
+}
+
 // GET /api/contas/{id}/saldo - saldo calculado do cartao (regra de negocio
 // item 12: compras - pagamentos - estornos). Nunca armazenado, sempre lido
 // do backend.

@@ -2,6 +2,7 @@ import { useState } from "react"
 import type { FormEvent } from "react"
 import { useFaturas } from "@/features/cartao/hooks/useFaturas"
 import { usePagarFatura } from "@/features/cartao/hooks/usePagarFatura"
+import { useContasBanco } from "@/features/cartao/hooks/useContasBanco"
 import { FaturaItem } from "@/features/cartao/components/FaturaItem"
 import { PagarFaturaModal } from "@/features/cartao/components/PagarFaturaModal"
 import { validarPagamentoFatura } from "@/features/cartao/lib/validarPagamentoFatura"
@@ -20,6 +21,7 @@ type FaturasSectionProps = {
 export function FaturasSection({ contaId }: FaturasSectionProps) {
   const { data: faturas, isLoading, error } = useFaturas(contaId)
   const { mutate: pagarFatura, isPending: pagando } = usePagarFatura()
+  const { data: contasBanco, isLoading: carregandoContasBanco } = useContasBanco()
 
   const [faturaEmPagamento, setFaturaEmPagamento] = useState<FaturaResponse | null>(null)
   const [contaOrigemId, setContaOrigemId] = useState("")
@@ -111,6 +113,8 @@ export function FaturasSection({ contaId }: FaturasSectionProps) {
         <PagarFaturaModal
           valorPendente={faturaEmPagamento.valorPendente}
           contaOrigemId={contaOrigemId}
+          contasBanco={contasBanco ?? []}
+          carregandoContasBanco={carregandoContasBanco}
           valor={valor}
           data={data}
           isSubmitting={pagando}
