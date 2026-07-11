@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using MyFinances.Models;
+using MyFinances.Domain;
 
 namespace MyFinances.Infrastructure.Configurations;
 

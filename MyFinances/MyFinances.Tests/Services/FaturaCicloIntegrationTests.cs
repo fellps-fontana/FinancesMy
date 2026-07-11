@@ -1,7 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MyFinances.Data;
-using MyFinances.Models;
+using MyFinances.Domain;
 using MyFinances.Repositories;
 using MyFinances.Services;
 using Xunit;

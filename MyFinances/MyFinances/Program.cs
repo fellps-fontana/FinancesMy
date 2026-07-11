@@ -31,9 +31,6 @@ builder.Services.AddCors(options =>
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
-
 builder.Services.AddDbContext<MyFinancesDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -114,7 +111,7 @@ if (app.Environment.IsDevelopment())
     app.UseCors(FrontendDevCorsPolicy);
 
     using var seedScope = app.Services.CreateScope();
-    var seedContext = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var seedContext = seedScope.ServiceProvider.GetRequiredService<MyFinancesDbContext>();
     var seedHasher = seedScope.ServiceProvider.GetRequiredService<IPasswordHasherService>();
     await DevUserSeeder.SeedAsync(seedContext, seedHasher);
 }

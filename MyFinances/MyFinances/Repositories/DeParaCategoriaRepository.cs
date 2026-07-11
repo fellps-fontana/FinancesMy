@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MyFinances.Data;
-using MyFinances.Models;
+using MyFinances.Domain;
 
 namespace MyFinances.Repositories;
 

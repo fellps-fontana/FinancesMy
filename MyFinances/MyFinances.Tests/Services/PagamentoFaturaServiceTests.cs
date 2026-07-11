@@ -1,6 +1,6 @@
 using Moq;
 using MyFinances.DTOs;
-using MyFinances.Models;
+using MyFinances.Domain;
 using MyFinances.Repositories;
 using MyFinances.Services;
 using Xunit;

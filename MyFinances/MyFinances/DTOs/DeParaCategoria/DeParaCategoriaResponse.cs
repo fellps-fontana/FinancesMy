@@ -1,6 +1,6 @@
 using MyFinances.DTOs.Categoria;
-using MyFinances.Models;
-using DeParaCategoriaModel = MyFinances.Models.DeParaCategoria;
+using MyFinances.Domain;
+using DeParaCategoriaModel = MyFinances.Domain.DeParaCategoria;
 
 namespace MyFinances.DTOs.DeParaCategoria;
 

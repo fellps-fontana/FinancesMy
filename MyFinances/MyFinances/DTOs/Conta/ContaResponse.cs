@@ -1,4 +1,5 @@
-using MyFinances.Models;
+using MyFinances.Domain;
+using ContaDomain = MyFinances.Domain.Conta;
 
 namespace MyFinances.DTOs.Conta;
 
@@ -24,7 +25,7 @@ public class ContaResponse
 
     public string? PierreAccountId { get; set; }
 
-    public static ContaResponse FromConta(Models.Conta conta)
+    public static ContaResponse FromConta(ContaDomain conta)
     {
         if (conta.Tipo == null)
         {
@@ -46,7 +47,7 @@ public class ContaResponse
         };
     }
 
-    public static ContaResponse FromContaComSaldo(Models.Conta conta, decimal saldo, bool estaEmModoCarteira)
+    public static ContaResponse FromContaComSaldo(ContaDomain conta, decimal saldo, bool estaEmModoCarteira)
     {
         if (conta.Tipo == null)
         {

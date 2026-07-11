@@ -1,3 +1,4 @@
+using MyFinances.Domain;
 using MyFinances.DTOs;
 using MyFinances.DTOs.Conta;
 using MyFinances.Exceptions;
@@ -36,7 +37,7 @@ public class ContasController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ContaResponse>>> ListarContas([FromQuery] string? tipo)
     {
-        IEnumerable<Models.Conta> contas;
+        IEnumerable<Conta> contas;
 
         if (string.IsNullOrWhiteSpace(tipo))
         {
@@ -44,15 +45,15 @@ public class ContasController : ControllerBase
         }
         else if (tipo.Equals("investimento", StringComparison.OrdinalIgnoreCase))
         {
-            contas = await _contaService.ListarContasPorTipo(Models.TipoConta.Investimento);
+            contas = await _contaService.ListarContasPorTipo(TipoConta.Investimento);
         }
         else if (tipo.Equals("cartao", StringComparison.OrdinalIgnoreCase))
         {
-            contas = await _contaService.ListarContasPorTipo(Models.TipoConta.Cartao);
+            contas = await _contaService.ListarContasPorTipo(TipoConta.Cartao);
         }
         else if (tipo.Equals("banco", StringComparison.OrdinalIgnoreCase))
         {
-            contas = await _contaService.ListarContasPorTipo(Models.TipoConta.Banco);
+            contas = await _contaService.ListarContasPorTipo(TipoConta.Banco);
         }
         else
         {

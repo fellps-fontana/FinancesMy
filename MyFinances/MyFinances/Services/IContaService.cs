@@ -1,5 +1,5 @@
 using MyFinances.DTOs.Conta;
-using MyFinances.Models;
+using MyFinances.Domain;
 
 namespace MyFinances.Services;
 

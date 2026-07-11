@@ -11,17 +11,17 @@ public class AuthServiceTests
 {
     private readonly Mock<IPasswordHasherService> _passwordHasherMock;
     private readonly Mock<IJwtTokenService> _jwtTokenServiceMock;
-    private readonly AppDbContext _context;
+    private readonly MyFinancesDbContext _context;
     private readonly AuthService _authService;
 
     public AuthServiceTests()
     {
         _passwordHasherMock = new Mock<IPasswordHasherService>();
         _jwtTokenServiceMock = new Mock<IJwtTokenService>();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
+        var options = new DbContextOptionsBuilder<MyFinancesDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
-        _context = new AppDbContext(options);
+        _context = new MyFinancesDbContext(options);
         _authService = new AuthService(_context, _passwordHasherMock.Object, _jwtTokenServiceMock.Object);
     }
 

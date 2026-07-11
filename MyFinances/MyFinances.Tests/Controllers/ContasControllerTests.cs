@@ -12,7 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MyFinances.Data;
 using MyFinances.DTOs.Conta;
 using MyFinances.DTOs;
-using MyFinances.Models;
+using MyFinances.Domain;
 using Xunit;
 
 namespace MyFinances.Tests.Controllers;
@@ -42,13 +42,6 @@ public class ContasControllerWebApplicationFactory : WebApplicationFactory<Progr
 
                 services.AddDbContext<MyFinancesDbContext>(options =>
                     options.UseInMemoryDatabase("ContasControllerTestDb"));
-
-                // AppDbContext (modulo de usuario) tambem precisa virar InMemory
-                // aqui, senao a remocao ampla acima (prefixo Microsoft.EntityFrameworkCore)
-                // o deixa sem provider registrado - e o login usado para autenticar
-                // os testes deste controller (ver InitializeAsync) depende dele.
-                services.AddDbContext<AppDbContext>(options =>
-                    options.UseInMemoryDatabase("ContasControllerTestDb_AppDb"));
             });
     }
 }

@@ -1,6 +1,6 @@
 using MyFinances.DTOs.Categoria;
 using MyFinances.Exceptions;
-using MyFinances.Models;
+using MyFinances.Domain;
 using MyFinances.Services;
 using Microsoft.AspNetCore.Mvc;
 
