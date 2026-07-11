@@ -108,14 +108,15 @@ Table ativo {
   ticker varchar [not null]
   nome varchar [note: 'nome de exibicao do ativo, opcional']
   quantidade decimal [not null, note: 'posicao atual (pos-venda); atualizada em toda compra/venda']
-  preco_medio decimal [not null, note: 'custo medio ponderado sobre a posicao atual; recalcula so em COMPRA (item 8); venda NUNCA altera']
-  preco_atual decimal [not null, note: 'informado manualmente pelo usuario a cada compra; usado no calculo de patrimonio e no grafico de diferenca (item 8)']
-  ativa boolean [not null, default: true, note: 'false quando quantidade chega a zero por venda total (item 8); soft-delete, mesmo padrao de conta.ativa/categoria.arquivada/lancamento.oculto']
+  preco_medio decimal [not null, note: 'custo medio ponderado sobre a posicao atual; recalcula so em COMPRA (item 8.2); venda NUNCA altera']
+  preco_atual decimal [not null, note: 'informado manualmente pelo usuario a cada compra; usado no calculo de patrimonio (item 8.1)']
+  ativa boolean [not null, default: true, note: 'false quando quantidade chega a zero por venda total (item 8.3); soft-delete, mesmo padrao de conta.ativa/categoria.arquivada/lancamento.oculto']
   criado_em timestamp [not null, default: `now()`]
 }
 
-// Historico de compra/venda por ativo (item 8). Necessario para recalcular
-// preco_medio corretamente apos venda parcial, e serve de extrato auditavel.
+// Historico de compra/venda por ativo (item 8.2/8.3). Necessario para
+// recalcular preco_medio corretamente apos venda parcial, e serve de extrato
+// auditavel.
 Table movimentacao_ativo {
   id uuid [pk]
   ativo_id uuid [ref: > ativo.id, not null]

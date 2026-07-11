@@ -7,7 +7,8 @@
 - **Banco:** PostgreSQL.
 - **Frontend:** React (TypeScript) + Vite.
 - **Fonte externa:** API REST do Pierre (Open Finance) via Bearer token.
-- **Cotacao (v2):** Brapi ou similar para acoes BR.
+- **Cotacao (v1, sob demanda):** Brapi ou similar para acoes BR, consultada via proxy no backend (sem persistencia, sem polling — ver regra-de-negocio.md item 8).
+- **Grafico (frontend):** Recharts, para o historico de cotacao do ativo (item 8).
 
 ## Integracao Pierre
 

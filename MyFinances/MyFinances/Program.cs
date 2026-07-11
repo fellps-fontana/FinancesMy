@@ -48,9 +48,19 @@ builder.Services.AddScoped<IDeParaCategoriaRepository, DeParaCategoriaRepository
 builder.Services.AddScoped<ILancamentoRepository, LancamentoRepository>();
 builder.Services.AddScoped<ITransferenciaRepository, TransferenciaRepository>();
 builder.Services.AddScoped<IFaturaRepository, FaturaRepository>();
+builder.Services.AddScoped<IAtivoRepository, AtivoRepository>();
 
 // Services - Conta
 builder.Services.AddScoped<IContaService, ContaService>();
+builder.Services.AddScoped<IAtivoService, AtivoService>();
+
+builder.Services.AddHttpClient<ICotacaoExternaService, CotacaoExternaService>(client =>
+{
+    var brapiConfig = builder.Configuration.GetSection("Brapi");
+    var baseUrl = brapiConfig["BaseUrl"] ?? "https://brapi.dev/";
+    client.BaseAddress = new Uri(baseUrl);
+    client.DefaultRequestHeaders.Add("User-Agent", "MyFinances/1.0");
+});
 
 // Services - Categoria
 builder.Services.AddScoped<ICategoriaService, CategoriaService>();
