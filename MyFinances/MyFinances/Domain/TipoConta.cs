@@ -1,4 +1,4 @@
-namespace MyFinances.Models;
+namespace MyFinances.Domain;
 
 public enum TipoConta
 {

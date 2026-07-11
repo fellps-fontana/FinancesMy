@@ -1,5 +1,5 @@
 using MyFinances.Exceptions;
-using MyFinances.Models;
+using MyFinances.Domain;
 using MyFinances.Repositories;
 using Microsoft.Extensions.Logging;
 

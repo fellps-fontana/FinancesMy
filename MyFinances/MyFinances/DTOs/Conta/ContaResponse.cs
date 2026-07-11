@@ -1,4 +1,4 @@
-using MyFinances.Models;
+using MyFinances.Domain;
 
 namespace MyFinances.DTOs.Conta;
 
@@ -16,7 +16,7 @@ public class ContaResponse
 
     public bool Ativa { get; set; }
 
-    public static ContaResponse FromConta(Models.Conta conta)
+    public static ContaResponse FromConta(Domain.Conta conta)
     {
         if (conta.Tipo == null)
         {

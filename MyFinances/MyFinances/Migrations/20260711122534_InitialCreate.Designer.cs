@@ -11,19 +11,69 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace MyFinances.Migrations
 {
-    [DbContext(typeof(AppDbContext))]
-    [Migration("20260703163616_InitialCreateUsuario")]
-    partial class InitialCreateUsuario
+    [DbContext(typeof(MyFinancesDbContext))]
+    [Migration("20260711122534_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.0")
+                .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("MyFinances.Domain.Conta", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativa")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativa");
+
+                    b.Property<int?>("DiaFechamento")
+                        .HasColumnType("integer")
+                        .HasColumnName("dia_fechamento");
+
+                    b.Property<int?>("DiaVencimento")
+                        .HasColumnType("integer")
+                        .HasColumnName("dia_vencimento");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("nome");
+
+                    b.Property<string>("Origem")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("origem");
+
+                    b.Property<string>("PierreAccountId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("pierre_account_id");
+
+                    b.Property<decimal?>("SaldoManual")
+                        .HasColumnType("numeric")
+                        .HasColumnName("saldo_manual");
+
+                    b.Property<string>("Tipo")
+                        .HasColumnType("text")
+                        .HasColumnName("tipo");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("conta", (string)null);
+                });
 
             modelBuilder.Entity("MyFinances.Domain.Usuario", b =>
                 {

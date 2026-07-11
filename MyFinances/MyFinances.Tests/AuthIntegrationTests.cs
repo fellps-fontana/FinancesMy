@@ -16,12 +16,10 @@ public class AuthWebApplicationFactory : WebApplicationFactory<Program>
     {
         builder.ConfigureServices(services =>
         {
-            // Remove existing DbContext and Npgsql
             var descriptorsToRemove = new List<ServiceDescriptor>();
             foreach (var descriptor in services)
             {
-                if (descriptor.ServiceType == typeof(AppDbContext) ||
-                    descriptor.ServiceType == typeof(DbContextOptions<AppDbContext>) ||
+                if (descriptor.ServiceType == typeof(DbContextOptions<MyFinancesDbContext>) ||
                     descriptor.ServiceType?.FullName?.Contains("DbContextOptions") == true ||
                     descriptor.ImplementationType?.FullName?.Contains("NpgsqlConnection") == true ||
                     descriptor.ImplementationType?.FullName?.Contains("NpgsqlDataSource") == true)
@@ -35,13 +33,6 @@ public class AuthWebApplicationFactory : WebApplicationFactory<Program>
                 services.Remove(descriptor);
             }
 
-            // Register InMemory DbContext
-            services.AddDbContext<AppDbContext>(options =>
-                options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
-
-            // MyFinancesDbContext (modulo de investimentos) tambem precisa
-            // ser trocado para InMemory aqui, senao a remocao ampla acima
-            // (Contains("DbContextOptions")) o deixa sem provider registrado.
             services.AddDbContext<MyFinancesDbContext>(options =>
                 options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
         });
