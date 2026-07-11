@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MyFinances.Infrastructure.Configurations;
 using MyFinances.Models;
 
 namespace MyFinances.Data;
@@ -16,9 +17,21 @@ public class MyFinancesDbContext : DbContext
 
     public DbSet<MovimentacaoAtivo> MovimentacoesAtivo { get; set; }
 
+    public DbSet<Categoria> Categorias { get; set; }
+
+    public DbSet<DeParaCategoria> DeParaCategorias { get; set; }
+
+    public DbSet<Lancamento> Lancamentos { get; set; }
+    public DbSet<Transferencia> Transferencias { get; set; }
+    public DbSet<Fatura> Faturas { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Conta>()
+            .Property(c => c.Ativa)
+            .HasDefaultValue(true);
 
         modelBuilder.Entity<Conta>()
             .Property(c => c.Origem)
@@ -37,5 +50,35 @@ public class MyFinancesDbContext : DbContext
             .HasConversion(
                 v => v.ToStorageValue(),
                 v => TipoMovimentacaoAtivoExtensions.FromStorageValue(v));
+
+        modelBuilder.Entity<Categoria>()
+            .Property(c => c.Arquivada)
+            .HasDefaultValue(false);
+
+        modelBuilder.Entity<Categoria>()
+            .Property(c => c.Tipo)
+            .HasConversion(
+                v => v.ToStorageValue(),
+                v => TipoCategoriaExtensions.FromStorageValue(v));
+
+        modelBuilder.Entity<Categoria>()
+            .HasOne(c => c.Parent)
+            .WithMany(c => c.Subcategorias)
+            .HasForeignKey(c => c.ParentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<DeParaCategoria>()
+            .HasOne(d => d.Categoria)
+            .WithMany()
+            .HasForeignKey(d => d.CategoriaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<DeParaCategoria>()
+            .HasIndex(d => d.CategoriaPierre)
+            .IsUnique();
+
+        modelBuilder.ApplyConfiguration(new LancamentoConfiguration());
+        modelBuilder.ApplyConfiguration(new TransferenciaConfiguration());
+        modelBuilder.ApplyConfiguration(new FaturaConfiguration());
     }
 }

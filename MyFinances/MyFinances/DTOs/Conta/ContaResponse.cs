@@ -18,6 +18,12 @@ public class ContaResponse
 
     public bool Ativa { get; set; }
 
+    public int? DiaFechamento { get; set; }
+
+    public int? DiaVencimento { get; set; }
+
+    public string? PierreAccountId { get; set; }
+
     public static ContaResponse FromConta(Models.Conta conta)
     {
         if (conta.Tipo == null)
@@ -33,7 +39,10 @@ public class ContaResponse
             Origem = conta.Origem,
             Saldo = conta.SaldoManual ?? 0m,
             SaldoManual = conta.SaldoManual,
-            Ativa = conta.Ativa
+            Ativa = conta.Ativa,
+            DiaFechamento = conta.DiaFechamento,
+            DiaVencimento = conta.DiaVencimento,
+            PierreAccountId = conta.PierreAccountId
         };
     }
 

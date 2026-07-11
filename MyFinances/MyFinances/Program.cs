@@ -41,10 +41,17 @@ builder.Services.AddSingleton<IPasswordHasherService, PasswordHasherService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
+// Repositories
 builder.Services.AddScoped<IContaRepository, ContaRepository>();
-builder.Services.AddScoped<IContaService, ContaService>();
-
+builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
+builder.Services.AddScoped<IDeParaCategoriaRepository, DeParaCategoriaRepository>();
+builder.Services.AddScoped<ILancamentoRepository, LancamentoRepository>();
+builder.Services.AddScoped<ITransferenciaRepository, TransferenciaRepository>();
+builder.Services.AddScoped<IFaturaRepository, FaturaRepository>();
 builder.Services.AddScoped<IAtivoRepository, AtivoRepository>();
+
+// Services - Conta
+builder.Services.AddScoped<IContaService, ContaService>();
 builder.Services.AddScoped<IAtivoService, AtivoService>();
 
 builder.Services.AddHttpClient<ICotacaoExternaService, CotacaoExternaService>(client =>
@@ -54,6 +61,18 @@ builder.Services.AddHttpClient<ICotacaoExternaService, CotacaoExternaService>(cl
     client.BaseAddress = new Uri(baseUrl);
     client.DefaultRequestHeaders.Add("User-Agent", "MyFinances/1.0");
 });
+
+// Services - Categoria
+builder.Services.AddScoped<ICategoriaService, CategoriaService>();
+builder.Services.AddScoped<IDeParaCategoriaService, DeParaCategoriaService>();
+
+// Services - Cartao
+builder.Services.AddScoped<ValidacaoCartaoService>();
+builder.Services.AddScoped<FaturaCicloService>();
+builder.Services.AddScoped<CompraCartaoService>();
+builder.Services.AddScoped<PagamentoFaturaService>();
+builder.Services.AddScoped<EstornoCartaoService>();
+builder.Services.AddScoped<SaldoCartaoService>();
 
 // Authentication and Authorization configuration
 builder.Services.AddAuthentication(options =>
@@ -100,9 +119,11 @@ if (app.Environment.IsDevelopment())
     await DevUserSeeder.SeedAsync(seedContext, seedHasher);
 }
 
+
 if (!app.Environment.IsEnvironment("Testing"))
 {
     app.UseHttpsRedirection();
+
 }
 
 app.UseAuthentication();

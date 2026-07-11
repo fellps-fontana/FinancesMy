@@ -307,8 +307,14 @@ Serve para agrupar as compras e para casar com o pagamento.
 **Saldo do cartao** = compras - pagamentos - estornos. CALCULADO, nao armazenado
 (mesma logica do item 10).
 
-**Pagamento x fatura:** o pagamento fecha o saldo da fatura como um todo, NUNCA
-compra a compra (igual Organizze).
+**Pagamento x fatura:** o pagamento pode ser PARCIAL (nao precisa quitar o
+saldo pendente de uma vez — podem existir varios pagamentos ate a fatura ser
+quitada) e ANTECIPADO (pode ocorrer antes do fechamento do ciclo ou do
+vencimento, com a fatura ainda ABERTA). Cada pagamento continua fechando saldo
+da fatura como um todo, NUNCA compra a compra especifica (igual Organizze) —
+so que agora em incrementos. A fatura so recebe status PAGA quando o saldo
+pendente (total das compras da fatura menos a soma dos pagamentos ja feitos)
+chega a zero.
 
 **Projecao:** o cartao entra na projecao do mes como UMA linha = total da fatura
 atual, com status pago / nao pago, tratado como conta a pagar (ver item 9). As
@@ -332,7 +338,9 @@ Conta/Lancamento nos modulos cartao, lancamento e investimentos, como scaffold
 de schema. Decisao NAO-retroativa: esse schema fica como esta, nao ha
 migration de remocao. O que muda e o que entra na v1 daqui pra frente:
 
-- **v1:** so contas MANUAL. Sem sync (item 11), sem exclusao/conciliacao
+- **v1:** contas MANUAL, incluindo investimento em modo carteira de ativos
+  (ver item 8 — compra/venda, preco medio, saldo calculado, cotacao Brapi sob
+  demanda, grafico de diferenca). Sem sync (item 11), sem exclusao/conciliacao
   Open Finance (itens 4 e 5, branch OF), sem endpoint de integracao com
   Pierre. Pendencias de rate limit/paginacao do Pierre (ver "Pendencias a
   definir") saem da v1 tambem — so voltam a importar quando a integracao

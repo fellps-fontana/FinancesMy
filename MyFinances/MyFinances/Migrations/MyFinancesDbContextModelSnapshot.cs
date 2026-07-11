@@ -58,6 +58,35 @@ namespace MyFinances.Migrations
                     b.ToTable("Ativos");
                 });
 
+            modelBuilder.Entity("MyFinances.Models.Categoria", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Arquivada")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentId");
+
+                    b.ToTable("Categorias");
+                });
+
             modelBuilder.Entity("MyFinances.Models.Conta", b =>
                 {
                     b.Property<Guid>("Id")
@@ -65,7 +94,9 @@ namespace MyFinances.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<bool>("Ativa")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<int?>("DiaFechamento")
                         .HasColumnType("integer");
@@ -93,6 +124,155 @@ namespace MyFinances.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Contas");
+                });
+
+            modelBuilder.Entity("MyFinances.Models.DeParaCategoria", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoriaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CategoriaPierre")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId");
+
+                    b.HasIndex("CategoriaPierre")
+                        .IsUnique();
+
+                    b.ToTable("DeParaCategorias");
+                });
+
+            modelBuilder.Entity("MyFinances.Models.Fatura", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
+                    b.Property<DateOnly>("DataFechamento")
+                        .HasColumnType("date")
+                        .HasColumnName("data_fechamento");
+
+                    b.Property<DateOnly>("DataVencimento")
+                        .HasColumnType("date")
+                        .HasColumnName("data_vencimento");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContaId", "Status")
+                        .IsUnique()
+                        .HasDatabaseName("IX_fatura_conta_aberta")
+                        .HasFilter("status = 'ABERTA'");
+
+                    b.ToTable("fatura", (string)null);
+                });
+
+            modelBuilder.Entity("MyFinances.Models.Lancamento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CategoriaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("categoria_id");
+
+                    b.Property<Guid?>("ConciliadoCom")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conciliado_com");
+
+                    b.Property<Guid?>("ContaFixaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_fixa_id");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
+                    b.Property<DateOnly>("Data")
+                        .HasColumnType("date")
+                        .HasColumnName("data");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("descricao");
+
+                    b.Property<Guid?>("FaturaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fatura_id");
+
+                    b.Property<bool>("Manual")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("manual");
+
+                    b.Property<bool>("Oculto")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("oculto");
+
+                    b.Property<string>("PierreTxnId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("pierre_txn_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("tipo");
+
+                    b.Property<Guid?>("TransferenciaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("transferencia_id");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId");
+
+                    b.HasIndex("ConciliadoCom");
+
+                    b.HasIndex("ContaId");
+
+                    b.HasIndex("FaturaId");
+
+                    b.HasIndex("PierreTxnId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_lancamento_pierre_txn_id")
+                        .HasFilter("pierre_txn_id IS NOT NULL");
+
+                    b.HasIndex("TransferenciaId");
+
+                    b.ToTable("lancamento", (string)null);
                 });
 
             modelBuilder.Entity("MyFinances.Models.MovimentacaoAtivo", b =>
@@ -123,6 +303,171 @@ namespace MyFinances.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("MovimentacoesAtivo");
+                });
+
+            modelBuilder.Entity("MyFinances.Models.Transferencia", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ContaDestinoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_destino_id");
+
+                    b.Property<Guid>("ContaOrigemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_origem_id");
+
+                    b.Property<DateOnly>("Data")
+                        .HasColumnType("date")
+                        .HasColumnName("data");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("descricao");
+
+                    b.Property<Guid?>("FaturaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fatura_id");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContaDestinoId");
+
+                    b.HasIndex("ContaOrigemId");
+
+                    b.HasIndex("FaturaId");
+
+                    b.ToTable("transferencia", (string)null);
+                });
+
+            modelBuilder.Entity("MyFinances.Models.Categoria", b =>
+                {
+                    b.HasOne("MyFinances.Models.Categoria", "Parent")
+                        .WithMany("Subcategorias")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("MyFinances.Models.DeParaCategoria", b =>
+                {
+                    b.HasOne("MyFinances.Models.Categoria", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Categoria");
+                });
+
+            modelBuilder.Entity("MyFinances.Models.Fatura", b =>
+                {
+                    b.HasOne("MyFinances.Models.Conta", "Conta")
+                        .WithMany()
+                        .HasForeignKey("ContaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conta");
+                });
+
+            modelBuilder.Entity("MyFinances.Models.Lancamento", b =>
+                {
+                    b.HasOne("MyFinances.Models.Categoria", "Categoria")
+                        .WithMany("Lancamentos")
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MyFinances.Models.Lancamento", "LancamentoConciliado")
+                        .WithMany("LancamentosConciliados")
+                        .HasForeignKey("ConciliadoCom")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MyFinances.Models.Conta", "Conta")
+                        .WithMany()
+                        .HasForeignKey("ContaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyFinances.Models.Fatura", "Fatura")
+                        .WithMany("Lancamentos")
+                        .HasForeignKey("FaturaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MyFinances.Models.Transferencia", "Transferencia")
+                        .WithMany("Lancamentos")
+                        .HasForeignKey("TransferenciaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Categoria");
+
+                    b.Navigation("Conta");
+
+                    b.Navigation("Fatura");
+
+                    b.Navigation("LancamentoConciliado");
+
+                    b.Navigation("Transferencia");
+                });
+
+            modelBuilder.Entity("MyFinances.Models.Transferencia", b =>
+                {
+                    b.HasOne("MyFinances.Models.Conta", "ContaDestino")
+                        .WithMany()
+                        .HasForeignKey("ContaDestinoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyFinances.Models.Conta", "ContaOrigem")
+                        .WithMany()
+                        .HasForeignKey("ContaOrigemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyFinances.Models.Fatura", "Fatura")
+                        .WithMany("Transferencias")
+                        .HasForeignKey("FaturaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ContaDestino");
+
+                    b.Navigation("ContaOrigem");
+
+                    b.Navigation("Fatura");
+                });
+
+            modelBuilder.Entity("MyFinances.Models.Categoria", b =>
+                {
+                    b.Navigation("Lancamentos");
+
+                    b.Navigation("Subcategorias");
+                });
+
+            modelBuilder.Entity("MyFinances.Models.Fatura", b =>
+                {
+                    b.Navigation("Lancamentos");
+
+                    b.Navigation("Transferencias");
+                });
+
+            modelBuilder.Entity("MyFinances.Models.Lancamento", b =>
+                {
+                    b.Navigation("LancamentosConciliados");
+                });
+
+            modelBuilder.Entity("MyFinances.Models.Transferencia", b =>
+                {
+                    b.Navigation("Lancamentos");
                 });
 #pragma warning restore 612, 618
         }
