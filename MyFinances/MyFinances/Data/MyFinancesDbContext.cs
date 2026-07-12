@@ -42,5 +42,15 @@ public class MyFinancesDbContext : DbContext
         modelBuilder.ApplyConfiguration(new LancamentoConfiguration());
         modelBuilder.ApplyConfiguration(new TransferenciaConfiguration());
         modelBuilder.ApplyConfiguration(new FaturaConfiguration());
+
+        // Se nao eh Npgsql (ex: SQLite em testes), remove o default value SQL do campo CriadoEm
+        // que eh sintaxe Postgres-only. Em producao (Npgsql), o UsuarioConfiguration mantem
+        // o comportamento correto com now() AT TIME ZONE 'UTC'.
+        if (!Database.IsNpgsql())
+        {
+            modelBuilder.Entity<Usuario>()
+                .Property(u => u.CriadoEm)
+                .HasDefaultValueSql(null);
+        }
     }
 }
