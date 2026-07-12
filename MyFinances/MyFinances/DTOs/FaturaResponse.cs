@@ -1,5 +1,4 @@
 using MyFinances.Domain;
-using MyFinances.Domain;
 
 namespace MyFinances.DTOs;
 
