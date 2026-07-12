@@ -35,10 +35,11 @@ public class ContaConfiguration : IEntityTypeConfiguration<Conta>
 
         builder.Property(c => c.PierreAccountId)
             .HasColumnName("pierre_account_id")
-            .HasMaxLength(255);
+            .HasMaxLength(500);
 
         builder.Property(c => c.SaldoManual)
-            .HasColumnName("saldo_manual");
+            .HasColumnName("saldo_manual")
+            .HasPrecision(18, 2);
 
         builder.Property(c => c.DiaFechamento)
             .HasColumnName("dia_fechamento");

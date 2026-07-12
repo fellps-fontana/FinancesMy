@@ -1,10 +1,13 @@
 import { useState, type FormEvent } from "react"
 import { useAtualizarSaldoConta } from "@/features/investimentos/hooks/useAtualizarSaldoConta"
 import { useDesativarConta } from "@/features/investimentos/hooks/useDesativarConta"
+import { useAtivosDaConta } from "@/features/investimentos/hooks/useAtivosDaConta"
 import { ContaInvestimentoCard } from "@/features/investimentos/components/ContaInvestimentoCard"
 import { validarSaldo, converterSaldoParaNumero } from "@/features/investimentos/lib/validarSaldo"
 import { ApiError } from "@/shared/api/client"
 import type { ContaResponse } from "@/features/investimentos/types"
+
+const MOTIVO_DESATIVAR_BLOQUEADO = "Venda todos os ativos antes de desativar esta conta"
 
 type ContaInvestimentoItemProps = {
   conta: ContaResponse
@@ -17,6 +20,22 @@ type ContaInvestimentoItemProps = {
 export function ContaInvestimentoItem({ conta }: ContaInvestimentoItemProps) {
   const { mutate: atualizarSaldo, isPending: salvandoSaldo } = useAtualizarSaldoConta()
   const { mutate: desativarConta, isPending: desativando } = useDesativarConta()
+
+  // saldoManual === null marca a conta em modo carteira de ativos (regra-de-
+  // negocio.md item 8/10). So nesse modo o backend bloqueia a desativacao
+  // enquanto houver ativo ativo (item 8.3): ContaComAtivosNaoPodeSerDesativa-
+  // daException, 422. Reaproveitamos useAtivosDaConta (mesma query key ja
+  // usada por ListaAtivos - o React Query cacheia por contaId, entao esta
+  // segunda chamada nao duplica a requisicao de rede) so para decidir se o
+  // botao "Desativar" pode ser acionado. A regra em si continua vivendo no
+  // backend; aqui so evitamos abrir uma confirmacao que vai falhar de cara.
+  const contaComCarteiraDeAtivos = conta.saldoManual === null
+  const { data: ativosDaCarteira, isLoading: carregandoAtivos } = useAtivosDaConta(
+    contaComCarteiraDeAtivos ? conta.id : "",
+  )
+  const carteiraTemAtivoAtivo = contaComCarteiraDeAtivos && (ativosDaCarteira?.length ?? 0) > 0
+  const desabilitarDesativar = contaComCarteiraDeAtivos && (carregandoAtivos || carteiraTemAtivoAtivo)
+  const motivoDesativarBloqueado = carteiraTemAtivoAtivo ? MOTIVO_DESATIVAR_BLOQUEADO : null
 
   const [editandoSaldo, setEditandoSaldo] = useState(false)
   const [novoSaldo, setNovoSaldo] = useState("")
@@ -101,6 +120,8 @@ export function ContaInvestimentoItem({ conta }: ContaInvestimentoItemProps) {
       confirmandoDesativar={confirmandoDesativar}
       desativando={desativando}
       erroDesativar={erroDesativar}
+      desabilitarDesativar={desabilitarDesativar}
+      motivoDesativarBloqueado={motivoDesativarBloqueado}
       onSolicitarDesativar={solicitarDesativar}
       onConfirmarDesativar={confirmarDesativar}
       onCancelarDesativar={cancelarDesativar}

@@ -16,10 +16,12 @@ public class AuthWebApplicationFactory : WebApplicationFactory<Program>
     {
         builder.ConfigureServices(services =>
         {
+            // Remove existing DbContext and Npgsql
             var descriptorsToRemove = new List<ServiceDescriptor>();
             foreach (var descriptor in services)
             {
-                if (descriptor.ServiceType == typeof(DbContextOptions<MyFinancesDbContext>) ||
+                if (descriptor.ServiceType == typeof(MyFinancesDbContext) ||
+                    descriptor.ServiceType == typeof(DbContextOptions<MyFinancesDbContext>) ||
                     descriptor.ServiceType?.FullName?.Contains("DbContextOptions") == true ||
                     descriptor.ImplementationType?.FullName?.Contains("NpgsqlConnection") == true ||
                     descriptor.ImplementationType?.FullName?.Contains("NpgsqlDataSource") == true)
@@ -33,6 +35,7 @@ public class AuthWebApplicationFactory : WebApplicationFactory<Program>
                 services.Remove(descriptor);
             }
 
+            // Register InMemory DbContext
             services.AddDbContext<MyFinancesDbContext>(options =>
                 options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
         });
