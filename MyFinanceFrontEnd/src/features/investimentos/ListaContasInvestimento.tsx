@@ -4,7 +4,7 @@ import { useTotalInvestido } from "@/features/investimentos/hooks/useTotalInvest
 import { useCriarContaInvestimento } from "@/features/investimentos/hooks/useCriarContaInvestimento"
 import { TotalInvestidoResumo } from "@/features/investimentos/components/TotalInvestidoResumo"
 import { ContaInvestimentoItem } from "@/features/investimentos/components/ContaInvestimentoItem"
-import { FormCriarContaInvestimento } from "@/features/investimentos/FormCriarContaInvestimento"
+import { FormCriarContaInvestimento } from "@/features/investimentos/components/FormCriarContaInvestimento"
 import { validarNovaConta } from "@/features/investimentos/lib/validarNovaConta"
 import { converterSaldoParaNumero } from "@/features/investimentos/lib/validarSaldo"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"

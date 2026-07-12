@@ -1,4 +1,4 @@
-using MyFinances.Models;
+using MyFinances.Domain;
 
 namespace MyFinances.Domain;
 

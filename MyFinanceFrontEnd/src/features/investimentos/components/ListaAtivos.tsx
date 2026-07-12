@@ -12,9 +12,9 @@ import {
   validarVendaAtivo,
   converterVendaParaNumero,
 } from "@/features/investimentos/lib/validarVendaAtivo"
-import { FormRegistrarCompraAtivo } from "@/features/investimentos/FormRegistrarCompraAtivo"
-import { FormRegistrarVendaAtivo } from "@/features/investimentos/FormRegistrarVendaAtivo"
-import { GraficoCotacaoAtivo } from "@/features/investimentos/GraficoCotacaoAtivo"
+import { FormRegistrarCompraAtivo } from "@/features/investimentos/components/FormRegistrarCompraAtivo"
+import { FormRegistrarVendaAtivo } from "@/features/investimentos/components/FormRegistrarVendaAtivo"
+import { GraficoCotacaoAtivo } from "@/features/investimentos/components/GraficoCotacaoAtivo"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { ApiError } from "@/shared/api/client"

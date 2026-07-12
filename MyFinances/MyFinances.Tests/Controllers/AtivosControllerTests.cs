@@ -12,7 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MyFinances.Data;
 using MyFinances.DTOs.Ativo;
 using MyFinances.DTOs;
-using MyFinances.Models;
+using MyFinances.Domain;
 using Xunit;
 
 namespace MyFinances.Tests.Controllers;
@@ -42,9 +42,6 @@ public class AtivosControllerWebApplicationFactory : WebApplicationFactory<Progr
 
             services.AddDbContext<MyFinancesDbContext>(options =>
                 options.UseInMemoryDatabase("AtivosControllerTestDb"));
-
-            services.AddDbContext<AppDbContext>(options =>
-                options.UseInMemoryDatabase("AtivosControllerTestDb_AppDb"));
         });
     }
 }

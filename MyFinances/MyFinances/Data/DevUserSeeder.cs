@@ -10,7 +10,7 @@ public static class DevUserSeeder
     public const string Email = "teste@teste.com";
     public const string Senha = "Teste123!";
 
-    public static async Task SeedAsync(AppDbContext context, IPasswordHasherService hasher)
+    public static async Task SeedAsync(MyFinancesDbContext context, IPasswordHasherService hasher)
     {
         var jaExiste = await context.Usuarios.AnyAsync(u => u.Username == Username);
         if (jaExiste)

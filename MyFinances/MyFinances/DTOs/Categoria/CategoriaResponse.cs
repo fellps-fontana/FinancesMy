@@ -1,4 +1,5 @@
-using MyFinances.Models;
+using MyFinances.Domain;
+using CategoriaDomain = MyFinances.Domain.Categoria;
 
 namespace MyFinances.DTOs.Categoria;
 
@@ -16,7 +17,7 @@ public class CategoriaResponse
 
     public bool Arquivada { get; set; }
 
-    public static CategoriaResponse FromCategoria(Models.Categoria categoria)
+    public static CategoriaResponse FromCategoria(CategoriaDomain categoria)
     {
         return new()
         {

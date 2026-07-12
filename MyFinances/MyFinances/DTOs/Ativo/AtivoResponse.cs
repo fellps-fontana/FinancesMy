@@ -1,4 +1,5 @@
-using MyFinances.Models;
+using MyFinances.Domain;
+using AtivoDomain = MyFinances.Domain.Ativo;
 
 namespace MyFinances.DTOs.Ativo;
 
@@ -18,7 +19,7 @@ public class AtivoResponse
 
     public bool Ativa { get; set; }
 
-    public static AtivoResponse FromAtivo(Models.Ativo ativo)
+    public static AtivoResponse FromAtivo(AtivoDomain ativo)
     {
         return new()
         {

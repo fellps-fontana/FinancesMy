@@ -9,11 +9,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace MyFinances.Migrations.MyFinancesDb
+namespace MyFinances.Migrations
 {
     [DbContext(typeof(MyFinancesDbContext))]
-    [Migration("20260710022814_AdicionaLancamentoTransferenciaFaturaDoCartao")]
-    partial class AdicionaLancamentoTransferenciaFaturaDoCartao
+    [Migration("20260711225259_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,86 +25,160 @@ namespace MyFinances.Migrations.MyFinancesDb
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("MyFinances.Models.Categoria", b =>
+            modelBuilder.Entity("MyFinances.Domain.Ativo", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativa")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativa");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("Nome")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("nome");
+
+                    b.Property<decimal>("PrecoAtual")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("preco_atual");
+
+                    b.Property<decimal>("PrecoMedio")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("preco_medio");
+
+                    b.Property<decimal>("Quantidade")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("quantidade");
+
+                    b.Property<string>("Ticker")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("ticker");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ativo", (string)null);
+                });
+
+            modelBuilder.Entity("MyFinances.Domain.Categoria", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<bool>("Arquivada")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasDefaultValue(false)
+                        .HasColumnName("arquivada");
 
                     b.Property<string>("Nome")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("nome");
 
                     b.Property<Guid?>("ParentId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_id");
 
                     b.Property<string>("Tipo")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("tipo");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ParentId");
 
-                    b.ToTable("Categorias");
+                    b.ToTable("categoria", (string)null);
                 });
 
-            modelBuilder.Entity("MyFinances.Models.Conta", b =>
+            modelBuilder.Entity("MyFinances.Domain.Conta", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<bool>("Ativa")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(true);
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativa");
 
                     b.Property<int?>("DiaFechamento")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("dia_fechamento");
 
                     b.Property<int?>("DiaVencimento")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("dia_vencimento");
 
                     b.Property<string>("Nome")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("nome");
 
                     b.Property<string>("Origem")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("origem");
 
                     b.Property<string>("PierreAccountId")
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("pierre_account_id");
 
                     b.Property<decimal?>("SaldoManual")
-                        .HasColumnType("numeric");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("saldo_manual");
 
                     b.Property<string>("Tipo")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("tipo");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Contas");
+                    b.ToTable("conta", (string)null);
                 });
 
-            modelBuilder.Entity("MyFinances.Models.DeParaCategoria", b =>
+            modelBuilder.Entity("MyFinances.Domain.DeParaCategoria", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<Guid>("CategoriaId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("categoria_id");
 
                     b.Property<string>("CategoriaPierre")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("categoria_pierre");
 
                     b.HasKey("Id");
 
@@ -113,10 +187,10 @@ namespace MyFinances.Migrations.MyFinancesDb
                     b.HasIndex("CategoriaPierre")
                         .IsUnique();
 
-                    b.ToTable("DeParaCategorias");
+                    b.ToTable("de_para_categoria", (string)null);
                 });
 
-            modelBuilder.Entity("MyFinances.Models.Fatura", b =>
+            modelBuilder.Entity("MyFinances.Domain.Fatura", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -150,7 +224,7 @@ namespace MyFinances.Migrations.MyFinancesDb
                     b.ToTable("fatura", (string)null);
                 });
 
-            modelBuilder.Entity("MyFinances.Models.Lancamento", b =>
+            modelBuilder.Entity("MyFinances.Domain.Lancamento", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -242,7 +316,47 @@ namespace MyFinances.Migrations.MyFinancesDb
                     b.ToTable("lancamento", (string)null);
                 });
 
-            modelBuilder.Entity("MyFinances.Models.Transferencia", b =>
+            modelBuilder.Entity("MyFinances.Domain.MovimentacaoAtivo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AtivoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ativo_id");
+
+                    b.Property<DateOnly>("Data")
+                        .HasColumnType("date")
+                        .HasColumnName("data");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observacao");
+
+                    b.Property<decimal>("PrecoUnitario")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("preco_unitario");
+
+                    b.Property<decimal>("Quantidade")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("quantidade");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("tipo");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("movimentacao_ativo", (string)null);
+                });
+
+            modelBuilder.Entity("MyFinances.Domain.Transferencia", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -286,9 +400,51 @@ namespace MyFinances.Migrations.MyFinancesDb
                     b.ToTable("transferencia", (string)null);
                 });
 
-            modelBuilder.Entity("MyFinances.Models.Categoria", b =>
+            modelBuilder.Entity("MyFinances.Domain.Usuario", b =>
                 {
-                    b.HasOne("MyFinances.Models.Categoria", "Parent")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em")
+                        .HasDefaultValueSql("now() AT TIME ZONE 'UTC'");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("SenhaHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("senha_hash");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("username");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("usuario", (string)null);
+                });
+
+            modelBuilder.Entity("MyFinances.Domain.Categoria", b =>
+                {
+                    b.HasOne("MyFinances.Domain.Categoria", "Parent")
                         .WithMany("Subcategorias")
                         .HasForeignKey("ParentId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -296,9 +452,9 @@ namespace MyFinances.Migrations.MyFinancesDb
                     b.Navigation("Parent");
                 });
 
-            modelBuilder.Entity("MyFinances.Models.DeParaCategoria", b =>
+            modelBuilder.Entity("MyFinances.Domain.DeParaCategoria", b =>
                 {
-                    b.HasOne("MyFinances.Models.Categoria", "Categoria")
+                    b.HasOne("MyFinances.Domain.Categoria", "Categoria")
                         .WithMany()
                         .HasForeignKey("CategoriaId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -307,9 +463,9 @@ namespace MyFinances.Migrations.MyFinancesDb
                     b.Navigation("Categoria");
                 });
 
-            modelBuilder.Entity("MyFinances.Models.Fatura", b =>
+            modelBuilder.Entity("MyFinances.Domain.Fatura", b =>
                 {
-                    b.HasOne("MyFinances.Models.Conta", "Conta")
+                    b.HasOne("MyFinances.Domain.Conta", "Conta")
                         .WithMany()
                         .HasForeignKey("ContaId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -318,30 +474,30 @@ namespace MyFinances.Migrations.MyFinancesDb
                     b.Navigation("Conta");
                 });
 
-            modelBuilder.Entity("MyFinances.Models.Lancamento", b =>
+            modelBuilder.Entity("MyFinances.Domain.Lancamento", b =>
                 {
-                    b.HasOne("MyFinances.Models.Categoria", "Categoria")
+                    b.HasOne("MyFinances.Domain.Categoria", "Categoria")
                         .WithMany("Lancamentos")
                         .HasForeignKey("CategoriaId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("MyFinances.Models.Lancamento", "LancamentoConciliado")
+                    b.HasOne("MyFinances.Domain.Lancamento", "LancamentoConciliado")
                         .WithMany("LancamentosConciliados")
                         .HasForeignKey("ConciliadoCom")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("MyFinances.Models.Conta", "Conta")
+                    b.HasOne("MyFinances.Domain.Conta", "Conta")
                         .WithMany()
                         .HasForeignKey("ContaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MyFinances.Models.Fatura", "Fatura")
+                    b.HasOne("MyFinances.Domain.Fatura", "Fatura")
                         .WithMany("Lancamentos")
                         .HasForeignKey("FaturaId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("MyFinances.Models.Transferencia", "Transferencia")
+                    b.HasOne("MyFinances.Domain.Transferencia", "Transferencia")
                         .WithMany("Lancamentos")
                         .HasForeignKey("TransferenciaId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -357,21 +513,21 @@ namespace MyFinances.Migrations.MyFinancesDb
                     b.Navigation("Transferencia");
                 });
 
-            modelBuilder.Entity("MyFinances.Models.Transferencia", b =>
+            modelBuilder.Entity("MyFinances.Domain.Transferencia", b =>
                 {
-                    b.HasOne("MyFinances.Models.Conta", "ContaDestino")
+                    b.HasOne("MyFinances.Domain.Conta", "ContaDestino")
                         .WithMany()
                         .HasForeignKey("ContaDestinoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MyFinances.Models.Conta", "ContaOrigem")
+                    b.HasOne("MyFinances.Domain.Conta", "ContaOrigem")
                         .WithMany()
                         .HasForeignKey("ContaOrigemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MyFinances.Models.Fatura", "Fatura")
+                    b.HasOne("MyFinances.Domain.Fatura", "Fatura")
                         .WithMany("Transferencias")
                         .HasForeignKey("FaturaId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -383,26 +539,26 @@ namespace MyFinances.Migrations.MyFinancesDb
                     b.Navigation("Fatura");
                 });
 
-            modelBuilder.Entity("MyFinances.Models.Categoria", b =>
+            modelBuilder.Entity("MyFinances.Domain.Categoria", b =>
                 {
                     b.Navigation("Lancamentos");
 
                     b.Navigation("Subcategorias");
                 });
 
-            modelBuilder.Entity("MyFinances.Models.Fatura", b =>
+            modelBuilder.Entity("MyFinances.Domain.Fatura", b =>
                 {
                     b.Navigation("Lancamentos");
 
                     b.Navigation("Transferencias");
                 });
 
-            modelBuilder.Entity("MyFinances.Models.Lancamento", b =>
+            modelBuilder.Entity("MyFinances.Domain.Lancamento", b =>
                 {
                     b.Navigation("LancamentosConciliados");
                 });
 
-            modelBuilder.Entity("MyFinances.Models.Transferencia", b =>
+            modelBuilder.Entity("MyFinances.Domain.Transferencia", b =>
                 {
                     b.Navigation("Lancamentos");
                 });

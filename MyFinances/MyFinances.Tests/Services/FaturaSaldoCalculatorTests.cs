@@ -1,5 +1,4 @@
 using MyFinances.Domain;
-using MyFinances.Models;
 using Xunit;
 
 namespace MyFinances.Tests.Services;
