@@ -374,13 +374,18 @@ que o usuario escolher no momento (pode variar entre recebimentos).
 Opcionalmente pode receber uma `categoria_id` propria, sobrescrevendo a
 categoria sugerida do `conta_receber` pai.
 
+**Recebimento que excede o saldo pendente e REJEITADO.** Se o valor do
+recebimento for maior que o `saldo_pendente` atual, o sistema recusa a
+operacao (nao registra o lancamento) — o usuario precisa corrigir o valor.
+`saldo_pendente` nunca fica negativo.
+
 **Estados:**
 ```
 saldo_pendente = valor_total - soma(lancamentos CREDIT vinculados, status PAGO)
 
 PENDENTE: saldo_pendente == valor_total (nada recebido ainda)
 PARCIAL:  0 < saldo_pendente < valor_total
-RECEBIDO: saldo_pendente <= 0
+RECEBIDO: saldo_pendente == 0
 ```
 
 **Projecao do mes:** ver item 9 — saldo pendente de PENDENTE (se
