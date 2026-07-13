@@ -16,7 +16,7 @@ confirma -> style), conforme CLAUDE.md global secao 5.
 
 ## TASK-001 — Enums TipoContaReceber/StatusContaReceber + Entidade ContaReceber + migration
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo, migration AddContaReceberEntity gerada e conferida contra schema.dbml; navegacoes inversas Recebimentos/Transferencia ficam para TASK-002, que adiciona os campos de FK em Lancamento/Transferencia)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
