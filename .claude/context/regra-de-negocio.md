@@ -234,7 +234,8 @@ dividendos).
 Projecao NAO e estimativa futura. E o balanco real do mes corrente:
 
 ```
-saldo_projetado = total_recebido_no_mes - (total_pago + total_a_pagar)
+saldo_projetado = (total_recebido_no_mes + total_a_receber_esperado_no_mes)
+                  - (total_pago_no_mes + total_a_pagar_no_mes)
 ```
 
 Considera todas as contas do mes, de PENDENTE ate PAGO, e todo valor recebido
@@ -244,6 +245,14 @@ O cartao de credito entra na projecao como UMA conta a pagar = total da fatura
 atual do mes, com status pago / nao pago (ver item 12). As compras individuais
 do cartao NAO entram na projecao — sao competencia e aparecem apenas no
 relatorio por categoria.
+
+Contas a Receber (item 13) entram do lado da entrada, simetricas a conta a
+pagar: `total_a_receber_esperado_no_mes` soma o SALDO PENDENTE (nao o
+valor_total) de todo `conta_receber` com status PENDENTE (se a
+`data_prevista` cair no mes corrente) ou PARCIAL (todo mes corrente,
+independente da `data_prevista` original, ate o saldo zerar). O que ja foi
+recebido conta via `total_recebido_no_mes` (lancamento CREDIT real) — por
+isso somar o saldo pendente, e nao o valor_total, evita dupla contagem.
 
 ---
 
@@ -323,6 +332,60 @@ compras individuais nao entram na projecao.
 **Origem das compras:** manual por enquanto; futuramente via import da fatura
 Nubank (ver Pendencias). O de-para de categoria (item 7) roda sobre a
 `descricao` da compra em vez da `category` do Pierre.
+
+---
+
+## 13. Contas a Receber (Recebivel e Emprestimo)
+
+Modela dois casos com a MESMA entidade (`conta_receber`, campo `tipo`):
+
+- **RECEBIVEL:** valor generico esperado a entrar. NAO exige vinculo com
+  nenhuma conta/origem no sistema — pode ser so uma expectativa solta ("vou
+  receber X ate tal data"), igual um lembrete financeiro.
+- **EMPRESTIMO:** dinheiro emprestado pelo usuario a uma pessoa. `pessoa` e
+  texto livre (sem cadastro/entidade propria de PESSOA).
+
+**Valor fixo:** `valor_total` e definido no registro e NUNCA muda — sem
+juros, sem correcao. O que varia com o tempo e o saldo pendente, conforme
+os recebimentos acontecem.
+
+**Emprestimo: saida como transferencia de perna unica.** Ao registrar um
+EMPRESTIMO, o valor sai da conta de origem escolhida pelo usuario. Usa a
+MESMA tabela de transferencia do item 3, mas com UMA perna so — nao ha
+conta destino real, o destino e uma pessoa fora do sistema:
+
+- `transferencia.conta_destino_id` fica NULL (campo passa a ser opcional,
+  usado apenas neste caso — nos demais fluxos de transferencia e pagamento
+  de fatura continua obrigatorio).
+- `transferencia.conta_receber_id` aponta pro `conta_receber` criado.
+- Gera-se UM UNICO `lancamento` (DEBIT, status PAGO) vinculado a essa
+  transferencia — nao dois.
+
+A exclusao de gasto/receita (item 3) continua funcionando sem regra nova:
+depende so de `lancamento.transferencia_id != null`, nao de existirem as
+duas pernas.
+
+**Parcelas / recebimento incremental.** O valor pode ser recebido em mais
+de uma vez (mesmo espirito do pagamento parcial de fatura, item 12, mas
+sem ciclo/fatura — aqui e incremento livre no tempo, sem quantidade de
+parcelas pre-fixada). Cada recebimento gera um `lancamento` novo (CREDIT,
+status PAGO) vinculado ao `conta_receber` via `conta_receber_id`, na conta
+que o usuario escolher no momento (pode variar entre recebimentos).
+Opcionalmente pode receber uma `categoria_id` propria, sobrescrevendo a
+categoria sugerida do `conta_receber` pai.
+
+**Estados:**
+```
+saldo_pendente = valor_total - soma(lancamentos CREDIT vinculados, status PAGO)
+
+PENDENTE: saldo_pendente == valor_total (nada recebido ainda)
+PARCIAL:  0 < saldo_pendente < valor_total
+RECEBIDO: saldo_pendente <= 0
+```
+
+**Projecao do mes:** ver item 9 — saldo pendente de PENDENTE (se
+`data_prevista` cair no mes) ou PARCIAL (todo mes corrente, ate zerar)
+entra como entrada esperada, simetrica a conta a pagar.
 
 ---
 

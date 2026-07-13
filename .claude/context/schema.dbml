@@ -44,6 +44,7 @@ Table lancamento {
   conciliado_com uuid [ref: - lancamento.id, note: 'txn OF vinculada na conciliacao']
   transferencia_id uuid [ref: > transferencia.id, note: 'null se nao for perna de transferencia (item 3/12)']
   fatura_id uuid [ref: > fatura.id, note: 'null se nao for compra de cartao (item 12)']
+  conta_receber_id uuid [ref: > conta_receber.id, note: 'null se nao for recebimento de conta a receber; 1:N — varios recebimentos podem apontar pro mesmo conta_receber ate zerar o saldo pendente (item 13)']
 }
 
 // Transferencia de mesma titularidade (item 3). Modelo de duas pernas:
@@ -59,8 +60,9 @@ Table transferencia {
   data date [not null]
   valor decimal [not null]
   conta_origem_id uuid [ref: > conta.id, not null]
-  conta_destino_id uuid [ref: > conta.id, not null]
+  conta_destino_id uuid [ref: > conta.id, note: 'NULL quando a transferencia e a saida de um EMPRESTIMO (item 13) — nao ha conta destino real, o destino e uma pessoa fora do sistema. Nos demais casos (transferencia normal, pagamento de fatura), permanece obrigatorio']
   fatura_id uuid [ref: > fatura.id, note: 'null se nao for pagamento de fatura de cartao (item 12)']
+  conta_receber_id uuid [ref: > conta_receber.id, note: 'preenchido so quando a transferencia e a saida de um EMPRESTIMO (item 13); perna unica, sem conta_destino_id']
   descricao varchar
 }
 
@@ -125,6 +127,26 @@ Table movimentacao_ativo {
   preco_unitario decimal [not null, note: 'preco de compra ou de venda informado naquela operacao']
   data date [not null]
   observacao varchar
+}
+
+// Contas a Receber (item 13). Mesma entidade pra RECEBIVEL e EMPRESTIMO,
+// diferenciada por tipo. EMPRESTIMO usa transferencia.conta_receber_id pra
+// registrar a saida (perna unica, sem conta_destino_id real — item 13).
+// Recebimentos parciais reaproveitam lancamento (lancamento.conta_receber_id,
+// 1:N), mesmo padrao ja usado por fatura_id/conta_fixa_id. valor_total e
+// fixo desde o registro (sem juros/correcao). status e calculado a partir
+// do saldo pendente (valor_total - soma dos lancamentos CREDIT vinculados
+// com status PAGO), armazenado igual fatura.status.
+Table conta_receber {
+  id uuid [pk]
+  tipo varchar [not null, note: 'RECEBIVEL | EMPRESTIMO']
+  descricao varchar [not null]
+  pessoa varchar [note: 'texto livre, sem cadastro proprio; obrigatorio se tipo=EMPRESTIMO, null se RECEBIVEL']
+  valor_total decimal [not null, note: 'fixo desde o registro, sem juros/correcao']
+  data_registro date [not null]
+  data_prevista date [note: 'opcional; usada para saber em qual mes o saldo PENDENTE entra na projecao (item 9). PARCIAL entra em todo mes corrente ate zerar, independente desta data']
+  categoria_id uuid [ref: > categoria.id, note: 'categoria de receita sugerida pros recebimentos; null = sem categoria; pode ser sobrescrita por recebimento individual']
+  status varchar [not null, note: 'PENDENTE | PARCIAL | RECEBIDO']
 }
 
 Table limite_gasto {
