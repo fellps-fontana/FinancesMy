@@ -32,10 +32,5 @@ public class CompraParceladaConfiguration : IEntityTypeConfiguration<CompraParce
         builder.Property(cp => cp.DataCompra)
             .HasColumnName("data_compra")
             .IsRequired();
-
-        builder.HasMany(cp => cp.Lancamentos)
-            .WithOne()
-            .HasForeignKey("CompraParceladaId")
-            .OnDelete(DeleteBehavior.SetNull);
     }
 }
