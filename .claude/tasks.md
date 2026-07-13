@@ -1,389 +1,372 @@
-# Tasks — Modulo de Investimentos (v1)
+# Tasks — Modulo de Parcelamento de Compra no Cartao (v1)
 
-Escopo confirmado: investimento como CONTA MANUAL (tipo INVESTIMENTO, origem
-MANUAL, saldo via `saldo_manual`). Sem ativos, ticker, preco medio, cotacao ou
-rentabilidade — isso e v2 e esta fora daqui (ver regra-de-negocio.md, secao
-"Escopo: v1 vs v2").
+Escopo confirmado: compra parcelada gera N Lancamentos (um por parcela, cada
+um com `fatura_id` proprio resolvido pelo ciclo do MES DE VENCIMENTO da
+parcela), agrupados so para exibicao por `compra_parcelada`. Divisao
+automatica `valor_total / quantidade_parcelas`, resto do arredondamento na
+ULTIMA parcela. Ver regra-de-negocio.md, item 12, subsecao "Parcelamento
+(compra parcelada) — decisao registrada em 2026-07-12".
 
-Codebase e greenfield: nao ha EF Core, DbContext, entidades nem controllers
-ainda. As primeiras tasks criam essa base.
+Verificado nesta sessao (nao assumido): `Lancamento.cs` ainda NAO tem
+`CompraParceladaId`/`ParcelaNumero` — extensao obrigatoria. A unica migration
+existente (`20260711225259_InitialCreate.cs`) NAO tem tabela `parcela` —
+nunca foi criada via EF, entao a tarefa de migration e so ADD (tabela nova +
+2 colunas), sem DROP TABLE.
+
+Fora de escopo desta leva (regra omissa — nao decidido, nao implementado):
+- **Estorno de compra parcelada** (cancelar parcelas futuras vs ja pagas).
+  Se qualquer task abaixo esbarrar nisso, a implementacao NAO cobre estorno —
+  so a criacao da compra parcelada.
+- **Edicao de compra parcelada existente** (mudar quantidade de parcelas
+  depois de criada). Mesma coisa: fora de escopo, nao implementar.
+- **Front (hanzo)**: nao entra nesta leva. Formulario de criacao + exibicao
+  agrupada "3/10" na lista de compras do cartao e volume suficiente pra
+  rodada propria, depois do back estar fechado e revisado. Kira decide
+  quando abrir.
 
 ---
 
-## TASK-001 — Setup EF Core + Npgsql + DbContext
+## TASK-025 — Entidade `CompraParcelada` (Domain) + Configuration + DbSet
 
-STATUS: CONCLUIDA
+STATUS: PENDENTE
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
-CONTEXTO A LER: stack.md secao "Stack" e "Convencoes"
-ESCOPO: adicionar pacotes EF Core + Npgsql ao csproj, criar `MyFinancesDbContext` vazio e configurar a connection string via appsettings/variavel de ambiente.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/MyFinances.csproj`, `MyFinances/MyFinances/Program.cs`, `MyFinances/MyFinances/appsettings.json`, `MyFinances/MyFinances/appsettings.Development.json`, `MyFinances/MyFinances/Data/MyFinancesDbContext.cs` (novo)
-NAO FAZER: nao versionar credencial real de banco em `appsettings.json` (so em `appsettings.Development.json`, local); nao criar nenhum DbSet ainda (fica pra TASK-002); nao remover o endpoint `weatherforecast` (isso e limpeza, nao faz parte desta task).
-RETORNO ESPERADO: projeto compila, `DbContext` registrado via DI, connection string configuravel.
+CONTEXTO A LER: `.claude/context/schema.dbml` tabela `compra_parcelada` (linha ~99-105); `.claude/context/regra-de-negocio.md` item 12, subsecao "Parcelamento", paragrafo "Agrupamento (so exibicao...)"; `.claude/context/stack.md` secao "Organizacao de pastas (Backend)" (Domain/ e Infrastructure/Configurations/)
+ESCOPO: criar a entidade `CompraParcelada` com os 4 campos do schema (`Id`, `Descricao`, `ValorTotal`, `QuantidadeParcelas`, `DataCompra`) mais a colecao de navegacao `Lancamentos`, criar `CompraParceladaConfiguration` (mesmo padrao de `FaturaConfiguration`) e registrar `DbSet<CompraParcelada> ComprasParceladas` + `ApplyConfiguration` no `MyFinancesDbContext`.
+CRITERIO DE ACEITE:
+1. `CompraParcelada` nao tem `ContaId` (o schema.dbml nao lista esse campo na tabela — a conta e resolvida via cada Lancamento-parcela, todos da mesma conta).
+2. `CompraParceladaConfiguration.ToTable("compra_parcelada")`, colunas em snake_case (`descricao`, `valor_total`, `quantidade_parcelas`, `data_compra`), `ValorTotal` com `HasPrecision(18, 2)` (mesmo padrao de `Lancamento.Valor`/`Transferencia.Valor`).
+3. Projeto compila; `DbSet` visivel no `MyFinancesDbContext`.
+ARQUIVOS PERMITIDOS:
+`MyFinances\MyFinances\Domain\CompraParcelada.cs` (novo)
+`MyFinances\MyFinances\Infrastructure\Configurations\CompraParceladaConfiguration.cs` (novo)
+`MyFinances\MyFinances\Data\MyFinancesDbContext.cs`
+NAO FAZER: nao adicionar `ContaId` na entidade (nao existe no schema). Nao criar migration ainda (TASK-027). Nao criar Repository ainda (TASK-028).
+RETORNO ESPERADO: classe de entidade + configuration + DbSet registrado, sem logica de servico.
 
 ---
 
-## TASK-002 — Entidade Conta + migration inicial
+## TASK-026 — Extensao de `Lancamento` (Domain) com `CompraParceladaId`/`ParcelaNumero`
 
-STATUS: CONCLUIDA
+STATUS: PENDENTE
 AGENT: levi
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-001
-CONTEXTO A LER: schema.dbml tabela `conta`; regra-de-negocio.md secao 1 (origem OPEN_FINANCE/MANUAL) e secao 10 (saldo de conta)
-ESCOPO: criar a entidade `Conta` refletindo TODOS os campos da tabela `conta` do schema.dbml (nao so os de investimento) e gerar a migration inicial.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Models/Conta.cs` (novo), `MyFinances/MyFinances/Data/MyFinancesDbContext.cs`, `MyFinances/MyFinances/Migrations/**` (gerado pelo EF)
-NAO FAZER: nao criar entidade Lancamento, Transferencia, Fatura ou qualquer outra tabela do schema — so `conta`, que e a unica necessaria para este modulo. Nao implementar logica de servico aqui, so o modelo de dados.
-RETORNO ESPERADO: migration aplicavel, tabela `conta` criada no Postgres com os campos e tipos do schema.dbml.
+DEPENDENCIAS: TASK-025
+CONTEXTO A LER: `.claude/context/schema.dbml` tabela `lancamento`, campos `compra_parcelada_id`/`parcela_numero` (linha ~47-48); `.claude/context/regra-de-negocio.md` item 12, paragrafo "Agrupamento"
+ESCOPO: adicionar `Guid? CompraParceladaId`, `int? ParcelaNumero` e a propriedade de navegacao `CompraParcelada? CompraParcelada` em `Lancamento.cs`; estender `LancamentoConfiguration` com o mapeamento das 2 colunas (`compra_parcelada_id`, `parcela_numero`, ambas nullable) e o relacionamento `HasOne(l => l.CompraParcelada).WithMany(cp => cp.Lancamentos).HasForeignKey(l => l.CompraParceladaId).OnDelete(DeleteBehavior.SetNull)` — mesmo padrao de `OnDelete` ja usado para `Fatura`/`Transferencia` em `Lancamento` (FK opcional, nunca cascade-delete de historico financeiro).
+CRITERIO DE ACEITE:
+1. `Lancamento` compila com os 2 campos novos, ambos nullable (compra a vista continua com eles `null`).
+2. `LancamentoConfiguration` mapeia as colunas com o nome exato do schema.dbml.
+3. Relacionamento configurado com `SetNull`, nao `Cascade` nem `Restrict`.
+ARQUIVOS PERMITIDOS:
+`MyFinances\MyFinances\Domain\Lancamento.cs`
+`MyFinances\MyFinances\Infrastructure\Configurations\LancamentoConfiguration.cs`
+NAO FAZER: nao alterar nenhum outro campo/relacionamento existente de `Lancamento`. Nao gerar migration nesta task (TASK-027).
+RETORNO ESPERADO: entidade + configuration atualizadas, compilando.
 
 ---
 
-## TASK-003 — Repository + Service de Conta (investimento)
+## TASK-027 — Migration: tabela `compra_parcelada` + colunas em `lancamento`
 
-STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
+STATUS: PENDENTE
 AGENT: levi
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-002
-CONTEXTO A LER: regra-de-negocio.md secao 8 (cofrinho/investimentos/acoes) e secao 10 (saldo de conta manual)
-ESCOPO: criar `ContaRepository` (acesso a dados via EF Core) e `ContaService` com metodos criar, listar (filtro por `tipo=INVESTIMENTO`), atualizar `saldo_manual` e desativar (`ativa=false`), validando que `tipo=INVESTIMENTO` sempre exige `origem=MANUAL`.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Repositories/ContaRepository.cs` (novo), `MyFinances/MyFinances/Services/ContaService.cs` (novo)
-NAO FAZER: nao implementar logica de conta BANCO/CARTAO (sync Pierre, saldo calculado por lancamento) — so o caminho MANUAL/INVESTIMENTO. Nao expor entity diretamente para fora da camada (isso e responsabilidade do controller/DTO na TASK-004). Nao implementar hard-delete — desativar e sempre soft (`ativa=false`), igual ao padrao de soft-delete ja usado no restante do dominio (item 4).
-RETORNO ESPERADO: `ContaService` testavel isoladamente (sem depender do controller), com metodos nomeados por intencao (nao if solto).
+DEPENDENCIAS: TASK-025, TASK-026
+CONTEXTO A LER: nenhum contexto de dominio novo — so confirmar que a migration gerada reflete exatamente o que TASK-025/026 configuraram
+ESCOPO: gerar a migration via EF (`dotnet ef migrations add AddCompraParcelada`) a partir do estado de `MyFinancesDbContext` apos TASK-025/026. Verificado nesta sessao: NAO existe tabela `parcela` em nenhuma migration ja gerada — esta task e so ADD (`CreateTable compra_parcelada` + `AddColumn compra_parcelada_id`/`parcela_numero` em `lancamento`), sem `DropTable`.
+CRITERIO DE ACEITE:
+1. Migration gerada contem `CreateTable("compra_parcelada")` com as 4 colunas de dominio + PK, e `AddColumn` de `compra_parcelada_id`(uuid, nullable) e `parcela_numero`(int, nullable) em `lancamento`, com a FK correspondente.
+2. Nenhum `DropTable("parcela")` presente (nao existe pra remover).
+3. Projeto compila; migration aplica sem erro no harness de teste SQLite ja usado no projeto (ver `FaturaCicloIntegrationTests.cs` como referencia de fixture).
+ARQUIVOS PERMITIDOS:
+`MyFinances\MyFinances\Migrations\**` (gerado pelo EF, nunca editado a mao)
+NAO FAZER: nao editar migration gerada manualmente (excecao so pra correcao documentada, nao e o caso aqui). Nao tentar remover `parcela` — nunca existiu no EF.
+RETORNO ESPERADO: migration aplicavel; tabela `compra_parcelada` e colunas novas em `lancamento` criadas.
 
 ---
 
-## TASK-004 — Controller REST de Conta (investimento)
+## TASK-028 — Repository de `CompraParcelada`
 
-STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
+STATUS: PENDENTE
 AGENT: levi
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-003
-CONTEXTO A LER: clean-code.md secao "Organizacao (.NET)" (DTOs, camadas); regra-de-negocio.md secao 8
-ESCOPO: criar `ContasController` com endpoints `POST /contas`, `GET /contas?tipo=INVESTIMENTO`, `PATCH /contas/{id}/saldo`, `PATCH /contas/{id}/desativar`, usando DTOs de entrada/saida (nunca a entity).
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Controllers/ContasController.cs` (novo), `MyFinances/MyFinances/Dtos/Conta/*.cs` (novo)
-NAO FAZER: nao expor `dia_fechamento`/`dia_vencimento` no DTO (campos exclusivos de CARTAO, fora de escopo). Nao colocar regra de negocio no controller — so orquestra a chamada ao Service.
-RETORNO ESPERADO: contrato de API documentado (rota, verbo, body de entrada, shape de retorno) para os 4 endpoints.
+DEPENDENCIAS: TASK-025
+CONTEXTO A LER: `.claude/context/stack.md` secao "Organizacao de pastas (Backend)", item Repositories/; `MyFinances/MyFinances/Repositories/ILancamentoRepository.cs` e `LancamentoRepository.cs` como padrao a seguir
+ESCOPO: criar `ICompraParceladaRepository`/`CompraParceladaRepository` com `Adicionar(CompraParcelada)`, `ObterPorId(Guid)` (com `Include(cp => cp.Lancamentos)`), `Salvar()`.
+CRITERIO DE ACEITE:
+1. Interface + implementacao seguindo exatamente o padrao de `LancamentoRepository` (injeta `MyFinancesDbContext`, sem logica de negocio).
+2. `ObterPorId` retorna a compra parcelada com as parcelas carregadas.
+ARQUIVOS PERMITIDOS:
+`MyFinances\MyFinances\Repositories\ICompraParceladaRepository.cs` (novo)
+`MyFinances\MyFinances\Repositories\CompraParceladaRepository.cs` (novo)
+NAO FAZER: nao adicionar metodo de listagem geral/paginacao — nao usado nesta leva. Nao acessar `DbContext` fora do repository.
+RETORNO ESPERADO: repository testavel isoladamente, sem regra de negocio.
 
 ---
 
-## TASK-005 — Testes: CRUD de conta investimento e regra de saldo manual
+## Esqueleto para TDD — `ParcelamentoCalculator` (Kira cria este arquivo ANTES de despachar TASK-029)
 
-STATUS: CONCLUIDA (14 testes de integracao HTTP no Controller; regra de negocio ja coberta na TASK-003 com 17 testes no Service)
+Regra critica = CALCULO (split de valor com resto de arredondamento). Segue o
+mesmo padrao ja usado por `FaturaSaldoCalculator`: `static class` em `Domain/`,
+funcao pura, sem I/O, testada isolada em `MyFinances.Tests/Services/`.
+
+**Algoritmo obrigatorio (contrato — mike testa contra isto, levi implementa
+exatamente isto, nao pode divergir entre as duas rodadas):** cada parcela,
+exceto a ultima, recebe `Math.Floor(valorTotal / quantidadeParcelas * 100) / 100`
+(truncado para baixo em 2 casas). A ultima parcela recebe
+`valorTotal - soma das (quantidadeParcelas - 1) parcelas anteriores`. Isso
+garante que a soma das N parcelas bate exatamente com `valorTotal` em
+QUALQUER caso, sem depender de modo de arredondamento (banker's rounding
+teria essa garantia quebrada em alguns casos).
+
+Caminho do arquivo: `MyFinances\MyFinances\Domain\ParcelamentoCalculator.cs`
+
+```csharp
+namespace MyFinances.Domain;
+
+// Calculo puro do split de valor de uma compra parcelada (item 12,
+// regra-de-negocio.md). Sem I/O, sem estado — recebe valor_total e
+// quantidade_parcelas, devolve o valor de cada parcela na ordem 1..N.
+public static class ParcelamentoCalculator
+{
+    // Divide valorTotal em quantidadeParcelas partes. Cada parcela, exceto
+    // a ultima, e truncada em 2 casas decimais; a ultima recebe o resto do
+    // arredondamento, garantindo que a soma das partes bate exatamente com
+    // valorTotal. Lanca ArgumentException se valorTotal <= 0 ou
+    // quantidadeParcelas < 2.
+    public static IReadOnlyList<decimal> CalcularValoresParcelas(decimal valorTotal, int quantidadeParcelas)
+    {
+        throw new NotImplementedException();
+    }
+}
+```
+
+---
+
+## TASK-029 — [REGRA CRITICA] Testes RED: `ParcelamentoCalculator`
+
+STATUS: PENDENTE
 AGENT: mike
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-004
-CONTEXTO A LER: regra-de-negocio.md secao 10 (saldo de conta manual); secao 8 (cada conta e separada, sem classificacao por nome)
-ESCOPO: escrever e rodar testes cobrindo: saldo da conta INVESTIMENTO e sempre `saldo_manual` (nunca calculado), criacao de multiplas contas de investimento distintas (cofrinho/XP/carteira) sem colisao, validacao que rejeita `tipo=INVESTIMENTO` com `origem=OPEN_FINANCE`, e que "desativar" so seta `ativa=false` (nao apaga linha).
-ARQUIVOS PERMITIDOS: pasta de testes definida em stack.md (criar se nao existir, ex: `MyFinances/MyFinances.Tests/`)
-NAO FAZER: nao alterar `ContaService`/`ContasController` para fazer o teste passar sem reportar — bug de codigo volta pro levi.
-RETORNO ESPERADO: testes passando; se falhar por bug de codigo (nao de teste), relatorio estruturado apontando arquivo e linha.
+DEPENDENCIAS: TASK-025 (arquivo de esqueleto criado pelo Kira antes desta task)
+CONTEXTO A LER: `.claude/context/regra-de-negocio.md` item 12, paragrafo "Calculo do valor de cada parcela" (linha ~369-377); esqueleto de `ParcelamentoCalculator` (secao acima) — algoritmo obrigatorio, nao inventar outro
+ESCOPO: escrever testes cobrindo: (a) R$100,00 em 3x -> [33.33, 33.33, 33.34]; (b) R$100,00 em 4x -> [25.00, 25.00, 25.00, 25.00] (sem resto); (c) R$10,00 em 3x -> [3.33, 3.33, 3.34]; (d) soma das N parcelas retornadas == valorTotal exatamente, para pelo menos 2 casos com resto; (e) `quantidadeParcelas` = 0 ou 1 lanca `ArgumentException`; (f) `valorTotal` <= 0 lanca `ArgumentException`. Rodar e confirmar RED (falha por `NotImplementedException`, nunca erro de compilacao).
+CRITERIO DE ACEITE:
+1. Todos os 6 casos acima cobertos em `[Fact]`/`[Theory]`.
+2. Suite roda e falha por `NotImplementedException` — nao por erro de compilacao.
+3. Nenhuma logica de implementacao escrita em `ParcelamentoCalculator.cs` (mike so testa, nao implementa).
+ARQUIVOS PERMITIDOS:
+`MyFinances\MyFinances.Tests\Services\ParcelamentoCalculatorTests.cs` (novo)
+NAO FAZER: nao tocar `ParcelamentoCalculator.cs`. Nao inventar algoritmo de arredondamento diferente do especificado no esqueleto.
+RETORNO ESPERADO: confirmacao de RED (mensagem de falha = `NotImplementedException`) + lista dos casos cobertos.
 
 ---
 
-## TASK-006 — Calculo do total investido
+## TASK-030 — [REGRA CRITICA] Implementar `ParcelamentoCalculator` (GREEN)
 
-STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
+STATUS: PENDENTE
 AGENT: levi
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-003
-CONTEXTO A LER: regra-de-negocio.md secao "Escopo: v1 vs v2" (racional "ver o total investido no patrimonio"); secao 10
-ESCOPO: criar funcao nomeada e testavel no `ContaService` que soma `saldo_manual` de todas as contas ativas com `tipo=INVESTIMENTO`, e expor via `GET /contas/investimentos/total` no controller.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/ContaService.cs`, `MyFinances/MyFinances/Controllers/ContasController.cs`
-NAO FAZER: NAO tentar calcular "patrimonio total" do app (isso somaria tambem contas BANCO/CARTAO via Open Finance, cuja logica de saldo calculado por lancamento ainda nao existe — ver duvida em aberto no fim do arquivo). Escopo aqui e so o total das contas de investimento.
-RETORNO ESPERADO: endpoint retornando `{ totalInvestido: decimal }`, funcao de calculo isolada e nomeada (ex: `CalcularTotalInvestido`).
+DEPENDENCIAS: TASK-029
+CONTEXTO A LER: `.claude/context/regra-de-negocio.md` item 12, paragrafo "Calculo do valor de cada parcela"; `ParcelamentoCalculatorTests.cs` (leitura, NUNCA escrita) como especificacao do comportamento esperado
+ESCOPO: implementar `ParcelamentoCalculator.CalcularValoresParcelas` seguindo exatamente o algoritmo do esqueleto (truncar em 2 casas para as N-1 primeiras parcelas, resto inteiro na ultima) ate os testes de TASK-029 ficarem GREEN.
+CRITERIO DE ACEITE:
+1. Todos os testes de `ParcelamentoCalculatorTests.cs` passam, sem alterar o arquivo de teste.
+2. Soma das parcelas retornadas bate exatamente com `valorTotal` em todos os casos.
+ARQUIVOS PERMITIDOS:
+`MyFinances\MyFinances\Domain\ParcelamentoCalculator.cs`
+NAO FAZER: nao editar `ParcelamentoCalculatorTests.cs`. Nao mudar a assinatura definida no esqueleto.
+RETORNO ESPERADO: implementacao completa; testes GREEN.
 
 ---
 
-## TASK-007 — Teste do calculo de total investido
+## TASK-031 — [REGRA CRITICA] Confirmar GREEN: `ParcelamentoCalculator`
 
-STATUS: CONCLUIDA (8 testes novos, 39 no total, todos passando)
+STATUS: PENDENTE
 AGENT: mike
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-006
-CONTEXTO A LER: regra-de-negocio.md secao 10 e secao "Escopo: v1 vs v2"
-ESCOPO: testar que o total soma somente contas `tipo=INVESTIMENTO` E `ativa=true`, ignora contas desativadas e contas de outros tipos, e retorna zero sem contas cadastradas.
-ARQUIVOS PERMITIDOS: pasta de testes (mesma da TASK-005)
-NAO FAZER: nao testar patrimonio total do app — fora de escopo aqui.
-RETORNO ESPERADO: testes passando cobrindo os 3 casos citados; relatorio de bug se falhar por codigo.
+DEPENDENCIAS: TASK-030
+CONTEXTO A LER: nenhum novo — so rodar a suite de TASK-029
+ESCOPO: rodar `ParcelamentoCalculatorTests.cs` contra a implementacao de TASK-030. NAO reescrever testes.
+CRITERIO DE ACEITE: suite 100% GREEN. Se algum caso falhar, relatorio estruturado (arquivo+linha+caso) devolvido ao Kira para redespachar levi — mike nao corrige codigo.
+ARQUIVOS PERMITIDOS: nenhum (so execucao)
+NAO FAZER: nao alterar teste nem implementacao.
+RETORNO ESPERADO: confirmacao GREEN ou relatorio de bug.
 
 ---
 
-## TASK-008 — Camada de dados no front (hook de contas de investimento)
+## TASK-032 — Style: revisar `ParcelamentoCalculator`
 
-STATUS: CONCLUIDA (aprovada pelo style; ja inclui os hooks de mutation criar/atualizar-saldo/desativar, entao TASK-010 so consome, nao recria)
-AGENT: hanzo
+STATUS: PENDENTE
+AGENT: style
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-004, TASK-006
-CONTEXTO A LER: stack.md secao "Frontend (React)"; clean-code.md secao "Organizacao (React)"
-ESCOPO: criar hook/data layer (`useContasInvestimento`) que consome `GET /contas?tipo=INVESTIMENTO` e `GET /contas/investimentos/total`, sem fetch solto em componente.
-ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/**` (projeto real trazido da main, nao `frontend/` que foi descartado)
-NAO FAZER: nao colocar chamada de fetch dentro de componente de UI (isso e TASK-009/010).
-RETORNO ESPERADO: hook tipado (sem `any`) retornando lista de contas e total investido, com estado de loading/erro.
+DEPENDENCIAS: TASK-031
+CONTEXTO A LER: `.claude/context/clean-code.md` inteiro; `.claude/context/regra-de-negocio.md` item 12, paragrafo "Calculo do valor de cada parcela"
+ESCOPO: revisar `ParcelamentoCalculator.cs` contra clean-code.md e a regra de arredondamento — nome da funcao, ausencia de numero magico solto (2 casas decimais, se magic number, nomear), tratamento dos casos de borda.
+CRITERIO DE ACEITE: veredito APROVADO ou lista de correcoes pontuais (nunca "melhorar" vago).
+ARQUIVOS PERMITIDOS: nenhum (style nao edita)
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + (se houver) tarefa de correcao no formato desta secao, redespachada a levi, com nova rodada de TASK-031 apos a correcao.
 
 ---
 
-## TASK-009 — UI: lista de contas de investimento + total
+## TASK-033 — DTOs: `CriarCompraParceladaRequest`, `CompraParceladaResponse`, extensao de `CompraResponse`
 
-STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
-AGENT: hanzo
-FLUXO: Implementacao
-DEPENDENCIAS: TASK-008
-CONTEXTO A LER: identidade-visual.md (se existir); regra-de-negocio.md secao 8
-ESCOPO: tela listando as contas de investimento (nome, saldo atual) com o total investido em destaque.
-ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/*.tsx` (novo; use os hooks ja existentes em `hooks/`, nao recrie)
-NAO FAZER: nao exibir campos de CARTAO (dia_fechamento/vencimento) nem qualquer dado de ativo/ticker (v2).
-RETORNO ESPERADO: componente de apresentacao consumindo o hook da TASK-008, sem logica de calculo embutida.
-
----
-
-## TASK-010 — UI: criar/editar/desativar conta de investimento
-
-STATUS: CONCLUIDA (aprovada pelo style de primeira)
-AGENT: hanzo
-FLUXO: Implementacao
-DEPENDENCIAS: TASK-008
-CONTEXTO A LER: regra-de-negocio.md secao 8 e secao 10
-ESCOPO: formulario para criar conta de investimento (nome + saldo inicial), editar `saldo_manual` e acao de desativar.
-ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/*.tsx` (novo; use os hooks de mutation ja existentes em `hooks/` — useCriarContaInvestimento, useAtualizarSaldoConta, useDesativarConta — nao recrie)
-NAO FAZER: nao permitir escolher `origem` no form (sempre MANUAL, implicito); nao expor campo de tipo de ativo/ticker (v2).
-RETORNO ESPERADO: componente de formulario chamando o hook da TASK-008 para POST/PATCH.
-
----
-
-## TASK-011 — Entidades Ativo e MovimentacaoAtivo + migration
-
-STATUS: CONCLUIDA
+STATUS: PENDENTE
 AGENT: levi
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-002
-CONTEXTO A LER: schema.dbml tabelas `ativo` e `movimentacao_ativo`; regra-de-negocio.md secao 8 (intro) e 8.1-8.3
-ESCOPO: criar as entidades `Ativo` e `MovimentacaoAtivo` (e enum `TipoMovimentacaoAtivo`: Compra|Venda, seguindo o mesmo padrao de conversao ja usado em `OrigemConta`/`TipoConta`) refletindo todos os campos do schema.dbml, registrar `DbSet<Ativo>` e `DbSet<MovimentacaoAtivo>` no `MyFinancesDbContext`, e gerar a migration.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Models/Ativo.cs` (novo), `MyFinances/MyFinances/Models/MovimentacaoAtivo.cs` (novo), `MyFinances/MyFinances/Models/TipoMovimentacaoAtivo.cs` (novo), `MyFinances/MyFinances/Data/MyFinancesDbContext.cs`, `MyFinances/MyFinances/Migrations/**`
-NAO FAZER: nao criar Repository/Service ainda (TASK-012); nao adicionar FK/CHECK de banco para validar `conta.tipo=INVESTIMENTO` — essa validacao e do Service, nao do schema; nao mexer na tabela `conta`.
-RETORNO ESPERADO: migration aplicavel; tabelas `ativo` e `movimentacao_ativo` criadas no Postgres com campos e tipos do schema.dbml.
+DEPENDENCIAS: TASK-025, TASK-026
+CONTEXTO A LER: `.claude/context/stack.md` secao "Convencoes" (casing `DTOs/`) e "Organizacao de pastas (Backend)" item DTOs/; `MyFinances/MyFinances/DTOs/CriarCompraRequest.cs` e `CompraResponse.cs` como padrao
+ESCOPO:
+1. `CriarCompraParceladaRequest` (`Descricao` string obrigatorio, `ValorTotal` decimal obrigatorio, `QuantidadeParcelas` int obrigatorio, `CategoriaId` Guid? opcional, `DataCompra` DateOnly obrigatorio) — `ContaId` NAO entra no body, vem da rota, igual `CriarCompraRequest`.
+2. Estender `CompraResponse` com `Guid? CompraParceladaId` e `int? ParcelaNumero` (null pra compra a vista), atualizando `FromLancamento` para preencher os dois a partir do `Lancamento`.
+3. `CompraParceladaResponse` (`Id`, `ContaId`, `Descricao`, `ValorTotal`, `QuantidadeParcelas`, `DataCompra`, `Parcelas: List<CompraResponse>`), com `static CompraParceladaResponse FromDomain(CompraParcelada compraParcelada, Guid contaId)`. `ContaId` e parametro externo porque `CompraParcelada` (schema.dbml) nao guarda esse campo — a conta e a mesma em todas as parcelas.
+CRITERIO DE ACEITE:
+1. Os 3 tipos compilam, namespace `MyFinances.DTOs`.
+2. `CompraResponse.FromLancamento` continua funcionando pra compra a vista (os 2 campos novos vem `null`).
+3. `CompraParceladaResponse.FromDomain` monta `Parcelas` mapeando cada `Lancamento` da colecao via `CompraResponse.FromLancamento`.
+ARQUIVOS PERMITIDOS:
+`MyFinances\MyFinances\DTOs\CriarCompraParceladaRequest.cs` (novo)
+`MyFinances\MyFinances\DTOs\CompraParceladaResponse.cs` (novo)
+`MyFinances\MyFinances\DTOs\CompraResponse.cs`
+NAO FAZER: nao expor a entity `CompraParcelada`/`Lancamento` direto. Nao incluir `ContaId` em `CriarCompraParceladaRequest`.
+RETORNO ESPERADO: contrato de entrada/saida documentado (shape dos 3 tipos).
 
 ---
 
-## TASK-012 — Repository de Ativo
+## TASK-034 — `ComprasParceladasService`: orquestracao da criacao
 
-STATUS: CONCLUIDA
+STATUS: PENDENTE
 AGENT: levi
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-011
-CONTEXTO A LER: schema.dbml tabelas `ativo`/`movimentacao_ativo`; clean-code.md secao "Organizacao (.NET)"
-ESCOPO: criar `IAtivoRepository`/`AtivoRepository` com metodos: `Adicionar(Ativo)`, `AdicionarMovimentacao(MovimentacaoAtivo)`, `ObterPorId(Guid)`, `ListarPorConta(Guid contaId)` (todos, incluindo historico inativo), `ListarAtivosAtivosPorConta(Guid contaId)` (so `ativa=true`), `ObterAtivoAtivoPorTicker(Guid contaId, string ticker)` (busca ativo `ativa=true` com o mesmo ticker na conta — usado para decidir incrementar vs criar novo), `SomarValorAtivosPorConta(IEnumerable<Guid> contaIds)` retornando `Dictionary<Guid, decimal>` com soma de `quantidade x preco_atual` dos ativos `ativa=true` de cada conta (consumido pelo `ContaService` na TASK-017), `Salvar()`.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Repositories/IAtivoRepository.cs` (novo), `MyFinances/MyFinances/Repositories/AtivoRepository.cs` (novo)
-NAO FAZER: nao implementar recalculo de preco medio aqui — isso e regra de Service (TASK-013). Nao expor a entity fora da camada de dados.
-RETORNO ESPERADO: repository testavel, metodos nomeados por intencao, sem if solto de regra de negocio.
+DEPENDENCIAS: TASK-028, TASK-030, TASK-033
+CONTEXTO A LER: `.claude/context/regra-de-negocio.md` item 12 inteiro (nao so a subsecao de parcelamento — precisa da regra geral de fatura/ciclo tambem); `MyFinances/MyFinances/Services/CompraCartaoService.cs`, `FaturaCicloService.cs`, `ValidacaoCartaoService.cs` (reaproveitar, nao duplicar)
+ESCOPO: criar `ComprasParceladasService.CriarCompraParceladaAsync(Guid contaId, CriarCompraParceladaRequest request)`:
+1. Reaproveitar `ValidacaoCartaoService.ValidarOperacaoCartaoAsync(contaId, request.Descricao, request.ValorTotal)` sem modifica-lo (ja cobre descricao vazia, valor<=0, conta inexistente/nao-cartao/inativa).
+2. Validar `request.QuantidadeParcelas >= 2` (SUPOSICAO explicita: 1 parcela nao e "parcelada", deveria usar o endpoint de compra normal; regra-de-negocio.md nao define limite superior — nao inventar teto).
+3. Chamar `ParcelamentoCalculator.CalcularValoresParcelas(request.ValorTotal, request.QuantidadeParcelas)` para obter os N valores.
+4. Criar 1 `CompraParcelada` (metadado) e, para cada parcela `i` (1..N), resolver a FATURA (nao uma data solta) andando ciclo a ciclo — DECISAO CONFIRMADA COM O USUARIO EM 2026-07-12: parcela segue o ciclo da fatura do cartao, nao soma de meses corridos. Algoritmo:
+   - Parcela 1: `faturaParcela1 = FaturaCicloService.ResolverFaturaParaLancamentoAsync(contaId, request.DataCompra)` — exatamente a mesma resolucao usada por compra a vista.
+   - Parcela `i` (i > 1): `dataReferencia = faturaParcela(i-1).DataVencimento.AddDays(1)` (primeiro dia depois que a fatura da parcela anterior fecha, garantindo cair no proximo ciclo, nunca repetir o mesmo), depois `faturaParcelaI = FaturaCicloService.ResolverFaturaParaLancamentoAsync(contaId, dataReferencia)`.
+   - Isso reaproveita 100% a logica de ciclo ja existente (dia_fechamento/dia_vencimento do cartao) sem duplicar nada — so encadeia N chamadas ao metodo que ja existe, uma por parcela.
+   Criar 1 `Lancamento` por parcela com `Valor = valores[i-1]`, `FaturaId` da fatura resolvida naquele passo, `CompraParceladaId`, `ParcelaNumero = i`, mesmos campos fixos de `CompraCartaoService.CriarCompraAsync` (`Tipo=Debit`, `Status=Pago`, `Manual=true`, etc).
+5. Persistir a `CompraParcelada` + os N `Lancamento` numa unica operacao logica (se qualquer fatura for rejeitada no meio do loop, nada e salvo — nao deixar estado parcial).
+CRITERIO DE ACEITE:
+1. `QuantidadeParcelas < 2` retorna erro sem persistir nada.
+2. N `Lancamento` criados == `request.QuantidadeParcelas`, cada um com `ParcelaNumero` sequencial de 1 a N.
+3. Soma de `Lancamento.Valor` das N parcelas == `request.ValorTotal` exatamente.
+4. Cada `Lancamento` tem `FaturaId` da fatura do MES correspondente a sua propria data (nao todos na mesma fatura, exceto se cairem no mesmo ciclo por coincidencia de dia de fechamento).
+5. Se `ResolverFaturaParaLancamentoAsync` rejeitar em qualquer parcela, nenhuma linha e persistida (transacional).
+ARQUIVOS PERMITIDOS:
+`MyFinances\MyFinances\Services\ComprasParceladasService.cs` (novo)
+NAO FAZER: nao duplicar a logica de `FaturaCicloService`/`ValidacaoCartaoService` — so reusar (nao reimplementar resolucao de ciclo, so encadear chamadas). Nao implementar estorno nem edicao (fora de escopo). Nao editar `CompraCartaoService.cs` (servico separado, ver "Decisoes de modelagem" abaixo).
+RETORNO ESPERADO: service testavel isoladamente, metodo nomeado por intencao, sem if solto de regra.
 
 ---
 
-## TASK-013 — AtivoService: compra e venda (regra critica)
+## TASK-035 — Testes de integracao: `ComprasParceladasService`
 
-STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao)
-AGENT: levi
-FLUXO: Implementacao
-DEPENDENCIAS: TASK-012
-CONTEXTO A LER: regra-de-negocio.md secao 8, 8.1, 8.2, 8.3 INTEIRAS (nao pule nenhuma — recalculo de preco medio e o ponto mais sensivel de todo o modulo)
-ESCOPO: criar `IAtivoService`/`AtivoService` com:
-- `RegistrarCompra(Guid contaId, string ticker, decimal quantidade, decimal precoUnitario, DateOnly data, string? nome)`: valida que a conta existe e `tipo=INVESTIMENTO` (senao `ContaNaoEhInvestimentoException`); busca ativo `ativa=true` com o mesmo ticker na conta; se nao existir, cria Ativo novo (`quantidade=quantidade`, `preco_medio=precoUnitario`, `preco_atual=precoUnitario`); se existir, recalcula `preco_medio` pela formula do item 8.2 usando quantidade/preco_medio ATUAIS como peso, soma a quantidade, e atualiza `preco_atual=precoUnitario` (item 8.1 — o preco da compra vale pra toda a posicao, nao so a leva nova); grava `MovimentacaoAtivo` tipo Compra.
-- `RegistrarVenda(Guid contaId, Guid ativoId, decimal quantidade, decimal precoUnitario, DateOnly data, string? observacao)`: valida que o ativo existe, pertence a conta e esta `ativa=true`; rejeita se `quantidade > ativo.Quantidade` (`QuantidadeVendaInvalidaException`, sem alterar nada); reduz `quantidade`; se chegar a zero, `ativa=false`; `preco_medio` NUNCA muda; grava `MovimentacaoAtivo` tipo Venda; NAO gera lancamento nem transferencia em nenhuma outra conta.
-- `ListarAtivosPorConta(Guid contaId)`: valida que a conta existe, retorna ativos `ativa=true`.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/IAtivoService.cs` (novo), `MyFinances/MyFinances/Services/AtivoService.cs` (novo), `MyFinances/MyFinances/Exceptions/ContaNaoEhInvestimentoException.cs` (novo), `MyFinances/MyFinances/Exceptions/AtivoNaoEncontradoException.cs` (novo), `MyFinances/MyFinances/Exceptions/QuantidadeVendaInvalidaException.cs` (novo)
-NAO FAZER: nao implementar endpoint de "marcar a mercado" sem compra (pendencia em aberto na regra, fora de v1). Nao gerar lancamento em outra conta na venda (item 8.3, escopo minimo explicito). Nao reaproveitar Ativo desativado numa compra do mesmo ticker — SEMPRE cria Ativo novo.
-RETORNO ESPERADO: `AtivoService` testavel isoladamente; formula de preco medio isolada em metodo nomeado (ex: `CalcularPrecoMedio`), nunca if solto.
-
----
-
-## TASK-014 — Testes: compra, venda e recalculo de preco medio
-
-STATUS: CONCLUIDA (19 testes novos, 123 no total, todos passando)
-AGENT: mike
-FLUXO: Implementacao (automatico apos regra critica)
-DEPENDENCIAS: TASK-013
-CONTEXTO A LER: regra-de-negocio.md secao 8.1, 8.2, 8.3 inteiras
-ESCOPO: testar (a) compra de ticker novo cria Ativo com `preco_medio=preco_atual=preco da compra`; (b) compra de ticker existente incrementa `quantidade` e recalcula `preco_medio` pela formula ponderada, atualizando `preco_atual`; (c) venda parcial reduz `quantidade` e NAO altera `preco_medio`; (d) venda total zera `quantidade` e seta `ativa=false`; (e) venda de quantidade maior que a posicao e rejeitada, sem alterar estado; (f) compra do mesmo ticker apos venda total cria Ativo NOVO (o antigo continua `ativa=false`, nao e reaproveitado); (g) venda nao gera nenhum lancamento/transferencia em outra conta.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Services/AtivoServiceTests.cs` (novo)
-NAO FAZER: nao alterar `AtivoService` pra fazer teste passar sem reportar — bug de codigo volta pro levi.
-RETORNO ESPERADO: testes passando cobrindo os 7 casos; relatorio estruturado (arquivo+linha) se achar bug de codigo.
-
----
-
-## TASK-015 — Controller REST de Ativo
-
-STATUS: CONCLUIDA (aprovada pelo style apos 2 rodadas - achou bug real: venda ignorava contaId da rota)
-AGENT: levi
-FLUXO: Implementacao
-DEPENDENCIAS: TASK-013
-CONTEXTO A LER: clean-code.md "Organizacao (.NET)"; regra-de-negocio.md secao 8
-ESCOPO: criar `AtivosController` com `GET /api/contas/{contaId}/ativos` (lista ativos `ativa=true`), `POST /api/contas/{contaId}/ativos/compras` (compra — cria ou incrementa), `POST /api/contas/{contaId}/ativos/{ativoId}/vendas` (venda). DTOs de entrada/saida, nunca a entity. Traducao de excecoes: `ContaNaoEncontradaException`->404, `ContaNaoEhInvestimentoException`->422, `AtivoNaoEncontradoException`->404, `QuantidadeVendaInvalidaException`->422.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Controllers/AtivosController.cs` (novo), `MyFinances/MyFinances/DTOs/Ativo/*.cs` (novo: `RegistrarCompraRequest`, `RegistrarVendaRequest`, `AtivoResponse`)
-NAO FAZER: nao expor `preco_medio` como campo editavel no DTO de entrada (e sempre calculado); nao criar endpoint de "marcar a mercado" (pendencia, fora de v1).
-RETORNO ESPERADO: contrato de API documentado (rota, verbo, body, shape de retorno) para os 3 endpoints.
-
----
-
-## TASK-016 — Testes de integracao HTTP do AtivosController
-
-STATUS: CONCLUIDA (15 testes novos, 138 no total, inclui teste de regressao do bug de contaId da TASK-015)
+STATUS: PENDENTE
 AGENT: mike
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-015
-CONTEXTO A LER: regra-de-negocio.md secao 8, 8.1-8.3
-ESCOPO: testes HTTP cobrindo: compra em conta que nao e INVESTIMENTO -> 422; compra em conta inexistente -> 404; venda maior que a posicao -> 422; fluxo feliz compra->compra->venda parcial->venda total via HTTP, validando o shape do response (`precoMedio`, `precoAtual`, `quantidade`, `ativa`).
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Controllers/AtivosControllerTests.cs` (novo)
-NAO FAZER: nao alterar controller/service pra fazer teste passar sem reportar.
-RETORNO ESPERADO: testes passando; relatorio estruturado se achar bug de codigo.
+DEPENDENCIAS: TASK-034
+CONTEXTO A LER: `.claude/context/regra-de-negocio.md` item 12 inteiro; `MyFinances/MyFinances.Tests/Services/FaturaCicloIntegrationTests.cs` como padrao de fixture (SQLite in-memory)
+ESCOPO: testes de integracao cobrindo: (a) compra de R$100,00 em 3x gera exatamente 3 `Lancamento` com valores [33.33, 33.33, 33.34]; (b) cada `Lancamento` cai na `Fatura` do seu proprio mes de vencimento (nao todos na mesma fatura, quando os meses cruzam ciclos diferentes); (c) soma de `Lancamento.Valor` das N parcelas == `valor_total` exatamente; (d) `QuantidadeParcelas = 1` e rejeitado sem persistir nada; (e) todos os N `Lancamento` compartilham o mesmo `CompraParceladaId` e tem `ParcelaNumero` de 1 a N sem lacuna.
+CRITERIO DE ACEITE: os 5 casos cobertos e passando; se falhar por bug de codigo (nao de teste), relatorio estruturado (arquivo+linha) devolvido ao Kira, nao corrigido pelo mike.
+ARQUIVOS PERMITIDOS:
+`MyFinances\MyFinances.Tests\Services\ComprasParceladasServiceIntegrationTests.cs` (novo)
+NAO FAZER: nao alterar `ComprasParceladasService.cs` para fazer teste passar.
+RETORNO ESPERADO: testes passando; relatorio de bug se houver.
 
 ---
 
-## TASK-017 — Saldo calculado da conta com ativos (extensao)
+## TASK-036 — Controller REST: criar compra parcelada
 
-STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada de correcao - duplicacao e dead code em ContaService)
-AGENT: levi
-FLUXO: Correcao (extensao de codigo ja existente, nao feature nova)
-DEPENDENCIAS: TASK-012, TASK-006
-CONTEXTO A LER: regra-de-negocio.md secao 8 (paragrafo "Conta com carteira de ativos"), secao 10 (saldo de conta, versao atualizada), secao 8.4
-ESCOPO: atualizar `ContaService` (injetando `IAtivoRepository`) para que uma conta INVESTIMENTO com ao menos um Ativo deixe de usar `saldo_manual` e passe a usar a soma de `quantidade x preco_atual` dos ativos `ativa=true`, tanto em `ListarContasInvestimento` (saldo por conta) quanto em `CalcularTotalInvestido` (soma total). Adicionar campo `Saldo` (decimal, sempre populado) em `ContaResponse`; `SaldoManual` continua no DTO so como informativo (null quando a conta tem ativos, igual o schema ja documenta). DECISAO JA CONFIRMADA PELO USUARIO: uma vez que a conta recebeu seu primeiro Ativo, ela fica PERMANENTEMENTE no modo calculado (mesmo que todos os ativos sejam vendidos e o saldo va a zero) — nunca volta a aceitar `saldo_manual`.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/ContaService.cs`, `MyFinances/MyFinances/Services/IContaService.cs`, `MyFinances/MyFinances/DTOs/Conta/ContaResponse.cs`, `MyFinances/MyFinances/Controllers/ContasController.cs`
-NAO FAZER: nao alterar a regra de conta simples (sem ativos) — continua em `saldo_manual`. Nao implementar patrimonio total do app (mantem o mesmo escopo estrito de investimento da TASK-006). Nao fazer o saldo voltar a `saldo_manual` mesmo se todos os ativos forem vendidos.
-RETORNO ESPERADO: `GET /contas?tipo=investimento` retornando saldo correto por conta (calculado ou manual conforme o caso); `GET /contas/investimentos/total` somando o saldo correto de cada conta.
-
----
-
-## TASK-018 — Testes do saldo calculado com ativos
-
-STATUS: CONCLUIDA (6 testes novos, 145 no total)
-AGENT: mike
-FLUXO: Implementacao
-DEPENDENCIAS: TASK-017
-CONTEXTO A LER: regra-de-negocio.md secao 10 (versao atualizada)
-ESCOPO: testar que conta INVESTIMENTO com ativos ativos usa soma(`quantidade x preco_atual`) e ignora `saldo_manual`; conta sem ativos continua usando `saldo_manual`; total investido combina corretamente contas dos dois formatos; ativo desativado (`ativa=false`, vendido totalmente) nao entra na soma; conta que teve todos os ativos vendidos continua no modo calculado (saldo zero, nao volta pra saldo_manual).
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Services/ContaServiceTests.cs`
-NAO FAZER: nao alterar `ContaService` pra fazer teste passar sem reportar.
-RETORNO ESPERADO: testes passando; relatorio estruturado se achar bug.
-
----
-
-## TASK-019 — Endpoint proxy de cotacao historica (Brapi)
-
-STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada - bug de DI que quebrava o endpoint sempre, corrigido e confirmado com chamada HTTP real)
+STATUS: PENDENTE
 AGENT: levi
 FLUXO: Implementacao
-DEPENDENCIAS: nenhuma
-CONTEXTO A LER: regra-de-negocio.md secao 8 (paragrafo do grafico) e "Escopo: v1 vs v2"; stack.md secao "Cotacao"
-ESCOPO: criar servico de proxy que consulta a API Brapi (ou equivalente) para historico de cotacao de um ticker, exposto via `GET /api/ativos/cotacao/{ticker}/historico?range=...`, SEM persistir nada no banco (chamada sob demanda, sem sync/polling). Tratar erro de API externa (timeout, ticker invalido, rate limit) sem quebrar a aplicacao.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/ICotacaoExternaService.cs` (novo), `MyFinances/MyFinances/Services/CotacaoExternaService.cs` (novo), `MyFinances/MyFinances/Controllers/CotacaoController.cs` (novo), `MyFinances/MyFinances/DTOs/Cotacao/*.cs` (novo), `MyFinances/MyFinances/Program.cs` (registro de `HttpClient` nomeado), `MyFinances/MyFinances/appsettings.json`/`appsettings.Development.json` (base URL/chave, se exigir)
-NAO FAZER: nao persistir cotacao no banco; nao criar `BackgroundService`/polling; nao expor API key da Brapi no frontend — e exatamente por isso que o proxy vive no backend.
-RETORNO ESPERADO: contrato do endpoint (rota, query params, shape — serie de pontos data/preco) documentado; erro de API externa tratado com status HTTP apropriado (ex: 502/504) e mensagem, nunca stack trace cru.
+DEPENDENCIAS: TASK-034
+CONTEXTO A LER: `.claude/context/clean-code.md` secao "Organizacao (.NET)"; `MyFinances/MyFinances/Controllers/CartaoComprasController.cs` e `MyFinances/MyFinances/Controllers/AtivosController.cs` como padrao (sub-recurso de conta, controller dedicado)
+ESCOPO: criar `CartaoComprasParceladasController` em `api/contas/{contaId}/compras-parceladas`, com `POST` recebendo `CriarCompraParceladaRequest`, chamando `ComprasParceladasService.CriarCompraParceladaAsync`, retornando `201 Created` com `CompraParceladaResponse.FromDomain(...)` em sucesso, `400 BadRequest` com `{ erro }` em falha de validacao — mesmo padrao de `CartaoComprasController.CriarCompra`.
+CRITERIO DE ACEITE:
+1. `POST /api/contas/{contaId}/compras-parceladas` com payload valido retorna 201 e o shape de `CompraParceladaResponse` com `Parcelas.Count == QuantidadeParcelas`.
+2. Payload invalido (ex: `QuantidadeParcelas=1`, `ValorTotal<=0`, conta nao-cartao) retorna 400 com `{ erro }`.
+3. Controller nao contem logica de negocio, so orquestra Service+DTO.
+ARQUIVOS PERMITIDOS:
+`MyFinances\MyFinances\Controllers\CartaoComprasParceladasController.cs` (novo)
+NAO FAZER: nao criar endpoint de edicao/estorno (fora de escopo). Nao colocar validacao de negocio no controller.
+RETORNO ESPERADO: contrato de API documentado (rota, verbo, body de entrada, shape de retorno, codigos de status).
 
 ---
 
-## TASK-020 — Camada de dados no front: ativos e cotacao
+## TASK-037 — Style: revisar Service + Controller + DTOs de compra parcelada
 
-STATUS: CONCLUIDA (aprovada pelo style de primeira)
-AGENT: hanzo
+STATUS: PENDENTE
+AGENT: style
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-015, TASK-019
-CONTEXTO A LER: stack.md secao "Frontend (React)"; clean-code.md "Organizacao (React)"
-ESCOPO: criar types (`AtivoResponse`, `RegistrarCompraRequest`, `RegistrarVendaRequest`, `CotacaoHistoricoResponse`), funcoes de `api.ts` (`listarAtivosDaConta`, `registrarCompraAtivo`, `registrarVendaAtivo`, `buscarCotacaoHistorico`) e hooks React Query (`useAtivosDaConta`, `useRegistrarCompraAtivo`, `useRegistrarVendaAtivo`, `useCotacaoHistorico`), seguindo exatamente o padrao ja usado em `features/investimentos/{types.ts,api.ts,hooks/}`.
-ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/types.ts`, `MyFinanceFrontEnd/src/features/investimentos/api.ts`, `MyFinanceFrontEnd/src/features/investimentos/query-keys.ts`, `MyFinanceFrontEnd/src/features/investimentos/hooks/useAtivosDaConta.ts` (novo), `MyFinanceFrontEnd/src/features/investimentos/hooks/useRegistrarCompraAtivo.ts` (novo), `MyFinanceFrontEnd/src/features/investimentos/hooks/useRegistrarVendaAtivo.ts` (novo), `MyFinanceFrontEnd/src/features/investimentos/hooks/useCotacaoHistorico.ts` (novo)
-NAO FAZER: nao colocar fetch solto em componente; nao renderizar UI aqui (TASK-021 a TASK-024).
-RETORNO ESPERADO: hooks tipados (sem `any`), com invalidacao de cache de `useContasInvestimento`/`useTotalInvestido` apos compra/venda (o saldo mudou).
-
----
-
-## TASK-021 — UI: lista de ativos da conta com saldo calculado
-
-STATUS: CONCLUIDA (aprovada pelo style; achou e corrigiu no meio do caminho um gap real de backend - desativacao de conta com ativos nao era bloqueada)
-AGENT: hanzo
-FLUXO: Implementacao
-DEPENDENCIAS: TASK-020
-CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md secao 8 (paragrafo "Conta com carteira de ativos")
-ESCOPO: estender `ContaInvestimentoCard`/`ContaInvestimentoItem` para exibir, quando a conta tiver ativos, a lista de ativos (ticker, quantidade, preco medio, preco atual, valor) em vez do fluxo de editar saldo manual (que so faz sentido pra conta simples).
-ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/components/ContaInvestimentoCard.tsx`, `MyFinanceFrontEnd/src/features/investimentos/components/ContaInvestimentoItem.tsx`, `MyFinanceFrontEnd/src/features/investimentos/components/ListaAtivos.tsx` (novo)
-NAO FAZER: nao remover o fluxo de saldo manual da conta simples (continua existindo pra contas sem ativos); nao implementar rentabilidade/percentual de ganho (v2).
-RETORNO ESPERADO: componente de apresentacao consumindo `useAtivosDaConta`, sem logica de calculo embutida.
-
----
-
-## TASK-022 — UI: formulario de compra de ativo
-
-STATUS: CONCLUIDA (aprovada pelo style de primeira)
-AGENT: hanzo
-FLUXO: Implementacao
-DEPENDENCIAS: TASK-020
-CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md secao 8.1 e 8.2
-ESCOPO: formulario (ticker, quantidade, preco unitario, data) para registrar compra, deixando explicito ao usuario que o preco informado passa a valer pra toda a posicao (item 8.1), nao so pra leva comprada.
-ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/FormRegistrarCompraAtivo.tsx` (novo), `MyFinanceFrontEnd/src/features/investimentos/lib/validarCompraAtivo.ts` (novo)
-NAO FAZER: nao expor campo de `preco_medio` (e sempre calculado no back); nao permitir compra fora do contexto de uma conta de investimento.
-RETORNO ESPERADO: componente chamando `useRegistrarCompraAtivo`, com validacao de quantidade/preco > 0.
-
----
-
-## TASK-023 — UI: acao de venda de ativo
-
-STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada - bug de ids de input duplicados)
-AGENT: hanzo
-FLUXO: Implementacao
-DEPENDENCIAS: TASK-020, TASK-021
-CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md secao 8.3
-ESCOPO: acao de venda (quantidade, preco unitario, data) a partir do item do ativo na lista, com validacao no client pra nao deixar digitar quantidade maior que a posicao atual (validacao de UX; a validacao de verdade e no back, TASK-013), e feedback claro quando o back rejeitar (422).
-ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/FormRegistrarVendaAtivo.tsx` (novo), `MyFinanceFrontEnd/src/features/investimentos/lib/validarVendaAtivo.ts` (novo), `MyFinanceFrontEnd/src/features/investimentos/components/ListaAtivos.tsx`
-NAO FAZER: nao implementar nenhum fluxo de "transferir valor vendido pra outra conta" (fora de escopo v1, item 8.3).
-RETORNO ESPERADO: componente chamando `useRegistrarVendaAtivo`; quando a quantidade chega a zero, o ativo some da lista (invalidacao de cache, `ativa=false`).
-
----
-
-## TASK-024 — UI: grafico de historico de cotacao do ativo
-
-STATUS: CONCLUIDA (aprovada pelo style apos 1 rodada - polling herdado do QueryClient global corrigido). MODULO DE INVESTIMENTOS COMPLETO - 24/24 TASKS.
-AGENT: hanzo
-FLUXO: Implementacao
-DEPENDENCIAS: TASK-020, TASK-021
-CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md secao 8 (paragrafo do grafico) e "Escopo: v1 vs v2"; stack.md (Recharts)
-ESCOPO: tela/modal do ativo com grafico de linha (Recharts) consumindo `useCotacaoHistorico` sob demanda ao abrir; loading/erro tratado (API externa pode falhar, ver TASK-019).
-ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/GraficoCotacaoAtivo.tsx` (novo), `MyFinanceFrontEnd/package.json` (adicionar dependencia `recharts`)
-NAO FAZER: nao persistir/cachear cotacao alem do cache padrao do React Query; nao calcular rentabilidade (v2).
-RETORNO ESPERADO: componente de apresentacao consumindo o hook, com estado vazio/erro tratado sem quebrar a tela.
+DEPENDENCIAS: TASK-035, TASK-036
+CONTEXTO A LER: `.claude/context/clean-code.md` inteiro; `.claude/context/regra-de-negocio.md` item 12 inteiro
+ESCOPO: revisar `ComprasParceladasService.cs`, `CartaoComprasParceladasController.cs` e os 3 DTOs de TASK-033 contra clean-code.md e a regra de negocio — atencao especial a: reuso correto de `FaturaCicloService`/`ValidacaoCartaoService` (sem duplicacao), transacionalidade da criacao (nao deixa estado parcial), e a suposicao de formula de data por parcela (TASK-034, item 4) — se a suposicao estiver mal isolada (ex: espalhada em vez de nomeada), aponta.
+CRITERIO DE ACEITE: veredito APROVADO ou lista de correcoes pontuais.
+ARQUIVOS PERMITIDOS: nenhum (style nao edita)
+NAO FAZER: nao editar codigo. Nao decidir os pontos fora de escopo (estorno/edicao) — se o codigo tentar cobri-los, aponta como extrapolacao de escopo, nao aprova.
+RETORNO ESPERADO: veredito + (se houver) tarefa de correcao no formato desta secao, redespachada a levi.
 
 ---
 
 ## Decisoes de modelagem (Killua)
 
-- **Migration cria a tabela `conta` inteira**, nao so os campos de investimento. A tabela e compartilhada por BANCO/CARTAO/INVESTIMENTO no schema.dbml — criar uma versao parcial agora e recriar depois pra outros modulos seria retrabalho e schema fragmentado. Decisao que afeta outros modulos futuros (reaproveitam esta tabela, nao remigram).
-- **`tipo=INVESTIMENTO` implica `origem=MANUAL` sempre** — a regra de negocio so descreve investimento como manual (cofrinho, XP, carteira); nao ha mencao a investimento via Open Finance. Virou validacao explicita na Service (TASK-003).
-- **Total investido != patrimonio total do app.** A regra diz "ver o total investido no patrimonio", mas patrimonio completo somaria tambem contas BANCO/CARTAO com saldo calculado por lancamento (item 10) — e `lancamento` nao existe ainda no codebase (outro modulo). Escopo mantido estrito: so total de contas de investimento.
+- **`ComprasParceladasService` novo, nao extensao de `CompraCartaoService`.**
+  Tradeoff avaliado: estender `CompraCartaoService.CriarCompraAsync` pra
+  aceitar N parcelas quebraria a assinatura (retorna 1 `Lancamento`, precisa
+  retornar N + o agrupador) e misturaria dois fluxos com aggregate roots
+  diferentes (1 Lancamento vs 1 CompraParcelada + N Lancamento) no mesmo
+  metodo — exatamente o tipo de "funcao que faz duas coisas" que
+  clean-code.md probe. Custo da separacao: mais uma classe de Service e um
+  Controller a mais; ganho: cada Service continua com uma unica
+  responsabilidade, e `CompraCartaoService`/`EditarCompraAsync` (compra a
+  vista) fica intocado, sem risco de regressao. Mesmo padrao de sub-recurso
+  ja usado por `AtivosController`/`AtivoService` dentro de `Conta`.
+- **`CompraParcelada` nao guarda `ContaId`.** Fiel ao schema.dbml (a tabela
+  so tem `descricao`/`valor_total`/`quantidade_parcelas`/`data_compra`) — a
+  conta e resolvida via os `Lancamento` filhos, todos da mesma conta por
+  construcao (uma compra parcelada nasce de uma unica chamada de API com um
+  `contaId` de rota). Se precisar filtrar `CompraParcelada` por conta no
+  futuro (ex: listagem), a query passa por `Lancamentos.ContaId`, nao por
+  campo proprio.
+- **`OnDelete(SetNull)` na FK `Lancamento.CompraParceladaId`**, mesmo padrao
+  ja usado por `Fatura`/`Transferencia` em `Lancamento` — nenhuma FK
+  financeira faz cascade-delete de historico no dominio. Como estorno/edicao
+  de parcelada estao fora desta leva, essa FK na pratica nunca e exercitada
+  em delete ainda — a escolha e so consistencia de padrao, nao urgencia.
+- **Algoritmo de split: truncar em 2 casas para as N-1 primeiras parcelas,
+  resto na ultima.** Alternativa descartada: `Math.Round` com banker's
+  rounding em cada parcela e ajustar a ultima por diferenca — funciona, mas
+  e mais dificil de auditar (o "porque" da ultima parcela ser diferente fica
+  implicito no resultado de arredondamento, nao explicito no truncamento).
+  Truncamento deixa a regra "resto vai pra ultima" auditavel por construcao,
+  batendo com a redacao literal da regra-de-negocio.md.
+- **Cada parcela resolve sua propria FATURA andando ciclo a ciclo, nao soma
+  meses corridos na data — DECISAO CONFIRMADA COM O USUARIO EM 2026-07-12.**
+  Alternativa descartada: `data_compra.AddMonths(i-1)` direto. Problema dela:
+  desalinha do ciclo real do cartao perto da virada do fechamento (ex:
+  comprar 2 dias antes do fechamento faria a parcela 1 "pular" um ciclo
+  inteiro em relacao a uma compra a vista feita no mesmo dia). A solucao
+  adotada encadeia `FaturaCicloService.ResolverFaturaParaLancamentoAsync` N
+  vezes (parcela 1 pela data da compra; parcela `i>1` por um dia dentro do
+  ciclo seguinte ao da parcela anterior — `DataVencimento.AddDays(1)`), sem
+  nenhuma logica de ciclo nova. Ver algoritmo completo na TASK-034, item 4.
 
-## Duvida em aberto para o usuario
+## Duvidas em aberto para o usuario
 
-Um "patrimonio total" de verdade (somando Open Finance + manual) depende de
-modulos que ainda nao existem (conta corrente, cartao, lancamento, sync
-Pierre). Vira modulo separado, ou o endpoint de total (TASK-006) ja deveria
-nascer com um contrato generico (ex: `/patrimonio`) pensado para acomodar
-outros tipos de conta depois? Nao assumido — mantido escopo estrito de
-investimento.
-
----
-
-## Decisoes de modelagem adicionais — modulo de Ativo (TASK-011 a 024)
-
-- **Cotacao historica via proxy no backend** (TASK-019), nao chamada direta do
-  frontend — evita expor eventual API key da Brapi no client e centraliza
-  tratamento de erro/formato num unico lugar. Tradeoff aceito: mais uma
-  chamada de rede (front->back->Brapi) em vez de front->Brapi direto; ganho
-  de seguranca/consistencia supera a latencia extra.
-- **`AtivoService` depende de `IContaRepository` diretamente** (nao de
-  `IContaService`) pra validar existencia/tipo da conta — mantem a camada
-  Service->Repository sem Service chamando Service, igual ao restante do
-  dominio.
-- **Venda nunca reaproveita Ativo desativado**: qualquer compra do mesmo
-  ticker apos zerar a posicao cria linha nova em `ativo`, preservando o Ativo
-  antigo como historico auditavel (`ativa=false`), conforme item 8.3.
-- **Conta com ativos fica permanentemente em modo calculado** (confirmado
-  pelo usuario): uma vez que a conta recebeu seu primeiro Ativo, o saldo
-  nunca mais volta a usar `saldo_manual`, mesmo que todos os ativos sejam
-  vendidos (saldo mostra R$0 ate a proxima compra).
-- **Grafico usa Recharts** (confirmado pelo usuario, registrado em
-  `stack.md`), nao lightweight-charts — mais simples de integrar com o
-  Tailwind/shadcn ja usado no projeto.
+1. **Estorno de compra parcelada** — cancelar todas as parcelas futuras,
+   so a proxima, ou nenhuma automaticamente (usuario estorna parcela por
+   parcela manualmente, igual compra a vista)? Regra omissa. Fora desta leva.
+2. **Edicao de compra parcelada existente** — mudar `quantidade_parcelas`
+   depois de criada reabre o calculo de todas as parcelas futuras (as ja
+   vinculadas a fatura PAGA ficam intocadas)? Regra omissa. Fora desta leva.
+3. **Teto de `quantidade_parcelas`** — regra-de-negocio.md nao define
+   limite superior. `ComprasParceladasService` (TASK-034) so valida
+   `>= 2`, sem teto. Se o usuario quiser um limite (ex: 12x, 24x), e
+   decisao de produto a confirmar antes de travar no codigo.
