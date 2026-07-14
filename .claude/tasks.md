@@ -267,7 +267,7 @@ RETORNO ESPERADO: service testavel isoladamente, metodo nomeado por intencao, se
 
 ## TASK-035 — Testes de integracao: `ComprasParceladasService`
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (commit 583d8cd; 5 testes, todos GREEN)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-034
