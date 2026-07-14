@@ -46,7 +46,7 @@ RETORNO ESPERADO: migration de alteracao aplicavel; build passando sem regressao
 
 ## TASK-003 — Repository de ContaReceber
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo, so os 3 arquivos permitidos tocados; conferido)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-001
