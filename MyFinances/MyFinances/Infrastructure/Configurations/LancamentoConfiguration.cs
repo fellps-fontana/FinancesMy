@@ -75,6 +75,9 @@ public class LancamentoConfiguration : IEntityTypeConfiguration<Lancamento>
         builder.Property(l => l.FaturaId)
             .HasColumnName("fatura_id");
 
+        builder.Property(l => l.ContaReceberId)
+            .HasColumnName("conta_receber_id");
+
         builder.HasOne(l => l.Conta)
             .WithMany()
             .HasForeignKey(l => l.ContaId)
@@ -98,6 +101,11 @@ public class LancamentoConfiguration : IEntityTypeConfiguration<Lancamento>
         builder.HasOne(l => l.Fatura)
             .WithMany(f => f.Lancamentos)
             .HasForeignKey(l => l.FaturaId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(l => l.ContaReceber)
+            .WithMany()
+            .HasForeignKey(l => l.ContaReceberId)
             .OnDelete(DeleteBehavior.SetNull);
 
         // Indice para PierreTxnId se nao nulo (dedup)

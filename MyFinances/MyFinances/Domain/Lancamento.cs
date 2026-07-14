@@ -32,6 +32,8 @@ public class Lancamento
 
     public Guid? FaturaId { get; set; }
 
+    public Guid? ContaReceberId { get; set; }
+
     // Relacionamentos
     public Conta? Conta { get; set; }
 
@@ -42,6 +44,8 @@ public class Lancamento
     public Transferencia? Transferencia { get; set; }
 
     public Fatura? Fatura { get; set; }
+
+    public ContaReceber? ContaReceber { get; set; }
 
     public ICollection<Lancamento> LancamentosConciliados { get; set; } = new List<Lancamento>();
 }

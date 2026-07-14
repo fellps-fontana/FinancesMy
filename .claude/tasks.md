@@ -30,7 +30,7 @@ RETORNO ESPERADO: migration aplicavel; tabela `conta_receber` criada no Postgres
 
 ## TASK-002 — Alteracao em Transferencia (ContaDestinoId nullable + ContaReceberId) e Lancamento (ContaReceberId)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo, migration AddContaReceberIdAndMakeContaDestinoIdNullable so com ALTER/ADD; Kira corrigiu inline um desvio de escopo do levi — PagamentoResponse.ContaDestinoId tinha virado Guid? no DTO publico do cartao, revertido pra Guid nao-nulo com !.Value na atribuicao, conforme instruido)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-001
