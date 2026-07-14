@@ -213,7 +213,7 @@ RETORNO ESPERADO: veredito + (se houver) tarefa de correcao no formato desta sec
 
 ## TASK-033 — DTOs: `CriarCompraParceladaRequest`, `CompraParceladaResponse`, extensao de `CompraResponse`
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (commit 2c58aba)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-025, TASK-026
