@@ -198,7 +198,7 @@ RETORNO ESPERADO: confirmacao GREEN ou relatorio de bug.
 
 ## TASK-032 — Style: revisar `ParcelamentoCalculator`
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO na rodada 2, apos 1 correcao — commit cc3fb4b; magic number, Aggregate e calculo no loop corrigidos)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-031
