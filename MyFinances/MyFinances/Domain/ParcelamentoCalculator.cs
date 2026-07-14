@@ -12,6 +12,28 @@ public static class ParcelamentoCalculator
     // quantidadeParcelas < 2.
     public static IReadOnlyList<decimal> CalcularValoresParcelas(decimal valorTotal, int quantidadeParcelas)
     {
-        throw new NotImplementedException();
+        if (quantidadeParcelas < 2)
+        {
+            throw new ArgumentException("Quantidade de parcelas deve ser no mínimo 2.", nameof(quantidadeParcelas));
+        }
+
+        if (valorTotal <= 0)
+        {
+            throw new ArgumentException("Valor total deve ser maior que zero.", nameof(valorTotal));
+        }
+
+        var parcelas = new List<decimal>();
+
+        for (int i = 0; i < quantidadeParcelas - 1; i++)
+        {
+            decimal valorParcela = Math.Floor(valorTotal / quantidadeParcelas * 100) / 100;
+            parcelas.Add(valorParcela);
+        }
+
+        decimal somaParcelas = parcelas.Aggregate(0m, (acc, val) => acc + val);
+        decimal ultimaParcela = valorTotal - somaParcelas;
+        parcelas.Add(ultimaParcela);
+
+        return parcelas.AsReadOnly();
     }
 }
