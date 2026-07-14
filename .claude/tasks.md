@@ -60,7 +60,7 @@ RETORNO ESPERADO: repository testavel, metodos nomeados por intencao.
 
 ## TASK-004 — Esqueleto de assinatura: ContaReceberService + ContaReceberSaldoCalculator (regra critica)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (Kira materializou os 6 arquivos, todos com corpo NotImplementedException; build limpo. Registro DI de ContaReceberService fica pra TASK-006, quando a implementacao real entrar)
 AGENT: killua
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-002, TASK-003
