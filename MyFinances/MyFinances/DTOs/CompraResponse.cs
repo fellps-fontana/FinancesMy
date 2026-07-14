@@ -22,6 +22,10 @@ public class CompraResponse
 
     public Guid? FaturaId { get; set; }
 
+    public Guid? CompraParceladaId { get; set; }
+
+    public int? ParcelaNumero { get; set; }
+
     public static CompraResponse FromLancamento(Lancamento lancamento)
     {
         return new()
@@ -34,7 +38,9 @@ public class CompraResponse
             Tipo = lancamento.Tipo.ToStorageValue(),
             Data = lancamento.Data,
             Status = lancamento.Status.ToStorageValue(),
-            FaturaId = lancamento.FaturaId
+            FaturaId = lancamento.FaturaId,
+            CompraParceladaId = lancamento.CompraParceladaId,
+            ParcelaNumero = lancamento.ParcelaNumero
         };
     }
 }
