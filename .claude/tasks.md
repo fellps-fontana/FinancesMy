@@ -28,7 +28,7 @@ Fora de escopo desta leva (regra omissa — nao decidido, nao implementado):
 
 ## TASK-025 — Entidade `CompraParcelada` (Domain) + Configuration + DbSet
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (commit 823d439; FK como shadow property temporaria ate TASK-026)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
@@ -49,7 +49,7 @@ RETORNO ESPERADO: classe de entidade + configuration + DbSet registrado, sem log
 
 ## TASK-026 — Extensao de `Lancamento` (Domain) com `CompraParceladaId`/`ParcelaNumero`
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (commit dc3edc8)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-025
@@ -69,7 +69,7 @@ RETORNO ESPERADO: entidade + configuration atualizadas, compilando.
 
 ## TASK-027 — Migration: tabela `compra_parcelada` + colunas em `lancamento`
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (commit 0bb5fc3; build + 202 testes passando)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-025, TASK-026
@@ -88,7 +88,7 @@ RETORNO ESPERADO: migration aplicavel; tabela `compra_parcelada` e colunas novas
 
 ## TASK-028 — Repository de `CompraParcelada`
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (commit 5ee2c69)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-025
@@ -146,7 +146,7 @@ public static class ParcelamentoCalculator
 
 ## TASK-029 — [REGRA CRITICA] Testes RED: `ParcelamentoCalculator`
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (commit 61663fc; 10 testes, RED confirmado por NotImplementedException)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-025 (arquivo de esqueleto criado pelo Kira antes desta task)
@@ -165,7 +165,7 @@ RETORNO ESPERADO: confirmacao de RED (mensagem de falha = `NotImplementedExcepti
 
 ## TASK-030 — [REGRA CRITICA] Implementar `ParcelamentoCalculator` (GREEN)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (commit 1ed88ca; 10/10 testes passando)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-029
