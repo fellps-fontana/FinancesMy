@@ -283,7 +283,7 @@ RETORNO ESPERADO: testes passando; relatorio de bug se houver.
 
 ## TASK-036 — Controller REST: criar compra parcelada
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (commit 3d11069)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-034
