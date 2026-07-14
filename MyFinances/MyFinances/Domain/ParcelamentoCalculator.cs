@@ -5,6 +5,10 @@ namespace MyFinances.Domain;
 // quantidade_parcelas, devolve o valor de cada parcela na ordem 1..N.
 public static class ParcelamentoCalculator
 {
+    // Fator para truncamento em 2 casas decimais: multiplicar, truncar com
+    // Floor, depois dividir pelo mesmo fator.
+    private const decimal CasasDecimaisFator = 100m;
+
     // Divide valorTotal em quantidadeParcelas partes. Cada parcela, exceto
     // a ultima, e truncada em 2 casas decimais; a ultima recebe o resto do
     // arredondamento, garantindo que a soma das partes bate exatamente com
@@ -24,13 +28,17 @@ public static class ParcelamentoCalculator
 
         var parcelas = new List<decimal>();
 
+        // Valor base da parcela multiplicado pelo fator de casas decimais.
+        // Calculado uma vez antes do loop, nao em cada iteracao.
+        decimal valorBaseParcelaVezCem = valorTotal / quantidadeParcelas * CasasDecimaisFator;
+
         for (int i = 0; i < quantidadeParcelas - 1; i++)
         {
-            decimal valorParcela = Math.Floor(valorTotal / quantidadeParcelas * 100) / 100;
+            decimal valorParcela = Math.Floor(valorBaseParcelaVezCem) / CasasDecimaisFator;
             parcelas.Add(valorParcela);
         }
 
-        decimal somaParcelas = parcelas.Aggregate(0m, (acc, val) => acc + val);
+        decimal somaParcelas = parcelas.Sum();
         decimal ultimaParcela = valorTotal - somaParcelas;
         parcelas.Add(ultimaParcela);
 
