@@ -45,6 +45,7 @@ builder.Services.AddScoped<IDeParaCategoriaRepository, DeParaCategoriaRepository
 builder.Services.AddScoped<ILancamentoRepository, LancamentoRepository>();
 builder.Services.AddScoped<ITransferenciaRepository, TransferenciaRepository>();
 builder.Services.AddScoped<IFaturaRepository, FaturaRepository>();
+builder.Services.AddScoped<IContaReceberRepository, ContaReceberRepository>();
 builder.Services.AddScoped<IAtivoRepository, AtivoRepository>();
 
 // Services - Conta
