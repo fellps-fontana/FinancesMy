@@ -183,7 +183,7 @@ RETORNO ESPERADO: implementacao completa; testes GREEN.
 
 ## TASK-031 — [REGRA CRITICA] Confirmar GREEN: `ParcelamentoCalculator`
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (confirmacao independente: 10/10 + suite completa 212/212)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-030
