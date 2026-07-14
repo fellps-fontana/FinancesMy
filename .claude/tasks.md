@@ -237,7 +237,7 @@ RETORNO ESPERADO: contrato de entrada/saida documentado (shape dos 3 tipos).
 
 ## TASK-034 — `ComprasParceladasService`: orquestracao da criacao
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (commit f73a15b; resolucao de fatura encadeada + persistencia so apos validar todas as parcelas)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-028, TASK-030, TASK-033
