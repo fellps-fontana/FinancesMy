@@ -88,7 +88,7 @@ RETORNO ESPERADO: suite de testes compilando e falhando (RED) por ausencia de lo
 
 ## TASK-006 — ContaReceberService: implementacao da regra critica (GREEN contra o RED de mike)
 
-STATUS: CONCLUIDA (16/16 testes GREEN, build limpo. Kira corrigiu inline 5 chamadas de Adicionar sem await — warning CS4014, inconsistente com o padrao ja usado em PagamentoFaturaService/CompraCartaoService)
+STATUS: CONCLUIDA + APROVADA PELO STYLE apos 3 rodadas (22/22 testes GREEN no final). Rodada 1: Kira corrigiu inline 5 chamadas de Adicionar sem await (CS4014). Rodada 2 (style): achou 2 bugs reais — Status nunca transicionava apos recebimento (ficava travado em Pendente), e falta de validacao de contaOrigemId/contaDestinoId antes de persistir; mike escreveu 4 testes RED, levi corrigiu, 20/20 GREEN. Rodada 3 (style): achou um 3o bug — ContaReceberRepository.ObterPorId sem Include(Recebimentos), fazendo o calculo de saldo ignorar recebimentos anteriores em producao (overpayment passava, status errado); mike escreveu teste de integracao SQLite in-memory RED, Kira aplicou o fix de uma linha, 22/22 GREEN. APROVADO na 3a rodada.
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-005
