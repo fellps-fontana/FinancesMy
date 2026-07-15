@@ -95,6 +95,12 @@ public class ContaReceberServiceTests
             .Setup(r => r.ObterPorId(contaOrigemId))
             .ReturnsAsync(contaOrigem);
 
+        // Variavel para capturar a Transferencia criada via Callback
+        Transferencia transferenciaCapturada = null!;
+        _mockTransferenciaRepository
+            .Setup(r => r.Adicionar(It.IsAny<Transferencia>()))
+            .Callback<Transferencia>(t => transferenciaCapturada = t);
+
         // Act
         var resultado = await _service.RegistrarEmprestimo(
             descricao,
@@ -128,7 +134,8 @@ public class ContaReceberServiceTests
                 l.Tipo == TipoLancamento.Debit &&
                 l.Status == StatusLancamento.Pago &&
                 l.ContaReceberId == resultado.Id &&
-                l.Valor == valorTotal)),
+                l.Valor == valorTotal &&
+                l.TransferenciaId == transferenciaCapturada.Id)),
             Times.Once);
 
         // Verifica que salvou (uma unica vez no repositorio principal, compartilhado pelo DbContext)
