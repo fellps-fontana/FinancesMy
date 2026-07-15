@@ -1,3 +1,4 @@
+using MyFinances.Data;
 using MyFinances.DTOs;
 using MyFinances.Domain;
 using MyFinances.Repositories;
@@ -10,17 +11,31 @@ public class ComprasParceladasService
     private readonly ILancamentoRepository _lancamentoRepository;
     private readonly FaturaCicloService _faturaCicloService;
     private readonly ValidacaoCartaoService _validacaoCartaoService;
+    private readonly MyFinancesDbContext _dbContext;
 
     public ComprasParceladasService(
         ICompraParceladaRepository compraParceladaRepository,
         ILancamentoRepository lancamentoRepository,
         FaturaCicloService faturaCicloService,
-        ValidacaoCartaoService validacaoCartaoService)
+        ValidacaoCartaoService validacaoCartaoService,
+        MyFinancesDbContext? dbContext = null)
     {
         _compraParceladaRepository = compraParceladaRepository;
         _lancamentoRepository = lancamentoRepository;
         _faturaCicloService = faturaCicloService;
         _validacaoCartaoService = validacaoCartaoService;
+
+        // Se DbContext nao for injetado (testes), tenta pegar do repositorio
+        if (dbContext != null)
+        {
+            _dbContext = dbContext;
+        }
+        else
+        {
+            // Fallback: pega do repositorio (sempre disponivel)
+            var repoConcreto = (CompraParceladaRepository)compraParceladaRepository;
+            _dbContext = repoConcreto.GetDbContext();
+        }
     }
 
     public async Task<(bool Sucesso, CompraParcelada? CompraParcelada, string? Erro)> CriarCompraParceladaAsync(
@@ -46,44 +61,58 @@ public class ComprasParceladasService
             request.ValorTotal,
             request.QuantidadeParcelas);
 
-        var (faturas, erroFatura) = await ResolverFaturasParceladasAsync(
-            contaId,
-            request.DataCompra,
-            request.QuantidadeParcelas);
-
-        if (faturas == null)
+        // Transacao explicita: garante atomicidade completa
+        // Aplicada tanto em producao (DI) quanto em testes (via repository)
+        using (var transaction = await _dbContext.Database.BeginTransactionAsync())
         {
-            return (false, null, erroFatura);
+            try
+            {
+                var (faturas, erroFatura) = await ResolverFaturasParceladasAsync(
+                    contaId,
+                    request.DataCompra,
+                    request.QuantidadeParcelas);
+
+                if (faturas == null)
+                {
+                    return (false, null, erroFatura);
+                }
+
+                var lancamentos = MontarLancamentos(
+                    contaId,
+                    conta!,
+                    request,
+                    valores,
+                    faturas);
+
+                var compraParcelada = new CompraParcelada
+                {
+                    Id = Guid.NewGuid(),
+                    Descricao = request.Descricao,
+                    ValorTotal = request.ValorTotal,
+                    QuantidadeParcelas = request.QuantidadeParcelas,
+                    DataCompra = request.DataCompra,
+                    Lancamentos = lancamentos
+                };
+
+                await _compraParceladaRepository.Adicionar(compraParcelada);
+
+                foreach (var lancamento in lancamentos)
+                {
+                    lancamento.CompraParceladaId = compraParcelada.Id;
+                    await _lancamentoRepository.Adicionar(lancamento);
+                }
+
+                await _compraParceladaRepository.Salvar();
+                await transaction.CommitAsync();
+
+                return (true, compraParcelada, null);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
-
-        var lancamentos = MontarLancamentos(
-            contaId,
-            conta!,
-            request,
-            valores,
-            faturas);
-
-        var compraParcelada = new CompraParcelada
-        {
-            Id = Guid.NewGuid(),
-            Descricao = request.Descricao,
-            ValorTotal = request.ValorTotal,
-            QuantidadeParcelas = request.QuantidadeParcelas,
-            DataCompra = request.DataCompra,
-            Lancamentos = lancamentos
-        };
-
-        await _compraParceladaRepository.Adicionar(compraParcelada);
-
-        foreach (var lancamento in lancamentos)
-        {
-            lancamento.CompraParceladaId = compraParcelada.Id;
-            await _lancamentoRepository.Adicionar(lancamento);
-        }
-
-        await _compraParceladaRepository.Salvar();
-
-        return (true, compraParcelada, null);
     }
 
     private async Task<(IReadOnlyList<Fatura>? Faturas, string? Erro)> ResolverFaturasParceladasAsync(
@@ -98,7 +127,8 @@ public class ComprasParceladasService
         {
             var (fatura, rejeitada, motivo) = await _faturaCicloService.ResolverFaturaParaLancamentoAsync(
                 contaId,
-                dataReferencia);
+                dataReferencia,
+                skipFaturaSave: false);
 
             if (rejeitada)
             {
@@ -107,7 +137,7 @@ public class ComprasParceladasService
 
             var novaFatura = fatura!;
             faturas.Add(novaFatura);
-            dataReferencia = novaFatura.DataVencimento.AddDays(1);
+            dataReferencia = CalcularProximaDataReferencia(novaFatura.DataVencimento);
         }
 
         return (faturas.AsReadOnly(), null);
@@ -147,9 +177,17 @@ public class ComprasParceladasService
             };
 
             lancamentos.Add(lancamento);
-            dataReferencia = faturas[i].DataVencimento.AddDays(1);
+            dataReferencia = CalcularProximaDataReferencia(faturas[i].DataVencimento);
         }
 
         return lancamentos;
+    }
+
+    private DateOnly CalcularProximaDataReferencia(DateOnly dataVencimentoFaturaAnterior)
+    {
+        // Proxima data de referencia = primeiro dia apos o vencimento da fatura anterior.
+        // Garante que a proxima parcela cai no ciclo seguinte, nunca repetindo o mesmo ciclo.
+        // Ver regra-de-negocio.md, item 12, subsecao "Parcelamento", decisao de 2026-07-12.
+        return dataVencimentoFaturaAnterior.AddDays(1);
     }
 }

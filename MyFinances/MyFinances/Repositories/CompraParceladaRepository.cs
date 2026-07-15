@@ -29,4 +29,9 @@ public class CompraParceladaRepository : ICompraParceladaRepository
     {
         await _context.SaveChangesAsync();
     }
+
+    public MyFinancesDbContext GetDbContext()
+    {
+        return _context;
+    }
 }
