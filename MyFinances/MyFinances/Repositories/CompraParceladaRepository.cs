@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using MyFinances.Data;
 using MyFinances.Domain;
 
@@ -30,8 +31,18 @@ public class CompraParceladaRepository : ICompraParceladaRepository
         await _context.SaveChangesAsync();
     }
 
-    public MyFinancesDbContext GetDbContext()
+    public async Task<IDbContextTransaction> BeginTransactionAsync()
     {
-        return _context;
+        return await _context.Database.BeginTransactionAsync();
+    }
+
+    public async Task CommitAsync()
+    {
+        await _context.Database.CommitTransactionAsync();
+    }
+
+    public async Task RollbackAsync()
+    {
+        await _context.Database.RollbackTransactionAsync();
     }
 }

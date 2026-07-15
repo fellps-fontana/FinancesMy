@@ -1,4 +1,3 @@
-using MyFinances.Data;
 using MyFinances.DTOs;
 using MyFinances.Domain;
 using MyFinances.Repositories;
@@ -11,31 +10,17 @@ public class ComprasParceladasService
     private readonly ILancamentoRepository _lancamentoRepository;
     private readonly FaturaCicloService _faturaCicloService;
     private readonly ValidacaoCartaoService _validacaoCartaoService;
-    private readonly MyFinancesDbContext _dbContext;
 
     public ComprasParceladasService(
         ICompraParceladaRepository compraParceladaRepository,
         ILancamentoRepository lancamentoRepository,
         FaturaCicloService faturaCicloService,
-        ValidacaoCartaoService validacaoCartaoService,
-        MyFinancesDbContext? dbContext = null)
+        ValidacaoCartaoService validacaoCartaoService)
     {
         _compraParceladaRepository = compraParceladaRepository;
         _lancamentoRepository = lancamentoRepository;
         _faturaCicloService = faturaCicloService;
         _validacaoCartaoService = validacaoCartaoService;
-
-        // Se DbContext nao for injetado (testes), tenta pegar do repositorio
-        if (dbContext != null)
-        {
-            _dbContext = dbContext;
-        }
-        else
-        {
-            // Fallback: pega do repositorio (sempre disponivel)
-            var repoConcreto = (CompraParceladaRepository)compraParceladaRepository;
-            _dbContext = repoConcreto.GetDbContext();
-        }
     }
 
     public async Task<(bool Sucesso, CompraParcelada? CompraParcelada, string? Erro)> CriarCompraParceladaAsync(
@@ -62,8 +47,8 @@ public class ComprasParceladasService
             request.QuantidadeParcelas);
 
         // Transacao explicita: garante atomicidade completa
-        // Aplicada tanto em producao (DI) quanto em testes (via repository)
-        using (var transaction = await _dbContext.Database.BeginTransactionAsync())
+        // Controle transacional encapsulado via interface do repository
+        using (var transaction = await _compraParceladaRepository.BeginTransactionAsync())
         {
             try
             {
@@ -127,8 +112,7 @@ public class ComprasParceladasService
         {
             var (fatura, rejeitada, motivo) = await _faturaCicloService.ResolverFaturaParaLancamentoAsync(
                 contaId,
-                dataReferencia,
-                skipFaturaSave: false);
+                dataReferencia);
 
             if (rejeitada)
             {

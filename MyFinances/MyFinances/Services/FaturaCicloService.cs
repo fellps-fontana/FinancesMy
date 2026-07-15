@@ -16,8 +16,7 @@ public class FaturaCicloService
 
     public async Task<(Fatura? Fatura, bool Rejeitada, string? Motivo)> ResolverFaturaParaLancamentoAsync(
         Guid contaId,
-        DateOnly dataLancamento,
-        bool skipFaturaSave = false)
+        DateOnly dataLancamento)
     {
         var conta = await _contaRepository.ObterPorId(contaId);
         if (conta == null)
@@ -52,11 +51,7 @@ public class FaturaCicloService
         };
 
         await _faturaRepository.Adicionar(novaFatura);
-
-        if (!skipFaturaSave)
-        {
-            await _faturaRepository.Salvar();
-        }
+        await _faturaRepository.Salvar();
 
         return (novaFatura, false, null);
     }
