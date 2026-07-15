@@ -44,6 +44,8 @@ Table lancamento {
   conciliado_com uuid [ref: - lancamento.id, note: 'txn OF vinculada na conciliacao']
   transferencia_id uuid [ref: > transferencia.id, note: 'null se nao for perna de transferencia (item 3/12)']
   fatura_id uuid [ref: > fatura.id, note: 'null se nao for compra de cartao (item 12)']
+  compra_parcelada_id uuid [ref: > compra_parcelada.id, note: 'null se nao for parcela de compra parcelada; agrupa as N parcelas da mesma compra so para exibicao (item 12)']
+  parcela_numero int [note: 'posicao desta parcela no grupo, ex: 3; null se nao for parcela (item 12)']
 }
 
 // Transferencia de mesma titularidade (item 3). Modelo de duas pernas:
@@ -88,14 +90,18 @@ Table conta_fixa {
   ativa boolean [not null, default: true]
 }
 
-Table parcela {
+// Agrupador logico de compra parcelada no cartao (item 12). Cada parcela e
+// seu proprio Lancamento (com fatura_id proprio, igual compra a vista) —
+// compra_parcelada so guarda o metadado compartilhado da compra original
+// para a UI agrupar/exibir "3/10". Mesmo padrao ja usado por `transferencia`
+// (item 3): entidade compartilhada agrupando N lancamentos, sem estado de
+// pagamento proprio (quitacao e so no nivel da fatura, nunca da parcela).
+Table compra_parcelada {
   id uuid [pk]
-  lancamento_id uuid [ref: > lancamento.id, not null]
-  numero int [not null, note: 'parcela atual, ex: 3']
-  total int [not null, note: 'total de parcelas, ex: 10']
-  valor decimal [not null]
-  vencimento date [not null]
-  paga boolean [not null, default: false]
+  descricao varchar [not null, note: 'descricao da compra original, ex: Notebook Dell']
+  valor_total decimal [not null, note: 'valor total da compra, antes de dividir pelas parcelas']
+  quantidade_parcelas int [not null, note: 'total de parcelas, ex: 10']
+  data_compra date [not null, note: 'data da compra original; NAO e a data de vencimento de cada parcela']
 }
 
 // Ativo (item 8). Existe dentro de uma conta tipo INVESTIMENTO. Quando uma
