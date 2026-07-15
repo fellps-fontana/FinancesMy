@@ -59,6 +59,10 @@ public class ContaReceberService : IContaReceberService
     {
         ValidarPessoa(pessoa);
 
+        var contaOrigem = await _contaRepository.ObterPorId(contaOrigemId);
+        if (contaOrigem == null)
+            throw new ContaNaoEncontradaException(contaOrigemId);
+
         var contaReceber = new ContaReceber
         {
             Id = Guid.NewGuid(),
@@ -101,8 +105,6 @@ public class ContaReceberService : IContaReceberService
         await _lancamentoRepository.Adicionar(lancamento);
 
         await _contaReceberRepository.Salvar();
-        await _transferenciaRepository.Salvar();
-        await _lancamentoRepository.Salvar();
 
         return contaReceber;
     }
@@ -117,6 +119,10 @@ public class ContaReceberService : IContaReceberService
         var contaReceber = await _contaReceberRepository.ObterPorId(contaReceberId);
         if (contaReceber == null)
             throw new ContaReceberNaoEncontradaException(contaReceberId);
+
+        var contaDestino = await _contaRepository.ObterPorId(contaDestinoId);
+        if (contaDestino == null)
+            throw new ContaNaoEncontradaException(contaDestinoId);
 
         var saldo = ContaReceberSaldoCalculator.Calcular(contaReceber);
         if (valor > saldo.SaldoPendente)
@@ -138,7 +144,13 @@ public class ContaReceberService : IContaReceberService
         };
 
         await _lancamentoRepository.Adicionar(lancamento);
-        await _lancamentoRepository.Salvar();
+
+        contaReceber.Recebimentos.Add(lancamento);
+        var novoSaldo = ContaReceberSaldoCalculator.Calcular(contaReceber);
+        contaReceber.Status = novoSaldo.Status;
+
+        await _contaReceberRepository.Atualizar(contaReceber);
+        await _contaReceberRepository.Salvar();
 
         return lancamento;
     }

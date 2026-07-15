@@ -6,7 +6,7 @@ public static class ContaReceberSaldoCalculator
     {
         var valorRecebido = CalcularValorRecebido(contaReceber);
         var saldoPendente = contaReceber.ValorTotal - valorRecebido;
-        var status = DeterminarStatus(valorRecebido, saldoPendente, contaReceber.ValorTotal);
+        var status = DeterminarStatus(valorRecebido, saldoPendente);
 
         return new ContaReceberSaldo(contaReceber.ValorTotal, valorRecebido, saldoPendente, status);
     }
@@ -18,7 +18,7 @@ public static class ContaReceberSaldoCalculator
             .Sum(l => l.Valor);
     }
 
-    private static StatusContaReceber DeterminarStatus(decimal valorRecebido, decimal saldoPendente, decimal valorTotal)
+    private static StatusContaReceber DeterminarStatus(decimal valorRecebido, decimal saldoPendente)
     {
         if (valorRecebido == 0)
             return StatusContaReceber.Pendente;

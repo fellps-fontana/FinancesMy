@@ -131,10 +131,10 @@ public class ContaReceberServiceTests
                 l.Valor == valorTotal)),
             Times.Once);
 
-        // Verifica que salvou
+        // Verifica que salvou (uma unica vez no repositorio principal, compartilhado pelo DbContext)
         _mockContaReceberRepository.Verify(r => r.Salvar(), Times.Once);
-        _mockTransferenciaRepository.Verify(r => r.Salvar(), Times.Once);
-        _mockLancamentoRepository.Verify(r => r.Salvar(), Times.Once);
+        _mockTransferenciaRepository.Verify(r => r.Salvar(), Times.Never);
+        _mockLancamentoRepository.Verify(r => r.Salvar(), Times.Never);
     }
 
     #endregion
