@@ -88,13 +88,13 @@ public class ComprasParceladasService
                 }
 
                 await _compraParceladaRepository.Salvar();
-                await transaction.CommitAsync();
+                await _compraParceladaRepository.CommitAsync();
 
                 return (true, compraParcelada, null);
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await _compraParceladaRepository.RollbackAsync();
                 throw;
             }
         }
