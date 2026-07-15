@@ -302,7 +302,7 @@ RETORNO ESPERADO: contrato de API documentado (rota, verbo, body de entrada, sha
 
 ## TASK-037 — Style: revisar Service + Controller + DTOs de compra parcelada
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (APROVADO na rodada 4, apos 3 correcoes — commits cc3fb4b/2513f73/9695221/52091aa; achado grave de transacionalidade quebrada + violacao de camada + codigo morto, todos corrigidos)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-035, TASK-036
