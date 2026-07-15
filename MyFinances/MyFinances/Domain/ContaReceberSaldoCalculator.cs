@@ -4,7 +4,29 @@ public static class ContaReceberSaldoCalculator
 {
     public static ContaReceberSaldo Calcular(ContaReceber contaReceber)
     {
-        throw new NotImplementedException();
+        var valorRecebido = CalcularValorRecebido(contaReceber);
+        var saldoPendente = contaReceber.ValorTotal - valorRecebido;
+        var status = DeterminarStatus(valorRecebido, saldoPendente, contaReceber.ValorTotal);
+
+        return new ContaReceberSaldo(contaReceber.ValorTotal, valorRecebido, saldoPendente, status);
+    }
+
+    private static decimal CalcularValorRecebido(ContaReceber contaReceber)
+    {
+        return contaReceber.Recebimentos
+            .Where(l => l.Tipo == TipoLancamento.Credit && l.Status == StatusLancamento.Pago)
+            .Sum(l => l.Valor);
+    }
+
+    private static StatusContaReceber DeterminarStatus(decimal valorRecebido, decimal saldoPendente, decimal valorTotal)
+    {
+        if (valorRecebido == 0)
+            return StatusContaReceber.Pendente;
+
+        if (saldoPendente <= 0)
+            return StatusContaReceber.Recebido;
+
+        return StatusContaReceber.Parcial;
     }
 }
 

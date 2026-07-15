@@ -60,6 +60,9 @@ builder.Services.AddHttpClient<ICotacaoExternaService, CotacaoExternaService>(cl
     client.DefaultRequestHeaders.Add("User-Agent", "MyFinances/1.0");
 });
 
+// Services - Contas a Receber
+builder.Services.AddScoped<IContaReceberService, ContaReceberService>();
+
 // Services - Categoria
 builder.Services.AddScoped<ICategoriaService, CategoriaService>();
 builder.Services.AddScoped<IDeParaCategoriaService, DeParaCategoriaService>();
