@@ -102,7 +102,7 @@ RETORNO ESPERADO: `ContaReceberService`/`ContaReceberSaldoCalculator` implementa
 
 ## TASK-007 — Confirmar GREEN dos testes de regra critica (mike)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (16/16 GREEN confirmado por mike, ja verificado por Kira antes tambem. Segue pro style antes da TASK-008, conforme ciclo TDD da secao 5 do CLAUDE.md global)
 AGENT: mike
 FLUXO: Implementacao (rodada GREEN — so RODA os testes existentes, nao reescreve)
 DEPENDENCIAS: TASK-006
