@@ -30,6 +30,7 @@ public class ContaReceberRepository : IContaReceberRepository
     {
         var query = _context.ContasReceber
             .Include(cr => cr.Categoria)
+            .Include(cr => cr.Recebimentos)
             .AsQueryable();
 
         if (statusFiltro.HasValue)

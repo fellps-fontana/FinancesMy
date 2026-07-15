@@ -192,4 +192,71 @@ public class ContaReceberIntegrationTests
         Assert.Equal(600m, saldo.SaldoPendente);
         Assert.Equal(StatusContaReceber.Parcial, saldo.Status);
     }
+
+    [Fact]
+    public async Task Listar_CarregaRecebimentosDoRepositorio_SemMockDoDbContext()
+    {
+        // Arrange - criar Conta (necessaria para Lancamento)
+        var contaId = Guid.NewGuid();
+        var conta = new Conta
+        {
+            Id = contaId,
+            Nome = "Conta Teste Listar",
+            Tipo = TipoConta.Banco,
+            Origem = OrigemConta.Manual,
+            Ativa = true
+        };
+        _fixture.DbContext.Contas.Add(conta);
+
+        // Arrange - criar ContaReceber
+        var contaReceberId = Guid.NewGuid();
+        var contaReceber = new ContaReceber
+        {
+            Id = contaReceberId,
+            Tipo = TipoContaReceber.Recebivel,
+            Descricao = "Recebivel Teste Listar",
+            Pessoa = null,
+            ValorTotal = 1000m,
+            DataRegistro = new DateOnly(2025, 1, 1),
+            DataPrevista = new DateOnly(2025, 2, 1),
+            CategoriaId = null,
+            Status = StatusContaReceber.Pendente
+        };
+        _fixture.DbContext.ContasReceber.Add(contaReceber);
+        await _fixture.DbContext.SaveChangesAsync();
+
+        // Arrange - criar Lancamento vinculado (recebimento parcial de 400 dos 1000)
+        var lancamento = new Lancamento
+        {
+            Id = Guid.NewGuid(),
+            ContaId = contaId,
+            ContaReceberId = contaReceberId,
+            Tipo = TipoLancamento.Credit,
+            Status = StatusLancamento.Pago,
+            Valor = 400m,
+            Data = new DateOnly(2025, 1, 15),
+            Manual = false,
+            Oculto = false
+        };
+        _fixture.DbContext.Lancamentos.Add(lancamento);
+        await _fixture.DbContext.SaveChangesAsync();
+
+        // CRITICO: limpar identity map para forcar o EF a carregar do banco real
+        _fixture.DbContext.ChangeTracker.Clear();
+
+        // Act - instanciar repositorio e chamar Listar
+        var repositorio = new ContaReceberRepository(_fixture.DbContext);
+        var resultado = await repositorio.Listar();
+
+        // Assert - a ContaReceber listada deve trazer Recebimentos carregados,
+        // pra permitir calcular SaldoPendente corretamente numa listagem (TASK-008)
+        var contaReceberListada = resultado.Single(cr => cr.Id == contaReceberId);
+        Assert.NotEmpty(contaReceberListada.Recebimentos);
+        Assert.Single(contaReceberListada.Recebimentos);
+        Assert.Equal(400m, contaReceberListada.Recebimentos.First().Valor);
+
+        var saldo = ContaReceberSaldoCalculator.Calcular(contaReceberListada);
+        Assert.Equal(600m, saldo.SaldoPendente);
+        Assert.Equal(StatusContaReceber.Parcial, saldo.Status);
+    }
 }
