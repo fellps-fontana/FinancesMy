@@ -99,7 +99,8 @@ public class ContaReceberService : IContaReceberService
             Status = StatusLancamento.Pago,
             Valor = valorTotal,
             Data = dataRegistro,
-            Manual = true
+            Manual = true,
+            TransferenciaId = transferencia.Id
         };
 
         await _lancamentoRepository.Adicionar(lancamento);

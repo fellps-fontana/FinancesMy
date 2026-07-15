@@ -7,11 +7,11 @@ using Microsoft.AspNetCore.Mvc;
 namespace MyFinances.Controllers;
 
 [ApiController]
-public class ContaReceberController : ControllerBase
+public class ContasReceberController : ControllerBase
 {
     private readonly IContaReceberService _contaReceberService;
 
-    public ContaReceberController(IContaReceberService contaReceberService)
+    public ContasReceberController(IContaReceberService contaReceberService)
     {
         _contaReceberService = contaReceberService;
     }
@@ -19,23 +19,16 @@ public class ContaReceberController : ControllerBase
     [HttpPost("api/contas-receber/recebiveis")]
     public async Task<ActionResult<ContaReceberResponse>> RegistrarRecebivel(RegistrarRecebivelRequest request)
     {
-        try
-        {
-            var contaReceber = await _contaReceberService.RegistrarRecebivel(
-                request.Descricao,
-                request.ValorTotal,
-                request.DataRegistro,
-                request.DataPrevista,
-                request.CategoriaId
-            );
+        var contaReceber = await _contaReceberService.RegistrarRecebivel(
+            request.Descricao,
+            request.ValorTotal,
+            request.DataRegistro,
+            request.DataPrevista,
+            request.CategoriaId
+        );
 
-            var response = ContaReceberResponse.FromContaReceber(contaReceber);
-            return Created($"/api/contas-receber/{response.Id}", response);
-        }
-        catch (ContaNaoEncontradaException ex)
-        {
-            return NotFound(new { erro = ex.Message });
-        }
+        var response = ContaReceberResponse.FromContaReceber(contaReceber);
+        return Created($"/api/contas-receber/{response.Id}", response);
     }
 
     [HttpPost("api/contas-receber/emprestimos")]
