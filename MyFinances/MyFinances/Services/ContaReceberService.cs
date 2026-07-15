@@ -42,7 +42,7 @@ public class ContaReceberService : IContaReceberService
             Status = StatusContaReceber.Pendente
         };
 
-        _contaReceberRepository.Adicionar(contaReceber);
+        await _contaReceberRepository.Adicionar(contaReceber);
         await _contaReceberRepository.Salvar();
 
         return contaReceber;
@@ -72,7 +72,7 @@ public class ContaReceberService : IContaReceberService
             Status = StatusContaReceber.Pendente
         };
 
-        _contaReceberRepository.Adicionar(contaReceber);
+        await _contaReceberRepository.Adicionar(contaReceber);
 
         var transferencia = new Transferencia
         {
@@ -84,7 +84,7 @@ public class ContaReceberService : IContaReceberService
             Data = dataRegistro
         };
 
-        _transferenciaRepository.Adicionar(transferencia);
+        await _transferenciaRepository.Adicionar(transferencia);
 
         var lancamento = new Lancamento
         {
@@ -98,7 +98,7 @@ public class ContaReceberService : IContaReceberService
             Manual = true
         };
 
-        _lancamentoRepository.Adicionar(lancamento);
+        await _lancamentoRepository.Adicionar(lancamento);
 
         await _contaReceberRepository.Salvar();
         await _transferenciaRepository.Salvar();
@@ -137,7 +137,7 @@ public class ContaReceberService : IContaReceberService
             Manual = true
         };
 
-        _lancamentoRepository.Adicionar(lancamento);
+        await _lancamentoRepository.Adicionar(lancamento);
         await _lancamentoRepository.Salvar();
 
         return lancamento;

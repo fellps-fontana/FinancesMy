@@ -88,7 +88,7 @@ RETORNO ESPERADO: suite de testes compilando e falhando (RED) por ausencia de lo
 
 ## TASK-006 — ContaReceberService: implementacao da regra critica (GREEN contra o RED de mike)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (16/16 testes GREEN, build limpo. Kira corrigiu inline 5 chamadas de Adicionar sem await — warning CS4014, inconsistente com o padrao ja usado em PagamentoFaturaService/CompraCartaoService)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-005
