@@ -281,6 +281,213 @@ public class ContaReceberServiceTests
 
     #endregion
 
+    #region Regra 4.1: RegistrarRecebimento com valor que ZERA o saldo — Status deve transicionar para RECEBIDO e persistir
+
+    [Fact]
+    public async Task RegistrarRecebimento_ValorQueZeraSaldo_AtualizaStatusParaRecebidoEPersiste()
+    {
+        // Arrange
+        var contaReceberId = Guid.NewGuid();
+        var contaDestinoId = Guid.NewGuid();
+        var valorTotal = 1000m;
+        var valor = 1000m; // Zera o saldo pendente
+        var data = new DateOnly(2026, 7, 15);
+
+        var contaReceber = new ContaReceber
+        {
+            Id = contaReceberId,
+            Tipo = TipoContaReceber.Recebivel,
+            Descricao = "Consulta",
+            ValorTotal = valorTotal,
+            Status = StatusContaReceber.Pendente
+        };
+
+        var contaDestino = new Conta
+        {
+            Id = contaDestinoId,
+            Nome = "Conta Corrente",
+            Ativa = true
+        };
+
+        _mockContaReceberRepository
+            .Setup(r => r.ObterPorId(contaReceberId))
+            .ReturnsAsync(contaReceber);
+
+        _mockContaRepository
+            .Setup(r => r.ObterPorId(contaDestinoId))
+            .ReturnsAsync(contaDestino);
+
+        // Act
+        var lancamento = await _service.RegistrarRecebimento(
+            contaReceberId,
+            contaDestinoId,
+            valor,
+            data,
+            null);
+
+        // Assert - Lancamento criado com sucesso
+        Assert.NotEqual(Guid.Empty, lancamento.Id);
+        Assert.Equal(TipoLancamento.Credit, lancamento.Tipo);
+        Assert.Equal(StatusLancamento.Pago, lancamento.Status);
+        Assert.Equal(valor, lancamento.Valor);
+
+        // Verifica que ContaReceber.Status foi atualizado para RECEBIDO e persistido
+        _mockContaReceberRepository.Verify(
+            r => r.Atualizar(It.Is<ContaReceber>(cr =>
+                cr.Id == contaReceberId &&
+                cr.Status == StatusContaReceber.Recebido)),
+            Times.Once);
+
+        _mockContaReceberRepository.Verify(r => r.Salvar(), Times.Once);
+    }
+
+    #endregion
+
+    #region Regra 4.2: RegistrarRecebimento com valor MENOR que saldo — Status deve transicionar para PARCIAL
+
+    [Fact]
+    public async Task RegistrarRecebimento_ValorMenorQueSaldo_AtualizaStatusParaParcialEPersiste()
+    {
+        // Arrange
+        var contaReceberId = Guid.NewGuid();
+        var contaDestinoId = Guid.NewGuid();
+        var valorTotal = 1000m;
+        var valor = 300m; // Menor que valor total, deixa saldo pendente
+        var data = new DateOnly(2026, 7, 15);
+
+        var contaReceber = new ContaReceber
+        {
+            Id = contaReceberId,
+            Tipo = TipoContaReceber.Recebivel,
+            Descricao = "Consulta",
+            ValorTotal = valorTotal,
+            Status = StatusContaReceber.Pendente
+        };
+
+        var contaDestino = new Conta
+        {
+            Id = contaDestinoId,
+            Nome = "Conta Corrente",
+            Ativa = true
+        };
+
+        _mockContaReceberRepository
+            .Setup(r => r.ObterPorId(contaReceberId))
+            .ReturnsAsync(contaReceber);
+
+        _mockContaRepository
+            .Setup(r => r.ObterPorId(contaDestinoId))
+            .ReturnsAsync(contaDestino);
+
+        // Act
+        var lancamento = await _service.RegistrarRecebimento(
+            contaReceberId,
+            contaDestinoId,
+            valor,
+            data,
+            null);
+
+        // Assert - Lancamento criado com sucesso
+        Assert.NotEqual(Guid.Empty, lancamento.Id);
+        Assert.Equal(TipoLancamento.Credit, lancamento.Tipo);
+
+        // Verifica que ContaReceber.Status foi atualizado para PARCIAL
+        _mockContaReceberRepository.Verify(
+            r => r.Atualizar(It.Is<ContaReceber>(cr =>
+                cr.Id == contaReceberId &&
+                cr.Status == StatusContaReceber.Parcial)),
+            Times.Once);
+
+        _mockContaReceberRepository.Verify(r => r.Salvar(), Times.Once);
+    }
+
+    #endregion
+
+    #region Regra 9: RegistrarEmprestimo com contaOrigemId inexistente lanca ContaNaoEncontradaException e NAO persiste
+
+    [Fact]
+    public async Task RegistrarEmprestimo_ContaOrigemNaoExiste_LancaContaNaoEncontradaExcecaoENaoPersiste()
+    {
+        // Arrange
+        var descricao = "Emprestimo para Jose";
+        var pessoa = "Jose da Silva";
+        var valorTotal = 5000m;
+        var contaOrigemId = Guid.NewGuid();
+        var dataRegistro = new DateOnly(2026, 7, 1);
+
+        // Mock retorna null para conta inexistente
+        _mockContaRepository
+            .Setup(r => r.ObterPorId(contaOrigemId))
+            .ReturnsAsync((Conta?)null);
+
+        // Act & Assert
+        var excecao = await Assert.ThrowsAsync<ContaNaoEncontradaException>(
+            () => _service.RegistrarEmprestimo(
+                descricao,
+                pessoa,
+                valorTotal,
+                contaOrigemId,
+                dataRegistro,
+                null,
+                null));
+
+        Assert.Equal(contaOrigemId, excecao.ContaId);
+
+        // Verifica que nada foi persistido (validacao ocorreu ANTES da persistencia)
+        _mockContaReceberRepository.Verify(r => r.Adicionar(It.IsAny<ContaReceber>()), Times.Never);
+        _mockTransferenciaRepository.Verify(r => r.Adicionar(It.IsAny<Transferencia>()), Times.Never);
+        _mockLancamentoRepository.Verify(r => r.Adicionar(It.IsAny<Lancamento>()), Times.Never);
+    }
+
+    #endregion
+
+    #region Regra 10: RegistrarRecebimento com contaDestinoId inexistente lanca ContaNaoEncontradaException
+
+    [Fact]
+    public async Task RegistrarRecebimento_ContaDestinoNaoExiste_LancaContaNaoEncontradaExcecaoENaoPersiste()
+    {
+        // Arrange
+        var contaReceberId = Guid.NewGuid();
+        var contaDestinoId = Guid.NewGuid();
+        var valor = 300m;
+        var data = new DateOnly(2026, 7, 15);
+
+        var contaReceber = new ContaReceber
+        {
+            Id = contaReceberId,
+            Tipo = TipoContaReceber.Recebivel,
+            Descricao = "Consulta",
+            ValorTotal = 1000m,
+            Status = StatusContaReceber.Pendente
+        };
+
+        _mockContaReceberRepository
+            .Setup(r => r.ObterPorId(contaReceberId))
+            .ReturnsAsync(contaReceber);
+
+        // Mock retorna null para conta destino inexistente
+        _mockContaRepository
+            .Setup(r => r.ObterPorId(contaDestinoId))
+            .ReturnsAsync((Conta?)null);
+
+        // Act & Assert
+        var excecao = await Assert.ThrowsAsync<ContaNaoEncontradaException>(
+            () => _service.RegistrarRecebimento(
+                contaReceberId,
+                contaDestinoId,
+                valor,
+                data,
+                null));
+
+        Assert.Equal(contaDestinoId, excecao.ContaId);
+
+        // Verifica que nenhum lancamento foi criado
+        _mockLancamentoRepository.Verify(r => r.Adicionar(It.IsAny<Lancamento>()), Times.Never);
+        _mockLancamentoRepository.Verify(r => r.Salvar(), Times.Never);
+    }
+
+    #endregion
+
     #region Regra 5: RegistrarRecebimento com categoriaId usa a categoria informada, sobrescrevendo a do ContaReceber
 
     [Fact]
