@@ -22,6 +22,7 @@ public class ContaReceberRepository : IContaReceberRepository
     {
         return await _context.ContasReceber
             .Include(cr => cr.Categoria)
+            .Include(cr => cr.Recebimentos)
             .FirstOrDefaultAsync(cr => cr.Id == id);
     }
 
