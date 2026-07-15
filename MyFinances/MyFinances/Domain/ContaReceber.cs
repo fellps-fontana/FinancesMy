@@ -22,4 +22,6 @@ public class ContaReceber
 
     // Relacionamentos
     public Categoria? Categoria { get; set; }
+
+    public ICollection<Lancamento> Recebimentos { get; set; } = new List<Lancamento>();
 }

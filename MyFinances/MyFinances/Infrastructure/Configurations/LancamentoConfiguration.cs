@@ -104,7 +104,7 @@ public class LancamentoConfiguration : IEntityTypeConfiguration<Lancamento>
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne(l => l.ContaReceber)
-            .WithMany()
+            .WithMany(cr => cr.Recebimentos)
             .HasForeignKey(l => l.ContaReceberId)
             .OnDelete(DeleteBehavior.SetNull);
 
