@@ -130,7 +130,7 @@ RETORNO ESPERADO: contrato de API documentado (rota, verbo, body de entrada, sha
 
 ## TASK-009 — Testes de integracao HTTP do ContaReceberController
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (12/12 GREEN, suite completa 237/237. Testes de overpayment e transicao PARCIAL/RECEBIDO passam pelo pipeline HTTP real, exercitando os fixes de Include ja aprovados na TASK-008. Nao precisou de nova rodada de style — sem codigo de producao novo)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-008
