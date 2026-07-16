@@ -120,4 +120,12 @@ public class ContasReceberController : ControllerBase
             return NotFound(new { erro = ex.Message });
         }
     }
+
+    [HttpGet("api/contas-receber/total-esperado-mes")]
+    public async Task<ActionResult<TotalAReceberEsperadoResponse>> CalcularTotalAReceberEsperadoNoMes(int ano, int mes)
+    {
+        var total = await _contaReceberService.CalcularTotalAReceberEsperadoNoMes(ano, mes);
+        var response = new TotalAReceberEsperadoResponse { TotalAReceberEsperadoNoMes = total };
+        return Ok(response);
+    }
 }

@@ -41,6 +41,20 @@ public class ContaReceberRepository : IContaReceberRepository
         return await query.ToListAsync();
     }
 
+    public async Task<IEnumerable<ContaReceber>> ListarParaProjecaoDoMes(int ano, int mes)
+    {
+        return await _context.ContasReceber
+            .Include(cr => cr.Categoria)
+            .Include(cr => cr.Recebimentos)
+            .Where(cr =>
+                cr.Status == StatusContaReceber.Parcial ||
+                (cr.Status == StatusContaReceber.Pendente &&
+                 cr.DataPrevista != null &&
+                 cr.DataPrevista.Value.Year == ano &&
+                 cr.DataPrevista.Value.Month == mes))
+            .ToListAsync();
+    }
+
     public async Task Atualizar(ContaReceber contaReceber)
     {
         _context.ContasReceber.Update(contaReceber);

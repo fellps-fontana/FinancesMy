@@ -170,6 +170,16 @@ public class ContaReceberService : IContaReceberService
         return _contaReceberRepository.Listar(statusFiltro);
     }
 
+    public async Task<decimal> CalcularTotalAReceberEsperadoNoMes(int ano, int mes)
+    {
+        var contasParaProjecao = await _contaReceberRepository.ListarParaProjecaoDoMes(ano, mes);
+
+        var totalAReceber = contasParaProjecao
+            .Sum(cr => ContaReceberSaldoCalculator.Calcular(cr).SaldoPendente);
+
+        return totalAReceber;
+    }
+
     private static void ValidarPessoa(string pessoa)
     {
         if (string.IsNullOrWhiteSpace(pessoa))

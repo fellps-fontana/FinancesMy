@@ -30,4 +30,6 @@ public interface IContaReceberService
     Task<ContaReceber> ObterPorId(Guid contaReceberId);
 
     Task<IEnumerable<ContaReceber>> Listar(StatusContaReceber? statusFiltro = null);
+
+    Task<decimal> CalcularTotalAReceberEsperadoNoMes(int ano, int mes);
 }
