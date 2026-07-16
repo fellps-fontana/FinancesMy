@@ -689,4 +689,209 @@ public class ContaReceberServiceTests
     }
 
     #endregion
+
+    #region Regra 9: CalcularTotalAReceberEsperadoNoMes — prova de calculo (item 9 + item 13 da regra)
+
+    [Fact]
+    public async Task CalcularTotalAReceberEsperadoNoMes_ContaParcialDeMesAnterior_EntraUmaSoNaSoma()
+    {
+        // Arrange
+        var ano = 2026;
+        var mes = 7;
+
+        // ContaReceber Status=Parcial de mes ANTERIOR — regra item 13 diz que PARCIAL
+        // entra "todo mes corrente, independente da data_prevista original"
+        // Logo, uma PARCIAL de junho que ainda tem saldo em julho deve entrar
+        var contaParcialMesAnterior = new ContaReceber
+        {
+            Id = Guid.NewGuid(),
+            Tipo = TipoContaReceber.Recebivel,
+            Descricao = "Recebivel mes anterior",
+            ValorTotal = 1000m,
+            DataRegistro = new DateOnly(2026, 6, 1),
+            DataPrevista = new DateOnly(2026, 6, 30),
+            Status = StatusContaReceber.Parcial
+        };
+
+        // Mocka um recebimento de 400, deixando saldo de 600
+        var lancamento = new Lancamento
+        {
+            Id = Guid.NewGuid(),
+            Tipo = TipoLancamento.Credit,
+            Status = StatusLancamento.Pago,
+            Valor = 400m
+        };
+        contaParcialMesAnterior.Recebimentos.Add(lancamento);
+
+        var contasParaProjecao = new List<ContaReceber> { contaParcialMesAnterior };
+
+        _mockContaReceberRepository
+            .Setup(r => r.ListarParaProjecaoDoMes(ano, mes))
+            .ReturnsAsync(contasParaProjecao);
+
+        // Act
+        var total = await _service.CalcularTotalAReceberEsperadoNoMes(ano, mes);
+
+        // Assert — total deve ser 600 (saldo pendente = 1000 - 400)
+        Assert.Equal(600m, total);
+    }
+
+    [Fact]
+    public async Task CalcularTotalAReceberEsperadoNoMes_ContaPendenteDataPrevistaForaDoMes_NaoEntraERetorna0()
+    {
+        // Arrange
+        var ano = 2026;
+        var mes = 7;
+
+        // ContaReceber Status=Pendente com DataPrevista FORA do mes — NAO deve estar
+        // na lista retornada pelo repository. Aqui mocka que o repository ALREADY faz
+        // o filtro correto (nao traz essa conta), e o service soma 0
+        var contasParaProjecao = new List<ContaReceber>(); // Lista vazia
+
+        _mockContaReceberRepository
+            .Setup(r => r.ListarParaProjecaoDoMes(ano, mes))
+            .ReturnsAsync(contasParaProjecao);
+
+        // Act
+        var total = await _service.CalcularTotalAReceberEsperadoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(0m, total);
+    }
+
+    [Fact]
+    public async Task CalcularTotalAReceberEsperadoNoMes_ContaRecebidoNuncaAparece_UsaSaldoPendente0()
+    {
+        // Arrange
+        var ano = 2026;
+        var mes = 7;
+
+        // ContaReceber Status=RECEBIDO nunca entra na projecao
+        // (o filter do repository nao traz — "Recebido" quer dizer saldo = 0)
+        // Aqui, mocka que o repository ja filtrou e nao retorna nada com Recebido
+        var contasParaProjecao = new List<ContaReceber>();
+
+        _mockContaReceberRepository
+            .Setup(r => r.ListarParaProjecaoDoMes(ano, mes))
+            .ReturnsAsync(contasParaProjecao);
+
+        // Act
+        var total = await _service.CalcularTotalAReceberEsperadoNoMes(ano, mes);
+
+        // Assert — total é 0 porque nada foi retornado
+        Assert.Equal(0m, total);
+    }
+
+    [Fact]
+    public async Task CalcularTotalAReceberEsperadoNoMes_SaldoPendenteMenorQueValorTotal_UsaSaldoPendenteENaoValorTotal()
+    {
+        // Arrange
+        var ano = 2026;
+        var mes = 7;
+
+        // ContaReceber com recebimento parcial — a soma deve usar SALDO PENDENTE,
+        // nao VALOR TOTAL, pra evitar dupla contagem (item 9)
+        var contaParcial = new ContaReceber
+        {
+            Id = Guid.NewGuid(),
+            Tipo = TipoContaReceber.Recebivel,
+            Descricao = "Recebivel",
+            ValorTotal = 1000m,
+            DataRegistro = new DateOnly(2026, 7, 1),
+            DataPrevista = new DateOnly(2026, 7, 15),
+            Status = StatusContaReceber.Parcial
+        };
+
+        // Recebimento de 700 já registrado
+        var lancamento = new Lancamento
+        {
+            Id = Guid.NewGuid(),
+            Tipo = TipoLancamento.Credit,
+            Status = StatusLancamento.Pago,
+            Valor = 700m
+        };
+        contaParcial.Recebimentos.Add(lancamento);
+
+        var contasParaProjecao = new List<ContaReceber> { contaParcial };
+
+        _mockContaReceberRepository
+            .Setup(r => r.ListarParaProjecaoDoMes(ano, mes))
+            .ReturnsAsync(contasParaProjecao);
+
+        // Act
+        var total = await _service.CalcularTotalAReceberEsperadoNoMes(ano, mes);
+
+        // Assert — total DEVE ser 300 (saldo pendente = 1000 - 700), NAO 1000
+        Assert.Equal(300m, total);
+    }
+
+    [Fact]
+    public async Task CalcularTotalAReceberEsperadoNoMes_ListaVazia_Retorna0()
+    {
+        // Arrange
+        var ano = 2026;
+        var mes = 7;
+
+        var contasParaProjecao = new List<ContaReceber>();
+
+        _mockContaReceberRepository
+            .Setup(r => r.ListarParaProjecaoDoMes(ano, mes))
+            .ReturnsAsync(contasParaProjecao);
+
+        // Act
+        var total = await _service.CalcularTotalAReceberEsperadoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(0m, total);
+    }
+
+    [Fact]
+    public async Task CalcularTotalAReceberEsperadoNoMes_MultiplasContinhas_SomaCorreta()
+    {
+        // Arrange
+        var ano = 2026;
+        var mes = 7;
+
+        // Cria multiplas contas para projecao
+        var contaParcial1 = new ContaReceber
+        {
+            Id = Guid.NewGuid(),
+            Tipo = TipoContaReceber.Recebivel,
+            Descricao = "Recebivel 1",
+            ValorTotal = 1000m,
+            Status = StatusContaReceber.Parcial
+        };
+        contaParcial1.Recebimentos.Add(new Lancamento
+        {
+            Id = Guid.NewGuid(),
+            Tipo = TipoLancamento.Credit,
+            Status = StatusLancamento.Pago,
+            Valor = 400m
+        }); // saldo pendente = 600
+
+        var contaPendente = new ContaReceber
+        {
+            Id = Guid.NewGuid(),
+            Tipo = TipoContaReceber.Recebivel,
+            Descricao = "Recebivel 2",
+            ValorTotal = 500m,
+            DataRegistro = new DateOnly(2026, 7, 1),
+            DataPrevista = new DateOnly(2026, 7, 31),
+            Status = StatusContaReceber.Pendente
+        }; // saldo pendente = 500 (nenhum recebimento)
+
+        var contasParaProjecao = new List<ContaReceber> { contaParcial1, contaPendente };
+
+        _mockContaReceberRepository
+            .Setup(r => r.ListarParaProjecaoDoMes(ano, mes))
+            .ReturnsAsync(contasParaProjecao);
+
+        // Act
+        var total = await _service.CalcularTotalAReceberEsperadoNoMes(ano, mes);
+
+        // Assert — 600 + 500 = 1100
+        Assert.Equal(1100m, total);
+    }
+
+    #endregion
 }
