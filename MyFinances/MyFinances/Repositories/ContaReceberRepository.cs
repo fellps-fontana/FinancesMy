@@ -20,18 +20,13 @@ public class ContaReceberRepository : IContaReceberRepository
 
     public async Task<ContaReceber?> ObterPorId(Guid id)
     {
-        return await _context.ContasReceber
-            .Include(cr => cr.Categoria)
-            .Include(cr => cr.Recebimentos)
+        return await QueryComRelacionamentos()
             .FirstOrDefaultAsync(cr => cr.Id == id);
     }
 
     public async Task<IEnumerable<ContaReceber>> Listar(StatusContaReceber? statusFiltro = null)
     {
-        var query = _context.ContasReceber
-            .Include(cr => cr.Categoria)
-            .Include(cr => cr.Recebimentos)
-            .AsQueryable();
+        var query = QueryComRelacionamentos();
 
         if (statusFiltro.HasValue)
         {
@@ -43,9 +38,7 @@ public class ContaReceberRepository : IContaReceberRepository
 
     public async Task<IEnumerable<ContaReceber>> ListarParaProjecaoDoMes(int ano, int mes)
     {
-        return await _context.ContasReceber
-            .Include(cr => cr.Categoria)
-            .Include(cr => cr.Recebimentos)
+        return await QueryComRelacionamentos()
             .Where(cr =>
                 cr.Status == StatusContaReceber.Parcial ||
                 (cr.Status == StatusContaReceber.Pendente &&
@@ -53,6 +46,13 @@ public class ContaReceberRepository : IContaReceberRepository
                  cr.DataPrevista.Value.Year == ano &&
                  cr.DataPrevista.Value.Month == mes))
             .ToListAsync();
+    }
+
+    private IQueryable<ContaReceber> QueryComRelacionamentos()
+    {
+        return _context.ContasReceber
+            .Include(cr => cr.Categoria)
+            .Include(cr => cr.Recebimentos);
     }
 
     public async Task Atualizar(ContaReceber contaReceber)
