@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace MyFinances.Controllers;
 
 [ApiController]
+[Route("api/ativos")]
 public class AtivosController : ControllerBase
 {
     private readonly IAtivoService _ativoService;
@@ -15,82 +16,84 @@ public class AtivosController : ControllerBase
         _ativoService = ativoService;
     }
 
-    [HttpGet("api/contas/{contaId}/ativos")]
-    public async Task<ActionResult<IEnumerable<AtivoResponse>>> ListarAtivosPorConta(Guid contaId)
+    [HttpPost]
+    public async Task<ActionResult<AtivoResponse>> CriarAtivo(CriarAtivoRequest request)
     {
         try
         {
-            var ativos = await _ativoService.ListarAtivosPorConta(contaId);
-            var response = ativos.Select(a => AtivoResponse.FromAtivo(a));
-            return Ok(response);
+            var ativo = await _ativoService.CriarAtivo(
+                request.Nome,
+                request.Tipo,
+                request.Instituicao,
+                request.ValorInvestido,
+                request.DataCompra);
+
+            var evolucaoPercentual = _ativoService.CalcularEvolucaoPercentual(
+                ativo.ValorInvestido,
+                ativo.ValorAtual);
+
+            var response = AtivoResponse.FromAtivo(ativo, evolucaoPercentual);
+
+            return Created($"/api/ativos/{response.Id}", response);
         }
-        catch (ContaNaoEncontradaException ex)
+        catch (CampoObrigatorioException)
         {
-            return NotFound(new { erro = ex.Message });
+            return BadRequest();
         }
-        catch (ContaNaoEhInvestimentoException ex)
+        catch (ValorInvalidoException)
         {
-            return UnprocessableEntity(new { erro = ex.Message });
+            return BadRequest();
         }
     }
 
-    [HttpPost("api/contas/{contaId}/ativos/compras")]
-    public async Task<ActionResult<AtivoResponse>> RegistrarCompra(Guid contaId, RegistrarCompraRequest request)
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<AtivoResponse>>> ListarAtivos()
+    {
+        var ativos = await _ativoService.ListarAtivos();
+
+        var responses = ativos.Select(ativo => AtivoResponse.FromAtivo(
+            ativo,
+            _ativoService.CalcularEvolucaoPercentual(ativo.ValorInvestido, ativo.ValorAtual)));
+
+        return Ok(responses);
+    }
+
+    [HttpPatch("{id}/valor-atual")]
+    public async Task<IActionResult> AtualizarValorAtual(Guid id, AtualizarValorAtualRequest request)
     {
         try
         {
-            var ativo = await _ativoService.RegistrarCompra(
-                contaId,
-                request.Ticker,
-                request.Quantidade,
-                request.PrecoUnitario,
-                request.Data,
-                request.Nome
-            );
-            var response = AtivoResponse.FromAtivo(ativo);
-            return Created($"/api/contas/{contaId}/ativos/{response.Id}", response);
+            await _ativoService.AtualizarValorAtual(id, request.NovoValorAtual);
+            return Ok();
         }
-        catch (ContaNaoEncontradaException ex)
+        catch (AtivoNaoEncontradoException)
         {
-            return NotFound(new { erro = ex.Message });
+            return NotFound();
         }
-        catch (ContaNaoEhInvestimentoException ex)
+        catch (ValorInvalidoException)
         {
-            return UnprocessableEntity(new { erro = ex.Message });
-        }
-        catch (ValorInvalidoException ex)
-        {
-            return BadRequest(new { erro = ex.Message });
+            return BadRequest();
         }
     }
 
-    [HttpPost("api/contas/{contaId}/ativos/{ativoId}/vendas")]
-    public async Task<ActionResult<AtivoResponse>> RegistrarVenda(Guid contaId, Guid ativoId, RegistrarVendaRequest request)
+    [HttpPatch("{id}/desativar")]
+    public async Task<IActionResult> DesativarAtivo(Guid id)
     {
         try
         {
-            var ativo = await _ativoService.RegistrarVenda(
-                contaId,
-                ativoId,
-                request.Quantidade,
-                request.PrecoUnitario,
-                request.Data,
-                request.Observacao
-            );
-            var response = AtivoResponse.FromAtivo(ativo);
-            return Ok(response);
+            await _ativoService.DesativarAtivo(id);
+            return Ok();
         }
-        catch (AtivoNaoEncontradoException ex)
+        catch (AtivoNaoEncontradoException)
         {
-            return NotFound(new { erro = ex.Message });
+            return NotFound();
         }
-        catch (QuantidadeVendaInvalidaException ex)
-        {
-            return UnprocessableEntity(new { erro = ex.Message });
-        }
-        catch (ValorInvalidoException ex)
-        {
-            return BadRequest(new { erro = ex.Message });
-        }
+    }
+
+    [HttpGet("resumo")]
+    public async Task<ActionResult<AtivosResumoResponse>> ObterResumo()
+    {
+        var resumo = await _ativoService.ObterResumo();
+        return Ok(resumo);
     }
 }

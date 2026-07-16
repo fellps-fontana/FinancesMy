@@ -4,7 +4,6 @@ import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
-import { ListaAtivos } from "@/features/investimentos/components/ListaAtivos"
 import type { ContaResponse } from "@/features/investimentos/types"
 
 type ContaInvestimentoCardProps = {
@@ -20,8 +19,6 @@ type ContaInvestimentoCardProps = {
   confirmandoDesativar: boolean
   desativando: boolean
   erroDesativar: string | null
-  desabilitarDesativar: boolean
-  motivoDesativarBloqueado: string | null
   onSolicitarDesativar: () => void
   onConfirmarDesativar: () => void
   onCancelarDesativar: () => void
@@ -29,7 +26,11 @@ type ContaInvestimentoCardProps = {
 
 // Componente de apresentacao (burro): recebe a conta e o estado de UI ja
 // resolvido pelo container (ContaInvestimentoItem) e exibe. Nenhuma mutation
-// ou fetch mora aqui - so callbacks repassados para quem chama.
+// ou fetch mora aqui - so callbacks repassados para quem chama. Conta de
+// investimento simples (cofrinho/XP) e saldo 100% manual - regra-de-
+// negocio.md item 8 ("Conta de investimento - saldo simples") e item 10.
+// Sem modo "carteira de ativos": Ativo e um modulo standalone, sem vinculo
+// com Conta (ver ListaAtivosPage.tsx), entao saldoManual nunca vem nulo aqui.
 export function ContaInvestimentoCard({
   conta,
   editandoSaldo,
@@ -43,18 +44,10 @@ export function ContaInvestimentoCard({
   confirmandoDesativar,
   desativando,
   erroDesativar,
-  desabilitarDesativar,
-  motivoDesativarBloqueado,
   onSolicitarDesativar,
   onConfirmarDesativar,
   onCancelarDesativar,
 }: ContaInvestimentoCardProps) {
-  // saldoManual === null marca a conta em modo carteira de ativos (regra-de-
-  // negocio.md item 8/10): o saldo dela passa a ser calculado a partir dos
-  // ativos, nao mais editado manualmente. O saldo exibido acima vem sempre de
-  // conta.saldo, que o backend ja popula com o valor certo nos dois formatos.
-  const contaComCarteiraDeAtivos = conta.saldoManual === null
-
   return (
     <Card>
       <CardContent className="flex flex-col gap-3">
@@ -67,34 +60,7 @@ export function ContaInvestimentoCard({
           )}
         </div>
 
-        {contaComCarteiraDeAtivos ? (
-          confirmandoDesativar ? (
-            <ConfirmacaoDesativar
-              erroDesativar={erroDesativar}
-              desativando={desativando}
-              onConfirmarDesativar={onConfirmarDesativar}
-              onCancelarDesativar={onCancelarDesativar}
-            />
-          ) : (
-            <>
-              <ListaAtivos contaId={conta.id} />
-              <div className="flex flex-col items-end gap-1">
-                {motivoDesativarBloqueado && (
-                  <span className="text-[12px] text-muted-foreground">{motivoDesativarBloqueado}</span>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={onSolicitarDesativar}
-                  disabled={desabilitarDesativar}
-                >
-                  Desativar
-                </Button>
-              </div>
-            </>
-          )
-        ) : editandoSaldo ? (
+        {editandoSaldo ? (
           <form onSubmit={onSubmitSaldo} className="flex flex-col gap-2">
             {erroSaldo && (
               <Alert variant="destructive">
@@ -155,9 +121,6 @@ type ConfirmacaoDesativarProps = {
   onCancelarDesativar: () => void
 }
 
-// Bloco de confirmacao de desativar extraido para reuso: aparece tanto na
-// conta simples quanto na conta com carteira de ativos, ja que desativar
-// independe do formato de saldo (regra-de-negocio.md item 8).
 function ConfirmacaoDesativar({
   erroDesativar,
   desativando,

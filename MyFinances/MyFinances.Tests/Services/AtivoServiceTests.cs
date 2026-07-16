@@ -1,6 +1,6 @@
 using Moq;
-using MyFinances.Exceptions;
 using MyFinances.Domain;
+using MyFinances.Exceptions;
 using MyFinances.Repositories;
 using MyFinances.Services;
 using Xunit;
@@ -9,650 +9,693 @@ namespace MyFinances.Tests.Services;
 
 public class AtivoServiceTests
 {
-    private readonly Mock<IAtivoRepository> _mockAtivoRepository;
-    private readonly Mock<IContaRepository> _mockContaRepository;
+    private readonly Mock<IAtivoRepository> _mockRepository;
     private readonly AtivoService _service;
 
     public AtivoServiceTests()
     {
-        _mockAtivoRepository = new Mock<IAtivoRepository>();
-        _mockContaRepository = new Mock<IContaRepository>();
-        _service = new AtivoService(_mockAtivoRepository.Object, _mockContaRepository.Object);
+        _mockRepository = new Mock<IAtivoRepository>();
+        _service = new AtivoService(_mockRepository.Object);
     }
 
-    #region Regra 1: Compra de ticker novo cria Ativo com PrecoMedio == PrecoAtual == precoDaCompra e Quantidade correta
+    #region Regra 1: Criacao de ativo - nasce com valor_atual == valor_investido
 
     [Fact]
-    public async Task RegistrarCompra_TickerNovo_CriaAtivoComValoresCorretos()
+    public async Task CriarAtivo_ComValoresValidos_NasceComValorAtualIgualAValorInvestido()
     {
         // Arrange
-        var contaId = Guid.NewGuid();
-        var ticker = "PETR4";
-        var quantidade = 100m;
-        var precoUnitario = 25.50m;
-        var data = new DateOnly(2026, 7, 1);
-        var nome = "Petrobras";
-
-        var conta = new Conta
-        {
-            Id = contaId,
-            Nome = "Carteira XP",
-            Tipo = TipoConta.Investimento,
-            Origem = OrigemConta.Manual,
-            Ativa = true
-        };
-
-        _mockContaRepository
-            .Setup(r => r.ObterPorId(contaId))
-            .ReturnsAsync(conta);
-
-        _mockAtivoRepository
-            .Setup(r => r.ObterAtivoAtivoPorTicker(contaId, ticker))
-            .ReturnsAsync((Ativo?)null);
+        var nome = "Tesouro Direto";
+        var tipo = TipoAtivo.RendaFixa;
+        var instituicao = "B3";
+        var valorInvestido = 1000m;
+        var dataCompra = new DateOnly(2024, 1, 15);
 
         // Act
-        var ativo = await _service.RegistrarCompra(contaId, ticker, quantidade, precoUnitario, data, nome);
+        var ativo = await _service.CriarAtivo(nome, tipo, instituicao, valorInvestido, dataCompra);
 
         // Assert
-        Assert.Equal(ticker, ativo.Ticker);
-        Assert.Equal(quantidade, ativo.Quantidade);
-        Assert.Equal(precoUnitario, ativo.PrecoMedio);
-        Assert.Equal(precoUnitario, ativo.PrecoAtual);
-        Assert.True(ativo.Ativa);
+        Assert.NotEqual(Guid.Empty, ativo.Id);
         Assert.Equal(nome, ativo.Nome);
+        Assert.Equal(tipo, ativo.Tipo);
+        Assert.Equal(instituicao, ativo.Instituicao);
+        Assert.Equal(valorInvestido, ativo.ValorInvestido);
+        Assert.Equal(valorInvestido, ativo.ValorAtual); // NO FIRST DAY, ALWAYS EQUAL
+        Assert.Equal(dataCompra, ativo.DataCompra);
+        Assert.True(ativo.Ativa);
+    }
 
-        _mockAtivoRepository.Verify(r => r.Adicionar(It.IsAny<Ativo>()), Times.Once);
-        _mockAtivoRepository.Verify(r => r.AdicionarMovimentacao(It.IsAny<MovimentacaoAtivo>()), Times.Once);
-        _mockAtivoRepository.Verify(r => r.Salvar(), Times.Once);
+    [Fact]
+    public async Task CriarAtivo_PersistenciaChamadoAoAdicionar()
+    {
+        // Arrange
+        var nome = "ETF Acoes";
+        var tipo = TipoAtivo.RendaVariavel;
+        var instituicao = "XP";
+        var valorInvestido = 5000m;
+        var dataCompra = new DateOnly(2024, 2, 20);
+
+        // Act
+        await _service.CriarAtivo(nome, tipo, instituicao, valorInvestido, dataCompra);
+
+        // Assert
+        _mockRepository.Verify(r => r.Adicionar(It.IsAny<Ativo>()), Times.Once);
+        _mockRepository.Verify(r => r.Salvar(), Times.Once);
+    }
+
+    [Fact]
+    public async Task CriarAtivo_ComTipoRendaFixa_CriaComSucesso()
+    {
+        // Arrange
+        var nome = "LCI";
+        var tipo = TipoAtivo.RendaFixa;
+        var instituicao = "Banco XYZ";
+        var valorInvestido = 2000m;
+        var dataCompra = new DateOnly(2024, 3, 10);
+
+        // Act
+        var ativo = await _service.CriarAtivo(nome, tipo, instituicao, valorInvestido, dataCompra);
+
+        // Assert
+        Assert.Equal(TipoAtivo.RendaFixa, ativo.Tipo);
+        Assert.True(ativo.Ativa);
+    }
+
+    [Fact]
+    public async Task CriarAtivo_ComTipoRendaVariavel_CriaComSucesso()
+    {
+        // Arrange
+        var nome = "Fundo Imobiliario";
+        var tipo = TipoAtivo.RendaVariavel;
+        var instituicao = "Itau";
+        var valorInvestido = 3000m;
+        var dataCompra = new DateOnly(2024, 4, 5);
+
+        // Act
+        var ativo = await _service.CriarAtivo(nome, tipo, instituicao, valorInvestido, dataCompra);
+
+        // Assert
+        Assert.Equal(TipoAtivo.RendaVariavel, ativo.Tipo);
     }
 
     #endregion
 
-    #region Regra 2: Compra de ticker existente incrementa Quantidade e recalcula PrecoMedio pela formula ponderada
+    #region Regra 2: Validacao - valor_investido <= 0 lanca ValorInvalidoException
 
     [Fact]
-    public async Task RegistrarCompra_TickerExistente_RecalculaPrecoMedioPonderado()
+    public async Task CriarAtivo_ComValorInvestidoNegativo_LancaExcecao()
     {
         // Arrange
-        var contaId = Guid.NewGuid();
-        var ativoId = Guid.NewGuid();
-        var ticker = "PETR4";
+        var nome = "Tesouro";
+        var tipo = TipoAtivo.RendaFixa;
+        var instituicao = "B3";
+        var valorInvestido = -1000m;
+        var dataCompra = new DateOnly(2024, 1, 15);
 
-        // Estado inicial: 100 acoes a 20 reais = media 20
+        // Act & Assert
+        var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
+            () => _service.CriarAtivo(nome, tipo, instituicao, valorInvestido, dataCompra));
+
+        Assert.Equal("valor_investido", excecao.NomeCampo);
+        Assert.Equal(valorInvestido, excecao.Valor);
+        _mockRepository.Verify(r => r.Salvar(), Times.Never);
+    }
+
+    [Fact]
+    public async Task CriarAtivo_ComValorInvestidoZero_LancaExcecao()
+    {
+        // Arrange
+        var nome = "Tesouro";
+        var tipo = TipoAtivo.RendaFixa;
+        var instituicao = "B3";
+        var valorInvestido = 0m;
+        var dataCompra = new DateOnly(2024, 1, 15);
+
+        // Act & Assert
+        var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
+            () => _service.CriarAtivo(nome, tipo, instituicao, valorInvestido, dataCompra));
+
+        Assert.Equal("valor_investido", excecao.NomeCampo);
+        _mockRepository.Verify(r => r.Salvar(), Times.Never);
+    }
+
+    #endregion
+
+    #region Regra 3: Validacao de campos obrigatorios
+
+    [Fact]
+    public async Task CriarAtivo_ComNomeVazio_LancaCampoObrigatorioException()
+    {
+        // Arrange
+        var nome = string.Empty;
+        var tipo = TipoAtivo.RendaFixa;
+        var instituicao = "B3";
+        var valorInvestido = 1000m;
+        var dataCompra = new DateOnly(2024, 1, 15);
+
+        // Act & Assert
+        var excecao = await Assert.ThrowsAsync<CampoObrigatorioException>(
+            () => _service.CriarAtivo(nome, tipo, instituicao, valorInvestido, dataCompra));
+
+        Assert.Equal("nome", excecao.NomeCampo);
+        _mockRepository.Verify(r => r.Salvar(), Times.Never);
+    }
+
+    [Fact]
+    public async Task CriarAtivo_ComNomeApenasBranco_LancaCampoObrigatorioException()
+    {
+        // Arrange
+        var nome = "   ";
+        var tipo = TipoAtivo.RendaFixa;
+        var instituicao = "B3";
+        var valorInvestido = 1000m;
+        var dataCompra = new DateOnly(2024, 1, 15);
+
+        // Act & Assert
+        var excecao = await Assert.ThrowsAsync<CampoObrigatorioException>(
+            () => _service.CriarAtivo(nome, tipo, instituicao, valorInvestido, dataCompra));
+
+        Assert.Equal("nome", excecao.NomeCampo);
+        _mockRepository.Verify(r => r.Salvar(), Times.Never);
+    }
+
+    [Fact]
+    public async Task CriarAtivo_ComInstituicaoVazia_LancaCampoObrigatorioException()
+    {
+        // Arrange
+        var nome = "Tesouro Direto";
+        var tipo = TipoAtivo.RendaFixa;
+        var instituicao = string.Empty;
+        var valorInvestido = 1000m;
+        var dataCompra = new DateOnly(2024, 1, 15);
+
+        // Act & Assert
+        var excecao = await Assert.ThrowsAsync<CampoObrigatorioException>(
+            () => _service.CriarAtivo(nome, tipo, instituicao, valorInvestido, dataCompra));
+
+        Assert.Equal("instituicao", excecao.NomeCampo);
+        _mockRepository.Verify(r => r.Salvar(), Times.Never);
+    }
+
+    [Fact]
+    public async Task CriarAtivo_ComInstituicaoApenasBranco_LancaCampoObrigatorioException()
+    {
+        // Arrange
+        var nome = "Tesouro Direto";
+        var tipo = TipoAtivo.RendaFixa;
+        var instituicao = "  \t\n  ";
+        var valorInvestido = 1000m;
+        var dataCompra = new DateOnly(2024, 1, 15);
+
+        // Act & Assert
+        var excecao = await Assert.ThrowsAsync<CampoObrigatorioException>(
+            () => _service.CriarAtivo(nome, tipo, instituicao, valorInvestido, dataCompra));
+
+        Assert.Equal("instituicao", excecao.NomeCampo);
+        _mockRepository.Verify(r => r.Salvar(), Times.Never);
+    }
+
+    #endregion
+
+    #region Regra 4: Calculo de evolucao percentual
+
+    [Fact]
+    public void CalcularEvolucaoPercentual_ComValorAtualIgualAoInvestido_Retorna0()
+    {
+        // Arrange
+        var valorInvestido = 1000m;
+        var valorAtual = 1000m; // NO FIRST DAY
+
+        // Act
+        var evolucao = _service.CalcularEvolucaoPercentual(valorInvestido, valorAtual);
+
+        // Assert
+        Assert.Equal(0m, evolucao);
+    }
+
+    [Fact]
+    public void CalcularEvolucaoPercentual_ComValorAtualMaiorQueInvestido_RetornaPositivo()
+    {
+        // Arrange
+        var valorInvestido = 1000m;
+        var valorAtual = 1200m; // +20%
+
+        // Act
+        var evolucao = _service.CalcularEvolucaoPercentual(valorInvestido, valorAtual);
+
+        // Assert
+        Assert.Equal(20m, evolucao); // (1200 - 1000) / 1000 * 100 = 20
+    }
+
+    [Fact]
+    public void CalcularEvolucaoPercentual_ComValorAtualMenorQueInvestido_RetornaNegativo()
+    {
+        // Arrange
+        var valorInvestido = 1000m;
+        var valorAtual = 800m; // -20%
+
+        // Act
+        var evolucao = _service.CalcularEvolucaoPercentual(valorInvestido, valorAtual);
+
+        // Assert
+        Assert.Equal(-20m, evolucao); // (800 - 1000) / 1000 * 100 = -20
+    }
+
+    [Fact]
+    public void CalcularEvolucaoPercentual_ComPequenaEvoluacao_RetornaPreciso()
+    {
+        // Arrange
+        var valorInvestido = 10000m;
+        var valorAtual = 10050m; // +0.5%
+
+        // Act
+        var evolucao = _service.CalcularEvolucaoPercentual(valorInvestido, valorAtual);
+
+        // Assert
+        Assert.Equal(0.5m, evolucao);
+    }
+
+    #endregion
+
+    #region Regra 5: Atualizacao manual de valor_atual
+
+    [Fact]
+    public async Task AtualizarValorAtual_ComNovoValorValido_AtualizaComSucesso()
+    {
+        // Arrange
+        var ativoId = Guid.NewGuid();
         var ativoExistente = new Ativo
         {
             Id = ativoId,
-            ContaId = contaId,
-            Ticker = ticker,
-            Quantidade = 100m,
-            PrecoMedio = 20m,
-            PrecoAtual = 20m,
-            Ativa = true,
-            CriadoEm = DateTime.UtcNow
-        };
-
-        var conta = new Conta
-        {
-            Id = contaId,
-            Nome = "Carteira XP",
-            Tipo = TipoConta.Investimento,
-            Origem = OrigemConta.Manual,
+            Nome = "Tesouro",
+            Tipo = TipoAtivo.RendaFixa,
+            Instituicao = "B3",
+            ValorInvestido = 1000m,
+            ValorAtual = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15),
             Ativa = true
         };
 
-        _mockContaRepository
-            .Setup(r => r.ObterPorId(contaId))
-            .ReturnsAsync(conta);
+        var novoValorAtual = 1200m;
 
-        _mockAtivoRepository
-            .Setup(r => r.ObterAtivoAtivoPorTicker(contaId, ticker))
+        _mockRepository
+            .Setup(r => r.ObterPorId(ativoId))
             .ReturnsAsync(ativoExistente);
 
-        var data = new DateOnly(2026, 7, 2);
-        var quantidadeCompra = 50m;
-        var precoCompra = 22m;
-
         // Act
-        var ativo = await _service.RegistrarCompra(contaId, ticker, quantidadeCompra, precoCompra, data, null);
+        await _service.AtualizarValorAtual(ativoId, novoValorAtual);
 
         // Assert
-        // Calculo esperado: (100 * 20 + 50 * 22) / (100 + 50) = (2000 + 1100) / 150 = 3100 / 150 = 20.6666...
-        var precoMedioEsperado = (100m * 20m + 50m * 22m) / (100m + 50m);
-        Assert.Equal(150m, ativo.Quantidade);
-        Assert.Equal(precoMedioEsperado, ativo.PrecoMedio, precision: 5);
-        Assert.Equal(precoCompra, ativo.PrecoAtual);
-
-        _mockAtivoRepository.Verify(r => r.AdicionarMovimentacao(It.IsAny<MovimentacaoAtivo>()), Times.Once);
-        _mockAtivoRepository.Verify(r => r.Salvar(), Times.Once);
+        Assert.Equal(novoValorAtual, ativoExistente.ValorAtual);
+        _mockRepository.Verify(r => r.Salvar(), Times.Once);
     }
 
-    #endregion
-
-    #region Regra 3: Cenario completo com recalculo apos venda — quantidade POS-VENDA e peso na proxima media
-
     [Fact]
-    public async Task RegistrarVenda_ComCompraSequente_UsaQuantidadePosVendaComopesoDoPrecoMedio()
+    public async Task AtualizarValorAtual_ComNovoValorNegativo_LancaExcecao()
     {
         // Arrange
-        var contaId = Guid.NewGuid();
         var ativoId = Guid.NewGuid();
-        var ticker = "PETR4";
-
-        // Passo 1: compra 100@20
-        var ativoApos1Compra = new Ativo
+        var ativoExistente = new Ativo
         {
             Id = ativoId,
-            ContaId = contaId,
-            Ticker = ticker,
-            Quantidade = 100m,
-            PrecoMedio = 20m,
-            PrecoAtual = 20m,
-            Ativa = true,
-            CriadoEm = DateTime.UtcNow
-        };
-
-        // Passo 2: compra 50@22 (media agora = 20.6667)
-        var precoMedioApos2Compra = (100m * 20m + 50m * 22m) / 150m; // ~20.6667
-        var ativoApos2Compra = new Ativo
-        {
-            Id = ativoId,
-            ContaId = contaId,
-            Ticker = ticker,
-            Quantidade = 150m,
-            PrecoMedio = precoMedioApos2Compra,
-            PrecoAtual = 22m,
-            Ativa = true,
-            CriadoEm = DateTime.UtcNow
-        };
-
-        var conta = new Conta
-        {
-            Id = contaId,
-            Nome = "Carteira XP",
-            Tipo = TipoConta.Investimento,
-            Origem = OrigemConta.Manual,
+            Nome = "ETF",
+            Tipo = TipoAtivo.RendaVariavel,
+            Instituicao = "XP",
+            ValorInvestido = 5000m,
+            ValorAtual = 5000m,
+            DataCompra = new DateOnly(2024, 2, 20),
             Ativa = true
         };
 
-        _mockContaRepository
-            .Setup(r => r.ObterPorId(contaId))
-            .ReturnsAsync(conta);
+        var novoValorAtual = -100m;
 
-        // Passo 3: venda de 50 unidades
-        _mockAtivoRepository
+        _mockRepository
             .Setup(r => r.ObterPorId(ativoId))
-            .ReturnsAsync(ativoApos2Compra);
-
-        // Act venda
-        var ativoAposVenda = await _service.RegistrarVenda(contaId, ativoId, 50m, 20m, new DateOnly(2026, 7, 3), null);
-
-        // Assert venda
-        Assert.Equal(100m, ativoAposVenda.Quantidade);
-        Assert.Equal(precoMedioApos2Compra, ativoAposVenda.PrecoMedio, precision: 5); // Media NAO muda em venda
-        Assert.True(ativoAposVenda.Ativa);
-
-        // Passo 4: compra 30@21 (usando quantidade POS-VENDA = 100 como peso)
-        // Reset mock para retornar o ativo com a quantidade pos-venda
-        var ativoAposVendaParaProximaCompra = new Ativo
-        {
-            Id = ativoId,
-            ContaId = contaId,
-            Ticker = ticker,
-            Quantidade = 100m,
-            PrecoMedio = precoMedioApos2Compra,
-            PrecoAtual = 22m,
-            Ativa = true,
-            CriadoEm = DateTime.UtcNow
-        };
-
-        _mockAtivoRepository
-            .Setup(r => r.ObterAtivoAtivoPorTicker(contaId, ticker))
-            .ReturnsAsync(ativoAposVendaParaProximaCompra);
-
-        // Act compra
-        var ativoApos3Compra = await _service.RegistrarCompra(contaId, ticker, 30m, 21m, new DateOnly(2026, 7, 4), null);
-
-        // Assert compra
-        // Calculo esperado: (100 * 20.6667 + 30 * 21) / (100 + 30)
-        var precoMedioEsperado = (100m * precoMedioApos2Compra + 30m * 21m) / 130m;
-        Assert.Equal(130m, ativoApos3Compra.Quantidade);
-        Assert.Equal(precoMedioEsperado, ativoApos3Compra.PrecoMedio, precision: 5);
-        Assert.Equal(21m, ativoApos3Compra.PrecoAtual);
-    }
-
-    #endregion
-
-    #region Regra 4: PrecoAtual sempre reflete o preco da ULTIMA compra, nao muda em venda
-
-    [Fact]
-    public async Task RegistrarVenda_NaoAlteraPrecoAtual()
-    {
-        // Arrange
-        var contaId = Guid.NewGuid();
-        var ativoId = Guid.NewGuid();
-        var precoAtualAntes = 25.50m;
-
-        var ativo = new Ativo
-        {
-            Id = ativoId,
-            ContaId = contaId,
-            Quantidade = 100m,
-            PrecoMedio = 20m,
-            PrecoAtual = precoAtualAntes,
-            Ativa = true
-        };
-
-        _mockAtivoRepository
-            .Setup(r => r.ObterPorId(ativoId))
-            .ReturnsAsync(ativo);
-
-        // Act
-        var ativoAposVenda = await _service.RegistrarVenda(contaId, ativoId, 30m, 18m, new DateOnly(2026, 7, 5), null);
-
-        // Assert
-        Assert.Equal(precoAtualAntes, ativoAposVenda.PrecoAtual);
-    }
-
-    #endregion
-
-    #region Regra 5: Venda parcial reduz Quantidade e NAO altera PrecoMedio nem PrecoAtual
-
-    [Fact]
-    public async Task RegistrarVenda_Parcial_ApenasReduzQuantidade()
-    {
-        // Arrange
-        var contaId = Guid.NewGuid();
-        var ativoId = Guid.NewGuid();
-        var precoMedioAntes = 22.35m;
-        var precoAtualAntes = 25m;
-
-        var ativo = new Ativo
-        {
-            Id = ativoId,
-            ContaId = contaId,
-            Quantidade = 100m,
-            PrecoMedio = precoMedioAntes,
-            PrecoAtual = precoAtualAntes,
-            Ativa = true
-        };
-
-        _mockAtivoRepository
-            .Setup(r => r.ObterPorId(ativoId))
-            .ReturnsAsync(ativo);
-
-        // Act
-        var ativoAposVenda = await _service.RegistrarVenda(contaId, ativoId, 40m, 24m, new DateOnly(2026, 7, 6), null);
-
-        // Assert
-        Assert.Equal(60m, ativoAposVenda.Quantidade);
-        Assert.Equal(precoMedioAntes, ativoAposVenda.PrecoMedio);
-        Assert.Equal(precoAtualAntes, ativoAposVenda.PrecoAtual);
-        Assert.True(ativoAposVenda.Ativa);
-    }
-
-    #endregion
-
-    #region Regra 6: Venda total (Quantidade = 0) seta Ativa = false
-
-    [Fact]
-    public async Task RegistrarVenda_Completa_SetaAtivaFalse()
-    {
-        // Arrange
-        var contaId = Guid.NewGuid();
-        var ativoId = Guid.NewGuid();
-
-        var ativo = new Ativo
-        {
-            Id = ativoId,
-            ContaId = contaId,
-            Quantidade = 50m,
-            PrecoMedio = 20m,
-            PrecoAtual = 22m,
-            Ativa = true
-        };
-
-        _mockAtivoRepository
-            .Setup(r => r.ObterPorId(ativoId))
-            .ReturnsAsync(ativo);
-
-        // Act
-        var ativoAposVenda = await _service.RegistrarVenda(contaId, ativoId, 50m, 21m, new DateOnly(2026, 7, 7), null);
-
-        // Assert
-        Assert.Equal(0m, ativoAposVenda.Quantidade);
-        Assert.False(ativoAposVenda.Ativa);
-    }
-
-    #endregion
-
-    #region Regra 7: Venda > quantidade disponivel lanca QuantidadeVendaInvalidaException e NAO altera nada
-
-    [Fact]
-    public async Task RegistrarVenda_QuantidadeMaiorQueDisponivel_LancaExcecaoESemAlteracao()
-    {
-        // Arrange
-        var contaId = Guid.NewGuid();
-        var ativoId = Guid.NewGuid();
-        var quantidadeDisponivel = 50m;
-
-        var ativo = new Ativo
-        {
-            Id = ativoId,
-            ContaId = contaId,
-            Quantidade = quantidadeDisponivel,
-            PrecoMedio = 20m,
-            PrecoAtual = 22m,
-            Ativa = true
-        };
-
-        _mockAtivoRepository
-            .Setup(r => r.ObterPorId(ativoId))
-            .ReturnsAsync(ativo);
-
-        var quantidadeVenda = 100m;
+            .ReturnsAsync(ativoExistente);
 
         // Act & Assert
-        var excecao = await Assert.ThrowsAsync<QuantidadeVendaInvalidaException>(
-            () => _service.RegistrarVenda(contaId, ativoId, quantidadeVenda, 21m, new DateOnly(2026, 7, 8), null));
+        var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
+            () => _service.AtualizarValorAtual(ativoId, novoValorAtual));
 
-        Assert.Equal(ativoId, excecao.AtivoId);
-        Assert.Equal(quantidadeVenda, excecao.QuantidadeVenda);
-        Assert.Equal(quantidadeDisponivel, excecao.QuantidadeDisponivel);
+        Assert.Equal("valor_atual", excecao.NomeCampo);
+        _mockRepository.Verify(r => r.Salvar(), Times.Never);
+    }
 
-        // Verifica que nenhuma movimentacao foi registrada
-        _mockAtivoRepository.Verify(r => r.AdicionarMovimentacao(It.IsAny<MovimentacaoAtivo>()), Times.Never);
-        _mockAtivoRepository.Verify(r => r.Salvar(), Times.Never);
+    [Fact]
+    public async Task AtualizarValorAtual_ComNovoValorZero_LancaExcecao()
+    {
+        // Arrange
+        var ativoId = Guid.NewGuid();
+        var ativoExistente = new Ativo
+        {
+            Id = ativoId,
+            Nome = "LCI",
+            Tipo = TipoAtivo.RendaFixa,
+            Instituicao = "Banco",
+            ValorInvestido = 2000m,
+            ValorAtual = 2000m,
+            DataCompra = new DateOnly(2024, 3, 10),
+            Ativa = true
+        };
+
+        _mockRepository
+            .Setup(r => r.ObterPorId(ativoId))
+            .ReturnsAsync(ativoExistente);
+
+        // Act & Assert
+        var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
+            () => _service.AtualizarValorAtual(ativoId, 0m));
+
+        Assert.Equal("valor_atual", excecao.NomeCampo);
+        _mockRepository.Verify(r => r.Salvar(), Times.Never);
     }
 
     #endregion
 
-    #region Regra 8: Compra do mesmo ticker apos venda total cria Ativo NOVO (nao reaproveita o antigo)
+    #region Regra 6: Desativacao (soft-delete)
 
     [Fact]
-    public async Task RegistrarCompra_AposvVendaTotal_CriaNovoAtivo()
+    public async Task DesativarAtivo_ComAtivoExistente_MarcaComoInativo()
     {
         // Arrange
-        var contaId = Guid.NewGuid();
-        var ativoIdAntigo = Guid.NewGuid();
-        var ticker = "PETR4";
-
-        var conta = new Conta
+        var ativoId = Guid.NewGuid();
+        var ativoExistente = new Ativo
         {
-            Id = contaId,
-            Nome = "Carteira XP",
-            Tipo = TipoConta.Investimento,
-            Origem = OrigemConta.Manual,
+            Id = ativoId,
+            Nome = "Tesouro",
+            Tipo = TipoAtivo.RendaFixa,
+            Instituicao = "B3",
+            ValorInvestido = 1000m,
+            ValorAtual = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15),
             Ativa = true
         };
 
-        _mockContaRepository
-            .Setup(r => r.ObterPorId(contaId))
-            .ReturnsAsync(conta);
+        _mockRepository
+            .Setup(r => r.ObterPorId(ativoId))
+            .ReturnsAsync(ativoExistente);
 
-        // ObterAtivoAtivoPorTicker retorna null porque o ativo antigo esta Ativa=false
-        _mockAtivoRepository
-            .Setup(r => r.ObterAtivoAtivoPorTicker(contaId, ticker))
+        // Act
+        await _service.DesativarAtivo(ativoId);
+
+        // Assert
+        Assert.False(ativoExistente.Ativa);
+        _mockRepository.Verify(r => r.Salvar(), Times.Once);
+    }
+
+    [Fact]
+    public async Task DesativarAtivo_ComAtivoJaInativo_NaoLancaExcecao()
+    {
+        // Arrange
+        var ativoId = Guid.NewGuid();
+        var ativoExistente = new Ativo
+        {
+            Id = ativoId,
+            Nome = "Fundo",
+            Tipo = TipoAtivo.RendaVariavel,
+            Instituicao = "Itau",
+            ValorInvestido = 3000m,
+            ValorAtual = 3000m,
+            DataCompra = new DateOnly(2024, 4, 5),
+            Ativa = false
+        };
+
+        _mockRepository
+            .Setup(r => r.ObterPorId(ativoId))
+            .ReturnsAsync(ativoExistente);
+
+        // Act
+        await _service.DesativarAtivo(ativoId);
+
+        // Assert
+        Assert.False(ativoExistente.Ativa);
+        _mockRepository.Verify(r => r.Salvar(), Times.Once);
+    }
+
+    #endregion
+
+    #region Regra 7: Tratamento de ativo inexistente
+
+    [Fact]
+    public async Task AtualizarValorAtual_ComAtivoInexistente_LancaAtivoNaoEncontradoException()
+    {
+        // Arrange
+        var ativoIdInexistente = Guid.NewGuid();
+
+        _mockRepository
+            .Setup(r => r.ObterPorId(ativoIdInexistente))
             .ReturnsAsync((Ativo?)null);
 
+        // Act & Assert
+        var excecao = await Assert.ThrowsAsync<AtivoNaoEncontradoException>(
+            () => _service.AtualizarValorAtual(ativoIdInexistente, 1000m));
+
+        Assert.Equal(ativoIdInexistente, excecao.AtivoId);
+        _mockRepository.Verify(r => r.Salvar(), Times.Never);
+    }
+
+    [Fact]
+    public async Task DesativarAtivo_ComAtivoInexistente_LancaAtivoNaoEncontradoException()
+    {
+        // Arrange
+        var ativoIdInexistente = Guid.NewGuid();
+
+        _mockRepository
+            .Setup(r => r.ObterPorId(ativoIdInexistente))
+            .ReturnsAsync((Ativo?)null);
+
+        // Act & Assert
+        var excecao = await Assert.ThrowsAsync<AtivoNaoEncontradoException>(
+            () => _service.DesativarAtivo(ativoIdInexistente));
+
+        Assert.Equal(ativoIdInexistente, excecao.AtivoId);
+        _mockRepository.Verify(r => r.Salvar(), Times.Never);
+    }
+
+    #endregion
+
+    #region Regra 8: Listar ativos ativos
+
+    [Fact]
+    public async Task ListarAtivos_RetornaApenasAtivosComAtivaTrue()
+    {
+        // Arrange
+        var ativosNoRepositorio = new List<Ativo>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Tesouro 1",
+                Tipo = TipoAtivo.RendaFixa,
+                Instituicao = "B3",
+                ValorInvestido = 1000m,
+                ValorAtual = 1000m,
+                DataCompra = new DateOnly(2024, 1, 15),
+                Ativa = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Tesouro Desativado",
+                Tipo = TipoAtivo.RendaFixa,
+                Instituicao = "B3",
+                ValorInvestido = 500m,
+                ValorAtual = 500m,
+                DataCompra = new DateOnly(2024, 1, 10),
+                Ativa = false
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "ETF Ativo",
+                Tipo = TipoAtivo.RendaVariavel,
+                Instituicao = "XP",
+                ValorInvestido = 5000m,
+                ValorAtual = 5000m,
+                DataCompra = new DateOnly(2024, 2, 20),
+                Ativa = true
+            }
+        };
+
+        _mockRepository
+            .Setup(r => r.ListarAtivas())
+            .ReturnsAsync(ativosNoRepositorio.Where(a => a.Ativa));
+
         // Act
-        var ativoNovo = await _service.RegistrarCompra(contaId, ticker, 50m, 25m, new DateOnly(2026, 7, 9), "Petrobras Novo");
+        var resultado = await _service.ListarAtivos();
 
         // Assert
-        Assert.NotEqual(ativoIdAntigo, ativoNovo.Id);
-        Assert.Equal(ticker, ativoNovo.Ticker);
-        Assert.Equal(50m, ativoNovo.Quantidade);
-        Assert.Equal(25m, ativoNovo.PrecoMedio);
-        Assert.True(ativoNovo.Ativa);
-
-        _mockAtivoRepository.Verify(r => r.Adicionar(It.IsAny<Ativo>()), Times.Once);
+        Assert.Equal(2, resultado.Count());
+        Assert.All(resultado, ativo => Assert.True(ativo.Ativa));
+        Assert.Contains(resultado, a => a.Nome == "Tesouro 1");
+        Assert.Contains(resultado, a => a.Nome == "ETF Ativo");
+        Assert.DoesNotContain(resultado, a => a.Nome == "Tesouro Desativado");
     }
 
-    #endregion
-
-    #region Regra 9: RegistrarVenda nunca toca Conta/Lancamento/Transferencia — so IAtivoRepository
-
     [Fact]
-    public async Task RegistrarVenda_NaoTocaIContaRepository()
+    public async Task ListarAtivos_ComTodosInativos_RetornaVazio()
     {
         // Arrange
-        var contaId = Guid.NewGuid();
-        var ativoId = Guid.NewGuid();
-
-        var ativo = new Ativo
+        var ativosNoRepositorio = new List<Ativo>
         {
-            Id = ativoId,
-            ContaId = contaId,
-            Quantidade = 100m,
-            PrecoMedio = 20m,
-            PrecoAtual = 22m,
-            Ativa = true
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Ativo Desativado",
+                Tipo = TipoAtivo.RendaFixa,
+                Instituicao = "B3",
+                ValorInvestido = 1000m,
+                ValorAtual = 1000m,
+                DataCompra = new DateOnly(2024, 1, 15),
+                Ativa = false
+            }
         };
 
-        _mockAtivoRepository
-            .Setup(r => r.ObterPorId(ativoId))
-            .ReturnsAsync(ativo);
+        _mockRepository
+            .Setup(r => r.ListarAtivas())
+            .ReturnsAsync(ativosNoRepositorio.Where(a => a.Ativa));
 
         // Act
-        await _service.RegistrarVenda(contaId, ativoId, 30m, 21m, new DateOnly(2026, 7, 10), null);
+        var resultado = await _service.ListarAtivos();
 
         // Assert
-        _mockContaRepository.Verify(r => r.ObterPorId(It.IsAny<Guid>()), Times.Never);
-        _mockAtivoRepository.Verify(r => r.AdicionarMovimentacao(It.IsAny<MovimentacaoAtivo>()), Times.Once);
-        _mockAtivoRepository.Verify(r => r.Salvar(), Times.Once);
+        Assert.Empty(resultado);
     }
 
     #endregion
 
-    #region Regra 10: RegistrarCompra em conta inexistente e nao-Investimento
+    #region Regra 9: Resumo por tipo
 
     [Fact]
-    public async Task RegistrarCompra_ContaNaoEncontrada_LancaExcecao()
+    public async Task ObterResumo_ComMultiplosAtivos_CalculaTotaisEPercentuais()
     {
         // Arrange
-        var contaIdInexistente = Guid.NewGuid();
-
-        _mockContaRepository
-            .Setup(r => r.ObterPorId(contaIdInexistente))
-            .ReturnsAsync((Conta?)null);
-
-        // Act & Assert
-        var excecao = await Assert.ThrowsAsync<ContaNaoEncontradaException>(
-            () => _service.RegistrarCompra(contaIdInexistente, "PETR4", 100m, 20m, new DateOnly(2026, 7, 11), null));
-
-        Assert.Equal(contaIdInexistente, excecao.ContaId);
-        _mockAtivoRepository.Verify(r => r.Adicionar(It.IsAny<Ativo>()), Times.Never);
-        _mockAtivoRepository.Verify(r => r.Salvar(), Times.Never);
-    }
-
-    [Fact]
-    public async Task RegistrarCompra_ContaNaoEhInvestimento_LancaExcecao()
-    {
-        // Arrange
-        var contaId = Guid.NewGuid();
-
-        var contaBanco = new Conta
+        var ativosNoRepositorio = new List<Ativo>
         {
-            Id = contaId,
-            Nome = "Conta Corrente",
-            Tipo = TipoConta.Banco,
-            Origem = OrigemConta.Manual,
-            Ativa = true
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Tesouro IPCA",
+                Tipo = TipoAtivo.RendaFixa,
+                Instituicao = "B3",
+                ValorInvestido = 1000m,
+                ValorAtual = 1100m, // +100
+                DataCompra = new DateOnly(2024, 1, 15),
+                Ativa = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "ETF IBOV",
+                Tipo = TipoAtivo.RendaVariavel,
+                Instituicao = "XP",
+                ValorInvestido = 5000m,
+                ValorAtual = 5400m, // +400
+                DataCompra = new DateOnly(2024, 2, 20),
+                Ativa = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "LCI",
+                Tipo = TipoAtivo.RendaFixa,
+                Instituicao = "Banco",
+                ValorInvestido = 2000m,
+                ValorAtual = 2000m,
+                DataCompra = new DateOnly(2024, 3, 10),
+                Ativa = true
+            }
         };
 
-        _mockContaRepository
-            .Setup(r => r.ObterPorId(contaId))
-            .ReturnsAsync(contaBanco);
+        _mockRepository
+            .Setup(r => r.ListarAtivas())
+            .ReturnsAsync(ativosNoRepositorio);
 
-        // Act & Assert
-        var excecao = await Assert.ThrowsAsync<ContaNaoEhInvestimentoException>(
-            () => _service.RegistrarCompra(contaId, "PETR4", 100m, 20m, new DateOnly(2026, 7, 12), null));
+        // Act
+        var resumo = await _service.ObterResumo();
 
-        Assert.Equal(contaId, excecao.ContaId);
-        Assert.Equal(TipoConta.Banco, excecao.TipoConta);
-        _mockAtivoRepository.Verify(r => r.Adicionar(It.IsAny<Ativo>()), Times.Never);
-        _mockAtivoRepository.Verify(r => r.Salvar(), Times.Never);
+        // Assert
+        // TotalInvestido = 1000 + 5000 + 2000 = 8000
+        Assert.Equal(8000m, resumo.TotalInvestido);
+
+        // TotalAtual = 1100 + 5400 + 2000 = 8500
+        Assert.Equal(8500m, resumo.TotalAtual);
+
+        // PorTipo debe ter 2 tipos: RendaFixa e RendaVariavel
+        Assert.Equal(2, resumo.PorTipo.Count());
+
+        // RendaFixa: ValorAtual = 1100 + 2000 = 3100, Percentual = 3100 / 8500 = 36.47%
+        var rendaFixa = resumo.PorTipo.FirstOrDefault(t => t.Tipo == "RENDA_FIXA");
+        Assert.NotNull(rendaFixa);
+        Assert.Equal(3100m, rendaFixa.ValorAtual);
+        Assert.True(rendaFixa.PercentualDaCarteira > 36m && rendaFixa.PercentualDaCarteira < 37m);
+
+        // RendaVariavel: ValorAtual = 5400, Percentual = 5400 / 8500 = 63.53%
+        var rendaVariavel = resumo.PorTipo.FirstOrDefault(t => t.Tipo == "RENDA_VARIAVEL");
+        Assert.NotNull(rendaVariavel);
+        Assert.Equal(5400m, rendaVariavel.ValorAtual);
+        Assert.True(rendaVariavel.PercentualDaCarteira > 63m && rendaVariavel.PercentualDaCarteira < 64m);
     }
 
-    #endregion
-
-    #region Regra 11: RegistrarCompra/RegistrarVenda com quantidade ou preco <= 0 lancam ValorInvalidoException
-
     [Fact]
-    public async Task RegistrarCompra_QuantidadeZero_LancaValorInvalidoException()
+    public async Task ObterResumo_SemAtivos_RetornaTotaisZero()
     {
         // Arrange
-        var contaId = Guid.NewGuid();
-        var conta = new Conta
+        _mockRepository
+            .Setup(r => r.ListarAtivas())
+            .ReturnsAsync(new List<Ativo>());
+
+        // Act
+        var resumo = await _service.ObterResumo();
+
+        // Assert
+        Assert.Equal(0m, resumo.TotalInvestido);
+        Assert.Equal(0m, resumo.TotalAtual);
+        Assert.Empty(resumo.PorTipo);
+    }
+
+    [Fact]
+    public async Task ObterResumo_ApenasUmTipo_RetornaComPercentual100()
+    {
+        // Arrange
+        var ativosNoRepositorio = new List<Ativo>
         {
-            Id = contaId,
-            Nome = "Carteira XP",
-            Tipo = TipoConta.Investimento,
-            Origem = OrigemConta.Manual,
-            Ativa = true
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Tesouro 1",
+                Tipo = TipoAtivo.RendaFixa,
+                Instituicao = "B3",
+                ValorInvestido = 1000m,
+                ValorAtual = 1100m,
+                DataCompra = new DateOnly(2024, 1, 15),
+                Ativa = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Tesouro 2",
+                Tipo = TipoAtivo.RendaFixa,
+                Instituicao = "B3",
+                ValorInvestido = 2000m,
+                ValorAtual = 2200m,
+                DataCompra = new DateOnly(2024, 2, 10),
+                Ativa = true
+            }
         };
 
-        _mockContaRepository
-            .Setup(r => r.ObterPorId(contaId))
-            .ReturnsAsync(conta);
+        _mockRepository
+            .Setup(r => r.ListarAtivas())
+            .ReturnsAsync(ativosNoRepositorio);
 
-        // Act & Assert
-        var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.RegistrarCompra(contaId, "PETR4", 0m, 20m, new DateOnly(2026, 7, 13), null));
+        // Act
+        var resumo = await _service.ObterResumo();
 
-        Assert.Equal("quantidade", excecao.NomeCampo);
-        _mockAtivoRepository.Verify(r => r.Adicionar(It.IsAny<Ativo>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task RegistrarCompra_QuantidadeNegativa_LancaValorInvalidoException()
-    {
-        // Arrange
-        var contaId = Guid.NewGuid();
-        var conta = new Conta
-        {
-            Id = contaId,
-            Nome = "Carteira XP",
-            Tipo = TipoConta.Investimento,
-            Origem = OrigemConta.Manual,
-            Ativa = true
-        };
-
-        _mockContaRepository
-            .Setup(r => r.ObterPorId(contaId))
-            .ReturnsAsync(conta);
-
-        // Act & Assert
-        var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.RegistrarCompra(contaId, "PETR4", -50m, 20m, new DateOnly(2026, 7, 14), null));
-
-        Assert.Equal("quantidade", excecao.NomeCampo);
-    }
-
-    [Fact]
-    public async Task RegistrarCompra_PrecoUnitarioZero_LancaValorInvalidoException()
-    {
-        // Arrange
-        var contaId = Guid.NewGuid();
-        var conta = new Conta
-        {
-            Id = contaId,
-            Nome = "Carteira XP",
-            Tipo = TipoConta.Investimento,
-            Origem = OrigemConta.Manual,
-            Ativa = true
-        };
-
-        _mockContaRepository
-            .Setup(r => r.ObterPorId(contaId))
-            .ReturnsAsync(conta);
-
-        // Act & Assert
-        var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.RegistrarCompra(contaId, "PETR4", 100m, 0m, new DateOnly(2026, 7, 15), null));
-
-        Assert.Equal("precoUnitario", excecao.NomeCampo);
-    }
-
-    [Fact]
-    public async Task RegistrarCompra_PrecoUnitarioNegativo_LancaValorInvalidoException()
-    {
-        // Arrange
-        var contaId = Guid.NewGuid();
-        var conta = new Conta
-        {
-            Id = contaId,
-            Nome = "Carteira XP",
-            Tipo = TipoConta.Investimento,
-            Origem = OrigemConta.Manual,
-            Ativa = true
-        };
-
-        _mockContaRepository
-            .Setup(r => r.ObterPorId(contaId))
-            .ReturnsAsync(conta);
-
-        // Act & Assert
-        var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.RegistrarCompra(contaId, "PETR4", 100m, -25m, new DateOnly(2026, 7, 16), null));
-
-        Assert.Equal("precoUnitario", excecao.NomeCampo);
-    }
-
-    [Fact]
-    public async Task RegistrarVenda_QuantidadeZero_LancaValorInvalidoException()
-    {
-        // Arrange
-        var contaId = Guid.NewGuid();
-        var ativoId = Guid.NewGuid();
-
-        // Act & Assert
-        var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.RegistrarVenda(contaId, ativoId, 0m, 20m, new DateOnly(2026, 7, 17), null));
-
-        Assert.Equal("quantidade", excecao.NomeCampo);
-        _mockAtivoRepository.Verify(r => r.ObterPorId(It.IsAny<Guid>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task RegistrarVenda_QuantidadeNegativa_LancaValorInvalidoException()
-    {
-        // Arrange
-        var contaId = Guid.NewGuid();
-        var ativoId = Guid.NewGuid();
-
-        // Act & Assert
-        var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.RegistrarVenda(contaId, ativoId, -30m, 20m, new DateOnly(2026, 7, 18), null));
-
-        Assert.Equal("quantidade", excecao.NomeCampo);
-    }
-
-    [Fact]
-    public async Task RegistrarVenda_PrecoUnitarioZero_LancaValorInvalidoException()
-    {
-        // Arrange
-        var contaId = Guid.NewGuid();
-        var ativoId = Guid.NewGuid();
-
-        // Act & Assert
-        var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.RegistrarVenda(contaId, ativoId, 50m, 0m, new DateOnly(2026, 7, 19), null));
-
-        Assert.Equal("precoUnitario", excecao.NomeCampo);
-    }
-
-    [Fact]
-    public async Task RegistrarVenda_PrecoUnitarioNegativo_LancaValorInvalidoException()
-    {
-        // Arrange
-        var contaId = Guid.NewGuid();
-        var ativoId = Guid.NewGuid();
-
-        // Act & Assert
-        var excecao = await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.RegistrarVenda(contaId, ativoId, 50m, -18m, new DateOnly(2026, 7, 20), null));
-
-        Assert.Equal("precoUnitario", excecao.NomeCampo);
+        // Assert
+        Assert.Single(resumo.PorTipo);
+        var rendaFixa = resumo.PorTipo.First();
+        Assert.Equal("RENDA_FIXA", rendaFixa.Tipo);
+        Assert.Equal(3300m, rendaFixa.ValorAtual); // 1100 + 2200
+        Assert.Equal(100m, rendaFixa.PercentualDaCarteira); // 100% (unico tipo)
     }
 
     #endregion

@@ -133,99 +133,44 @@ a uma categoria do usuario (DE_PARA_CATEGORIA).
 
 ## 8. Cofrinho, investimentos e ativos
 
-Nao classificar por nome de transacao. Investimento e sempre uma CONTA MANUAL
-(tipo INVESTIMENTO), mas existem dois formatos dentro dela:
+Nao classificar por nome de transacao. O modulo de investimentos tem duas
+formas independentes, sem relacao uma com a outra:
 
-- **Conta simples** (cofrinho Mercado Pago, XP sem detalhe de ativo): saldo
+- **Conta de investimento (saldo simples):** cofrinho Mercado Pago, XP sem
+  detalhe de ativo — CONTA MANUAL propria (tipo INVESTIMENTO), saldo
   atualizado pelo usuario via `saldo_manual`, igual qualquer conta manual
-  (item 10). Sem ativo, sem ticker.
-- **Conta com carteira de ativos** (carteira de acoes/ETFs/etc): a conta
-  INVESTIMENTO passa a conter N ATIVOS (ticker, quantidade, preco medio, preco
-  atual — ver 8.1 a 8.4). Quando a conta tem ao menos um ativo, o saldo dela
-  deixa de vir de `saldo_manual` e passa a ser CALCULADO como a soma dos
-  ativos (ver item 10, atualizado).
+  (item 10).
+- **Ativo (posicao individual, tela "Investimentos"):** Tesouro Selic, CDB,
+  uma acao especifica, fundo imobiliario etc. Registro STANDALONE, SEM
+  vinculo com Conta — o usuario nao precisa cadastrar uma "conta XP" antes de
+  lancar um Tesouro Selic. Campos: `nome`, `tipo` (RENDA_FIXA |
+  RENDA_VARIAVEL), `instituicao` (texto livre, ex: "Nubank"),
+  `valor_investido`, `data_compra`, `valor_atual`.
 
-Grafico de historico de cotacao (candles/serie temporal) e consultado sob
-demanda direto numa API externa (ex: Brapi) quando o usuario abre a tela do
-ativo. NAO e armazenado no banco, NAO tem sync/polling — e so uma chamada de
-leitura no momento da consulta, sem relacao com o calculo de patrimonio.
+**Decisao de 2026-07-12 (substitui a decisao de 2026-07-06, ver "Escopo: v1
+vs v2"):** o modulo anterior de ativo por ticker (compra/venda, preco medio,
+cotacao via Brapi sob demanda) foi REMOVIDO do codigo. Investimento detalhado
+na v1 NAO tem conexao com nenhuma API de bolsa/cotacao, em nenhuma fase.
+`valor_atual` e 100% manual.
 
-### 8.1 Preco atual (usado no calculo do patrimonio)
+### 8.1 Valor atual e evolucao (100% manual)
 
-O `preco_atual` do ativo NAO vem de cotacao de mercado buscada automaticamente
-e NAO e o custo de aquisicao. E definido MANUALMENTE pelo usuario, no
-momento em que ele registra uma nova compra do mesmo ativo: o preco informado
-naquela compra passa a valer para TODA a quantidade que o usuario possui do
-ativo (nao so a leva nova comprada).
-
-```
-valor_do_ativo = quantidade_atual x preco_atual
-```
-
-Isso e o mesmo espirito do `saldo_manual` de conta manual (item 10): o usuario
-e a fonte da verdade, so que agora no nivel do ativo, nao da conta inteira.
-
-**Suposicao em aberto (Killua):** a regra so descreve atualizacao de
-`preco_atual` via nova COMPRA. Nao ha mecanismo descrito para o usuario so
-atualizar a cotacao (marcar a mercado) sem comprar mais — ex: ele nao compra
-nada esse mes, mas quer atualizar quanto a posicao vale hoje. Ver
-"Pendencias a definir".
-
-### 8.2 Preco medio (custo historico, NAO usado no patrimonio)
-
-`preco_medio` e um numero DIFERENTE de `preco_atual`: e "quanto paguei em
-media" (referencia de custo), enquanto `preco_atual` e "quanto vale agora"
-(usado no calculo de patrimonio). Os dois coexistem no ativo e nunca se
-confundem.
-
-**Recalculo (custo medio ponderado, padrao B3/Receita Federal):** o
-`preco_medio` recalcula SOMENTE em COMPRA, usando a quantidade ATUAL em
-carteira (pos-venda, se houver) como peso do preco medio anterior:
+`valor_atual` e definido pelo usuario — mesmo espirito do `saldo_manual` de
+conta manual (item 10), so que no nivel do ativo em vez da conta inteira. No
+cadastro, `valor_atual` nasce IGUAL a `valor_investido` (evolucao = 0). So
+muda quando o usuario edita explicitamente.
 
 ```
-preco_medio_novo = (preco_medio_atual x quantidade_atual + preco_compra_nova x quantidade_nova)
-                   / (quantidade_atual + quantidade_nova)
+evolucao_percentual = (valor_atual - valor_investido) / valor_investido
 ```
 
-VENDA nunca altera `preco_medio` (so reduz `quantidade`) — vender nao muda o
-custo medio de quem ficou com a posicao, so a proxima compra recalcula.
+Calculada sob demanda para exibicao, NUNCA armazenada.
 
-**Por que nao e soma simples de todas as compras historicas:** somar todas as
-compras que ja existiram, ignorando vendas no meio do caminho, produz numero
-errado (conta acoes ja vendidas no denominador). O recalculo incremental
-acima, usando a quantidade atual como peso, e o metodo correto.
+### 8.2 Exclusao de ativo
 
-**Implicacao de modelagem:** para recalcular corretamente apos venda, o
-sistema precisa saber, a cada operacao, a quantidade e o preco_medio vigentes
-antes da operacao. Por isso o Ativo mantem um HISTORICO de movimentacoes
-(compra/venda) — serve tanto de extrato/auditoria quanto de base para
-recomputar em caso de bug.
-
-### 8.3 Venda de ativo
-
-**Suposicao explicita (nao e pergunta, e declaracao de escopo minimo):** venda
-e uma operacao INTERNA da carteira. Ela reduz a `quantidade` do ativo (venda
-parcial) ou desativa o ativo quando a quantidade chega a zero (venda total).
-Venda NAO gera lancamento em nenhuma outra conta — nao afeta saldo de conta
-corrente, cartao ou qualquer outra CONTA. E apenas o registro "eu tinha X,
-vendi Y, agora tenho X-Y". Se o usuario quiser que a venda gere entrada de
-dinheiro em outra conta (ex: transferencia do valor vendido para a conta
-corrente), isso e pedido futuro, fora de v1.
-
-Quando `quantidade` chega a zero: o ativo e desativado (`ativa = false`),
-seguindo o MESMO padrao de soft-delete ja usado no resto do dominio
-(`conta.ativa`, `categoria.arquivada`, `lancamento.oculto` — item 4). Nao ha
-hard-delete. Se o usuario comprar o mesmo ticker de novo depois de zerar a
-posicao, nasce um ATIVO NOVO (nao reaproveita o antigo, que fica historico
-inativo) — isso evita herdar preco_medio de um ciclo de investimento
-encerrado.
-
-### 8.4 Patrimonio
-
-Ver item 10 (saldo de conta) para como o valor dos ativos entra no saldo da
-conta INVESTIMENTO, e "Escopo: v1 vs v2" para o que fica de fora (cotacao
-automatica em tempo real, rentabilidade calculada automaticamente,
-dividendos).
+Soft-delete (`ativa = false`), mesmo padrao ja usado no resto do dominio
+(`conta.ativa`, `categoria.arquivada`, `lancamento.oculto` — item 4). Sem
+hard-delete.
 
 ---
 
@@ -252,13 +197,11 @@ relatorio por categoria.
 - **Conta Open Finance:** saldo e CALCULADO somando os lancamentos
   (respeitando a regra de sinal). Nao armazenar saldo fixo — evita
   desatualizacao.
-- **Conta manual sem ativos:** saldo e o campo `saldo_manual`, definido pelo
-  usuario.
-- **Conta manual INVESTIMENTO com ativos (item 8):** saldo NAO usa
-  `saldo_manual`. E CALCULADO como a soma de `quantidade x preco_atual` de
-  cada ativo `ativa = true` da conta. `saldo_manual` fica `null` nesse caso
-  (mesmo tratamento ja dado a Open Finance/CARTAO no schema — saldo calculado
-  nao e armazenado).
+- **Conta manual (incluindo investimento simples, item 8):** saldo e o campo
+  `saldo_manual`, definido pelo usuario.
+- **Ativo (item 8):** standalone, NAO participa do saldo de nenhuma Conta. O
+  total do modulo de investimentos soma `ativo.valor_atual` separadamente
+  (ver tela "Investimentos").
 
 ---
 
@@ -402,33 +345,42 @@ migration de remocao. O que muda e o que entra na v1 daqui pra frente:
   soft-delete de lancamento OF) entra como modulo isolado, sem mexer no que
   ja funciona na v1.
 
-**Modulo de investimento detalhado: PARCIALMENTE em v1 — decisao revisada em
-2026-07-06.** A decisao original (investimento detalhado inteiro em v2)
-mudou: o essencial de ativo (ticker, quantidade, preco medio, preco atual,
-compra, venda) entra em v1. So o que depende de fonte externa em TEMPO REAL
-ou de calculo automatico continuo fica em v2.
+**Modulo de investimento detalhado: EM v1, SEM nenhuma API externa — decisao
+final em 2026-07-12.**
+
+Historico da decisao (registrado para nao se perder de novo):
+- 2026-07-05: investimento detalhado inteiro adiado pra v2.
+- 2026-07-06: revisada — modelo por ticker (quantidade, preco medio, compra,
+  venda) entra em v1, com cotacao Brapi sob demanda. Chegou a ser
+  implementado e testado (148 testes, `Domain/Ativo.cs`, `AtivosController`,
+  `CotacaoExternaService`).
+- **2026-07-12: revisada de novo — o modelo por ticker foi REMOVIDO e
+  substituido pelo modelo por ativo standalone (item 8: nome, tipo RENDA_FIXA
+  ou RENDA_VARIAVEL, instituicao, valor investido, data da compra, valor
+  atual manual). Motivo: decisao do usuario de que a v1 nao deve ter NENHUMA
+  conexao com API de bolsa, nem sob demanda — o modelo por ticker dependia da
+  Brapi para o grafico de cotacao, incompativel com isso. O codigo anterior
+  (`Domain/Ativo.cs` por ticker, `MovimentacaoAtivo`, `AtivosController`,
+  `CotacaoExternaService`, `CotacaoController` e as telas de compra/venda/
+  grafico no front) foi removido, nao mantido como legado morto.**
 
 - **v1 (entra agora):**
-  - Conta INVESTIMENTO com carteira de ativos (item 8): ticker, quantidade,
-    preco medio (calculado no back, item 8.2), preco atual (informado
-    manualmente pelo usuario a cada compra, item 8.1).
-  - Registrar compra (nova ou incremento de ativo existente).
-  - Registrar venda (reduz quantidade ou desativa o ativo, item 8.3 — sem
-    gerar lancamento em outra conta).
-  - Grafico de historico de cotacao via API externa (ex: Brapi), consultado
-    SOB DEMANDA (o usuario abre a tela e o sistema busca na hora) — nao e
-    sync, nao e armazenado, nao afeta patrimonio.
-- **v2 (continua de fora):**
-  - Cotacao automatica em tempo real / atualizacao periodica de `preco_atual`
-    sem intervencao do usuario.
-  - Rentabilidade calculada automaticamente (ganho/perda vs preco medio,
-    percentual, serie historica de rentabilidade).
+  - Ativo standalone (item 8): nome, tipo, instituicao, valor investido, data
+    da compra, valor atual (editavel manualmente pelo usuario).
+  - Listar, criar, atualizar valor atual, desativar.
+  - Resumo por tipo (renda fixa vs renda variavel) para a tela
+    "Investimentos".
+- **v2 (fora por enquanto):**
+  - Qualquer cotacao via API externa (Brapi ou outra), em qualquer
+    modalidade (sob demanda ou automatica).
+  - Rentabilidade/serie historica automatica, sparkline com base em
+    snapshots de valor (nao ha tabela de historico na v1 — ver "Pendencias a
+    definir").
   - Dividendos/proventos.
 
-**Na v1**, cofrinho, XP (sem detalhe de ativo) continuam como conta manual
-simples com `saldo_manual` (ver item 8). Isso convive com a conta INVESTIMENTO
-com carteira de ativos — sao dois formatos da mesma CONTA tipo INVESTIMENTO,
-diferenciados pela existencia (ou nao) de linhas em `ativo`.
+**Na v1**, cofrinho e XP (sem detalhe de ativo) continuam como conta manual
+simples com `saldo_manual` (ver item 8). Ativo e um modulo separado, sem
+relacao com Conta.
 
 ---
 
@@ -444,7 +396,7 @@ diferenciados pela existencia (ou nao) de linhas em `ativo`.
   NAO e compra — ignorar ou tratar como estorno.
 - Ciclo da fatura: como capturar `data_fechamento` e `data_vencimento` do cartao
   (fixo por cartao ou lido do import).
-- (item 8.1) O usuario pode atualizar `preco_atual` do ativo SEM registrar uma
-  compra nova (so "marcar a mercado")? A regra so descreve atualizacao via
-  compra. Se sim, precisa de endpoint proprio (ex: PATCH preco_atual) fora do
-  fluxo de compra.
+- (item 8) Sparkline por ativo e "% no mes" do total (presentes no mockup)
+  exigem historico de snapshots de `valor_atual` ao longo do tempo — nao
+  existe tabela de historico na v1. Ativo nasce mostrando evolucao "desde a
+  compra" (item 8.1), sem serie temporal. Decidir se entra em v1.2 ou v2.

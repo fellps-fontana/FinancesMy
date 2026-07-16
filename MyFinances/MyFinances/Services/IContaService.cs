@@ -10,8 +10,6 @@ public interface IContaService
     Task<IEnumerable<Conta>> ListarContasPorTipo(TipoConta tipo);
     Task<IEnumerable<Conta>> ListarContasInvestimento();
     Task<decimal> CalcularTotalInvestido();
-    Task<Dictionary<Guid, decimal>> ObterSaldosContasInvestimento();
-    Task<Dictionary<Guid, (decimal saldo, bool estaEmModoCarteira)>> ObterSaldosComModoContasInvestimento();
     Task AtualizarSaldoManual(Guid contaId, decimal novoSaldo);
     Task DesativarConta(Guid contaId);
 }

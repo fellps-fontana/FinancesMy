@@ -15,33 +15,36 @@ public class AtivoConfiguration : IEntityTypeConfiguration<Ativo>
         builder.Property(a => a.Id)
             .HasColumnName("id");
 
-        builder.Property(a => a.ContaId)
-            .HasColumnName("conta_id")
-            .IsRequired();
-
-        builder.Property(a => a.Ticker)
-            .HasColumnName("ticker")
-            .IsRequired()
-            .HasMaxLength(10);
-
         builder.Property(a => a.Nome)
             .HasColumnName("nome")
+            .IsRequired()
             .HasMaxLength(255);
 
-        builder.Property(a => a.Quantidade)
-            .HasColumnName("quantidade")
+        builder.Property(a => a.Tipo)
+            .HasColumnName("tipo")
+            .IsRequired()
+            .HasConversion(
+                v => v.ToStorageValue(),
+                v => TipoAtivoExtensions.FromStorageValue(v));
+
+        builder.Property(a => a.Instituicao)
+            .HasColumnName("instituicao")
+            .IsRequired()
+            .HasMaxLength(255);
+
+        builder.Property(a => a.ValorInvestido)
+            .HasColumnName("valor_investido")
             .IsRequired()
             .HasPrecision(18, 2);
 
-        builder.Property(a => a.PrecoMedio)
-            .HasColumnName("preco_medio")
+        builder.Property(a => a.ValorAtual)
+            .HasColumnName("valor_atual")
             .IsRequired()
             .HasPrecision(18, 2);
 
-        builder.Property(a => a.PrecoAtual)
-            .HasColumnName("preco_atual")
-            .IsRequired()
-            .HasPrecision(18, 2);
+        builder.Property(a => a.DataCompra)
+            .HasColumnName("data_compra")
+            .IsRequired();
 
         builder.Property(a => a.Ativa)
             .HasColumnName("ativa")
@@ -51,5 +54,8 @@ public class AtivoConfiguration : IEntityTypeConfiguration<Ativo>
         builder.Property(a => a.CriadoEm)
             .HasColumnName("criado_em")
             .IsRequired();
+
+        builder.Property(a => a.AtualizadoEm)
+            .HasColumnName("atualizado_em");
     }
 }

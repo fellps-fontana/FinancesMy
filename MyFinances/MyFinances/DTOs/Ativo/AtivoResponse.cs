@@ -7,28 +7,36 @@ public class AtivoResponse
 {
     public Guid Id { get; set; }
 
-    public string Ticker { get; set; } = string.Empty;
+    public string Nome { get; set; } = string.Empty;
 
-    public string? Nome { get; set; }
+    public TipoAtivo Tipo { get; set; }
 
-    public decimal Quantidade { get; set; }
+    public string Instituicao { get; set; } = string.Empty;
 
-    public decimal PrecoMedio { get; set; }
+    public decimal ValorInvestido { get; set; }
 
-    public decimal PrecoAtual { get; set; }
+    public decimal ValorAtual { get; set; }
+
+    public decimal EvolucaoPercentual { get; set; }
+
+    public DateOnly DataCompra { get; set; }
 
     public bool Ativa { get; set; }
 
-    public static AtivoResponse FromAtivo(AtivoDomain ativo)
+    // EvolucaoPercentual chega ja calculada do Service - regra de negocio
+    // (item 8.1 de regra-de-negocio.md) nao mora em DTO.
+    public static AtivoResponse FromAtivo(AtivoDomain ativo, decimal evolucaoPercentual)
     {
-        return new()
+        return new AtivoResponse
         {
             Id = ativo.Id,
-            Ticker = ativo.Ticker,
             Nome = ativo.Nome,
-            Quantidade = ativo.Quantidade,
-            PrecoMedio = ativo.PrecoMedio,
-            PrecoAtual = ativo.PrecoAtual,
+            Tipo = ativo.Tipo,
+            Instituicao = ativo.Instituicao,
+            ValorInvestido = ativo.ValorInvestido,
+            ValorAtual = ativo.ValorAtual,
+            EvolucaoPercentual = evolucaoPercentual,
+            DataCompra = ativo.DataCompra,
             Ativa = ativo.Ativa
         };
     }

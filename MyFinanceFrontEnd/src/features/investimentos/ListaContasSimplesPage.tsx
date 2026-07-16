@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react"
+import { Link } from "react-router-dom"
 import { useContasInvestimento } from "@/features/investimentos/hooks/useContasInvestimento"
 import { useTotalInvestido } from "@/features/investimentos/hooks/useTotalInvestido"
 import { useCriarContaInvestimento } from "@/features/investimentos/hooks/useCriarContaInvestimento"
@@ -14,7 +15,14 @@ import { ApiError } from "@/shared/api/client"
 // Container: le o estado de servidor (React Query) e decide qual estado
 // exibir. Renderizacao pura fica nos componentes de apresentacao chamados
 // abaixo - ver clean-code.md "Organizacao (React)".
-export function ListaContasInvestimento() {
+//
+// Tela propria para conta de investimento SIMPLES (cofrinho Mercado Pago, XP
+// sem detalhe de ativo) - regra-de-negocio.md item 8: "CONTA MANUAL propria
+// (tipo INVESTIMENTO), saldo atualizado pelo usuario via saldo_manual, igual
+// qualquer conta manual". Sem relacao com o modulo de Ativo (posicao
+// individual, ver ListaAtivosPage.tsx) - sao dois modulos independentes que
+// so compartilham a raiz "investimentos" por organizacao de pastas.
+export function ListaContasSimplesPage() {
   const { data: contas, isLoading: carregandoContas, error: erroContas } = useContasInvestimento()
   const { data: total, isLoading: carregandoTotal, error: erroTotal } = useTotalInvestido()
   const { mutate: criarConta, isPending: criandoConta } = useCriarContaInvestimento()
@@ -53,7 +61,7 @@ export function ListaContasInvestimento() {
     }
 
     criarConta(
-      { nome: nome.trim(), saldoInicial: converterSaldoParaNumero(saldoInicial) },
+      { nome: nome.trim(), tipo: "INVESTIMENTO", saldoManual: converterSaldoParaNumero(saldoInicial) },
       {
         onSuccess: fecharFormulario,
         onError: (error) => {
@@ -70,10 +78,16 @@ export function ListaContasInvestimento() {
     <div className="mx-auto flex min-h-svh max-w-2xl flex-col gap-6 px-4 py-8">
       <header className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-[19px] font-medium text-foreground">Investimentos</h1>
-          <p className="text-sm text-muted-foreground">
-            Cofrinho, corretoras e carteira de acoes cadastrados como contas manuais.
+          <h1 className="text-[19px] font-medium text-text-primary">Contas simples</h1>
+          <p className="text-sm text-text-muted">
+            Cofrinho, corretoras e outras contas manuais sem detalhe de ativo.
           </p>
+          <Link
+            className="text-sm text-primary underline-offset-4 hover:underline"
+            to="/investimentos"
+          >
+            Ver investimentos (ativos)
+          </Link>
         </div>
         {!mostrarFormulario && (
           <Button type="button" onClick={() => setMostrarFormulario(true)}>
@@ -97,7 +111,7 @@ export function ListaContasInvestimento() {
 
       {erro ? (
         <Alert variant="destructive">
-          <AlertTitle>Nao foi possivel carregar os investimentos</AlertTitle>
+          <AlertTitle>Nao foi possivel carregar as contas</AlertTitle>
           <AlertDescription>Verifique sua conexao e tente novamente.</AlertDescription>
         </Alert>
       ) : (
@@ -105,7 +119,7 @@ export function ListaContasInvestimento() {
           <TotalInvestidoResumo carregando={carregandoTotal} totalInvestido={total?.totalInvestido} />
 
           {carregandoContas ? (
-            <p className="text-sm text-muted-foreground">Carregando contas...</p>
+            <p className="text-sm text-text-muted">Carregando contas...</p>
           ) : contas && contas.length > 0 ? (
             <div className="flex flex-col gap-3">
               {contas.map((conta) => (
@@ -113,9 +127,9 @@ export function ListaContasInvestimento() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma conta de investimento cadastrada ainda. Cofrinho, XP e carteira de acoes
-              aparecem aqui assim que forem cadastrados.
+            <p className="text-sm text-text-muted">
+              Nenhuma conta de investimento cadastrada ainda. Cofrinho, XP e outras contas manuais
+              aparecem aqui assim que forem cadastradas.
             </p>
           )}
         </>
