@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using MyFinances.Data;
 using MyFinances.Domain;
 
@@ -13,78 +12,20 @@ public class AtivoRepository : IAtivoRepository
         _context = context;
     }
 
-    public async Task Adicionar(Ativo ativo)
+    public Task Adicionar(Ativo ativo)
     {
-        await _context.Ativos.AddAsync(ativo);
-    }
-
-    public async Task AdicionarMovimentacao(MovimentacaoAtivo movimentacao)
-    {
-        await _context.MovimentacoesAtivo.AddAsync(movimentacao);
+        _context.Ativos.Add(ativo);
+        return Task.CompletedTask;
     }
 
     public async Task<Ativo?> ObterPorId(Guid id)
     {
-        return await _context.Ativos.FirstOrDefaultAsync(a => a.Id == id);
+        return await _context.Ativos.FindAsync(id);
     }
 
-    public async Task<IEnumerable<Ativo>> ListarPorConta(Guid contaId)
+    public async Task<IEnumerable<Ativo>> ListarAtivas()
     {
-        return await _context.Ativos
-            .Where(a => a.ContaId == contaId)
-            .ToListAsync();
-    }
-
-    public async Task<IEnumerable<Ativo>> ListarAtivosAtivosPorConta(Guid contaId)
-    {
-        return await _context.Ativos
-            .Where(a => a.ContaId == contaId && a.Ativa)
-            .ToListAsync();
-    }
-
-    public async Task<Ativo?> ObterAtivoAtivoPorTicker(Guid contaId, string ticker)
-    {
-        return await _context.Ativos
-            .FirstOrDefaultAsync(a => a.ContaId == contaId && a.Ativa && a.Ticker == ticker);
-    }
-
-    public async Task<Dictionary<Guid, decimal>> SomarValorAtivosPorConta(IEnumerable<Guid> contaIds)
-    {
-        var ativos = await _context.Ativos
-            .Where(a => contaIds.Contains(a.ContaId) && a.Ativa)
-            .ToListAsync();
-
-        // Apenas contas com ativos ativos aparecem no dicionario.
-        // Contas sem nenhum ativo ativo nao sao incluidas.
-        return ativos
-            .GroupBy(a => a.ContaId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.Sum(a => a.Quantidade * a.PrecoAtual));
-    }
-
-    public async Task<Dictionary<Guid, bool>> VerificarContasComAtivos(IEnumerable<Guid> contaIds)
-    {
-        var contasList = contaIds.ToList();
-        var resultado = new Dictionary<Guid, bool>();
-
-        foreach (var contaId in contasList)
-        {
-            resultado[contaId] = false;
-        }
-
-        var contasComAtivos = await _context.Ativos
-            .Where(a => contaIds.Contains(a.ContaId))
-            .Select(a => a.ContaId)
-            .Distinct()
-            .ToListAsync();
-
-        foreach (var contaId in contasComAtivos)
-        {
-            resultado[contaId] = true;
-        }
-
-        return resultado;
+        return await Task.FromResult(_context.Ativos.Where(a => a.Ativa).AsEnumerable());
     }
 
     public async Task Salvar()
