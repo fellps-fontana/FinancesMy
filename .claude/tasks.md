@@ -1,9 +1,18 @@
 # Tasks — Modulo de Investimentos (v1)
 
-Escopo confirmado: investimento como CONTA MANUAL (tipo INVESTIMENTO, origem
-MANUAL, saldo via `saldo_manual`). Sem ativos, ticker, preco medio, cotacao ou
-rentabilidade — isso e v2 e esta fora daqui (ver regra-de-negocio.md, secao
-"Escopo: v1 vs v2").
+**NOTA (2026-07-15):** TASK-011 a TASK-024 abaixo implementaram um modelo de
+Ativo por TICKER (compra/venda, preco medio, cotacao Brapi sob demanda) que
+foi REMOVIDO e substituido por um Ativo standalone (sem ticker, sem API
+externa) — decisao do usuario registrada em regra-de-negocio.md, secao
+"Escopo: v1 vs v2". As entradas abaixo ficam como registro historico do que
+foi executado (audit trail), nao refletem mais o codigo atual. Ver
+`docs/investimentos.md` pro estado real do modulo.
+
+Escopo confirmado (na epoca): investimento como CONTA MANUAL (tipo
+INVESTIMENTO, origem MANUAL, saldo via `saldo_manual`). Sem ativos, ticker,
+preco medio, cotacao ou rentabilidade — isso e v2 e esta fora daqui (ver
+regra-de-negocio.md, secao "Escopo: v1 vs v2"). Essa premissa mudou depois
+(ver nota acima).
 
 Codebase e greenfield: nao ha EF Core, DbContext, entidades nem controllers
 ainda. As primeiras tasks criam essa base.

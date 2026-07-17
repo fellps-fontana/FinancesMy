@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyFinances.Migrations
 {
     [DbContext(typeof(MyFinancesDbContext))]
-    [Migration("20260711225259_InitialCreate")]
+    [Migration("20260716121213_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -38,39 +38,44 @@ namespace MyFinances.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("ativa");
 
-                    b.Property<Guid>("ContaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("conta_id");
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
 
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("criado_em");
 
+                    b.Property<DateOnly>("DataCompra")
+                        .HasColumnType("date")
+                        .HasColumnName("data_compra");
+
+                    b.Property<string>("Instituicao")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("instituicao");
+
                     b.Property<string>("Nome")
+                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("nome");
 
-                    b.Property<decimal>("PrecoAtual")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasColumnName("preco_atual");
-
-                    b.Property<decimal>("PrecoMedio")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasColumnName("preco_medio");
-
-                    b.Property<decimal>("Quantidade")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasColumnName("quantidade");
-
-                    b.Property<string>("Ticker")
+                    b.Property<string>("Tipo")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("ticker");
+                        .HasColumnType("text")
+                        .HasColumnName("tipo");
+
+                    b.Property<decimal>("ValorAtual")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("valor_atual");
+
+                    b.Property<decimal>("ValorInvestido")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("valor_investido");
 
                     b.HasKey("Id");
 
@@ -314,46 +319,6 @@ namespace MyFinances.Migrations
                     b.HasIndex("TransferenciaId");
 
                     b.ToTable("lancamento", (string)null);
-                });
-
-            modelBuilder.Entity("MyFinances.Domain.MovimentacaoAtivo", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("AtivoId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("ativo_id");
-
-                    b.Property<DateOnly>("Data")
-                        .HasColumnType("date")
-                        .HasColumnName("data");
-
-                    b.Property<string>("Observacao")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("observacao");
-
-                    b.Property<decimal>("PrecoUnitario")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasColumnName("preco_unitario");
-
-                    b.Property<decimal>("Quantidade")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasColumnName("quantidade");
-
-                    b.Property<string>("Tipo")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("tipo");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("movimentacao_ativo", (string)null);
                 });
 
             modelBuilder.Entity("MyFinances.Domain.Transferencia", b =>
