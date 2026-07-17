@@ -288,7 +288,7 @@ public class ContaReceberServiceTests
 
     #endregion
 
-    #region Regra 4.1: RegistrarRecebimento com valor que ZERA o saldo — Status deve transicionar para RECEBIDO e persistir
+    #region Regra 4.1: RegistrarRecebimento com valor que ZERA o saldo - Status deve transicionar para RECEBIDO e persistir
 
     [Fact]
     public async Task RegistrarRecebimento_ValorQueZeraSaldo_AtualizaStatusParaRecebidoEPersiste()
@@ -350,7 +350,7 @@ public class ContaReceberServiceTests
 
     #endregion
 
-    #region Regra 4.2: RegistrarRecebimento com valor MENOR que saldo — Status deve transicionar para PARCIAL
+    #region Regra 4.2: RegistrarRecebimento com valor MENOR que saldo - Status deve transicionar para PARCIAL
 
     [Fact]
     public async Task RegistrarRecebimento_ValorMenorQueSaldo_AtualizaStatusParaParcialEPersiste()
@@ -690,7 +690,7 @@ public class ContaReceberServiceTests
 
     #endregion
 
-    #region Regra 9: CalcularTotalAReceberEsperadoNoMes — prova de calculo (item 9 + item 13 da regra)
+    #region Regra 9: CalcularTotalAReceberEsperadoNoMes - prova de calculo (item 9 + item 13 da regra)
 
     [Fact]
     public async Task CalcularTotalAReceberEsperadoNoMes_ContaParcialDeMesAnterior_EntraUmaSoNaSoma()
