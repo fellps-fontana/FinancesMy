@@ -144,7 +144,7 @@ RETORNO ESPERADO: testes passando; relatorio estruturado se achar bug de codigo.
 
 ## TASK-010 — Total a receber esperado no mes (fatia da projecao, item 9)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA + APROVADA PELO STYLE apos 3 rodadas (247/247 testes GREEN no final). Logica sempre esteve correta (confirmada rodada 1), mas nasceu sem nenhum teste — regra critica de calculo sem prova automatizada. mike escreveu 12 testes (6 service + 6 integracao SQLite in-memory), levi extraiu duplicacao de Include num metodo privado. Rodada 2 (style): achou 2 testes duplicados disfarcados de diferentes + comentarios acentuados; mike consolidou. Rodada 3: sobrou travessao em 3 titulos de #region; Kira corrigiu. Rodada 4: APROVADO.
 AGENT: levi
 FLUXO: Implementacao (NAO e extensao — nenhum endpoint de projecao/dashboard existe no codebase; ver "Duvida em aberto")
 DEPENDENCIAS: TASK-006
@@ -158,7 +158,7 @@ RETORNO ESPERADO: endpoint retornando `{ totalAReceberEsperadoNoMes: decimal }` 
 
 ## TASK-011 — Testes do total a receber esperado no mes
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (absorvida pela TASK-010 apos o style apontar falta de cobertura — os 4 cenarios exigidos aqui, incluindo a protecao contra dupla contagem, ja estao provados pelos 12 testes escritos e aprovados na TASK-010)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-010
