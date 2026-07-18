@@ -8,7 +8,7 @@ Table conta {
   origem varchar [not null, note: 'OPEN_FINANCE | MANUAL']
   tipo varchar [note: 'BANCO | CARTAO | INVESTIMENTO']
   pierre_account_id varchar [note: 'null se manual']
-  saldo_manual decimal [note: 'null se Open Finance, CARTAO, ou INVESTIMENTO com ativos (nesses casos saldo e calculado)']
+  saldo_manual decimal [note: 'null se Open Finance ou CARTAO (nesses casos saldo e calculado)']
   dia_fechamento int [note: 'so CARTAO; dia de fechamento da fatura']
   dia_vencimento int [note: 'so CARTAO; dia de vencimento da fatura']
   ativa boolean [not null, default: true]
@@ -104,33 +104,21 @@ Table compra_parcelada {
   data_compra date [not null, note: 'data da compra original; NAO e a data de vencimento de cada parcela']
 }
 
-// Ativo (item 8). Existe dentro de uma conta tipo INVESTIMENTO. Quando uma
-// conta tem ao menos um ativo, o saldo da conta deixa de vir de saldo_manual
-// e passa a ser calculado (item 10): soma(quantidade x preco_atual) dos
-// ativos com ativa=true.
+// Ativo (item 8). STANDALONE — sem FK para conta (decisao de 2026-07-12/15,
+// substitui o modelo anterior por ticker+Brapi). valor_atual e 100% manual,
+// sem nenhuma API externa; evolucao percentual e calculada sob demanda
+// (item 8.1), nunca armazenada.
 Table ativo {
   id uuid [pk]
-  conta_id uuid [ref: > conta.id, not null, note: 'conta deve ser tipo INVESTIMENTO; validado no Service, nao via FK/CHECK']
-  ticker varchar [not null]
-  nome varchar [note: 'nome de exibicao do ativo, opcional']
-  quantidade decimal [not null, note: 'posicao atual (pos-venda); atualizada em toda compra/venda']
-  preco_medio decimal [not null, note: 'custo medio ponderado sobre a posicao atual; recalcula so em COMPRA (item 8.2); venda NUNCA altera']
-  preco_atual decimal [not null, note: 'informado manualmente pelo usuario a cada compra; usado no calculo de patrimonio (item 8.1)']
-  ativa boolean [not null, default: true, note: 'false quando quantidade chega a zero por venda total (item 8.3); soft-delete, mesmo padrao de conta.ativa/categoria.arquivada/lancamento.oculto']
+  nome varchar [not null]
+  tipo varchar [not null, note: 'RENDA_FIXA | RENDA_VARIAVEL']
+  instituicao varchar [not null, note: 'texto livre; nao existe catalogo de instituicoes no sistema']
+  valor_investido decimal [not null]
+  valor_atual decimal [not null, note: 'nasce igual a valor_investido; so muda por atualizacao manual do usuario (item 8.1)']
+  data_compra date [not null]
+  ativa boolean [not null, default: true, note: 'soft-delete, mesmo padrao de conta.ativa/categoria.arquivada/lancamento.oculto (item 8.2)']
   criado_em timestamp [not null, default: `now()`]
-}
-
-// Historico de compra/venda por ativo (item 8.2/8.3). Necessario para
-// recalcular preco_medio corretamente apos venda parcial, e serve de extrato
-// auditavel.
-Table movimentacao_ativo {
-  id uuid [pk]
-  ativo_id uuid [ref: > ativo.id, not null]
-  tipo varchar [not null, note: 'COMPRA | VENDA']
-  quantidade decimal [not null]
-  preco_unitario decimal [not null, note: 'preco de compra ou de venda informado naquela operacao']
-  data date [not null]
-  observacao varchar
+  atualizado_em timestamp [note: 'null ate a primeira atualizacao manual de valor_atual']
 }
 
 Table limite_gasto {

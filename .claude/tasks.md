@@ -1,29 +1,21 @@
-# Tasks — Modulo de Parcelamento de Compra no Cartao (v1)
+# Tasks — Modulo de Investimentos (v1)
 
-Escopo confirmado: compra parcelada gera N Lancamentos (um por parcela, cada
-um com `fatura_id` proprio resolvido pelo ciclo do MES DE VENCIMENTO da
-parcela), agrupados so para exibicao por `compra_parcelada`. Divisao
-automatica `valor_total / quantidade_parcelas`, resto do arredondamento na
-ULTIMA parcela. Ver regra-de-negocio.md, item 12, subsecao "Parcelamento
-(compra parcelada) — decisao registrada em 2026-07-12".
+**NOTA (2026-07-15):** TASK-011 a TASK-024 abaixo implementaram um modelo de
+Ativo por TICKER (compra/venda, preco medio, cotacao Brapi sob demanda) que
+foi REMOVIDO e substituido por um Ativo standalone (sem ticker, sem API
+externa) — decisao do usuario registrada em regra-de-negocio.md, secao
+"Escopo: v1 vs v2". As entradas abaixo ficam como registro historico do que
+foi executado (audit trail), nao refletem mais o codigo atual. Ver
+`docs/investimentos.md` pro estado real do modulo.
 
-Verificado nesta sessao (nao assumido): `Lancamento.cs` ainda NAO tem
-`CompraParceladaId`/`ParcelaNumero` — extensao obrigatoria. A unica migration
-existente (`20260711225259_InitialCreate.cs`) NAO tem tabela `parcela` —
-nunca foi criada via EF, entao a tarefa de migration e so ADD (tabela nova +
-2 colunas), sem DROP TABLE.
+Escopo confirmado (na epoca): investimento como CONTA MANUAL (tipo
+INVESTIMENTO, origem MANUAL, saldo via `saldo_manual`). Sem ativos, ticker,
+preco medio, cotacao ou rentabilidade — isso e v2 e esta fora daqui (ver
+regra-de-negocio.md, secao "Escopo: v1 vs v2"). Essa premissa mudou depois
+(ver nota acima).
 
-Fora de escopo desta leva (regra omissa — nao decidido, nao implementado):
-- **Estorno de compra parcelada** (cancelar parcelas futuras vs ja pagas).
-  Se qualquer task abaixo esbarrar nisso, a implementacao NAO cobre estorno —
-  so a criacao da compra parcelada.
-- **Edicao de compra parcelada existente** (mudar quantidade de parcelas
-  depois de criada). Mesma coisa: fora de escopo, nao implementar.
-- **Front (hanzo)**: nao entra nesta leva. Formulario de criacao + exibicao
-  agrupada "3/10" na lista de compras do cartao e volume suficiente pra
-  rodada propria, depois do back estar fechado e revisado. Kira decide
-  quando abrir.
-
+Codebase e greenfield: nao ha EF Core, DbContext, entidades nem controllers
+ainda. As primeiras tasks criam essa base.
 ---
 
 ## TASK-025 — Entidade `CompraParcelada` (Domain) + Configuration + DbSet

@@ -16,14 +16,15 @@ namespace MyFinances.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
-                    conta_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    ticker = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
-                    nome = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
-                    quantidade = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    preco_medio = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    preco_atual = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    nome = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    tipo = table.Column<string>(type: "text", nullable: false),
+                    instituicao = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    valor_investido = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    valor_atual = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    data_compra = table.Column<DateOnly>(type: "date", nullable: false),
                     ativa = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    criado_em = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    criado_em = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    atualizado_em = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -68,23 +69,6 @@ namespace MyFinances.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_conta", x => x.id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "movimentacao_ativo",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    ativo_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tipo = table.Column<string>(type: "text", nullable: false),
-                    quantidade = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    preco_unitario = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    data = table.Column<DateOnly>(type: "date", nullable: false),
-                    observacao = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_movimentacao_ativo", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -326,9 +310,6 @@ namespace MyFinances.Migrations
 
             migrationBuilder.DropTable(
                 name: "lancamento");
-
-            migrationBuilder.DropTable(
-                name: "movimentacao_ativo");
 
             migrationBuilder.DropTable(
                 name: "usuario");
