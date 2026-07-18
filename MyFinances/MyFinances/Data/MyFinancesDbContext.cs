@@ -27,6 +27,8 @@ public class MyFinancesDbContext : DbContext
 
     public DbSet<Fatura> Faturas { get; set; }
 
+    public DbSet<CompraParcelada> ComprasParceladas { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -39,6 +41,7 @@ public class MyFinancesDbContext : DbContext
         modelBuilder.ApplyConfiguration(new LancamentoConfiguration());
         modelBuilder.ApplyConfiguration(new TransferenciaConfiguration());
         modelBuilder.ApplyConfiguration(new FaturaConfiguration());
+        modelBuilder.ApplyConfiguration(new CompraParceladaConfiguration());
 
         // Se nao eh Npgsql (ex: SQLite em testes), remove o default value SQL do campo CriadoEm
         // que eh sintaxe Postgres-only. Em producao (Npgsql), o UsuarioConfiguration mantem

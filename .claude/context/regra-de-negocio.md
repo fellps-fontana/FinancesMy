@@ -267,6 +267,58 @@ compras individuais nao entram na projecao.
 Nubank (ver Pendencias). O de-para de categoria (item 7) roda sobre a
 `descricao` da compra em vez da `category` do Pierre.
 
+### Parcelamento (compra parcelada) — decisao registrada em 2026-07-12
+
+Regra estava omissa (Killua sinalizou) e foi decidida agora: uma compra
+parcelada no cartao gera N Lancamentos, um por parcela — NAO um unico
+Lancamento pai com N Parcelas dependentes.
+
+Cada Lancamento-parcela e vinculado a fatura do MES DE VENCIMENTO da sua
+propria parcela, via `fatura_id`, exatamente como uma compra a vista (mesma
+regra de recorte de fatura do item 12: `data_fechamento -> data_vencimento`).
+A parcela 1/10 cai na fatura do mes 1, a parcela 2/10 na fatura do mes 2, e
+assim por diante — sem NENHUMA logica especial de soma de parcelas: o
+mecanismo de fatura ja resolve isso, porque cada parcela e um lancamento
+independente com sua propria data.
+
+**Agrupamento (so exibicao — nunca entra em calculo):** as N parcelas da
+mesma compra compartilham `compra_parcelada_id`, que aponta para a tabela
+`compra_parcelada` (metadados da compra original: descricao, valor_total,
+quantidade_parcelas, data_compra). Cada Lancamento-parcela tambem carrega
+`parcela_numero` (posicao dela no grupo, ex: 3). Serve so para a UI mostrar
+"Notebook Dell 3/10" agrupado — fatura, projecao (item 9) e relatorio por
+categoria continuam somando cada Lancamento-parcela individualmente, sem ler
+esse agrupamento.
+
+**Decisao tecnica — tabela `parcela` do schema REMOVIDA.** O modelo anterior
+(`parcela` como filha de UM Lancamento-compra, com `numero`, `total`,
+`valor`, `vencimento`, `paga` proprios) ficou redundante e CONFLITANTE com
+este modelo:
+- `vencimento` e `valor` da parcela duplicavam exatamente o que
+  `lancamento.data` e `lancamento.valor` ja resolvem quando cada parcela e
+  seu proprio Lancamento.
+- `parcela.paga` (booleano por parcela) CONTRADIZ a regra de pagamento do
+  item 12: "cada pagamento fecha saldo da fatura como um todo, NUNCA compra a
+  compra especifica". Um campo `paga` por parcela criaria DOIS lugares
+  competindo pela verdade de quitacao (`fatura.status = PAGA` vs
+  `parcela.paga` individual) — a mesma duplicidade que a regra de pagamento
+  parcial do item 12 ja proibe.
+
+`parcela` sai do schema.dbml. No lugar entra `compra_parcelada`, tabela leve
+so de metadado de agrupamento — mesmo padrao ja usado por `transferencia`
+no item 3 (entidade compartilhada que agrupa N lancamentos por um `_id`, sem
+guardar estado de pagamento).
+
+**Calculo do valor de cada parcela:** divisao automatica de
+`valor_total / quantidade_parcelas`, SEM edicao manual por parcela. O resto
+do arredondamento (centavos que sobram da divisao) vai inteiro para a ULTIMA
+parcela, pra soma das N parcelas sempre bater exatamente com `valor_total`.
+Exemplo: R$100,00 em 3x = R$33,33 + R$33,33 + R$33,34. Motivo: e assim que
+parcelamento de cartao funciona na pratica (valor fixado no ato da compra);
+permitir valor manual por parcela abriria brecha pra soma nao bater com
+`valor_total`, quebrando a auditoria da compra original sem cobrir nenhum
+caso de uso real.
+
 ---
 
 ## Escopo: v1 vs v2

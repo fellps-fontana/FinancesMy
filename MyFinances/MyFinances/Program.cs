@@ -46,6 +46,7 @@ builder.Services.AddScoped<ILancamentoRepository, LancamentoRepository>();
 builder.Services.AddScoped<ITransferenciaRepository, TransferenciaRepository>();
 builder.Services.AddScoped<IFaturaRepository, FaturaRepository>();
 builder.Services.AddScoped<IAtivoRepository, AtivoRepository>();
+builder.Services.AddScoped<ICompraParceladaRepository, CompraParceladaRepository>();
 
 // Services - Conta
 builder.Services.AddScoped<IContaService, ContaService>();
@@ -59,6 +60,7 @@ builder.Services.AddScoped<IDeParaCategoriaService, DeParaCategoriaService>();
 builder.Services.AddScoped<ValidacaoCartaoService>();
 builder.Services.AddScoped<FaturaCicloService>();
 builder.Services.AddScoped<CompraCartaoService>();
+builder.Services.AddScoped<ComprasParceladasService>();
 builder.Services.AddScoped<PagamentoFaturaService>();
 builder.Services.AddScoped<EstornoCartaoService>();
 builder.Services.AddScoped<SaldoCartaoService>();
