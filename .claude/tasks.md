@@ -172,7 +172,7 @@ RETORNO ESPERADO: testes passando; relatorio estruturado se achar bug.
 
 ## TASK-012 — Camada de dados no front: types/api/hooks de Contas a Receber
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build do frontend limpo, sem `any`; invalidacao de cache cruzada — lista, porId, totalEsperadoMes — conferida)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-008, TASK-010
