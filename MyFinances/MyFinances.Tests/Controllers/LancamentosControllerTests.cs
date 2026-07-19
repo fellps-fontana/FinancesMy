@@ -727,4 +727,87 @@ public class LancamentosControllerTests
     }
 
     #endregion
+
+    #region GET /api/contas/{contaId}/lancamentos/fluxo-caixa - Transferencia
+
+    [Fact]
+    public async Task ListarFluxoCaixa_ComTransferenciaCredito_IncluiPernaDeMoedaNaContaDestino()
+    {
+        // Arrange
+        var contaOrigemId = Guid.NewGuid();
+        var contaDestinoId = Guid.NewGuid();
+        var transferenciaId = Guid.NewGuid();
+        var lancamentoDebitoId = Guid.NewGuid();
+        var lancamentoCreditoId = Guid.NewGuid();
+
+        var contaOrigem = new Conta
+        {
+            Id = contaOrigemId,
+            Nome = "Conta Origem",
+            Tipo = TipoConta.Banco,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 1000m,
+            Ativa = true
+        };
+
+        var contaDestino = new Conta
+        {
+            Id = contaDestinoId,
+            Nome = "Conta Destino",
+            Tipo = TipoConta.Banco,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 500m,
+            Ativa = true
+        };
+
+        var lancamentoDebito = new Lancamento
+        {
+            Id = lancamentoDebitoId,
+            ContaId = contaOrigemId,
+            TransferenciaId = transferenciaId,
+            Descricao = "Transferencia saida",
+            Valor = 250m,
+            Tipo = TipoLancamento.Debit,
+            Data = DateOnly.FromDateTime(DateTime.Now),
+            Status = StatusLancamento.Pago,
+            Manual = true,
+            FaturaId = null
+        };
+
+        var lancamentoCredito = new Lancamento
+        {
+            Id = lancamentoCreditoId,
+            ContaId = contaDestinoId,
+            TransferenciaId = transferenciaId,
+            Descricao = "Transferencia entrada",
+            Valor = 250m,
+            Tipo = TipoLancamento.Credit,
+            Data = DateOnly.FromDateTime(DateTime.Now),
+            Status = StatusLancamento.Pago,
+            Manual = true,
+            FaturaId = null
+        };
+
+        await _fixture.AddContaAsync(contaOrigem);
+        await _fixture.AddContaAsync(contaDestino);
+        await _fixture.AddLancamentoAsync(lancamentoDebito);
+        await _fixture.AddLancamentoAsync(lancamentoCredito);
+
+        // Act - consultar fluxo de caixa da conta destino
+        var response = await _fixture.Client.GetAsync($"/api/contas/{contaDestinoId}/lancamentos/fluxo-caixa");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var lancamentos = JsonSerializer.Deserialize<List<LancamentoResponseDto>>(responseBody, LancamentosControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(lancamentos);
+        Assert.Single(lancamentos);
+        Assert.Equal(lancamentoCreditoId, lancamentos[0].Id);
+        Assert.Equal("Transferencia entrada", lancamentos[0].Descricao);
+        Assert.Equal("CREDIT", lancamentos[0].Tipo);
+    }
+
+    #endregion
 }

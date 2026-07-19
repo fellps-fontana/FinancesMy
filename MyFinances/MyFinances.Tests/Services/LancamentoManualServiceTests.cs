@@ -593,4 +593,100 @@ public class LancamentoManualServiceTests
 
         _lancamentoRepositoryMock.Verify(r => r.Remover(It.IsAny<Lancamento>()), Times.Never);
     }
+
+    [Fact]
+    public async Task MarcarComoPagoAsync_ComContaInativa_RetornaErro()
+    {
+        // Arrange
+        var contaId = Guid.NewGuid();
+        var lancamentoId = Guid.NewGuid();
+        var contaInativa = new Conta
+        {
+            Id = contaId,
+            Nome = "Conta Inativa",
+            Ativa = false,
+            Origem = OrigemConta.Manual
+        };
+
+        var lancamento = new Lancamento
+        {
+            Id = lancamentoId,
+            ContaId = contaId,
+            Conta = contaInativa,
+            Descricao = "Lancamento",
+            Valor = 100m,
+            Tipo = TipoLancamento.Debit,
+            Data = new DateOnly(2025, 1, 15),
+            Status = StatusLancamento.Pendente
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ObterPorId(lancamentoId))
+            .ReturnsAsync(lancamento);
+        _contaRepositoryMock.Setup(r => r.ObterPorId(contaId))
+            .ReturnsAsync(contaInativa);
+
+        // Act
+        var (sucesso, erro) = await _service.MarcarComoPagoAsync(contaId, lancamentoId);
+
+        // Assert
+        Assert.False(sucesso);
+        Assert.NotNull(erro);
+        Assert.Contains("inativa", erro.ToLower());
+
+        _lancamentoRepositoryMock.Verify(r => r.Atualizar(It.IsAny<Lancamento>()), Times.Never);
+        _lancamentoRepositoryMock.Verify(r => r.Salvar(), Times.Never);
+    }
+
+    [Fact]
+    public async Task EditarAsync_ComContaInativa_RetornaErro()
+    {
+        // Arrange
+        var contaId = Guid.NewGuid();
+        var lancamentoId = Guid.NewGuid();
+        var contaInativa = new Conta
+        {
+            Id = contaId,
+            Nome = "Conta Inativa",
+            Ativa = false,
+            Origem = OrigemConta.Manual
+        };
+
+        var lancamento = new Lancamento
+        {
+            Id = lancamentoId,
+            ContaId = contaId,
+            Conta = contaInativa,
+            Descricao = "Descricao Original",
+            Valor = 50m,
+            Tipo = TipoLancamento.Debit,
+            Data = new DateOnly(2025, 1, 10),
+            Status = StatusLancamento.Pendente,
+            Manual = true
+        };
+
+        var request = new EditarLancamentoRequest
+        {
+            Descricao = "Descricao Nova",
+            Valor = 100m,
+            Tipo = "DEBIT",
+            Data = new DateOnly(2025, 1, 15)
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ObterPorId(lancamentoId))
+            .ReturnsAsync(lancamento);
+        _contaRepositoryMock.Setup(r => r.ObterPorId(contaId))
+            .ReturnsAsync(contaInativa);
+
+        // Act
+        var (sucesso, lancamentoEditado, erro) = await _service.EditarAsync(contaId, lancamentoId, request);
+
+        // Assert
+        Assert.False(sucesso);
+        Assert.NotNull(erro);
+        Assert.Null(lancamentoEditado);
+        Assert.Contains("inativa", erro.ToLower());
+
+        _lancamentoRepositoryMock.Verify(r => r.Atualizar(It.IsAny<Lancamento>()), Times.Never);
+        _lancamentoRepositoryMock.Verify(r => r.Salvar(), Times.Never);
+    }
 }
