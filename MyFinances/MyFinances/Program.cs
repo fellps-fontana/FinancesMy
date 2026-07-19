@@ -45,12 +45,16 @@ builder.Services.AddScoped<IDeParaCategoriaRepository, DeParaCategoriaRepository
 builder.Services.AddScoped<ILancamentoRepository, LancamentoRepository>();
 builder.Services.AddScoped<ITransferenciaRepository, TransferenciaRepository>();
 builder.Services.AddScoped<IFaturaRepository, FaturaRepository>();
+builder.Services.AddScoped<IContaReceberRepository, ContaReceberRepository>();
 builder.Services.AddScoped<IAtivoRepository, AtivoRepository>();
 builder.Services.AddScoped<ICompraParceladaRepository, CompraParceladaRepository>();
 
 // Services - Conta
 builder.Services.AddScoped<IContaService, ContaService>();
 builder.Services.AddScoped<IAtivoService, AtivoService>();
+
+// Services - Contas a Receber
+builder.Services.AddScoped<IContaReceberService, ContaReceberService>();
 
 // Services - Categoria
 builder.Services.AddScoped<ICategoriaService, CategoriaService>();

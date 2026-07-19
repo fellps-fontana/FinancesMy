@@ -26,7 +26,7 @@ public class PagamentoResponse
             Data = transferencia.Data,
             Valor = transferencia.Valor,
             ContaOrigemId = transferencia.ContaOrigemId,
-            ContaDestinoId = transferencia.ContaDestinoId,
+            ContaDestinoId = transferencia.ContaDestinoId!.Value,
             FaturaId = transferencia.FaturaId,
             Descricao = transferencia.Descricao
         };

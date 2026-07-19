@@ -29,11 +29,13 @@ public class TransferenciaConfiguration : IEntityTypeConfiguration<Transferencia
             .IsRequired();
 
         builder.Property(t => t.ContaDestinoId)
-            .HasColumnName("conta_destino_id")
-            .IsRequired();
+            .HasColumnName("conta_destino_id");
 
         builder.Property(t => t.FaturaId)
             .HasColumnName("fatura_id");
+
+        builder.Property(t => t.ContaReceberId)
+            .HasColumnName("conta_receber_id");
 
         builder.Property(t => t.Descricao)
             .HasColumnName("descricao")
@@ -48,6 +50,11 @@ public class TransferenciaConfiguration : IEntityTypeConfiguration<Transferencia
             .WithMany()
             .HasForeignKey(t => t.ContaDestinoId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(t => t.ContaReceber)
+            .WithMany()
+            .HasForeignKey(t => t.ContaReceberId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne(t => t.Fatura)
             .WithMany(f => f.Transferencias)

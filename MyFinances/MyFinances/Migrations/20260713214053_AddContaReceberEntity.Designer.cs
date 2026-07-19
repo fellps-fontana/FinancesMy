@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MyFinances.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyFinances.Migrations
 {
     [DbContext(typeof(MyFinancesDbContext))]
-    partial class MyFinancesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260713214053_AddContaReceberEntity")]
+    partial class AddContaReceberEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -35,44 +38,39 @@ namespace MyFinances.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("ativa");
 
-                    b.Property<DateTime?>("AtualizadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("atualizado_em");
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
 
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("criado_em");
 
-                    b.Property<DateOnly>("DataCompra")
-                        .HasColumnType("date")
-                        .HasColumnName("data_compra");
-
-                    b.Property<string>("Instituicao")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("instituicao");
-
                     b.Property<string>("Nome")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("nome");
 
-                    b.Property<string>("Tipo")
+                    b.Property<decimal>("PrecoAtual")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("preco_atual");
+
+                    b.Property<decimal>("PrecoMedio")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("preco_medio");
+
+                    b.Property<decimal>("Quantidade")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("quantidade");
+
+                    b.Property<string>("Ticker")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("tipo");
-
-                    b.Property<decimal>("ValorAtual")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasColumnName("valor_atual");
-
-                    b.Property<decimal>("ValorInvestido")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasColumnName("valor_investido");
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("ticker");
 
                     b.HasKey("Id");
 
@@ -112,37 +110,6 @@ namespace MyFinances.Migrations
                     b.HasIndex("ParentId");
 
                     b.ToTable("categoria", (string)null);
-                });
-
-            modelBuilder.Entity("MyFinances.Domain.CompraParcelada", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateOnly>("DataCompra")
-                        .HasColumnType("date")
-                        .HasColumnName("data_compra");
-
-                    b.Property<string>("Descricao")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("descricao");
-
-                    b.Property<int>("QuantidadeParcelas")
-                        .HasColumnType("integer")
-                        .HasColumnName("quantidade_parcelas");
-
-                    b.Property<decimal>("ValorTotal")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasColumnName("valor_total");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("compra_parcelada", (string)null);
                 });
 
             modelBuilder.Entity("MyFinances.Domain.Conta", b =>
@@ -317,10 +284,6 @@ namespace MyFinances.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("categoria_id");
 
-                    b.Property<Guid?>("CompraParceladaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("compra_parcelada_id");
-
                     b.Property<Guid?>("ConciliadoCom")
                         .HasColumnType("uuid")
                         .HasColumnName("conciliado_com");
@@ -332,10 +295,6 @@ namespace MyFinances.Migrations
                     b.Property<Guid>("ContaId")
                         .HasColumnType("uuid")
                         .HasColumnName("conta_id");
-
-                    b.Property<Guid?>("ContaReceberId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("conta_receber_id");
 
                     b.Property<DateOnly>("Data")
                         .HasColumnType("date")
@@ -361,10 +320,6 @@ namespace MyFinances.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("oculto");
-
-                    b.Property<int?>("ParcelaNumero")
-                        .HasColumnType("integer")
-                        .HasColumnName("parcela_numero");
 
                     b.Property<string>("PierreTxnId")
                         .HasMaxLength(500)
@@ -394,13 +349,9 @@ namespace MyFinances.Migrations
 
                     b.HasIndex("CategoriaId");
 
-                    b.HasIndex("CompraParceladaId");
-
                     b.HasIndex("ConciliadoCom");
 
                     b.HasIndex("ContaId");
-
-                    b.HasIndex("ContaReceberId");
 
                     b.HasIndex("FaturaId");
 
@@ -414,6 +365,46 @@ namespace MyFinances.Migrations
                     b.ToTable("lancamento", (string)null);
                 });
 
+            modelBuilder.Entity("MyFinances.Domain.MovimentacaoAtivo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AtivoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ativo_id");
+
+                    b.Property<DateOnly>("Data")
+                        .HasColumnType("date")
+                        .HasColumnName("data");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observacao");
+
+                    b.Property<decimal>("PrecoUnitario")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("preco_unitario");
+
+                    b.Property<decimal>("Quantidade")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("quantidade");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("tipo");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("movimentacao_ativo", (string)null);
+                });
+
             modelBuilder.Entity("MyFinances.Domain.Transferencia", b =>
                 {
                     b.Property<Guid>("Id")
@@ -421,17 +412,13 @@ namespace MyFinances.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid?>("ContaDestinoId")
+                    b.Property<Guid>("ContaDestinoId")
                         .HasColumnType("uuid")
                         .HasColumnName("conta_destino_id");
 
                     b.Property<Guid>("ContaOrigemId")
                         .HasColumnType("uuid")
                         .HasColumnName("conta_origem_id");
-
-                    b.Property<Guid?>("ContaReceberId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("conta_receber_id");
 
                     b.Property<DateOnly>("Data")
                         .HasColumnType("date")
@@ -456,8 +443,6 @@ namespace MyFinances.Migrations
                     b.HasIndex("ContaDestinoId");
 
                     b.HasIndex("ContaOrigemId");
-
-                    b.HasIndex("ContaReceberId");
 
                     b.HasIndex("FaturaId");
 
@@ -555,11 +540,6 @@ namespace MyFinances.Migrations
                         .HasForeignKey("CategoriaId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("MyFinances.Domain.CompraParcelada", "CompraParcelada")
-                        .WithMany("Lancamentos")
-                        .HasForeignKey("CompraParceladaId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("MyFinances.Domain.Lancamento", "LancamentoConciliado")
                         .WithMany("LancamentosConciliados")
                         .HasForeignKey("ConciliadoCom")
@@ -570,11 +550,6 @@ namespace MyFinances.Migrations
                         .HasForeignKey("ContaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("MyFinances.Domain.ContaReceber", "ContaReceber")
-                        .WithMany()
-                        .HasForeignKey("ContaReceberId")
-                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("MyFinances.Domain.Fatura", "Fatura")
                         .WithMany("Lancamentos")
@@ -588,11 +563,7 @@ namespace MyFinances.Migrations
 
                     b.Navigation("Categoria");
 
-                    b.Navigation("CompraParcelada");
-
                     b.Navigation("Conta");
-
-                    b.Navigation("ContaReceber");
 
                     b.Navigation("Fatura");
 
@@ -606,18 +577,14 @@ namespace MyFinances.Migrations
                     b.HasOne("MyFinances.Domain.Conta", "ContaDestino")
                         .WithMany()
                         .HasForeignKey("ContaDestinoId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("MyFinances.Domain.Conta", "ContaOrigem")
                         .WithMany()
                         .HasForeignKey("ContaOrigemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("MyFinances.Domain.ContaReceber", "ContaReceber")
-                        .WithMany()
-                        .HasForeignKey("ContaReceberId")
-                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("MyFinances.Domain.Fatura", "Fatura")
                         .WithMany("Transferencias")
@@ -628,8 +595,6 @@ namespace MyFinances.Migrations
 
                     b.Navigation("ContaOrigem");
 
-                    b.Navigation("ContaReceber");
-
                     b.Navigation("Fatura");
                 });
 
@@ -638,11 +603,6 @@ namespace MyFinances.Migrations
                     b.Navigation("Lancamentos");
 
                     b.Navigation("Subcategorias");
-                });
-
-            modelBuilder.Entity("MyFinances.Domain.CompraParcelada", b =>
-                {
-                    b.Navigation("Lancamentos");
                 });
 
             modelBuilder.Entity("MyFinances.Domain.Fatura", b =>
