@@ -45,9 +45,32 @@ public class LancamentoRepository : ILancamentoRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<Lancamento>> ListarParaFluxoCaixa(Guid? contaId)
+    {
+        var query = _context.Lancamentos
+            .Include(l => l.Conta)
+            .Include(l => l.Categoria)
+            .Where(l => l.FaturaId == null)
+            .Where(l => (l.TransferenciaId == null || l.Tipo == TipoLancamento.Debit))
+            .Where(l => !l.Oculto)
+            .AsQueryable();
+
+        if (contaId.HasValue)
+        {
+            query = query.Where(l => l.ContaId == contaId.Value);
+        }
+
+        return await query.ToListAsync();
+    }
+
     public async Task Atualizar(Lancamento lancamento)
     {
         _context.Lancamentos.Update(lancamento);
+    }
+
+    public async Task Remover(Lancamento lancamento)
+    {
+        _context.Lancamentos.Remove(lancamento);
     }
 
     public async Task Salvar()

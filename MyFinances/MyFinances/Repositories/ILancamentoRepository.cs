@@ -8,6 +8,8 @@ public interface ILancamentoRepository
     Task<Lancamento?> ObterPorId(Guid id);
     Task<IEnumerable<Lancamento>> ListarPorConta(Guid contaId);
     Task<IEnumerable<Lancamento>> ListarPorFatura(Guid faturaId);
+    Task<IEnumerable<Lancamento>> ListarParaFluxoCaixa(Guid? contaId);
     Task Atualizar(Lancamento lancamento);
+    Task Remover(Lancamento lancamento);
     Task Salvar();
 }
