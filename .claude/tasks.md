@@ -186,7 +186,7 @@ RETORNO ESPERADO: hooks tipados (sem `any`), com invalidacao de cache cruzada ap
 
 ## TASK-013 — UI: listar contas a receber com status e saldo pendente
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build do frontend limpo. Hanzo achou uma divergencia real entre identidade-visual.md e o tema shadcn: token --accent do projeto NAO e o roxo, e sim uma superficie neutra escura; o roxo real esta em --primary. Badge PARCIAL usa bg-primary/15 text-primary em vez do accent literal, decisao documentada em comentario no componente)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-012
