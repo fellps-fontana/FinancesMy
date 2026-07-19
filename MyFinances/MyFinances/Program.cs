@@ -65,6 +65,11 @@ builder.Services.AddScoped<PagamentoFaturaService>();
 builder.Services.AddScoped<EstornoCartaoService>();
 builder.Services.AddScoped<SaldoCartaoService>();
 
+// Services - Lancamentos
+builder.Services.AddScoped<ILancamentoManualService, LancamentoManualService>();
+builder.Services.AddScoped<ITransferenciaService, TransferenciaService>();
+builder.Services.AddScoped<IFluxoCaixaService, FluxoCaixaService>();
+
 // Authentication and Authorization configuration
 builder.Services.AddAuthentication(options =>
 {
