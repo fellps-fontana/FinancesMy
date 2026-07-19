@@ -214,7 +214,7 @@ RETORNO ESPERADO: componente chamando `useCriarRecebivel`/`useCriarEmprestimo` c
 
 ## TASK-015 — UI: acao de registrar recebimento (parcial ou total)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. Extraiu hook useContasParaSelecao compartilhado entre este form e FormRegistrarContaReceber, eliminando a duplicacao registrada como pendente na TASK-014. Botao "Registrar recebimento" some quando status=RECEBIDO. Campo categoriaId deliberadamente omitido do form - nao ha combobox de categoria pronto no projeto, e um input de texto livre pra UUID cru seria pior que nao ter o campo; decisao documentada, categoriaId continua opcional na request)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-012, TASK-013

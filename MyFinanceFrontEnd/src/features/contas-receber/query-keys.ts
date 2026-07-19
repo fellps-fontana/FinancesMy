@@ -12,4 +12,9 @@ export const contasReceberKeys = {
   porId: (id: string) => [...contasReceberKeys.all, "porId", id] as const,
   totalEsperadoMes: (ano: number, mes: number) =>
     [...contasReceberKeys.all, "totalEsperadoMes", ano, mes] as const,
+  // Contas MANUAL (banco + investimento) disponiveis pra selecao de origem
+  // (emprestimo) ou destino (recebimento) - mesmo conjunto de dado nos dois
+  // formularios, so muda o rotulo do campo. Sem filtro/parametro: uma unica
+  // chave cobre os dois usos.
+  contasParaSelecao: () => [...contasReceberKeys.all, "contasParaSelecao"] as const,
 }

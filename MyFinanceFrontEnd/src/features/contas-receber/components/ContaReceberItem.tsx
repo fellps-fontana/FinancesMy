@@ -1,7 +1,10 @@
+import { useState } from "react"
 import { Card, CardContent } from "@/shared/ui/card"
+import { Button } from "@/shared/ui/button"
 import { cn } from "@/shared/lib/utils"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
 import { formatarData } from "@/features/cartao/lib/formatarData"
+import { FormRegistrarRecebimento } from "@/features/contas-receber/FormRegistrarRecebimento"
 import type { ContaReceberResponse } from "@/features/contas-receber/types"
 
 type StatusContaReceber = "PENDENTE" | "PARCIAL" | "RECEBIDO"
@@ -34,11 +37,16 @@ type ContaReceberItemProps = {
   contaReceber: ContaReceberResponse
 }
 
-// Componente de apresentacao (puro): recebe a conta a receber com
-// saldoPendente/status ja calculados pelo backend (regra-de-negocio.md item
-// 13) e apenas exibe - nenhum calculo de saldo ou transicao de status mora
-// aqui.
+// Componente de apresentacao que tambem guarda o toggle de acao "Registrar
+// recebimento" (mesmo espirito de ContaInvestimentoItem/editandoSaldo, ver
+// features/investimentos). saldoPendente/status continuam vindo prontos do
+// backend (regra-de-negocio.md item 13) e nenhum calculo de saldo ou
+// transicao de status mora aqui - o formulario (FormRegistrarRecebimento) e
+// quem guarda o estado dos campos e aciona a mutation; este componente so
+// decide QUANDO exibi-lo.
 export function ContaReceberItem({ contaReceber }: ContaReceberItemProps) {
+  const [registrandoRecebimento, setRegistrandoRecebimento] = useState(false)
+
   const status = contaReceber.status as StatusContaReceber
   const statusConfig = CONFIG_POR_STATUS[status]
 
@@ -46,6 +54,10 @@ export function ContaReceberItem({ contaReceber }: ContaReceberItemProps) {
   const tipoLabel = LABEL_POR_TIPO[tipo] ?? contaReceber.tipo
 
   const mostrarPessoa = tipo === "EMPRESTIMO" && Boolean(contaReceber.pessoa)
+  // RECEBIDO e o estado final (saldo_pendente == 0, item 13): usado tanto pra
+  // cor do saldo pendente (positivo quando quitado) quanto pra decidir se a
+  // acao "Registrar recebimento" ainda faz sentido - conta ja quitada nao
+  // recebe mais nenhum lancamento novo.
   const saldoPendenteEmAberto = status !== "RECEBIDO"
 
   return (
@@ -98,6 +110,26 @@ export function ContaReceberItem({ contaReceber }: ContaReceberItemProps) {
             Previsto para {formatarData(contaReceber.dataPrevista)}
           </span>
         )}
+
+        {saldoPendenteEmAberto &&
+          (registrandoRecebimento ? (
+            <FormRegistrarRecebimento
+              contaReceberId={contaReceber.id}
+              onRegistrado={() => setRegistrandoRecebimento(false)}
+              onCancelar={() => setRegistrandoRecebimento(false)}
+            />
+          ) : (
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setRegistrandoRecebimento(true)}
+              >
+                Registrar recebimento
+              </Button>
+            </div>
+          ))}
       </CardContent>
     </Card>
   )

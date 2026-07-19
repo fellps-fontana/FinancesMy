@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { ApiError, apiClient } from "@/shared/api/client"
+import { ApiError } from "@/shared/api/client"
 import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -9,31 +8,14 @@ import { cn } from "@/shared/lib/utils"
 import { dataDeHoje } from "@/features/cartao/lib/formatarData"
 import { useCriarEmprestimo } from "@/features/contas-receber/hooks/useCriarEmprestimo"
 import { useCriarRecebivel } from "@/features/contas-receber/hooks/useCriarRecebivel"
+import { useContasParaSelecao } from "@/features/contas-receber/hooks/useContasParaSelecao"
 import {
   converterValorTotalParaNumero,
   validarEmprestimo,
   validarRecebivel,
 } from "@/features/contas-receber/lib/validarContaReceber"
-import type { ContaResponse } from "@/features/investimentos/types"
 
 type TipoContaReceber = "RECEBIVEL" | "EMPRESTIMO"
-
-// Nao ha endpoint que liste contas de TODOS os tipos combinados (o back so
-// aceita um `?tipo=` por chamada). Pra popular a conta de origem do
-// emprestimo, busca banco + investimento em paralelo e combina os
-// resultados num unico array. CARTAO fica de fora: cartao e linha de
-// credito, nao fonte de fundos pra emprestar (decisao pragmatica de UX
-// registrada na task, nao regra de negocio formal do item 13). Reaproveita
-// o ContaResponse ja existente em features/investimentos - nao duplica o
-// type so por causa desta tela.
-async function buscarContasOrigemEmprestimo(): Promise<ContaResponse[]> {
-  const [contasBanco, contasInvestimento] = await Promise.all([
-    apiClient.get<ContaResponse[]>("/api/contas?tipo=banco"),
-    apiClient.get<ContaResponse[]>("/api/contas?tipo=investimento"),
-  ])
-
-  return [...contasBanco, ...contasInvestimento]
-}
 
 // Estado deste formulario (inputs + qual toggle esta ativo) vive dentro do
 // proprio componente: e um formulario auto-contido, sem tela intermediaria
@@ -44,8 +26,9 @@ async function buscarContasOrigemEmprestimo(): Promise<ContaResponse[]> {
 // arquivo sem separar responsabilidade real (clean-code.md: "nao introduza
 // padrao de projeto sem necessidade real"). Estado de servidor continua
 // isolado do estado de UI via React Query - os hooks de mutation prontos
-// (useCriarRecebivel/useCriarEmprestimo) e o useQuery abaixo para a lista de
-// contas de origem; nenhum fetch cru dentro de handlers.
+// (useCriarRecebivel/useCriarEmprestimo) e useContasParaSelecao (compartilhado
+// com FormRegistrarRecebimento) para a lista de contas de origem; nenhum
+// fetch cru dentro de handlers.
 export function FormRegistrarContaReceber() {
   const [tipo, setTipo] = useState<TipoContaReceber>("RECEBIVEL")
   const [descricao, setDescricao] = useState("")
@@ -63,11 +46,7 @@ export function FormRegistrarContaReceber() {
     data: contasOrigem,
     isLoading: carregandoContasOrigem,
     error: erroContasOrigem,
-  } = useQuery({
-    queryKey: ["contasReceber", "contasOrigemEmprestimo"],
-    queryFn: buscarContasOrigemEmprestimo,
-    enabled: tipo === "EMPRESTIMO",
-  })
+  } = useContasParaSelecao({ enabled: tipo === "EMPRESTIMO" })
 
   if (erroContasOrigem) {
     console.error("Falha ao carregar contas de origem para emprestimo", erroContasOrigem)
