@@ -200,7 +200,7 @@ RETORNO ESPERADO: componente de apresentacao consumindo `useContasReceber`.
 
 ## TASK-014 — UI: formulario de criar recebivel/emprestimo
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. Gap real resolvido: backend nao tem endpoint de listagem de contas combinando todos os tipos - form busca banco+investimento em paralelo e combina, excluindo cartao, pragmatico de UX. Estado mantido dentro do proprio componente, sem container separado, por nao haver lista a coordenar. useQuery de contas de origem ficou inline no componente, nao extraido pra hooks/, por restricao de arquivos permitidos da task - candidato a limpeza futura se quiser. Nao integrado em ListaContasReceber.tsx ainda, deliberado)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-012
