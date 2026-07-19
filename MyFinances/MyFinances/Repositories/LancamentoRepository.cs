@@ -47,20 +47,27 @@ public class LancamentoRepository : ILancamentoRepository
 
     public async Task<IEnumerable<Lancamento>> ListarParaFluxoCaixa(Guid? contaId)
     {
-        var query = _context.Lancamentos
+        var lancamentos = await _context.Lancamentos
             .Include(l => l.Conta)
             .Include(l => l.Categoria)
             .Where(l => l.FaturaId == null)
-            .Where(l => (l.TransferenciaId == null || l.Tipo == TipoLancamento.Debit))
             .Where(l => !l.Oculto)
-            .AsQueryable();
+            .ToListAsync();
 
         if (contaId.HasValue)
         {
-            query = query.Where(l => l.ContaId == contaId.Value);
+            lancamentos = lancamentos
+                .Where(l => l.ContaId == contaId.Value)
+                .ToList();
+        }
+        else
+        {
+            lancamentos = lancamentos
+                .Where(l => ClassificacaoLancamentoService.Classificar(l) != ClassificacaoLancamento.Transferencia)
+                .ToList();
         }
 
-        return await query.ToListAsync();
+        return lancamentos;
     }
 
     public async Task Atualizar(Lancamento lancamento)

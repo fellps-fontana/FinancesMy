@@ -32,8 +32,10 @@ public class TransferenciaService : ITransferenciaService
         var transferencia = CriarTransferencia(request);
         await _transferenciaRepository.Adicionar(transferencia);
 
-        var lancamentoSaida = CriarLancamentoSaida(transferencia, request);
-        var lancamentoEntrada = CriarLancamentoEntrada(transferencia, request);
+        var (lancamentoSaida, lancamentoEntrada) = TransferenciaLancamentoHelper.CriarLancamentos(
+            transferencia,
+            request.ContaOrigemId,
+            request.ContaDestinoId);
 
         await _lancamentoRepository.Adicionar(lancamentoSaida);
         await _lancamentoRepository.Adicionar(lancamentoEntrada);
@@ -93,37 +95,4 @@ public class TransferenciaService : ITransferenciaService
         };
     }
 
-    private static Lancamento CriarLancamentoSaida(Transferencia transferencia, CriarTransferenciaRequest request)
-    {
-        return new Lancamento
-        {
-            Id = Guid.NewGuid(),
-            ContaId = request.ContaOrigemId,
-            Descricao = transferencia.Descricao,
-            Valor = request.Valor,
-            Tipo = TipoLancamento.Debit,
-            Data = request.Data,
-            Status = StatusLancamento.Pago,
-            Manual = true,
-            Oculto = false,
-            TransferenciaId = transferencia.Id
-        };
-    }
-
-    private static Lancamento CriarLancamentoEntrada(Transferencia transferencia, CriarTransferenciaRequest request)
-    {
-        return new Lancamento
-        {
-            Id = Guid.NewGuid(),
-            ContaId = request.ContaDestinoId,
-            Descricao = transferencia.Descricao,
-            Valor = request.Valor,
-            Tipo = TipoLancamento.Credit,
-            Data = request.Data,
-            Status = StatusLancamento.Pago,
-            Manual = true,
-            Oculto = false,
-            TransferenciaId = transferencia.Id
-        };
-    }
 }

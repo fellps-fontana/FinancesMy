@@ -22,10 +22,14 @@ public class TransferenciasController : ControllerBase
 
         if (!sucesso)
         {
+            if (erro?.Contains("nao encontrada", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return NotFound(new { erro });
+            }
             return BadRequest(new { erro });
         }
 
-        var response = PagamentoResponse.FromTransferencia(transferencia!);
+        var response = TransferenciaResponse.FromTransferencia(transferencia!);
         return Created($"/api/transferencias/{response.Id}", response);
     }
 }

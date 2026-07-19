@@ -68,33 +68,10 @@ public class PagamentoFaturaService
 
         await _transferenciaRepository.Adicionar(transferencia);
 
-        var lancamentoSaida = new Lancamento
-        {
-            Id = Guid.NewGuid(),
-            ContaId = request.ContaOrigemId,
-            Descricao = transferencia.Descricao,
-            Valor = request.Valor,
-            Tipo = TipoLancamento.Debit,
-            Data = request.Data,
-            Status = StatusLancamento.Pago,
-            Manual = true,
-            Oculto = false,
-            TransferenciaId = transferencia.Id
-        };
-
-        var lancamentoEntrada = new Lancamento
-        {
-            Id = Guid.NewGuid(),
-            ContaId = fatura.ContaId,
-            Descricao = transferencia.Descricao,
-            Valor = request.Valor,
-            Tipo = TipoLancamento.Credit,
-            Data = request.Data,
-            Status = StatusLancamento.Pago,
-            Manual = true,
-            Oculto = false,
-            TransferenciaId = transferencia.Id
-        };
+        var (lancamentoSaida, lancamentoEntrada) = TransferenciaLancamentoHelper.CriarLancamentos(
+            transferencia,
+            request.ContaOrigemId,
+            fatura.ContaId);
 
         await _lancamentoRepository.Adicionar(lancamentoSaida);
         await _lancamentoRepository.Adicionar(lancamentoEntrada);

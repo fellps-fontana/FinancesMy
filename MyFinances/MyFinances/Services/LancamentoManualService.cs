@@ -88,6 +88,12 @@ public class LancamentoManualService : ILancamentoManualService
             return (false, null, "Lancamento nao encontrado");
         }
 
+        var validacao = await ValidarContaAtiva(contaId);
+        if (!validacao.Valido)
+        {
+            return (false, null, validacao.Erro);
+        }
+
         var validacaoDados = ValidarDadosLancamento(request.Descricao, request.Valor);
         if (!validacaoDados.Valido)
         {
@@ -137,6 +143,12 @@ public class LancamentoManualService : ILancamentoManualService
         if (lancamento == null || lancamento.ContaId != contaId)
         {
             return (false, "Lancamento nao encontrado");
+        }
+
+        var validacao = await ValidarContaAtiva(contaId);
+        if (!validacao.Valido)
+        {
+            return (false, validacao.Erro);
         }
 
         if (lancamento.Status != StatusLancamento.Pendente)
