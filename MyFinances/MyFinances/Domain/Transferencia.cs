@@ -10,9 +10,11 @@ public class Transferencia
 
     public Guid ContaOrigemId { get; set; }
 
-    public Guid ContaDestinoId { get; set; }
+    public Guid? ContaDestinoId { get; set; }
 
     public Guid? FaturaId { get; set; }
+
+    public Guid? ContaReceberId { get; set; }
 
     public string? Descricao { get; set; }
 
@@ -20,6 +22,8 @@ public class Transferencia
     public Conta? ContaOrigem { get; set; }
 
     public Conta? ContaDestino { get; set; }
+
+    public ContaReceber? ContaReceber { get; set; }
 
     public ICollection<Lancamento> Lancamentos { get; set; } = new List<Lancamento>();
 

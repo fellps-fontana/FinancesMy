@@ -32,6 +32,8 @@ public class Lancamento
 
     public Guid? FaturaId { get; set; }
 
+    public Guid? ContaReceberId { get; set; }
+
     public Guid? CompraParceladaId { get; set; }
 
     public int? ParcelaNumero { get; set; }
@@ -46,6 +48,8 @@ public class Lancamento
     public Transferencia? Transferencia { get; set; }
 
     public Fatura? Fatura { get; set; }
+
+    public ContaReceber? ContaReceber { get; set; }
 
     public CompraParcelada? CompraParcelada { get; set; }
 

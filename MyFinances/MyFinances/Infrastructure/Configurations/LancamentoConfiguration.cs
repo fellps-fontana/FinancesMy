@@ -75,6 +75,9 @@ public class LancamentoConfiguration : IEntityTypeConfiguration<Lancamento>
         builder.Property(l => l.FaturaId)
             .HasColumnName("fatura_id");
 
+        builder.Property(l => l.ContaReceberId)
+            .HasColumnName("conta_receber_id");
+
         builder.Property(l => l.CompraParceladaId)
             .HasColumnName("compra_parcelada_id");
 
@@ -104,6 +107,11 @@ public class LancamentoConfiguration : IEntityTypeConfiguration<Lancamento>
         builder.HasOne(l => l.Fatura)
             .WithMany(f => f.Lancamentos)
             .HasForeignKey(l => l.FaturaId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(l => l.ContaReceber)
+            .WithMany(cr => cr.Recebimentos)
+            .HasForeignKey(l => l.ContaReceberId)
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne(l => l.CompraParcelada)
