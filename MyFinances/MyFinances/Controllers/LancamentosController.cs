@@ -26,10 +26,6 @@ public class LancamentosController : ControllerBase
 
         if (!sucesso)
         {
-            if (erro?.Contains("nao encontrada", StringComparison.OrdinalIgnoreCase) == true)
-            {
-                return NotFound(new { erro });
-            }
             return BadRequest(new { erro });
         }
 
@@ -47,10 +43,6 @@ public class LancamentosController : ControllerBase
 
         if (!sucesso)
         {
-            if (erro?.Contains("nao encontrado", StringComparison.OrdinalIgnoreCase) == true)
-            {
-                return NotFound(new { erro });
-            }
             return BadRequest(new { erro });
         }
 

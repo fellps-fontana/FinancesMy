@@ -88,10 +88,9 @@ public class LancamentoManualService : ILancamentoManualService
             return (false, null, "Lancamento nao encontrado");
         }
 
-        var validacao = await ValidarContaAtiva(contaId);
-        if (!validacao.Valido)
+        if (lancamento.Conta != null && !lancamento.Conta.Ativa)
         {
-            return (false, null, validacao.Erro);
+            return (false, null, "Conta inativa nao pode ser utilizada");
         }
 
         var validacaoDados = ValidarDadosLancamento(request.Descricao, request.Valor);
@@ -145,10 +144,9 @@ public class LancamentoManualService : ILancamentoManualService
             return (false, "Lancamento nao encontrado");
         }
 
-        var validacao = await ValidarContaAtiva(contaId);
-        if (!validacao.Valido)
+        if (lancamento.Conta != null && !lancamento.Conta.Ativa)
         {
-            return (false, validacao.Erro);
+            return (false, "Conta inativa nao pode ser utilizada");
         }
 
         if (lancamento.Status != StatusLancamento.Pendente)

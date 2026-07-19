@@ -22,10 +22,6 @@ public class TransferenciasController : ControllerBase
 
         if (!sucesso)
         {
-            if (erro?.Contains("nao encontrada", StringComparison.OrdinalIgnoreCase) == true)
-            {
-                return NotFound(new { erro });
-            }
             return BadRequest(new { erro });
         }
 
