@@ -8,6 +8,18 @@ public static class ClassificacaoLancamentoService
 {
     public static ClassificacaoLancamento Classificar(Lancamento lancamento)
     {
-        throw new NotImplementedException();
+        if (lancamento.TransferenciaId.HasValue)
+        {
+            return ClassificacaoLancamento.Transferencia;
+        }
+
+        if (lancamento.FaturaId.HasValue)
+        {
+            return ClassificacaoLancamento.CompetenciaCartao;
+        }
+
+        return lancamento.Tipo == TipoLancamento.Debit
+            ? ClassificacaoLancamento.Saida
+            : ClassificacaoLancamento.Entrada;
     }
 }
