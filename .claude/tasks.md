@@ -533,12 +533,13 @@ STATUS: PENDENTE
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-043
-CONTEXTO A LER: regra-de-negocio.md itens 1 (conta MANUAL e fonte da verdade) e 5 (status PENDENTE/PAGO na escrita manual, nunca SUGERIDO); branch antiga `Services/LancamentoManualService.cs` e `DTOs/CriarLancamentoRequest.cs`/`EditarLancamentoRequest.cs`/`LancamentoResponseDto.cs` (forma, adaptar de `AppDbContext`+string constants para `ILancamentoRepository`/`IContaRepository`+enum); `Services/CompraCartaoService.cs` (padrao de convencao atual: DI por Repository, retorno em tupla)
-ESCOPO: criar `LancamentoManualService` com `CriarLancamentoAsync`, `EditarLancamentoAsync`, `ListarLancamentosAsync` (filtro opcional por status), `ExcluirLancamentoAsync` (hard delete, bloqueado se `TransferenciaId`/`FaturaId`/`ConciliadoCom` preenchido), todos validando `conta.Origem == OrigemConta.Manual`; validar `Tipo` (DEBIT/CREDIT), `Status` (PENDENTE/PAGO, nunca SUGERIDO) e `Valor > 0` na entrada.
+CONTEXTO A LER: regra-de-negocio.md itens 1 (conta MANUAL e fonte da verdade) e 5 (status PENDENTE/PAGO na escrita manual, nunca SUGERIDO); branch antiga `Services/LancamentoManualService.cs` e `DTOs/CriarLancamentoRequest.cs`/`EditarLancamentoRequest.cs`/`LancamentoResponseDto.cs` (forma, adaptar de `AppDbContext`+string constants para `ILancamentoRepository`/`IContaRepository`+enum); `Services/CompraCartaoService.cs` (padrao de convencao atual: DI por Repository, retorno em tupla); `Services/ValidacaoCartaoService.cs` (padrao de validacao de `conta.Ativa` — decisao do usuario em 2026-07-19: exigir conta ativa tambem aqui, mesmo a regra-de-negocio.md nao dizendo explicitamente)
+ESCOPO: criar `LancamentoManualService` com `CriarLancamentoAsync`, `EditarLancamentoAsync`, `ListarLancamentosAsync` (filtro opcional por status), `ExcluirLancamentoAsync` (hard delete, bloqueado se `TransferenciaId`/`FaturaId`/`ConciliadoCom` preenchido), todos validando `conta.Origem == OrigemConta.Manual` E `conta.Ativa == true`; validar `Tipo` (DEBIT/CREDIT), `Status` (PENDENTE/PAGO, nunca SUGERIDO) e `Valor > 0` na entrada.
 CRITERIO DE ACEITE:
 1. Excluir lancamento vinculado a transferencia/fatura/conciliacao retorna erro sem apagar.
 2. Criar/editar em conta `origem=OPEN_FINANCE` retorna erro.
-3. `Status=SUGERIDO` rejeitado na criacao/edicao.
+3. Criar/editar em conta `Ativa=false` retorna erro.
+4. `Status=SUGERIDO` rejeitado na criacao/edicao.
 ARQUIVOS PERMITIDOS:
 `MyFinances\MyFinances\Services\LancamentoManualService.cs` (novo)
 `MyFinances\MyFinances\DTOs\CriarLancamentoRequest.cs` (novo)
@@ -556,17 +557,17 @@ STATUS: PENDENTE
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
-CONTEXTO A LER: regra-de-negocio.md item 3 (transferencias de mesma titularidade, branch manual) inteiro; branch antiga `Services/TransferenciaService.cs` e `DTOs/CriarTransferenciaRequest.cs` (forma, adaptar de `AppDbContext` para repositories e de string constants para enum); `Services/PagamentoFaturaService.cs` (mesma estrutura de 2 pernas — Debit origem/Credit destino, mesmo `TransferenciaId` — ja implementada e testada nesta arquitetura, usar como modelo direto); `DTOs/PagamentoResponse.cs` (padrao de DTO factory `FromTransferencia` a replicar)
-ESCOPO: criar `TransferenciaService.CriarAsync` que valida `ContaOrigemId != ContaDestinoId`, ambas as contas `Origem == OrigemConta.Manual`, `Valor > 0`, e cria a `Transferencia` + 2 `Lancamento` (Debit origem/Credit destino, `Status=Pago`, `Manual=true`, mesmo `TransferenciaId`) atomicamente.
+CONTEXTO A LER: regra-de-negocio.md item 3 (transferencias de mesma titularidade, branch manual) inteiro; branch antiga `Services/TransferenciaService.cs` e `DTOs/CriarTransferenciaRequest.cs` (forma, adaptar de `AppDbContext` para repositories e de string constants para enum); `Services/PagamentoFaturaService.cs` (mesma estrutura de 2 pernas — Debit origem/Credit destino, mesmo `TransferenciaId` — ja implementada e testada nesta arquitetura, usar como modelo direto); `DTOs/PagamentoResponse.cs` (padrao de DTO factory `FromTransferencia` a replicar); `Services/ValidacaoCartaoService.cs` (padrao de validacao de `conta.Ativa` — decisao do usuario em 2026-07-19: exigir conta ativa nas duas pontas)
+ESCOPO: criar `TransferenciaService.CriarAsync` que valida `ContaOrigemId != ContaDestinoId`, ambas as contas `Origem == OrigemConta.Manual` E `Ativa == true`, `Valor > 0`, e cria a `Transferencia` + 2 `Lancamento` (Debit origem/Credit destino, `Status=Pago`, `Manual=true`, mesmo `TransferenciaId`) atomicamente.
 CRITERIO DE ACEITE:
-1. Transferencia entre 2 contas manuais cria exatamente 2 lancamentos com mesmo `TransferenciaId`.
-2. Transferencia envolvendo conta OF ou mesma conta origem/destino e rejeitada.
+1. Transferencia entre 2 contas manuais ativas cria exatamente 2 lancamentos com mesmo `TransferenciaId`.
+2. Transferencia envolvendo conta OF, conta inativa (origem ou destino) ou mesma conta origem/destino e rejeitada.
 ARQUIVOS PERMITIDOS:
 `MyFinances\MyFinances\Services\TransferenciaService.cs` (novo)
 `MyFinances\MyFinances\DTOs\CriarTransferenciaRequest.cs` (novo)
 `MyFinances\MyFinances\DTOs\TransferenciaResponse.cs` (novo)
 `MyFinances\MyFinances\Program.cs`
-NAO FAZER: nao permitir transferencia com conta `origem=OPEN_FINANCE`; nao expor a entity `Transferencia` crua no DTO (usar `TransferenciaResponse.FromTransferencia`, igual `PagamentoResponse.FromTransferencia`).
+NAO FAZER: nao permitir transferencia com conta `origem=OPEN_FINANCE` ou `Ativa=false`; nao expor a entity `Transferencia` crua no DTO (usar `TransferenciaResponse.FromTransferencia`, igual `PagamentoResponse.FromTransferencia`).
 RETORNO ESPERADO: service + DTOs, compilando, registrado em `Program.cs`.
 
 ---
@@ -618,7 +619,7 @@ AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-044, TASK-045, TASK-046
 CONTEXTO A LER: regra-de-negocio.md itens 1, 3, 5; branch antiga `LancamentoManualServiceTests.cs` e `TransferenciaServiceTests.cs` (so os nomes/casos, adaptar setup de `AppDbContext` para `MyFinancesDbContext` in-memory)
-ESCOPO: testar CRUD manual (feliz + rejeicoes: conta OF, status SUGERIDO, valor<=0, exclusao bloqueada por vinculo), transferencia (feliz + rejeicoes: mesma conta, conta OF, valor<=0), fluxo caixa (exclui compra cartao, exclui oculto, transferencia como 1 linha).
+ESCOPO: testar CRUD manual (feliz + rejeicoes: conta OF, conta inativa, status SUGERIDO, valor<=0, exclusao bloqueada por vinculo), transferencia (feliz + rejeicoes: mesma conta, conta OF, conta inativa em qualquer ponta, valor<=0), fluxo caixa (exclui compra cartao, exclui oculto, transferencia como 1 linha).
 CRITERIO DE ACEITE: testes passando cobrindo os casos listados.
 ARQUIVOS PERMITIDOS:
 `MyFinances\MyFinances.Tests\Services\LancamentoManualServiceTests.cs` (novo)
@@ -673,15 +674,16 @@ RETORNO ESPERADO: veredito final do modulo.
 043 e 045 nao dependem de 038-042 (a cadeia critica de Classificacao e
 independente do resto — pode rodar em paralelo).
 
-## Pendencias — precisa decisao do usuario antes de rodar a queue
+## Pendencias — resolvidas com o usuario em 2026-07-19
 
-1. **Ocultacao de lancamento Open Finance (item 4) ficou fora desta entrega.**
-   `regra-de-negocio.md` marca isso como fora de escopo v1 — decisao tomada
-   depois que a branch antiga (que ja tinha isso pronto/testado) foi escrita.
-   Confirmar que e isso mesmo, ou reincluir.
-2. **Gap pre-existente, nao introduzido aqui:** nem a branch antiga nem este
-   desenho validam `conta.Ativa` antes de escrever lancamento/transferencia
-   manual — o Cartao (`ValidacaoCartaoService`) rejeita conta inativa, mas
-   `regra-de-negocio.md` nao exige isso pra lancamento/transferencia manual.
-   Regra omissa — nao assumida. Decidir se pergunta formalmente antes de
-   codar ou se fica como esta.
+1. **Ocultacao de lancamento Open Finance (item 4) confirmada fora desta
+   entrega.** `regra-de-negocio.md` marca isso como fora de escopo v1 —
+   TASK-044 nao inclui `LancamentoOcultacaoService`/`PATCH /ocultar`.
+2. **Validacao de `conta.Ativa` confirmada.** Gap pre-existente (nem a branch
+   antiga nem o desenho original validavam isso) — usuario decidiu exigir
+   conta ativa tambem em lancamento/transferencia manual, mesmo mode
+   `regra-de-negocio.md` nao dizendo explicitamente. Refletido em TASK-044
+   (`conta.Origem == Manual` + `conta.Ativa == true`), TASK-045 (ambas as
+   contas ativas) e TASK-048 (casos de teste de rejeicao por conta inativa).
+
+Nenhuma pendencia de decisao de produto restante. Queue pronta para execucao.
