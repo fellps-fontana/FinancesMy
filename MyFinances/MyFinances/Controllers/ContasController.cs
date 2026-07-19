@@ -60,17 +60,7 @@ public class ContasController : ControllerBase
             return BadRequest(new { erro = $"Tipo '{tipo}' nao e suportado. Use 'investimento', 'cartao' ou 'banco'." });
         }
 
-        IEnumerable<ContaResponse> response;
-
-        if (string.IsNullOrWhiteSpace(tipo) || tipo.Equals("investimento", StringComparison.OrdinalIgnoreCase))
-        {
-            var saldosComModo = await _contaService.ObterSaldosComModoContasInvestimento();
-            response = contas.Select(c => ContaResponse.FromContaComSaldo(c, saldosComModo[c.Id].saldo, saldosComModo[c.Id].estaEmModoCarteira));
-        }
-        else
-        {
-            response = contas.Select(c => ContaResponse.FromConta(c));
-        }
+        var response = contas.Select(c => ContaResponse.FromConta(c));
 
         return Ok(response);
     }
@@ -123,10 +113,6 @@ public class ContasController : ControllerBase
         catch (ContaNaoEncontradaException ex)
         {
             return NotFound(new { erro = ex.Message });
-        }
-        catch (ContaComAtivosNaoPodeSerDesativadaException ex)
-        {
-            return UnprocessableEntity(new { erro = ex.Message });
         }
     }
 

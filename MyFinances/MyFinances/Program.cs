@@ -47,18 +47,11 @@ builder.Services.AddScoped<ITransferenciaRepository, TransferenciaRepository>();
 builder.Services.AddScoped<IFaturaRepository, FaturaRepository>();
 builder.Services.AddScoped<IContaReceberRepository, ContaReceberRepository>();
 builder.Services.AddScoped<IAtivoRepository, AtivoRepository>();
+builder.Services.AddScoped<ICompraParceladaRepository, CompraParceladaRepository>();
 
 // Services - Conta
 builder.Services.AddScoped<IContaService, ContaService>();
 builder.Services.AddScoped<IAtivoService, AtivoService>();
-
-builder.Services.AddHttpClient<ICotacaoExternaService, CotacaoExternaService>(client =>
-{
-    var brapiConfig = builder.Configuration.GetSection("Brapi");
-    var baseUrl = brapiConfig["BaseUrl"] ?? "https://brapi.dev/";
-    client.BaseAddress = new Uri(baseUrl);
-    client.DefaultRequestHeaders.Add("User-Agent", "MyFinances/1.0");
-});
 
 // Services - Contas a Receber
 builder.Services.AddScoped<IContaReceberService, ContaReceberService>();
@@ -71,6 +64,7 @@ builder.Services.AddScoped<IDeParaCategoriaService, DeParaCategoriaService>();
 builder.Services.AddScoped<ValidacaoCartaoService>();
 builder.Services.AddScoped<FaturaCicloService>();
 builder.Services.AddScoped<CompraCartaoService>();
+builder.Services.AddScoped<ComprasParceladasService>();
 builder.Services.AddScoped<PagamentoFaturaService>();
 builder.Services.AddScoped<EstornoCartaoService>();
 builder.Services.AddScoped<SaldoCartaoService>();

@@ -46,23 +46,4 @@ public class ContaResponse
             PierreAccountId = conta.PierreAccountId
         };
     }
-
-    public static ContaResponse FromContaComSaldo(ContaDomain conta, decimal saldo, bool estaEmModoCarteira)
-    {
-        if (conta.Tipo == null)
-        {
-            throw new InvalidOperationException($"Conta com ID {conta.Id} possui Tipo nulo, o que e um estado invalido.");
-        }
-
-        return new()
-        {
-            Id = conta.Id,
-            Nome = conta.Nome,
-            Tipo = conta.Tipo.Value,
-            Origem = conta.Origem,
-            Saldo = saldo,
-            SaldoManual = estaEmModoCarteira ? null : conta.SaldoManual,
-            Ativa = conta.Ativa
-        };
-    }
 }

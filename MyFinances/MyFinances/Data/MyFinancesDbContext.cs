@@ -17,8 +17,6 @@ public class MyFinancesDbContext : DbContext
 
     public DbSet<Ativo> Ativos { get; set; }
 
-    public DbSet<MovimentacaoAtivo> MovimentacoesAtivo { get; set; }
-
     public DbSet<Categoria> Categorias { get; set; }
 
     public DbSet<DeParaCategoria> DeParaCategorias { get; set; }
@@ -31,6 +29,8 @@ public class MyFinancesDbContext : DbContext
 
     public DbSet<ContaReceber> ContasReceber { get; set; }
 
+    public DbSet<CompraParcelada> ComprasParceladas { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -38,13 +38,13 @@ public class MyFinancesDbContext : DbContext
         modelBuilder.ApplyConfiguration(new UsuarioConfiguration());
         modelBuilder.ApplyConfiguration(new ContaConfiguration());
         modelBuilder.ApplyConfiguration(new AtivoConfiguration());
-        modelBuilder.ApplyConfiguration(new MovimentacaoAtivoConfiguration());
         modelBuilder.ApplyConfiguration(new CategoriaConfiguration());
         modelBuilder.ApplyConfiguration(new DeParaCategoriaConfiguration());
         modelBuilder.ApplyConfiguration(new LancamentoConfiguration());
         modelBuilder.ApplyConfiguration(new TransferenciaConfiguration());
         modelBuilder.ApplyConfiguration(new FaturaConfiguration());
         modelBuilder.ApplyConfiguration(new ContaReceberConfiguration());
+        modelBuilder.ApplyConfiguration(new CompraParceladaConfiguration());
 
         // Se nao eh Npgsql (ex: SQLite em testes), remove o default value SQL do campo CriadoEm
         // que eh sintaxe Postgres-only. Em producao (Npgsql), o UsuarioConfiguration mantem

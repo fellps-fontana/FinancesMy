@@ -2,7 +2,8 @@ import { Navigate, Route, Routes } from "react-router-dom"
 import { LoginPage } from "@/features/auth/LoginPage"
 import { Home } from "@/app/Home"
 import { ProtectedRoute } from "@/app/ProtectedRoute"
-import { ListaContasInvestimento } from "@/features/investimentos/ListaContasInvestimento"
+import { ListaAtivosPage } from "@/features/investimentos/ListaAtivosPage"
+import { ListaContasSimplesPage } from "@/features/investimentos/ListaContasSimplesPage"
 import { ContaCartaoPage } from "@/features/cartao/ContaCartaoPage"
 import { RelatorioCategoriaPage } from "@/features/cartao/RelatorioCategoriaPage"
 
@@ -22,7 +23,15 @@ export function AppRoutes() {
         path="/investimentos"
         element={
           <ProtectedRoute>
-            <ListaContasInvestimento />
+            <ListaAtivosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/contas"
+        element={
+          <ProtectedRoute>
+            <ListaContasSimplesPage />
           </ProtectedRoute>
         }
       />

@@ -9,13 +9,11 @@ namespace MyFinances.Services;
 public class ContaService : IContaService
 {
     private readonly IContaRepository _contaRepository;
-    private readonly IAtivoRepository _ativoRepository;
     private readonly ILogger<ContaService> _logger;
 
-    public ContaService(IContaRepository contaRepository, IAtivoRepository ativoRepository, ILogger<ContaService> logger)
+    public ContaService(IContaRepository contaRepository, ILogger<ContaService> logger)
     {
         _contaRepository = contaRepository;
-        _ativoRepository = ativoRepository;
         _logger = logger;
     }
 
@@ -95,46 +93,8 @@ public class ContaService : IContaService
 
     public async Task<decimal> CalcularTotalInvestido()
     {
-        var saldos = await ObterSaldosContasInvestimento();
-        return saldos.Values.Sum();
-    }
-
-    public async Task<Dictionary<Guid, decimal>> ObterSaldosContasInvestimento()
-    {
-        var saldosComModo = await ObterSaldosComModoContasInvestimento();
-        return saldosComModo.ToDictionary(kv => kv.Key, kv => kv.Value.saldo);
-    }
-
-    public async Task<Dictionary<Guid, bool>> VerificarContasEmModoCarteira(IEnumerable<Guid> contaIds)
-    {
-        return await _ativoRepository.VerificarContasComAtivos(contaIds);
-    }
-
-    public async Task<Dictionary<Guid, (decimal saldo, bool estaEmModoCarteira)>> ObterSaldosComModoContasInvestimento()
-    {
         var contasInvestimento = await ListarContasInvestimento();
-        var contaIds = contasInvestimento.Select(c => c.Id).ToList();
-
-        if (!contaIds.Any())
-        {
-            return new Dictionary<Guid, (decimal, bool)>();
-        }
-
-        var saldosCalculados = await _ativoRepository.SomarValorAtivosPorConta(contaIds);
-        var modsCarteira = await VerificarContasEmModoCarteira(contaIds);
-        var resultado = new Dictionary<Guid, (decimal, bool)>();
-
-        foreach (var conta in contasInvestimento)
-        {
-            var estaEmModoCarteira = modsCarteira[conta.Id];
-            decimal saldo = estaEmModoCarteira
-                ? (saldosCalculados.ContainsKey(conta.Id) ? saldosCalculados[conta.Id] : 0m)
-                : (conta.SaldoManual ?? 0m);
-
-            resultado[conta.Id] = (saldo, estaEmModoCarteira);
-        }
-
-        return resultado;
+        return contasInvestimento.Sum(c => c.SaldoManual ?? 0m);
     }
 
     public async Task AtualizarSaldoManual(Guid contaId, decimal novoSaldo)
@@ -154,23 +114,8 @@ public class ContaService : IContaService
     {
         var conta = await ObterContaOuFalhar(contaId);
 
-        if (conta.Tipo == TipoConta.Investimento)
-        {
-            await ValidarDesativacaoDeContaInvestimento(contaId);
-        }
-
         conta.Ativa = false;
         await _contaRepository.Salvar();
-    }
-
-    private async Task ValidarDesativacaoDeContaInvestimento(Guid contaId)
-    {
-        var ativos = await _ativoRepository.ListarAtivosAtivosPorConta(contaId);
-
-        if (ativos.Any())
-        {
-            throw new ContaComAtivosNaoPodeSerDesativadaException(contaId);
-        }
     }
 
     private async Task<Conta> ObterContaOuFalhar(Guid contaId)
