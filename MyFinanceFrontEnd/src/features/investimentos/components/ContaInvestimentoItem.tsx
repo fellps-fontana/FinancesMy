@@ -13,7 +13,10 @@ type ContaInvestimentoItemProps = {
 // Container do item de lista: guarda o estado de UI (edicao de saldo,
 // confirmacao de desativacao) e aciona as mutations ja existentes
 // (useAtualizarSaldoConta/useDesativarConta). A apresentacao pura fica em
-// ContaInvestimentoCard - ver clean-code.md "Organizacao (React)".
+// ContaInvestimentoCard - ver clean-code.md "Organizacao (React)". Ativo e
+// modulo standalone (regra-de-negocio.md item 8): desativar uma conta de
+// investimento simples nunca depende de ativo nenhum, entao nao ha bloqueio
+// nem confirmacao condicional aqui.
 export function ContaInvestimentoItem({ conta }: ContaInvestimentoItemProps) {
   const { mutate: atualizarSaldo, isPending: salvandoSaldo } = useAtualizarSaldoConta()
   const { mutate: desativarConta, isPending: desativando } = useDesativarConta()

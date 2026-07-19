@@ -31,9 +31,6 @@ builder.Services.AddCors(options =>
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
-
 builder.Services.AddDbContext<MyFinancesDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -41,8 +38,41 @@ builder.Services.AddSingleton<IPasswordHasherService, PasswordHasherService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
+// Repositories
 builder.Services.AddScoped<IContaRepository, ContaRepository>();
+builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
+builder.Services.AddScoped<IDeParaCategoriaRepository, DeParaCategoriaRepository>();
+builder.Services.AddScoped<ILancamentoRepository, LancamentoRepository>();
+builder.Services.AddScoped<ITransferenciaRepository, TransferenciaRepository>();
+builder.Services.AddScoped<IFaturaRepository, FaturaRepository>();
+builder.Services.AddScoped<IContaReceberRepository, ContaReceberRepository>();
+builder.Services.AddScoped<IAtivoRepository, AtivoRepository>();
+builder.Services.AddScoped<ICompraParceladaRepository, CompraParceladaRepository>();
+
+// Services - Conta
 builder.Services.AddScoped<IContaService, ContaService>();
+builder.Services.AddScoped<IAtivoService, AtivoService>();
+
+// Services - Contas a Receber
+builder.Services.AddScoped<IContaReceberService, ContaReceberService>();
+
+// Services - Categoria
+builder.Services.AddScoped<ICategoriaService, CategoriaService>();
+builder.Services.AddScoped<IDeParaCategoriaService, DeParaCategoriaService>();
+
+// Services - Cartao
+builder.Services.AddScoped<ValidacaoCartaoService>();
+builder.Services.AddScoped<FaturaCicloService>();
+builder.Services.AddScoped<CompraCartaoService>();
+builder.Services.AddScoped<ComprasParceladasService>();
+builder.Services.AddScoped<PagamentoFaturaService>();
+builder.Services.AddScoped<EstornoCartaoService>();
+builder.Services.AddScoped<SaldoCartaoService>();
+
+// Services - Lancamentos
+builder.Services.AddScoped<ILancamentoManualService, LancamentoManualService>();
+builder.Services.AddScoped<ITransferenciaService, TransferenciaService>();
+builder.Services.AddScoped<IFluxoCaixaService, FluxoCaixaService>();
 
 // Authentication and Authorization configuration
 builder.Services.AddAuthentication(options =>
@@ -84,7 +114,7 @@ if (app.Environment.IsDevelopment())
     app.UseCors(FrontendDevCorsPolicy);
 
     using var seedScope = app.Services.CreateScope();
-    var seedContext = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var seedContext = seedScope.ServiceProvider.GetRequiredService<MyFinancesDbContext>();
     var seedHasher = seedScope.ServiceProvider.GetRequiredService<IPasswordHasherService>();
     await DevUserSeeder.SeedAsync(seedContext, seedHasher);
 }

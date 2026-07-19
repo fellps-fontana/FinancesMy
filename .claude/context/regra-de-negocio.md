@@ -131,13 +131,46 @@ a uma categoria do usuario (DE_PARA_CATEGORIA).
 
 ---
 
-## 8. Cofrinho, investimentos e acoes
+## 8. Cofrinho, investimentos e ativos
 
-Nao classificar por nome de transacao. Cada um e uma CONTA MANUAL separada:
-- Cofrinho Mercado Pago -> conta manual propria, saldo atualizado pelo usuario.
-- Investimentos XP -> conta manual propria.
-- Carteira de acoes -> conta manual; cotacao atual via API externa (ex: Brapi),
-  fora do escopo do Pierre.
+Nao classificar por nome de transacao. O modulo de investimentos tem duas
+formas independentes, sem relacao uma com a outra:
+
+- **Conta de investimento (saldo simples):** cofrinho Mercado Pago, XP sem
+  detalhe de ativo — CONTA MANUAL propria (tipo INVESTIMENTO), saldo
+  atualizado pelo usuario via `saldo_manual`, igual qualquer conta manual
+  (item 10).
+- **Ativo (posicao individual, tela "Investimentos"):** Tesouro Selic, CDB,
+  uma acao especifica, fundo imobiliario etc. Registro STANDALONE, SEM
+  vinculo com Conta — o usuario nao precisa cadastrar uma "conta XP" antes de
+  lancar um Tesouro Selic. Campos: `nome`, `tipo` (RENDA_FIXA |
+  RENDA_VARIAVEL), `instituicao` (texto livre, ex: "Nubank"),
+  `valor_investido`, `data_compra`, `valor_atual`.
+
+**Decisao de 2026-07-12 (substitui a decisao de 2026-07-06, ver "Escopo: v1
+vs v2"):** o modulo anterior de ativo por ticker (compra/venda, preco medio,
+cotacao via Brapi sob demanda) foi REMOVIDO do codigo. Investimento detalhado
+na v1 NAO tem conexao com nenhuma API de bolsa/cotacao, em nenhuma fase.
+`valor_atual` e 100% manual.
+
+### 8.1 Valor atual e evolucao (100% manual)
+
+`valor_atual` e definido pelo usuario — mesmo espirito do `saldo_manual` de
+conta manual (item 10), so que no nivel do ativo em vez da conta inteira. No
+cadastro, `valor_atual` nasce IGUAL a `valor_investido` (evolucao = 0). So
+muda quando o usuario edita explicitamente.
+
+```
+evolucao_percentual = (valor_atual - valor_investido) / valor_investido
+```
+
+Calculada sob demanda para exibicao, NUNCA armazenada.
+
+### 8.2 Exclusao de ativo
+
+Soft-delete (`ativa = false`), mesmo padrao ja usado no resto do dominio
+(`conta.ativa`, `categoria.arquivada`, `lancamento.oculto` — item 4). Sem
+hard-delete.
 
 ---
 
@@ -146,7 +179,8 @@ Nao classificar por nome de transacao. Cada um e uma CONTA MANUAL separada:
 Projecao NAO e estimativa futura. E o balanco real do mes corrente:
 
 ```
-saldo_projetado = total_recebido_no_mes - (total_pago + total_a_pagar)
+saldo_projetado = (total_recebido_no_mes + total_a_receber_esperado_no_mes)
+                  - (total_pago_no_mes + total_a_pagar_no_mes)
 ```
 
 Considera todas as contas do mes, de PENDENTE ate PAGO, e todo valor recebido
@@ -157,6 +191,14 @@ atual do mes, com status pago / nao pago (ver item 12). As compras individuais
 do cartao NAO entram na projecao — sao competencia e aparecem apenas no
 relatorio por categoria.
 
+Contas a Receber (item 13) entram do lado da entrada, simetricas a conta a
+pagar: `total_a_receber_esperado_no_mes` soma o SALDO PENDENTE (nao o
+valor_total) de todo `conta_receber` com status PENDENTE (se a
+`data_prevista` cair no mes corrente) ou PARCIAL (todo mes corrente,
+independente da `data_prevista` original, ate o saldo zerar). O que ja foi
+recebido conta via `total_recebido_no_mes` (lancamento CREDIT real) — por
+isso somar o saldo pendente, e nao o valor_total, evita dupla contagem.
+
 ---
 
 ## 10. Saldo de conta
@@ -164,7 +206,11 @@ relatorio por categoria.
 - **Conta Open Finance:** saldo e CALCULADO somando os lancamentos
   (respeitando a regra de sinal). Nao armazenar saldo fixo — evita
   desatualizacao.
-- **Conta manual:** saldo e o campo `saldo_manual`, definido pelo usuario.
+- **Conta manual (incluindo investimento simples, item 8):** saldo e o campo
+  `saldo_manual`, definido pelo usuario.
+- **Ativo (item 8):** standalone, NAO participa do saldo de nenhuma Conta. O
+  total do modulo de investimentos soma `ativo.valor_atual` separadamente
+  (ver tela "Investimentos").
 
 ---
 
@@ -213,8 +259,14 @@ Serve para agrupar as compras e para casar com o pagamento.
 **Saldo do cartao** = compras - pagamentos - estornos. CALCULADO, nao armazenado
 (mesma logica do item 10).
 
-**Pagamento x fatura:** o pagamento fecha o saldo da fatura como um todo, NUNCA
-compra a compra (igual Organizze).
+**Pagamento x fatura:** o pagamento pode ser PARCIAL (nao precisa quitar o
+saldo pendente de uma vez — podem existir varios pagamentos ate a fatura ser
+quitada) e ANTECIPADO (pode ocorrer antes do fechamento do ciclo ou do
+vencimento, com a fatura ainda ABERTA). Cada pagamento continua fechando saldo
+da fatura como um todo, NUNCA compra a compra especifica (igual Organizze) —
+so que agora em incrementos. A fatura so recebe status PAGA quando o saldo
+pendente (total das compras da fatura menos a soma dos pagamentos ja feitos)
+chega a zero.
 
 **Projecao:** o cartao entra na projecao do mes como UMA linha = total da fatura
 atual, com status pago / nao pago, tratado como conta a pagar (ver item 9). As
@@ -223,6 +275,117 @@ compras individuais nao entram na projecao.
 **Origem das compras:** manual por enquanto; futuramente via import da fatura
 Nubank (ver Pendencias). O de-para de categoria (item 7) roda sobre a
 `descricao` da compra em vez da `category` do Pierre.
+
+### Parcelamento (compra parcelada) — decisao registrada em 2026-07-12
+
+Regra estava omissa (Killua sinalizou) e foi decidida agora: uma compra
+parcelada no cartao gera N Lancamentos, um por parcela — NAO um unico
+Lancamento pai com N Parcelas dependentes.
+
+Cada Lancamento-parcela e vinculado a fatura do MES DE VENCIMENTO da sua
+propria parcela, via `fatura_id`, exatamente como uma compra a vista (mesma
+regra de recorte de fatura do item 12: `data_fechamento -> data_vencimento`).
+A parcela 1/10 cai na fatura do mes 1, a parcela 2/10 na fatura do mes 2, e
+assim por diante — sem NENHUMA logica especial de soma de parcelas: o
+mecanismo de fatura ja resolve isso, porque cada parcela e um lancamento
+independente com sua propria data.
+
+**Agrupamento (so exibicao — nunca entra em calculo):** as N parcelas da
+mesma compra compartilham `compra_parcelada_id`, que aponta para a tabela
+`compra_parcelada` (metadados da compra original: descricao, valor_total,
+quantidade_parcelas, data_compra). Cada Lancamento-parcela tambem carrega
+`parcela_numero` (posicao dela no grupo, ex: 3). Serve so para a UI mostrar
+"Notebook Dell 3/10" agrupado — fatura, projecao (item 9) e relatorio por
+categoria continuam somando cada Lancamento-parcela individualmente, sem ler
+esse agrupamento.
+
+**Decisao tecnica — tabela `parcela` do schema REMOVIDA.** O modelo anterior
+(`parcela` como filha de UM Lancamento-compra, com `numero`, `total`,
+`valor`, `vencimento`, `paga` proprios) ficou redundante e CONFLITANTE com
+este modelo:
+- `vencimento` e `valor` da parcela duplicavam exatamente o que
+  `lancamento.data` e `lancamento.valor` ja resolvem quando cada parcela e
+  seu proprio Lancamento.
+- `parcela.paga` (booleano por parcela) CONTRADIZ a regra de pagamento do
+  item 12: "cada pagamento fecha saldo da fatura como um todo, NUNCA compra a
+  compra especifica". Um campo `paga` por parcela criaria DOIS lugares
+  competindo pela verdade de quitacao (`fatura.status = PAGA` vs
+  `parcela.paga` individual) — a mesma duplicidade que a regra de pagamento
+  parcial do item 12 ja proibe.
+
+`parcela` sai do schema.dbml. No lugar entra `compra_parcelada`, tabela leve
+so de metadado de agrupamento — mesmo padrao ja usado por `transferencia`
+no item 3 (entidade compartilhada que agrupa N lancamentos por um `_id`, sem
+guardar estado de pagamento).
+
+**Calculo do valor de cada parcela:** divisao automatica de
+`valor_total / quantidade_parcelas`, SEM edicao manual por parcela. O resto
+do arredondamento (centavos que sobram da divisao) vai inteiro para a ULTIMA
+parcela, pra soma das N parcelas sempre bater exatamente com `valor_total`.
+Exemplo: R$100,00 em 3x = R$33,33 + R$33,33 + R$33,34. Motivo: e assim que
+parcelamento de cartao funciona na pratica (valor fixado no ato da compra);
+permitir valor manual por parcela abriria brecha pra soma nao bater com
+`valor_total`, quebrando a auditoria da compra original sem cobrir nenhum
+caso de uso real.
+
+---
+
+## 13. Contas a Receber (Recebivel e Emprestimo)
+
+Modela dois casos com a MESMA entidade (`conta_receber`, campo `tipo`):
+
+- **RECEBIVEL:** valor generico esperado a entrar. NAO exige vinculo com
+  nenhuma conta/origem no sistema — pode ser so uma expectativa solta ("vou
+  receber X ate tal data"), igual um lembrete financeiro.
+- **EMPRESTIMO:** dinheiro emprestado pelo usuario a uma pessoa. `pessoa` e
+  texto livre (sem cadastro/entidade propria de PESSOA).
+
+**Valor fixo:** `valor_total` e definido no registro e NUNCA muda — sem
+juros, sem correcao. O que varia com o tempo e o saldo pendente, conforme
+os recebimentos acontecem.
+
+**Emprestimo: saida como transferencia de perna unica.** Ao registrar um
+EMPRESTIMO, o valor sai da conta de origem escolhida pelo usuario. Usa a
+MESMA tabela de transferencia do item 3, mas com UMA perna so — nao ha
+conta destino real, o destino e uma pessoa fora do sistema:
+
+- `transferencia.conta_destino_id` fica NULL (campo passa a ser opcional,
+  usado apenas neste caso — nos demais fluxos de transferencia e pagamento
+  de fatura continua obrigatorio).
+- `transferencia.conta_receber_id` aponta pro `conta_receber` criado.
+- Gera-se UM UNICO `lancamento` (DEBIT, status PAGO) vinculado a essa
+  transferencia — nao dois.
+
+A exclusao de gasto/receita (item 3) continua funcionando sem regra nova:
+depende so de `lancamento.transferencia_id != null`, nao de existirem as
+duas pernas.
+
+**Parcelas / recebimento incremental.** O valor pode ser recebido em mais
+de uma vez (mesmo espirito do pagamento parcial de fatura, item 12, mas
+sem ciclo/fatura — aqui e incremento livre no tempo, sem quantidade de
+parcelas pre-fixada). Cada recebimento gera um `lancamento` novo (CREDIT,
+status PAGO) vinculado ao `conta_receber` via `conta_receber_id`, na conta
+que o usuario escolher no momento (pode variar entre recebimentos).
+Opcionalmente pode receber uma `categoria_id` propria, sobrescrevendo a
+categoria sugerida do `conta_receber` pai.
+
+**Recebimento que excede o saldo pendente e REJEITADO.** Se o valor do
+recebimento for maior que o `saldo_pendente` atual, o sistema recusa a
+operacao (nao registra o lancamento) — o usuario precisa corrigir o valor.
+`saldo_pendente` nunca fica negativo.
+
+**Estados:**
+```
+saldo_pendente = valor_total - soma(lancamentos CREDIT vinculados, status PAGO)
+
+PENDENTE: saldo_pendente == valor_total (nada recebido ainda)
+PARCIAL:  0 < saldo_pendente < valor_total
+RECEBIDO: saldo_pendente == 0
+```
+
+**Projecao do mes:** ver item 9 — saldo pendente de PENDENTE (se
+`data_prevista` cair no mes) ou PARCIAL (todo mes corrente, ate zerar)
+entra como entrada esperada, simetrica a conta a pagar.
 
 ---
 
@@ -238,7 +401,9 @@ Conta/Lancamento nos modulos cartao, lancamento e investimentos, como scaffold
 de schema. Decisao NAO-retroativa: esse schema fica como esta, nao ha
 migration de remocao. O que muda e o que entra na v1 daqui pra frente:
 
-- **v1:** so contas MANUAL. Sem sync (item 11), sem exclusao/conciliacao
+- **v1:** contas MANUAL, incluindo investimento em modo carteira de ativos
+  (ver item 8 — compra/venda, preco medio, saldo calculado, cotacao Brapi sob
+  demanda, grafico de diferenca). Sem sync (item 11), sem exclusao/conciliacao
   Open Finance (itens 4 e 5, branch OF), sem endpoint de integracao com
   Pierre. Pendencias de rate limit/paginacao do Pierre (ver "Pendencias a
   definir") saem da v1 tambem — so voltam a importar quando a integracao
@@ -246,28 +411,44 @@ migration de remocao. O que muda e o que entra na v1 daqui pra frente:
 - **v2:** integracao Pierre completa (sync polling, dedup por
   `pierre_txn_id`, conciliacao automatica com transacao OF real, exclusao
   soft-delete de lancamento OF) entra como modulo isolado, sem mexer no que
-  ja funciona na v1. Entra junto com o modulo de investimento detalhado
-  abaixo, ou em fase propria — a ordem entre os dois fica a criterio do
-  usuario quando a v2 comecar.
+  ja funciona na v1.
 
-**Modulo de investimento detalhado tambem fica para a v2 — decisao consciente,
-nao esquecimento.**
+**Modulo de investimento detalhado: EM v1, SEM nenhuma API externa — decisao
+final em 2026-07-12.**
 
-Racional: o investimento detalhado (acoes individuais, cotacao ao vivo via API
-externa, rentabilidade, preco medio, dividendos) e de natureza diferente dos
-demais modulos. Os outros giram em torno de `lancamento` e fluxo de caixa
-(entrou/saiu, pago/pendente). O investimento gira em torno de POSICAO (X ativos
-a um preco medio cujo valor flutua sem nenhum lancamento ocorrer) e depende de
-fonte externa de cotacao. Misturar isso na v1 contaminaria o schema de fluxo de
-caixa.
+Historico da decisao (registrado para nao se perder de novo):
+- 2026-07-05: investimento detalhado inteiro adiado pra v2.
+- 2026-07-06: revisada — modelo por ticker (quantidade, preco medio, compra,
+  venda) entra em v1, com cotacao Brapi sob demanda. Chegou a ser
+  implementado e testado (148 testes, `Domain/Ativo.cs`, `AtivosController`,
+  `CotacaoExternaService`).
+- **2026-07-12: revisada de novo — o modelo por ticker foi REMOVIDO e
+  substituido pelo modelo por ativo standalone (item 8: nome, tipo RENDA_FIXA
+  ou RENDA_VARIAVEL, instituicao, valor investido, data da compra, valor
+  atual manual). Motivo: decisao do usuario de que a v1 nao deve ter NENHUMA
+  conexao com API de bolsa, nem sob demanda — o modelo por ticker dependia da
+  Brapi para o grafico de cotacao, incompativel com isso. O codigo anterior
+  (`Domain/Ativo.cs` por ticker, `MovimentacaoAtivo`, `AtivosController`,
+  `CotacaoExternaService`, `CotacaoController` e as telas de compra/venda/
+  grafico no front) foi removido, nao mantido como legado morto.**
 
-**Na v1**, investimento e representado como CONTA MANUAL (ver item 8): cofrinho,
-XP e carteira entram com saldo atualizado pelo usuario. Isso ja cobre o
-essencial — ver o total investido no patrimonio.
+- **v1 (entra agora):**
+  - Ativo standalone (item 8): nome, tipo, instituicao, valor investido, data
+    da compra, valor atual (editavel manualmente pelo usuario).
+  - Listar, criar, atualizar valor atual, desativar.
+  - Resumo por tipo (renda fixa vs renda variavel) para a tela
+    "Investimentos".
+- **v2 (fora por enquanto):**
+  - Qualquer cotacao via API externa (Brapi ou outra), em qualquer
+    modalidade (sob demanda ou automatica).
+  - Rentabilidade/serie historica automatica, sparkline com base em
+    snapshots de valor (nao ha tabela de historico na v1 — ver "Pendencias a
+    definir").
+  - Dividendos/proventos.
 
-**Na v2**, entra o modulo dedicado: tabela de ativos (ticker, qtd, preco medio),
-integracao com API de cotacao (ex: Brapi), aba de carteira com rentabilidade.
-Entra como modulo isolado, sem mexer no que ja funciona na v1.
+**Na v1**, cofrinho e XP (sem detalhe de ativo) continuam como conta manual
+simples com `saldo_manual` (ver item 8). Ativo e um modulo separado, sem
+relacao com Conta.
 
 ---
 
@@ -283,3 +464,7 @@ Entra como modulo isolado, sem mexer no que ja funciona na v1.
   NAO e compra — ignorar ou tratar como estorno.
 - Ciclo da fatura: como capturar `data_fechamento` e `data_vencimento` do cartao
   (fixo por cartao ou lido do import).
+- (item 8) Sparkline por ativo e "% no mes" do total (presentes no mockup)
+  exigem historico de snapshots de `valor_atual` ao longo do tempo — nao
+  existe tabela de historico na v1. Ativo nasce mostrando evolucao "desde a
+  compra" (item 8.1), sem serie temporal. Decidir se entra em v1.2 ou v2.

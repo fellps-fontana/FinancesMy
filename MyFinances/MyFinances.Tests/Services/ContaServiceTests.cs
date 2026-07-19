@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MyFinances.Exceptions;
-using MyFinances.Models;
+using MyFinances.Domain;
 using MyFinances.Repositories;
 using MyFinances.Services;
 using Xunit;
@@ -556,4 +556,5 @@ public class ContaServiceTests
     }
 
     #endregion
+
 }

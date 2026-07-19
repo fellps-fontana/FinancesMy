@@ -26,7 +26,11 @@ type ContaInvestimentoCardProps = {
 
 // Componente de apresentacao (burro): recebe a conta e o estado de UI ja
 // resolvido pelo container (ContaInvestimentoItem) e exibe. Nenhuma mutation
-// ou fetch mora aqui - so callbacks repassados para quem chama.
+// ou fetch mora aqui - so callbacks repassados para quem chama. Conta de
+// investimento simples (cofrinho/XP) e saldo 100% manual - regra-de-
+// negocio.md item 8 ("Conta de investimento - saldo simples") e item 10.
+// Sem modo "carteira de ativos": Ativo e um modulo standalone, sem vinculo
+// com Conta (ver ListaAtivosPage.tsx), entao saldoManual nunca vem nulo aqui.
 export function ContaInvestimentoCard({
   conta,
   editandoSaldo,
@@ -44,24 +48,15 @@ export function ContaInvestimentoCard({
   onConfirmarDesativar,
   onCancelarDesativar,
 }: ContaInvestimentoCardProps) {
-  if (conta.saldoManual === null) {
-    // Mesmo estado invalido que o backend ja trata como grave em
-    // ContaService.CalcularTotalInvestido (LogWarning) - nao mascarar em
-    // silencio aqui so porque o fallback ?? 0 resolve a exibicao.
-    console.warn(
-      `Conta de investimento sem saldoManual - id=${conta.id} nome=${conta.nome}`,
-    )
-  }
-
-  const saldo = conta.saldoManual ?? 0
-
   return (
     <Card>
       <CardContent className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-card-foreground">{conta.nome}</span>
           {!editandoSaldo && (
-            <span className="text-sm font-medium text-card-foreground">{formatarMoeda(saldo)}</span>
+            <span className="text-sm font-medium text-card-foreground">
+              {formatarMoeda(conta.saldo)}
+            </span>
           )}
         </div>
 
@@ -98,36 +93,12 @@ export function ContaInvestimentoCard({
             </div>
           </form>
         ) : confirmandoDesativar ? (
-          <div className="flex flex-col gap-2">
-            {erroDesativar && (
-              <Alert variant="destructive">
-                <AlertDescription>{erroDesativar}</AlertDescription>
-              </Alert>
-            )}
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[13px] text-muted-foreground">Desativar esta conta?</span>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={onCancelarDesativar}
-                  disabled={desativando}
-                >
-                  Nao
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={onConfirmarDesativar}
-                  disabled={desativando}
-                >
-                  {desativando ? "Desativando..." : "Sim, desativar"}
-                </Button>
-              </div>
-            </div>
-          </div>
+          <ConfirmacaoDesativar
+            erroDesativar={erroDesativar}
+            desativando={desativando}
+            onConfirmarDesativar={onConfirmarDesativar}
+            onCancelarDesativar={onCancelarDesativar}
+          />
         ) : (
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={onIniciarEdicaoSaldo}>
@@ -140,5 +111,52 @@ export function ContaInvestimentoCard({
         )}
       </CardContent>
     </Card>
+  )
+}
+
+type ConfirmacaoDesativarProps = {
+  erroDesativar: string | null
+  desativando: boolean
+  onConfirmarDesativar: () => void
+  onCancelarDesativar: () => void
+}
+
+function ConfirmacaoDesativar({
+  erroDesativar,
+  desativando,
+  onConfirmarDesativar,
+  onCancelarDesativar,
+}: ConfirmacaoDesativarProps) {
+  return (
+    <div className="flex flex-col gap-2">
+      {erroDesativar && (
+        <Alert variant="destructive">
+          <AlertDescription>{erroDesativar}</AlertDescription>
+        </Alert>
+      )}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[13px] text-muted-foreground">Desativar esta conta?</span>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onCancelarDesativar}
+            disabled={desativando}
+          >
+            Nao
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={onConfirmarDesativar}
+            disabled={desativando}
+          >
+            {desativando ? "Desativando..." : "Sim, desativar"}
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }

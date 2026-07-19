@@ -12,7 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MyFinances.Data;
 using MyFinances.DTOs.Conta;
 using MyFinances.DTOs;
-using MyFinances.Models;
+using MyFinances.Domain;
 using Xunit;
 
 namespace MyFinances.Tests.Controllers;
@@ -42,13 +42,6 @@ public class ContasControllerWebApplicationFactory : WebApplicationFactory<Progr
 
                 services.AddDbContext<MyFinancesDbContext>(options =>
                     options.UseInMemoryDatabase("ContasControllerTestDb"));
-
-                // AppDbContext (modulo de usuario) tambem precisa virar InMemory
-                // aqui, senao a remocao ampla acima (prefixo Microsoft.EntityFrameworkCore)
-                // o deixa sem provider registrado - e o login usado para autenticar
-                // os testes deste controller (ver InitializeAsync) depende dele.
-                services.AddDbContext<AppDbContext>(options =>
-                    options.UseInMemoryDatabase("ContasControllerTestDb_AppDb"));
             });
     }
 }
@@ -172,10 +165,11 @@ public class ContasControllerTests
     public async Task CriarContaInvestimento_ComCorpoValido_Retorna201ComLocationHeader()
     {
         // Arrange
-        var request = new CriarContaInvestimentoRequest
+        var request = new CriarContaRequest
         {
             Nome = "Cofrinho Mercado Pago",
-            SaldoInicial = 1000m
+            Tipo = "Investimento",
+            SaldoManual = 1000m
         };
 
         var json = JsonSerializer.Serialize(request);
@@ -209,10 +203,11 @@ public class ContasControllerTests
     public async Task CriarContaInvestimento_ComSaldoZero_Retorna201()
     {
         // Arrange
-        var request = new CriarContaInvestimentoRequest
+        var request = new CriarContaRequest
         {
             Nome = "Investimentos XP",
-            SaldoInicial = 0m
+            Tipo = "Investimento",
+            SaldoManual = 0m
         };
 
         var json = JsonSerializer.Serialize(request);
@@ -235,10 +230,11 @@ public class ContasControllerTests
     public async Task CriarContaInvestimento_ComSaldoNegativo_Retorna201()
     {
         // Arrange
-        var request = new CriarContaInvestimentoRequest
+        var request = new CriarContaRequest
         {
             Nome = "Carteira de Acoes",
-            SaldoInicial = -500m
+            Tipo = "Investimento",
+            SaldoManual = -500m
         };
 
         var json = JsonSerializer.Serialize(request);
@@ -329,7 +325,7 @@ public class ContasControllerTests
     public async Task ListarContas_ComTipoInvalido_Retorna400()
     {
         // Act
-        var response = await _fixture.Client.GetAsync("/api/contas?tipo=banco");
+        var response = await _fixture.Client.GetAsync("/api/contas?tipo=xyz");
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

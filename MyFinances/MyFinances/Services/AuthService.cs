@@ -14,14 +14,14 @@ public interface IAuthService
 
 public class AuthService : IAuthService
 {
-    private readonly AppDbContext _context;
+    private readonly MyFinancesDbContext _context;
     private readonly IPasswordHasherService _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
 
     private const int UsernameMinLength = 3;
     private const int SenhaMinLength = 8;
 
-    public AuthService(AppDbContext context, IPasswordHasherService passwordHasher, IJwtTokenService jwtTokenService)
+    public AuthService(MyFinancesDbContext context, IPasswordHasherService passwordHasher, IJwtTokenService jwtTokenService)
     {
         _context = context;
         _passwordHasher = passwordHasher;

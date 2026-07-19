@@ -1,4 +1,5 @@
-using MyFinances.Models;
+using MyFinances.Domain;
+using ContaDomain = MyFinances.Domain.Conta;
 
 namespace MyFinances.DTOs.Conta;
 
@@ -12,11 +13,19 @@ public class ContaResponse
 
     public OrigemConta Origem { get; set; }
 
+    public decimal Saldo { get; set; }
+
     public decimal? SaldoManual { get; set; }
 
     public bool Ativa { get; set; }
 
-    public static ContaResponse FromConta(Models.Conta conta)
+    public int? DiaFechamento { get; set; }
+
+    public int? DiaVencimento { get; set; }
+
+    public string? PierreAccountId { get; set; }
+
+    public static ContaResponse FromConta(ContaDomain conta)
     {
         if (conta.Tipo == null)
         {
@@ -29,8 +38,12 @@ public class ContaResponse
             Nome = conta.Nome,
             Tipo = conta.Tipo.Value,
             Origem = conta.Origem,
+            Saldo = conta.SaldoManual ?? 0m,
             SaldoManual = conta.SaldoManual,
-            Ativa = conta.Ativa
+            Ativa = conta.Ativa,
+            DiaFechamento = conta.DiaFechamento,
+            DiaVencimento = conta.DiaVencimento,
+            PierreAccountId = conta.PierreAccountId
         };
     }
 }

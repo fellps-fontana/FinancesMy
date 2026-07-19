@@ -8,7 +8,7 @@ Table conta {
   origem varchar [not null, note: 'OPEN_FINANCE | MANUAL']
   tipo varchar [note: 'BANCO | CARTAO | INVESTIMENTO']
   pierre_account_id varchar [note: 'null se manual']
-  saldo_manual decimal [note: 'null se Open Finance ou CARTAO (saldo e calculado)']
+  saldo_manual decimal [note: 'null se Open Finance ou CARTAO (nesses casos saldo e calculado)']
   dia_fechamento int [note: 'so CARTAO; dia de fechamento da fatura']
   dia_vencimento int [note: 'so CARTAO; dia de vencimento da fatura']
   ativa boolean [not null, default: true]
@@ -44,31 +44,42 @@ Table lancamento {
   conciliado_com uuid [ref: - lancamento.id, note: 'txn OF vinculada na conciliacao']
   transferencia_id uuid [ref: > transferencia.id, note: 'null se nao for perna de transferencia (item 3/12)']
   fatura_id uuid [ref: > fatura.id, note: 'null se nao for compra de cartao (item 12)']
+  conta_receber_id uuid [ref: > conta_receber.id, note: 'null se nao for recebimento de conta a receber; 1:N — varios recebimentos podem apontar pro mesmo conta_receber ate zerar o saldo pendente (item 13)']
+  compra_parcelada_id uuid [ref: > compra_parcelada.id, note: 'null se nao for parcela de compra parcelada; agrupa as N parcelas da mesma compra so para exibicao (item 12)']
+  parcela_numero int [note: 'posicao desta parcela no grupo, ex: 3; null se nao for parcela (item 12)']
 }
 
 // Transferencia de mesma titularidade (item 3). Modelo de duas pernas:
 // dois lancamentos (saida na origem, entrada no destino) compartilham o mesmo
 // transferencia_id. Nao conta como gasto nem receita. Pagamento de fatura de
 // cartao e uma transferencia conta corrente -> conta CARTAO (item 12).
+// fatura_id: 1:N (nao 1:1) porque o pagamento de fatura pode ser PARCIAL
+// (varias transferencias quitando a mesma fatura aos poucos) e ANTECIPADO
+// (transferencia antes do ciclo fechar). Por isso a FK fica na transferencia
+// e nao na fatura.
 Table transferencia {
   id uuid [pk]
   data date [not null]
   valor decimal [not null]
   conta_origem_id uuid [ref: > conta.id, not null]
-  conta_destino_id uuid [ref: > conta.id, not null]
+  conta_destino_id uuid [ref: > conta.id, note: 'NULL quando a transferencia e a saida de um EMPRESTIMO (item 13) — nao ha conta destino real, o destino e uma pessoa fora do sistema. Nos demais casos (transferencia normal, pagamento de fatura), permanece obrigatorio']
+  fatura_id uuid [ref: > fatura.id, note: 'null se nao for pagamento de fatura de cartao (item 12)']
+  conta_receber_id uuid [ref: > conta_receber.id, note: 'preenchido so quando a transferencia e a saida de um EMPRESTIMO (item 13); perna unica, sem conta_destino_id']
   descricao varchar
 }
 
 // Ciclo de fatura do cartao (item 12). Agrupa as compras (lancamento.fatura_id)
-// e vincula o pagamento (transferencia). Saldo do cartao e calculado, nao
-// armazenado: compras - pagamentos - estornos.
+// e os pagamentos (transferencia.fatura_id, 1:N — pagamento parcial/antecipado
+// gera varias transferencias para a mesma fatura). Saldo do cartao e
+// calculado, nao armazenado: compras - pagamentos - estornos. Saldo pendente
+// da fatura = soma das compras da fatura - soma das transferencias
+// (pagamentos) vinculadas a ela.
 Table fatura {
   id uuid [pk]
   conta_id uuid [ref: > conta.id, not null, note: 'conta do tipo CARTAO']
   data_fechamento date [not null]
   data_vencimento date [not null]
-  status varchar [not null, note: 'ABERTA | FECHADA | PAGA']
-  transferencia_id uuid [ref: - transferencia.id, note: 'pagamento vinculado; null enquanto nao paga']
+  status varchar [not null, note: 'ABERTA | FECHADA | PAGA — PAGA so quando o saldo pendente chega a zero']
 }
 
 Table conta_fixa {
@@ -81,14 +92,55 @@ Table conta_fixa {
   ativa boolean [not null, default: true]
 }
 
-Table parcela {
+// Agrupador logico de compra parcelada no cartao (item 12). Cada parcela e
+// seu proprio Lancamento (com fatura_id proprio, igual compra a vista) —
+// compra_parcelada so guarda o metadado compartilhado da compra original
+// para a UI agrupar/exibir "3/10". Mesmo padrao ja usado por `transferencia`
+// (item 3): entidade compartilhada agrupando N lancamentos, sem estado de
+// pagamento proprio (quitacao e so no nivel da fatura, nunca da parcela).
+Table compra_parcelada {
   id uuid [pk]
-  lancamento_id uuid [ref: > lancamento.id, not null]
-  numero int [not null, note: 'parcela atual, ex: 3']
-  total int [not null, note: 'total de parcelas, ex: 10']
-  valor decimal [not null]
-  vencimento date [not null]
-  paga boolean [not null, default: false]
+  descricao varchar [not null, note: 'descricao da compra original, ex: Notebook Dell']
+  valor_total decimal [not null, note: 'valor total da compra, antes de dividir pelas parcelas']
+  quantidade_parcelas int [not null, note: 'total de parcelas, ex: 10']
+  data_compra date [not null, note: 'data da compra original; NAO e a data de vencimento de cada parcela']
+}
+
+// Ativo (item 8). STANDALONE — sem FK para conta (decisao de 2026-07-12/15,
+// substitui o modelo anterior por ticker+Brapi). valor_atual e 100% manual,
+// sem nenhuma API externa; evolucao percentual e calculada sob demanda
+// (item 8.1), nunca armazenada.
+Table ativo {
+  id uuid [pk]
+  nome varchar [not null]
+  tipo varchar [not null, note: 'RENDA_FIXA | RENDA_VARIAVEL']
+  instituicao varchar [not null, note: 'texto livre; nao existe catalogo de instituicoes no sistema']
+  valor_investido decimal [not null]
+  valor_atual decimal [not null, note: 'nasce igual a valor_investido; so muda por atualizacao manual do usuario (item 8.1)']
+  data_compra date [not null]
+  ativa boolean [not null, default: true, note: 'soft-delete, mesmo padrao de conta.ativa/categoria.arquivada/lancamento.oculto (item 8.2)']
+  criado_em timestamp [not null, default: `now()`]
+  atualizado_em timestamp [note: 'null ate a primeira atualizacao manual de valor_atual']
+}
+
+// Contas a Receber (item 13). Mesma entidade pra RECEBIVEL e EMPRESTIMO,
+// diferenciada por tipo. EMPRESTIMO usa transferencia.conta_receber_id pra
+// registrar a saida (perna unica, sem conta_destino_id real — item 13).
+// Recebimentos parciais reaproveitam lancamento (lancamento.conta_receber_id,
+// 1:N), mesmo padrao ja usado por fatura_id/conta_fixa_id. valor_total e
+// fixo desde o registro (sem juros/correcao). status e calculado a partir
+// do saldo pendente (valor_total - soma dos lancamentos CREDIT vinculados
+// com status PAGO), armazenado igual fatura.status.
+Table conta_receber {
+  id uuid [pk]
+  tipo varchar [not null, note: 'RECEBIVEL | EMPRESTIMO']
+  descricao varchar [not null]
+  pessoa varchar [note: 'texto livre, sem cadastro proprio; obrigatorio se tipo=EMPRESTIMO, null se RECEBIVEL']
+  valor_total decimal [not null, note: 'fixo desde o registro, sem juros/correcao']
+  data_registro date [not null]
+  data_prevista date [note: 'opcional; usada para saber em qual mes o saldo PENDENTE entra na projecao (item 9). PARCIAL entra em todo mes corrente ate zerar, independente desta data']
+  categoria_id uuid [ref: > categoria.id, note: 'categoria de receita sugerida pros recebimentos; null = sem categoria; pode ser sobrescrita por recebimento individual']
+  status varchar [not null, note: 'PENDENTE | PARCIAL | RECEBIDO']
 }
 
 Table limite_gasto {
