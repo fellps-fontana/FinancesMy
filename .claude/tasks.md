@@ -364,7 +364,7 @@ RETORNO ESPERADO: esqueleto compilavel, sem logica.
 
 ## TASK-039 — [REGRA CRITICA] RED: testes de ClassificacaoLancamentoService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (tasks.md estava desatualizado — Kira verificou em disco durante o kickoff do modulo Conta Fixa em 2026-07-20: ClassificacaoLancamentoServiceTests.cs existe e cobre os 6 casos, ja mergeado em main)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-038
@@ -381,7 +381,7 @@ RETORNO ESPERADO: confirmacao de RED + lista dos 6 casos cobertos.
 
 ## TASK-040 — [REGRA CRITICA] GREEN: implementar Classificar
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (verificado em disco 2026-07-20 — ClassificacaoLancamentoService.cs implementado, commit 69f8cf7 em diante)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-039
@@ -399,7 +399,7 @@ RETORNO ESPERADO: implementacao completa.
 
 ## TASK-041 — [REGRA CRITICA] Confirmar GREEN: ClassificacaoLancamentoService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (verificado em disco 2026-07-20; decisions.md ja tinha APROVADO registrado)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-040
@@ -414,7 +414,7 @@ RETORNO ESPERADO: confirmacao GREEN ou relatorio de bug.
 
 ## TASK-042 — Style: revisao ClassificacaoLancamentoService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (verificado em disco 2026-07-20; decisions.md ja tinha APROVADO registrado)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-041
@@ -429,7 +429,7 @@ RETORNO ESPERADO: veredito + (se houver) tarefa de correcao, redespachada a levi
 
 ## TASK-043 — Extensao de ILancamentoRepository (Remover + fluxo caixa)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (verificado em disco 2026-07-20 — ILancamentoRepository/LancamentoRepository ja tem os metodos, mergeado em main)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
@@ -448,7 +448,7 @@ RETORNO ESPERADO: 2 metodos novos, compilando.
 
 ## TASK-044 — LancamentoManualService + DTOs
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (verificado em disco 2026-07-20 — LancamentoManualService.cs existe, commit 69f8cf7 "Implementa LancamentoManualService para CRUD de lancamentos em contas BANCO/MANUAL"; decisions.md ja tinha APROVADO)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-043
@@ -472,7 +472,7 @@ RETORNO ESPERADO: service + DTOs, compilando, registrado em `Program.cs`.
 
 ## TASK-045 — TransferenciaService + DTOs
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (verificado em disco 2026-07-20 — TransferenciaService.cs existe, commit d5cde3d "Implementa TransferenciaService para registrar transferencias entre contas manuais"; decisions.md ja tinha APROVADO)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
@@ -493,7 +493,7 @@ RETORNO ESPERADO: service + DTOs, compilando, registrado em `Program.cs`.
 
 ## TASK-046 — FluxoCaixaService + DTO
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (verificado em disco 2026-07-20 — FluxoCaixaService.cs existe, commit 37fddd8 "Implementa FluxoCaixaService consumindo ListarParaFluxoCaixa do repository"; decisions.md ja tinha APROVADO)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-043
@@ -513,7 +513,7 @@ RETORNO ESPERADO: service + DTO, compilando, registrado em `Program.cs`.
 
 ## TASK-047 — Controllers (Lancamentos, ContaLancamentos, Transferencias)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (verificado em disco 2026-07-20 — LancamentosController.cs/TransferenciasController.cs existem; decisions.md ja tinha APROVADO)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-044, TASK-045, TASK-046
@@ -533,7 +533,7 @@ RETORNO ESPERADO: contrato de API documentado (rota, verbo, shape de retorno, co
 
 ## TASK-048 — Testes de Service (LancamentoManual, Transferencia, FluxoCaixa)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (verificado em disco 2026-07-20 — os 3 arquivos de teste existem; decisions.md ja tinha APROVADO)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-044, TASK-045, TASK-046
@@ -551,7 +551,7 @@ RETORNO ESPERADO: testes passando; relatorio de bug se houver.
 
 ## TASK-049 — Testes HTTP dos controllers
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (verificado em disco 2026-07-20 — LancamentosControllerTests.cs/TransferenciasControllerTests.cs existem; decisions.md ja tinha APROVADO)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-047
@@ -568,7 +568,7 @@ RETORNO ESPERADO: testes passando.
 
 ## TASK-050 — Style: revisao geral do modulo
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (verificado em disco 2026-07-20 — commit 6e3b8e4 "Corrige 5 problemas de TASK-050 (revisao de Lancamento Geral / Fluxo de Caixa)" confirma rodada de correcao pos-style ja aplicada; decisions.md ja tinha APROVADO)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-049
@@ -606,3 +606,312 @@ independente do resto — pode rodar em paralelo).
    contas ativas) e TASK-048 (casos de teste de rejeicao por conta inativa).
 
 Nenhuma pendencia de decisao de produto restante. Queue pronta para execucao.
+
+---
+
+# Modulo Conta Fixa (DEMANDA-002)
+
+Gerado por killua em 2026-07-20. Modulo greenfield: nenhum arquivo de codigo
+existe ainda (`Domain/ContaFixa.cs` nao existe). Consome a arquitetura de
+Lancamento Geral (DEMANDA-001, TASK-038 a TASK-050 acima, todas CONCLUIDA —
+confirmado em disco por Kira antes de abrir esta secao).
+
+Decisoes ja confirmadas com o usuario em 2026-07-20 (nao sao mais pendencia):
+1. Horizonte de geracao: mes corrente + proximo (2 meses), a cada criacao/
+   reativacao de ContaFixa.
+2. Gatilho v1 (sync automatico e v2, item 11): geracao acontece so ao CRIAR
+   ou REATIVAR uma ContaFixa, nunca por job separado. Idempotente.
+
+Regra CRITICA deste modulo: geracao duplicada de Lancamento infla
+`total_a_pagar_no_mes` (item 9) com despesa fictitia — mesmo criterio de
+"calculo que afeta dinheiro real" ja usado em ClassificacaoLancamentoService/
+ContaReceberSaldoCalculator. Segue ciclo TDD RED->GREEN (killua esqueleto ->
+mike RED -> levi GREEN -> mike confirma -> style) para
+`ContaFixaLancamentoFactory`/`ContaFixaService.GerarLancamentosPendentes`.
+CRUD simples (criar/editar/desativar/reativar/listar) segue fluxo simples.
+
+## Decisoes de modelagem (Killua)
+
+- **`ContaFixaLancamentoFactory` como calculador estatico puro**, mesmo
+  padrao de `ClassificacaoLancamentoService`/`ContaReceberSaldoCalculator`/
+  `FaturaSaldoCalculator` ja usados no projeto. Constroi o `Lancamento`
+  (calculo de data com clamp de dia + copia de campos), sem persistir e sem
+  checar idempotencia — isso fica no Service+Repository, mantendo a regra
+  critica testavel sem mock de banco.
+- **`ExisteLancamentoGerado` vive em `IContaFixaRepository`, nao em
+  `ILancamentoRepository`.** E uma pergunta de dominio de Conta Fixa sobre
+  Lancamento, mesmo raciocinio de `IContaReceberRepository.ListarParaProjecaoDoMes`
+  viver no repository "dono" do agregado.
+- **`ContaFixaService` consome `ILancamentoRepository` direto (Adicionar/
+  Salvar), nao `LancamentoManualService`.** Mesma decisao arquitetural que
+  `CompraCartaoService` ja toma: geracao automatica pelo sistema nao passa
+  pelo service de CRUD manual do usuario, que exige DTO com validacoes de UX
+  que nao fazem sentido pra lancamento gerado automaticamente.
+- **Retorno em tupla `(bool, T?, string?)`** em todos os metodos de
+  `IContaFixaService`, seguindo o padrao do modulo irmao que este consome
+  (`LancamentoManualService`/`TransferenciaService`). Nota: o projeto hoje
+  tem dois estilos de retorno coexistindo (excecao tipada em
+  `ContaReceberService`/`AtivoService` vs tupla aqui) — divida tecnica
+  conhecida, fora de escopo unificar agora.
+
+## Duvidas em aberto para o usuario (killua sinalizou, NAO assumido)
+
+1. **Tipo do lancamento gerado = DEBIT fixo?** Inferido do contexto (item
+   5/9 tratam conta fixa como "conta a pagar"), mas o item 6 original nao
+   dizia isso explicitamente. Baixo risco, mas nao assumido sem confirmacao.
+2. **Edicao de ContaFixa propaga para Lancamentos PENDENTE ja gerados (nunca
+   PAGO)?** Killua recomenda SIM (opcao B): sem isso, dashboard mostra valor
+   errado por ate 2 meses apos uma edicao banal, ja que editar nao dispara
+   nova geracao. Alternativa (opcao A, mold-only): so o molde muda, lancamentos
+   ja gerados ficam com valor antigo. Bloqueia TASK-056/059.
+3. **Desativar ContaFixa: o que acontece com Lancamentos PENDENTE ja
+   gerados?** Regra omissa de verdade. Desenho atual so flipa `Ativa=false`
+   sem tocar em `Lancamento`. Bloqueia fechamento de `DesativarAsync` em
+   TASK-056.
+
+---
+
+## TASK-051 — Entidade ContaFixa + Configuration + migration
+
+STATUS: PENDENTE
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: nenhuma
+CONTEXTO A LER: schema.dbml tabela `conta_fixa`; regra-de-negocio.md item 6 (revisado); `FaturaConfiguration.cs`/`ContaReceberConfiguration.cs` como padrao de estilo
+ESCOPO: criar `Domain/ContaFixa.cs` (Id, ContaId, CategoriaId?, Descricao, Valor, DiaVencimento, Ativa, navegacoes Conta?/Categoria?/ICollection<Lancamento> Lancamentos) e `Infrastructure/Configurations/ContaFixaConfiguration.cs` (ToTable("conta_fixa"), mapeamento de cada coluna, HasOne Conta com OnDelete Cascade, HasOne Categoria com OnDelete SetNull). Registrar DbSet<ContaFixa> no MyFinancesDbContext e gerar migration.
+CRITERIO DE ACEITE:
+1. Projeto compila.
+2. Migration aplicavel cria tabela `conta_fixa` com os campos e tipos do schema.dbml.
+ARQUIVOS PERMITIDOS: `MyFinances\MyFinances\Domain\ContaFixa.cs` (novo), `MyFinances\MyFinances\Infrastructure\Configurations\ContaFixaConfiguration.cs` (novo), `MyFinances\MyFinances\Data\MyFinancesDbContext.cs`, `MyFinances\MyFinances\Migrations\**`
+NAO FAZER: nao criar Repository/Service ainda (TASK-053/054); nao mexer em Lancamento.cs/LancamentoConfiguration.cs (TASK-052).
+RETORNO ESPERADO: migration aplicavel; tabela conta_fixa criada.
+
+---
+
+## TASK-052 — Navegacao Lancamento.ContaFixa + FK
+
+STATUS: PENDENTE
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-051
+CONTEXTO A LER: schema.dbml tabela lancamento (campo conta_fixa_id); `Infrastructure/Configurations/LancamentoConfiguration.cs` (coluna conta_fixa_id ja mapeada, sem FK/navegacao ainda — confirmar linha exata)
+ESCOPO: adicionar `public ContaFixa? ContaFixa { get; set; }` em Lancamento.cs e `builder.HasOne(l => l.ContaFixa).WithMany(cf => cf.Lancamentos).HasForeignKey(l => l.ContaFixaId).OnDelete(DeleteBehavior.SetNull)` em LancamentoConfiguration.cs. Gerar migration de ALTERACAO (adiciona FK constraint, coluna ja existe).
+CRITERIO DE ACEITE:
+1. Projeto compila.
+2. Migration so adiciona FK constraint, nao recria a tabela lancamento.
+ARQUIVOS PERMITIDOS: `MyFinances\MyFinances\Domain\Lancamento.cs`, `MyFinances\MyFinances\Infrastructure\Configurations\LancamentoConfiguration.cs`, `MyFinances\MyFinances\Migrations\**`
+NAO FAZER: nao alterar nenhum outro campo de Lancamento; nao tocar em outros HasOne ja existentes.
+RETORNO ESPERADO: migration de alteracao aplicavel; build limpo.
+
+---
+
+## TASK-053 — Repository de ContaFixa
+
+STATUS: PENDENTE
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-052
+CONTEXTO A LER: regra-de-negocio.md item 6 (revisado); `IContaReceberRepository.cs`/`ContaReceberRepository.cs` como padrao de estilo
+ESCOPO: criar `IContaFixaRepository`/`ContaFixaRepository` com `Adicionar`, `ObterPorId` (Include Conta, Categoria, Lancamentos), `Listar(bool? ativaFiltro)`, `Atualizar`, `ExisteLancamentoGerado(Guid contaFixaId, int ano, int mes)` (query direta em Lancamentos filtrando ContaFixaId + Data.Year + Data.Month), `Salvar`. Registrar no DI (Program.cs).
+CRITERIO DE ACEITE:
+1. `ExisteLancamentoGerado` retorna true so quando ha Lancamento com o ContaFixaId e mes/ano exatos.
+2. Registrado em Program.cs.
+ARQUIVOS PERMITIDOS: `MyFinances\MyFinances\Repositories\IContaFixaRepository.cs` (novo), `MyFinances\MyFinances\Repositories\ContaFixaRepository.cs` (novo), `MyFinances\MyFinances\Program.cs`
+NAO FAZER: nao implementar logica de geracao/clamp de data aqui (isso e ContaFixaLancamentoFactory, TASK-054).
+RETORNO ESPERADO: repository testavel, metodos nomeados por intencao.
+
+---
+
+## TASK-054 — Esqueleto de assinatura: ContaFixaLancamentoFactory + ContaFixaService (regra critica)
+
+STATUS: PENDENTE
+AGENT: killua
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-053
+CONTEXTO A LER: regra-de-negocio.md item 6 INTEIRO (revisado); `FaturaCicloService.cs` (padrao CriarDataValida) e `ClassificacaoLancamentoService.cs` (padrao de calculador estatico puro)
+ESCOPO: entregar esqueleto compilavel (corpo NotImplementedException) de `Domain/ContaFixaLancamentoFactory.cs` (metodo estatico `CriarLancamentoPendente(ContaFixa, int ano, int mes) -> Lancamento`) e `Services/IContaFixaService.cs` + `Services/ContaFixaService.cs` (metodos CriarAsync, EditarAsync, DesativarAsync, ReativarAsync, ObterPorId, Listar, GerarLancamentosPendentes, todos em tupla `(bool, T?, string?)`). Kira cria os arquivos a partir do esqueleto ja escrito no relatorio de arquitetura.
+ARQUIVOS PERMITIDOS: nenhum (killua nao escreve arquivo)
+NAO FAZER: nao implementar logica real em nenhum metodo.
+RETORNO ESPERADO: Kira cria os 3 arquivos; projeto compila (so assinatura) antes de despachar mike.
+
+---
+
+## TASK-055 — [REGRA CRITICA] RED: testes de ContaFixaLancamentoFactory + idempotencia de GerarLancamentosPendentes
+
+STATUS: PENDENTE
+AGENT: mike
+FLUXO: Implementacao (rodada RED)
+DEPENDENCIAS: TASK-054
+CONTEXTO A LER: regra-de-negocio.md item 6 INTEIRO
+ESCOPO: testar (a) `CriarLancamentoPendente` com dia_vencimento normal (ex: 15) gera Data com esse dia no ano/mes informado; (b) dia_vencimento 31 em mes de 30 dias clampa pro ultimo dia (30); (c) dia_vencimento 31 em fevereiro (ano comum e bissexto) clampa para 28/29; (d) Tipo/Status/Manual conforme decisao confirmada (ver duvida em aberto 1 — usar o valor que o usuario confirmar); (e) ContaId/CategoriaId/Descricao/Valor copiados fielmente da ContaFixa; (f) ContaFixaId do lancamento gerado aponta pra ContaFixa de origem; (g) `GerarLancamentosPendentes` cria exatamente 2 Lancamento (mes corrente + proximo) na primeira chamada; (h) rodar `GerarLancamentosPendentes` 2 vezes para a mesma ContaFixa/dataReferencia NAO duplica (idempotencia); (i) ContaFixa inexistente retorna Sucesso=false sem criar nada; (j) ContaFixa com Ativa=false retorna Sucesso=false sem criar nada.
+CRITERIO DE ACEITE: testes compilam e falham por `NotImplementedException` (nunca erro de compilacao).
+ARQUIVOS PERMITIDOS: `MyFinances\MyFinances.Tests\Domain\ContaFixaLancamentoFactoryTests.cs` (novo), `MyFinances\MyFinances.Tests\Services\ContaFixaServiceTests.cs` (novo)
+NAO FAZER: nao implementar logica em ContaFixaService/ContaFixaLancamentoFactory para o teste passar.
+RETORNO ESPERADO: confirmacao de RED caso a caso.
+
+---
+
+## TASK-056 — [REGRA CRITICA] GREEN: implementar ContaFixaLancamentoFactory + ContaFixaService
+
+STATUS: PENDENTE (BLOQUEADA ate o usuario confirmar duvidas em aberto 1 e 2 desta secao)
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-055
+CONTEXTO A LER: regra-de-negocio.md item 6 INTEIRO; arquivos de teste da TASK-055 (leitura, nunca escrita)
+ESCOPO: implementar `ContaFixaLancamentoFactory.CriarLancamentoPendente` (clamp de dia via `DateTime.DaysInMonth`, mesmo padrao de `FaturaCicloService.CriarDataValida`) e todos os metodos de `ContaFixaService` contra os testes RED da TASK-055. `GerarLancamentosPendentes`: para (ano,mes) = dataReferencia e dataReferencia.AddMonths(1), checar `ExisteLancamentoGerado` antes de criar; `CriarAsync`/`ReativarAsync` chamam `GerarLancamentosPendentes` apos persistir. `EditarAsync` propaga (ou nao) para Lancamentos PENDENTE conforme decisao do usuario (duvida em aberto 2). `DesativarAsync` trata Lancamentos PENDENTE existentes conforme decisao do usuario (duvida em aberto 3).
+CRITERIO DE ACEITE:
+1. Todos os testes da TASK-055 GREEN.
+2. Nenhuma duplicata de Lancamento em chamadas repetidas de GerarLancamentosPendentes.
+ARQUIVOS PERMITIDOS: `MyFinances\MyFinances\Domain\ContaFixaLancamentoFactory.cs`, `MyFinances\MyFinances\Services\ContaFixaService.cs`, `MyFinances\MyFinances\Services\IContaFixaService.cs` (so se incompatibilidade real com teste), `MyFinances\MyFinances\Program.cs` (DI)
+NAO FAZER: nao alterar arquivos em MyFinances.Tests/**; nao decidir sozinho as duvidas em aberto 2/3 — se chegar aqui sem resposta do usuario, reportar e parar.
+RETORNO ESPERADO: implementacao completa, testes rodados localmente GREEN antes de devolver.
+
+---
+
+## TASK-057 — Confirmar GREEN (mike)
+
+STATUS: PENDENTE
+AGENT: mike
+FLUXO: Implementacao (rodada GREEN)
+DEPENDENCIAS: TASK-056
+CONTEXTO A LER: nenhum novo
+ESCOPO: rodar `ContaFixaLancamentoFactoryTests`/`ContaFixaServiceTests` e confirmar GREEN.
+CRITERIO DE ACEITE: 100% dos testes da TASK-055 passando.
+ARQUIVOS PERMITIDOS: nenhum (so execucao)
+NAO FAZER: nao reescrever teste; nao editar ContaFixaService.
+RETORNO ESPERADO: GREEN confirmado ou relatorio de bug (arquivo+linha).
+
+---
+
+## TASK-058 — Style: revisao da regra critica
+
+STATUS: PENDENTE
+AGENT: style
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-057
+CONTEXTO A LER: regra-de-negocio.md item 6; clean-code.md
+ESCOPO: validar clamp de data, idempotencia, e que `GerarLancamentosPendentes` nunca cria lancamento fora do par (mes corrente, proximo mes).
+CRITERIO DE ACEITE: veredito (APROVADO ou tarefa de correcao no esquema padrao).
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + (se houver) tarefa de correcao redespachada a levi.
+
+---
+
+## TASK-059 — Controller REST de ContaFixa + DTOs
+
+STATUS: PENDENTE
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-058
+CONTEXTO A LER: clean-code.md "Organizacao (.NET)"; `ContasReceberController.cs` como padrao de estilo
+ESCOPO: criar `ContaFixaController` com `POST api/contas-fixas`, `PUT api/contas-fixas/{id}`, `POST api/contas-fixas/{id}/desativar`, `POST api/contas-fixas/{id}/reativar`, `GET api/contas-fixas` (filtro `?ativa=`), `GET api/contas-fixas/{id}`. DTOs: `CriarContaFixaRequest`, `EditarContaFixaRequest`, `ContaFixaResponse`.
+CRITERIO DE ACEITE:
+1. Criar dispara geracao imediata (2 lancamentos), verificavel na resposta ou em chamada subsequente de listagem de lancamentos.
+2. Reativar dispara geracao idempotente.
+3. Controller nao contem regra de negocio, so orquestra Service+DTO.
+ARQUIVOS PERMITIDOS: `MyFinances\MyFinances\Controllers\ContaFixaController.cs` (novo), `MyFinances\MyFinances\DTOs\ContaFixa\*.cs` (novo)
+NAO FAZER: nao expor Ativa como campo editavel direto (so via desativar/reativar); nao expor entity crua.
+RETORNO ESPERADO: contrato de API documentado (rota, verbo, body, shape de retorno).
+
+---
+
+## TASK-060 — Testes HTTP do ContaFixaController
+
+STATUS: PENDENTE
+AGENT: mike
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-059
+CONTEXTO A LER: regra-de-negocio.md item 6
+ESCOPO: testar criar (201, 2 lancamentos gerados), editar (propagacao conforme decisao aprovada), desativar/reativar (reativar gera de novo, idempotente), listar com filtro ativa, id inexistente -> 404/400.
+ARQUIVOS PERMITIDOS: `MyFinances\MyFinances.Tests\Controllers\ContaFixaControllerTests.cs` (novo)
+NAO FAZER: nao alterar controller/service para o teste passar sem reportar.
+RETORNO ESPERADO: testes passando; relatorio de bug se houver.
+
+---
+
+## TASK-061 — Style: revisao geral do modulo Conta Fixa
+
+STATUS: PENDENTE
+AGENT: style
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-060
+CONTEXTO A LER: regra-de-negocio.md item 6; clean-code.md inteiro
+ESCOPO: revisar entidade/config/repository/service/controller contra regra e clean-code.
+CRITERIO DE ACEITE: veredito final.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito final do modulo backend.
+
+---
+
+## TASK-062 — Front: camada de dados (types/api/hooks) de Conta Fixa
+
+STATUS: PENDENTE
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-059
+CONTEXTO A LER: stack.md "Frontend (React)"; clean-code.md "Organizacao (React)"
+ESCOPO: criar `features/contas-fixas/{types.ts,api.ts,query-keys.ts}` e hooks (`useContasFixas`, `useCriarContaFixa`, `useEditarContaFixa`, `useDesativarContaFixa`, `useReativarContaFixa`), seguindo o padrao ja usado em `features/contas-receber/`.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd\src\features\contas-fixas\types.ts` (novo), `api.ts` (novo), `query-keys.ts` (novo), `hooks/*.ts` (novo)
+NAO FAZER: nao renderizar UI aqui.
+RETORNO ESPERADO: hooks tipados, sem `any`, com invalidacao de cache apos criar/editar/desativar/reativar.
+
+---
+
+## TASK-063 — UI: listar contas fixas
+
+STATUS: PENDENTE
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-062
+CONTEXTO A LER: identidade-visual.md (se existir); regra-de-negocio.md item 6
+ESCOPO: tela listando ContaFixa (descricao, valor, dia_vencimento, categoria, status ativa/inativa).
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd\src\features\contas-fixas\ListaContasFixas.tsx` (novo), `components\ContaFixaItem.tsx` (novo)
+NAO FAZER: nao calcular nada no componente.
+RETORNO ESPERADO: componente consumindo `useContasFixas`.
+
+---
+
+## TASK-064 — UI: formulario criar/editar conta fixa
+
+STATUS: PENDENTE
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-062
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 6
+ESCOPO: formulario com descricao, valor, dia_vencimento (1-31), conta de origem, categoria opcional.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd\src\features\contas-fixas\FormContaFixa.tsx` (novo), `lib\validarContaFixa.ts` (novo)
+NAO FAZER: nao permitir editar Ativa neste form (isso e acao separada, TASK-065).
+RETORNO ESPERADO: componente chamando `useCriarContaFixa`/`useEditarContaFixa` conforme o modo.
+
+---
+
+## TASK-065 — UI: acao desativar/reativar
+
+STATUS: PENDENTE
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-062, TASK-063
+CONTEXTO A LER: regra-de-negocio.md item 6
+ESCOPO: acao no item da lista para desativar/reativar, com aviso de que reativar gera novos lancamentos.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd\src\features\contas-fixas\components\ContaFixaItem.tsx`
+NAO FAZER: nao assumir comportamento de lancamentos ja gerados ao desativar (regra omissa) — so exibir o toggle, sem prometer nada na UI sobre o que acontece com pendentes existentes.
+RETORNO ESPERADO: componente chamando `useDesativarContaFixa`/`useReativarContaFixa`.
+
+---
+
+## Mapa de dependencia (TASK-051 a TASK-065)
+
+```
+051 (entidade) -> 052 (FK Lancamento) -> 053 (repo) -> 054 (esqueleto)
+  -> 055 (RED) -> 056 (GREEN, bloqueada por duvidas 1/2/3) -> 057 (confirma GREEN)
+  -> 058 (style critico) -> 059 (controller) -> 060 (testes HTTP) -> 061 (style geral)
+  -> 062 (front data) -> 063 (lista) / 064 (form) -> 065 (acao desativar/reativar)
+```
+
+## Pendencias — aguardando o usuario (bloqueiam TASK-056/059 em diante)
+
+Ver secao "Duvidas em aberto para o usuario" acima (3 itens). Nenhuma delas
+foi assumida — a fila esta pronta ate TASK-055 (RED), mas TASK-056 (GREEN)
+so pode rodar apos essas 3 respostas.

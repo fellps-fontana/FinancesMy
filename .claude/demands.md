@@ -35,20 +35,26 @@ geram/consomem lancamento.
 
 ## DEMANDA-002 — Conta Fixa
 
-**Situacao atual:** nao existe nenhum arquivo de codigo (`Domain/ContaFixa.cs`
-nao existe). `Lancamento.conta_fixa_id` no schema referencia uma tabela que
-ainda nao foi criada.
+STATUS: EM ANDAMENTO — arquitetado por killua em 2026-07-20, tasks TASK-051
+a TASK-065 geradas em `tasks.md`. `Domain/ContaFixa.cs` ainda nao existe
+(greenfield), execucao ainda nao comecou.
 
-**Escopo (regra-de-negocio.md item 6):**
+**Escopo (regra-de-negocio.md item 6, ja revisado):**
 - Entidade `ContaFixa`: molde com `dia_vencimento`.
-- Geracao mensal: cada conta fixa origina um `Lancamento` novo PENDENTE,
-  vinculado por `conta_fixa_id`.
-- Definir quantos meses a frente sao gerados (pendencia em aberto no proprio
-  regra-de-negocio.md — sugestao la: mes corrente + proximo, regenerar no
-  sync mensal). Como o sync (item 11) e v2, a geracao aqui precisa de um
-  gatilho v1 (ex: on-demand ou job simples), a decidir com killua.
+- Geracao: ao CRIAR ou REATIVAR uma ContaFixa, gera Lancamento PENDENTE pro
+  mes corrente + proximo (2 meses), vinculado por `conta_fixa_id`,
+  idempotente. DECISOES CONFIRMADAS COM O USUARIO EM 2026-07-20 (horizonte
+  + gatilho v1) — nao sao mais pendencia.
 
-**Depende de:** DEMANDA-001 (Lancamento Geral) pronto.
+**Depende de:** DEMANDA-001 (Lancamento Geral) pronto — CONFIRMADO EM DISCO
+em 2026-07-20 (commits 69f8cf7..83b172e ja mergeados em main; `tasks.md`
+estava desatualizado, TASK-039/050 corrigidas para CONCLUIDA).
+
+**Bloqueios restantes antes de TASK-056 (GREEN) poder fechar:** 3 duvidas de
+regra ainda sem resposta do usuario (tipo do lancamento gerado, se edicao
+propaga pra lancamentos PENDENTE ja gerados, o que acontece com PENDENTE ao
+desativar) — ver secao "Duvidas em aberto para o usuario" em `tasks.md`
+dentro do bloco "Modulo Conta Fixa".
 
 ---
 
