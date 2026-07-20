@@ -364,7 +364,7 @@ RETORNO ESPERADO: esqueleto compilavel, sem logica.
 
 ## TASK-039 — [REGRA CRITICA] RED: testes de ClassificacaoLancamentoService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (tasks.md estava desatualizado — modulo inteiro ja mergeado em main via PR #28 antes desta sessao. Testes existem em ClassificacaoLancamentoServiceTests.cs, commit 6e032f3, 6/6 GREEN)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-038
@@ -381,7 +381,7 @@ RETORNO ESPERADO: confirmacao de RED + lista dos 6 casos cobertos.
 
 ## TASK-040 — [REGRA CRITICA] GREEN: implementar Classificar
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (implementado no commit 6edf3e7, com precedencia Transferencia > CompetenciaCartao > Tipo, sem leitura de Valor. Ja mergeado em main via PR #28)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-039
@@ -399,7 +399,7 @@ RETORNO ESPERADO: implementacao completa.
 
 ## TASK-041 — [REGRA CRITICA] Confirmar GREEN: ClassificacaoLancamentoService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (6/6 GREEN, confirmado nesta sessao ao reexecutar a suite; ja mergeado em main via PR #28)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-040
@@ -414,7 +414,7 @@ RETORNO ESPERADO: confirmacao GREEN ou relatorio de bug.
 
 ## TASK-042 — Style: revisao ClassificacaoLancamentoService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA + APROVADA PELO STYLE (coberta pela revisao geral do modulo, TASK-050, commit 6e3b8e4. Precedencia e ausencia de leitura de Valor confirmadas)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-041
@@ -429,7 +429,7 @@ RETORNO ESPERADO: veredito + (se houver) tarefa de correcao, redespachada a levi
 
 ## TASK-043 — Extensao de ILancamentoRepository (Remover + fluxo caixa)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (implementado e corrigido no commit 6e3b8e4 — filtro de ListarParaFluxoCaixa que descartava a perna CREDIT de transferencias foi achado e corrigido no style da TASK-050. Ja mergeado em main via PR #28)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
@@ -448,7 +448,7 @@ RETORNO ESPERADO: 2 metodos novos, compilando.
 
 ## TASK-044 — LancamentoManualService + DTOs
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (validacao de conta ativa em MarcarComoPagoAsync/EditarAsync completada no style-fix do commit 6e3b8e4, item 2 do commit. Ja mergeado em main via PR #28)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-043
@@ -472,7 +472,7 @@ RETORNO ESPERADO: service + DTOs, compilando, registrado em `Program.cs`.
 
 ## TASK-045 — TransferenciaService + DTOs
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (TransferenciaLancamentoHelper extraido no style-fix do commit 6e3b8e4 pra eliminar duplicacao com PagamentoFaturaService; TransferenciaResponse criado sem FaturaId, ContaDestinoId nao-nulo. Ja mergeado em main via PR #28)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
@@ -493,7 +493,7 @@ RETORNO ESPERADO: service + DTOs, compilando, registrado em `Program.cs`.
 
 ## TASK-046 — FluxoCaixaService + DTO
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (usa ClassificacaoLancamentoService.Classificar em producao desde o style-fix do commit 6e3b8e4, eliminando logica de classificacao duplicada no repository. Ja mergeado em main via PR #28)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-043
@@ -513,7 +513,7 @@ RETORNO ESPERADO: service + DTO, compilando, registrado em `Program.cs`.
 
 ## TASK-047 — Controllers (Lancamentos, ContaLancamentos, Transferencias)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (implementados no commit 8d48e6a; status codes HTTP padronizados no style-fix do commit 6e3b8e4. Ja mergeado em main via PR #28)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-044, TASK-045, TASK-046
@@ -533,7 +533,7 @@ RETORNO ESPERADO: contrato de API documentado (rota, verbo, shape de retorno, co
 
 ## TASK-048 — Testes de Service (LancamentoManual, Transferencia, FluxoCaixa)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (testes no commit 4353598; mike reportou 3 bugs reais via testes RED no commit f67873d — perna de transferencia sumindo no fluxo de caixa e falta de validacao de conta ativa —, corrigidos no style-fix 6e3b8e4, todos GREEN. Ja mergeado em main via PR #28)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-044, TASK-045, TASK-046
@@ -551,7 +551,7 @@ RETORNO ESPERADO: testes passando; relatorio de bug se houver.
 
 ## TASK-049 — Testes HTTP dos controllers
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (testes HTTP no commit 392e475. Ja mergeado em main via PR #28)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-047
@@ -568,7 +568,7 @@ RETORNO ESPERADO: testes passando.
 
 ## TASK-050 — Style: revisao geral do modulo
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA + APROVADA PELO STYLE (5 problemas encontrados e corrigidos no commit 6e3b8e4 — 1 CRITICO: filtro de ListarParaFluxoCaixa descartava perna CREDIT de transferencias; 1 ALTO: faltava validacao de conta ativa em MarcarComoPagoAsync/EditarAsync; 2 MEDIO: status HTTP inconsistentes e duplicacao entre TransferenciaService/PagamentoFaturaService; 1 BAIXO: TransferenciaResponse reaproveitando PagamentoResponse. Resultado: 202 testes GREEN. Modulo mergeado em main via PR #28 (worktree-lancamento-geral-porte)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-049
