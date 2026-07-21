@@ -703,7 +703,7 @@ RETORNO ESPERADO: migration de alteracao aplicavel; build limpo.
 
 ## TASK-053 — Repository de ContaFixa
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo, 324 testes passando, so os 3 arquivos permitidos tocados; Kira corrigiu de passagem um gap de sincronia do ModelSnapshot deixado pela TASK-052 — FK OnDelete=SetNull nao tinha sido regenerada no snapshot, confirmado via migration vazia apos o fix)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-052
