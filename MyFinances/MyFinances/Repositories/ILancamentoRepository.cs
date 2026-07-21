@@ -9,6 +9,7 @@ public interface ILancamentoRepository
     Task<IEnumerable<Lancamento>> ListarPorConta(Guid contaId);
     Task<IEnumerable<Lancamento>> ListarPorFatura(Guid faturaId);
     Task<IEnumerable<Lancamento>> ListarParaFluxoCaixa(Guid? contaId);
+    Task<IEnumerable<Lancamento>> ListarParaFluxoCaixaDoMes(int ano, int mes);
     Task Atualizar(Lancamento lancamento);
     Task Remover(Lancamento lancamento);
     Task Salvar();
