@@ -635,7 +635,7 @@ RETORNO ESPERADO: arquivos criados, build limpo, migration gerada e conferida co
 
 ## TASK-052 — Extensao de ILancamentoRepository: ListarPorCategoriasEPeriodo
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo, metodo filtra por lista de categorias + ano/mes seguindo o padrao de ListarParaProjecaoDoMes; sem tocar em arquivo fora do escopo)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
