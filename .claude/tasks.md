@@ -654,20 +654,16 @@ CRUD simples (criar/editar/desativar/reativar/listar) segue fluxo simples.
   `ContaReceberService`/`AtivoService` vs tupla aqui) — divida tecnica
   conhecida, fora de escopo unificar agora.
 
-## Duvidas em aberto para o usuario (killua sinalizou, NAO assumido)
+## Decisoes do usuario em 2026-07-20 (fecham as 3 duvidas de killua)
 
-1. **Tipo do lancamento gerado = DEBIT fixo?** Inferido do contexto (item
-   5/9 tratam conta fixa como "conta a pagar"), mas o item 6 original nao
-   dizia isso explicitamente. Baixo risco, mas nao assumido sem confirmacao.
-2. **Edicao de ContaFixa propaga para Lancamentos PENDENTE ja gerados (nunca
-   PAGO)?** Killua recomenda SIM (opcao B): sem isso, dashboard mostra valor
-   errado por ate 2 meses apos uma edicao banal, ja que editar nao dispara
-   nova geracao. Alternativa (opcao A, mold-only): so o molde muda, lancamentos
-   ja gerados ficam com valor antigo. Bloqueia TASK-056/059.
-3. **Desativar ContaFixa: o que acontece com Lancamentos PENDENTE ja
-   gerados?** Regra omissa de verdade. Desenho atual so flipa `Ativa=false`
-   sem tocar em `Lancamento`. Bloqueia fechamento de `DesativarAsync` em
-   TASK-056.
+1. **Tipo do lancamento gerado = DEBIT fixo.** Confirmado. Nao existe conta
+   fixa de recebimento na v1.
+2. **Edicao de ContaFixa propaga para Lancamentos `Status=Pendente` ja
+   gerados** (nunca `Pago`). Confirmado — opcao B do relatorio de killua.
+3. **Desativar ContaFixa cancela (hard delete) os Lancamentos
+   `Status=Pendente` ja gerados**; `Pago` fica intocado. Confirmado.
+
+Refletido em `regra-de-negocio.md` item 6. TASK-056 e TASK-059 desbloqueadas.
 
 ---
 
@@ -743,7 +739,7 @@ AGENT: mike
 FLUXO: Implementacao (rodada RED)
 DEPENDENCIAS: TASK-054
 CONTEXTO A LER: regra-de-negocio.md item 6 INTEIRO
-ESCOPO: testar (a) `CriarLancamentoPendente` com dia_vencimento normal (ex: 15) gera Data com esse dia no ano/mes informado; (b) dia_vencimento 31 em mes de 30 dias clampa pro ultimo dia (30); (c) dia_vencimento 31 em fevereiro (ano comum e bissexto) clampa para 28/29; (d) Tipo/Status/Manual conforme decisao confirmada (ver duvida em aberto 1 — usar o valor que o usuario confirmar); (e) ContaId/CategoriaId/Descricao/Valor copiados fielmente da ContaFixa; (f) ContaFixaId do lancamento gerado aponta pra ContaFixa de origem; (g) `GerarLancamentosPendentes` cria exatamente 2 Lancamento (mes corrente + proximo) na primeira chamada; (h) rodar `GerarLancamentosPendentes` 2 vezes para a mesma ContaFixa/dataReferencia NAO duplica (idempotencia); (i) ContaFixa inexistente retorna Sucesso=false sem criar nada; (j) ContaFixa com Ativa=false retorna Sucesso=false sem criar nada.
+ESCOPO: testar (a) `CriarLancamentoPendente` com dia_vencimento normal (ex: 15) gera Data com esse dia no ano/mes informado; (b) dia_vencimento 31 em mes de 30 dias clampa pro ultimo dia (30); (c) dia_vencimento 31 em fevereiro (ano comum e bissexto) clampa para 28/29; (d) Tipo sempre Debit, Status sempre Pendente, Manual=true; (e) ContaId/CategoriaId/Descricao/Valor copiados fielmente da ContaFixa; (f) ContaFixaId do lancamento gerado aponta pra ContaFixa de origem; (g) `GerarLancamentosPendentes` cria exatamente 2 Lancamento (mes corrente + proximo) na primeira chamada; (h) rodar `GerarLancamentosPendentes` 2 vezes para a mesma ContaFixa/dataReferencia NAO duplica (idempotencia); (i) ContaFixa inexistente retorna Sucesso=false sem criar nada; (j) ContaFixa com Ativa=false retorna Sucesso=false sem criar nada; (k) `EditarAsync` atualiza valor/dia_vencimento/categoria dos Lancamentos vinculados com Status=Pendente, mas NAO altera nenhum Lancamento com Status=Pago; (l) `DesativarAsync` exclui os Lancamentos vinculados com Status=Pendente, mas NAO exclui nenhum Lancamento com Status=Pago.
 CRITERIO DE ACEITE: testes compilam e falham por `NotImplementedException` (nunca erro de compilacao).
 ARQUIVOS PERMITIDOS: `MyFinances\MyFinances.Tests\Domain\ContaFixaLancamentoFactoryTests.cs` (novo), `MyFinances\MyFinances.Tests\Services\ContaFixaServiceTests.cs` (novo)
 NAO FAZER: nao implementar logica em ContaFixaService/ContaFixaLancamentoFactory para o teste passar.
@@ -753,17 +749,18 @@ RETORNO ESPERADO: confirmacao de RED caso a caso.
 
 ## TASK-056 — [REGRA CRITICA] GREEN: implementar ContaFixaLancamentoFactory + ContaFixaService
 
-STATUS: PENDENTE (BLOQUEADA ate o usuario confirmar duvidas em aberto 1 e 2 desta secao)
+STATUS: PENDENTE
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-055
-CONTEXTO A LER: regra-de-negocio.md item 6 INTEIRO; arquivos de teste da TASK-055 (leitura, nunca escrita)
-ESCOPO: implementar `ContaFixaLancamentoFactory.CriarLancamentoPendente` (clamp de dia via `DateTime.DaysInMonth`, mesmo padrao de `FaturaCicloService.CriarDataValida`) e todos os metodos de `ContaFixaService` contra os testes RED da TASK-055. `GerarLancamentosPendentes`: para (ano,mes) = dataReferencia e dataReferencia.AddMonths(1), checar `ExisteLancamentoGerado` antes de criar; `CriarAsync`/`ReativarAsync` chamam `GerarLancamentosPendentes` apos persistir. `EditarAsync` propaga (ou nao) para Lancamentos PENDENTE conforme decisao do usuario (duvida em aberto 2). `DesativarAsync` trata Lancamentos PENDENTE existentes conforme decisao do usuario (duvida em aberto 3).
+CONTEXTO A LER: regra-de-negocio.md item 6 INTEIRO (revisado com as decisoes de tipo/propagacao/desativacao); arquivos de teste da TASK-055 (leitura, nunca escrita)
+ESCOPO: implementar `ContaFixaLancamentoFactory.CriarLancamentoPendente` (clamp de dia via `DateTime.DaysInMonth`, mesmo padrao de `FaturaCicloService.CriarDataValida`, Tipo sempre Debit) e todos os metodos de `ContaFixaService` contra os testes RED da TASK-055. `GerarLancamentosPendentes`: para (ano,mes) = dataReferencia e dataReferencia.AddMonths(1), checar `ExisteLancamentoGerado` antes de criar; `CriarAsync`/`ReativarAsync` chamam `GerarLancamentosPendentes` apos persistir. `EditarAsync` faz UPDATE em Lancamentos vinculados com `Status=Pendente` (nunca `Pago`) refletindo valor/dia_vencimento/categoria novos. `DesativarAsync` exclui (hard delete) os Lancamentos vinculados com `Status=Pendente` (nunca `Pago`).
 CRITERIO DE ACEITE:
 1. Todos os testes da TASK-055 GREEN.
 2. Nenhuma duplicata de Lancamento em chamadas repetidas de GerarLancamentosPendentes.
+3. EditarAsync nao altera Lancamento com Status=Pago; DesativarAsync nao exclui Lancamento com Status=Pago.
 ARQUIVOS PERMITIDOS: `MyFinances\MyFinances\Domain\ContaFixaLancamentoFactory.cs`, `MyFinances\MyFinances\Services\ContaFixaService.cs`, `MyFinances\MyFinances\Services\IContaFixaService.cs` (so se incompatibilidade real com teste), `MyFinances\MyFinances\Program.cs` (DI)
-NAO FAZER: nao alterar arquivos em MyFinances.Tests/**; nao decidir sozinho as duvidas em aberto 2/3 — se chegar aqui sem resposta do usuario, reportar e parar.
+NAO FAZER: nao alterar arquivos em MyFinances.Tests/**.
 RETORNO ESPERADO: implementacao completa, testes rodados localmente GREEN antes de devolver.
 
 ---

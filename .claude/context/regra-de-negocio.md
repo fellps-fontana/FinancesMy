@@ -125,6 +125,24 @@ dias que esse valor (ex: 31 em abril, ou fevereiro), a data e ajustada para
 o ultimo dia do mes — mesmo padrao ja usado por
 `FaturaCicloService.CriarDataValida` para o ciclo do cartao.
 
+**Tipo do lancamento gerado:** sempre DEBIT (conta fixa e sempre despesa
+recorrente, mesma familia do item 5 "contas a pagar"). Nao existe conta fixa
+de recebimento (CREDIT) na v1. Status PENDENTE, `Manual = true`.
+
+**Edicao propaga para lancamentos PENDENTE ja gerados.** Editar valor,
+`dia_vencimento` ou categoria de uma ContaFixa atualiza os Lancamentos
+vinculados (`conta_fixa_id`) que ainda estao `Status = Pendente`. Lancamentos
+`Status = Pago` NUNCA sao alterados (fato historico, dinheiro ja saiu — mesmo
+principio do item 13 "valor_total nunca muda apos registro").
+
+**Desativar cancela os lancamentos PENDENTE ja gerados.** Ao desativar
+(`ativa = true -> false`) uma ContaFixa, os Lancamentos vinculados com
+`Status = Pendente` sao excluidos (hard delete, mesma regra de exclusao de
+lancamento manual do item 5/12). Lancamentos `Status = Pago` permanecem
+intocados. Reativar volta a gerar os 2 meses (mes corrente + proximo) do
+zero, respeitando a idempotencia acima.
+DECISOES CONFIRMADAS COM O USUARIO EM 2026-07-20.
+
 ---
 
 ## 7. Categorias
