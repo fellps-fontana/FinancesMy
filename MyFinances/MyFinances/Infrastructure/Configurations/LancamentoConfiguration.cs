@@ -119,6 +119,11 @@ public class LancamentoConfiguration : IEntityTypeConfiguration<Lancamento>
             .HasForeignKey(l => l.CompraParceladaId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasOne(l => l.ContaFixa)
+            .WithMany(cf => cf.Lancamentos)
+            .HasForeignKey(l => l.ContaFixaId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Indice para PierreTxnId se nao nulo (dedup)
         builder.HasIndex(l => l.PierreTxnId)
             .HasFilter("pierre_txn_id IS NOT NULL")

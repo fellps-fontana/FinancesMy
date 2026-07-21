@@ -53,5 +53,7 @@ public class Lancamento
 
     public CompraParcelada? CompraParcelada { get; set; }
 
+    public ContaFixa? ContaFixa { get; set; }
+
     public ICollection<Lancamento> LancamentosConciliados { get; set; } = new List<Lancamento>();
 }
