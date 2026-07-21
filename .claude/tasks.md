@@ -701,7 +701,7 @@ RETORNO ESPERADO: diff dos arquivos + confirmacao que o projeto compila (`dotnet
 
 ## TASK-052 — Repository: faturas de cartao por vencimento no mes
 
-STATUS: PENDENTE (BLOQUEADA ate Duvida 3 ser respondida — definicao de "fatura do mes")
+STATUS: PENDENTE
 AGENT: levi
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -719,7 +719,7 @@ RETORNO ESPERADO: diff dos arquivos + confirmacao de build.
 
 ## TASK-053 — [RED] Testes de agregacao mensal do FluxoCaixaService
 
-STATUS: PENDENTE (BLOQUEADA ate Duvida 1 ser respondida — emprestimo em `total_pago_no_mes`)
+STATUS: PENDENTE
 AGENT: mike
 DEPENDENCIAS: TASK-051
 FLUXO: Implementacao
@@ -785,18 +785,18 @@ RETORNO ESPERADO: veredito + (se reprovado) tarefa de correcao redespachada a le
 
 ## TASK-057 — [RED] Testes do FaturaProjecaoService
 
-STATUS: PENDENTE (BLOQUEADA ate Duvidas 2, 3 e 4 serem respondidas)
+STATUS: PENDENTE
 AGENT: mike
 DEPENDENCIAS: TASK-052
 FLUXO: Implementacao
-CONTEXTO A LER: regra-de-negocio.md item 12 (fatura, status Aberta/Fechada/Paga, pagamento parcial) e item 9 ("cartao entra como UMA conta a pagar, status pago/nao pago"); esqueleto `IFaturaProjecaoService.cs`/`FaturaProjecaoService.cs` (secao acima)
-ESCOPO: Testar `CalcularProjecaoCartaoDoMes`: fatura `Status=Paga` soma em `TotalPago`; `Status=Aberta/Fechada` soma o `ValorTotal` (`FaturaSaldoCalculator`) em `TotalNaoPago`; multiplas faturas/multiplos cartoes somam; mes sem fatura retorna `(0,0)`. Comportamento exato depende das Duvidas 2/3/4 — nao escrever antes de resposta.
+CONTEXTO A LER: regra-de-negocio.md item 12 (fatura, status Aberta/Fechada/Paga, pagamento parcial, `FaturaSaldoCalculator`) e item 9 ("cartao entra como UMA conta a pagar"); esqueleto `IFaturaProjecaoService.cs`/`FaturaProjecaoService.cs` (secao acima); decisao do usuario em 2026-07-20 (ver "Decisoes resolvidas" no fim do arquivo): fatura parcialmente paga e FRACIONADA (nao binaria), fatura do mes = `DataVencimento` no ano/mes, multiplos cartoes SOMAM.
+ESCOPO: Testar `CalcularProjecaoCartaoDoMes`: para cada fatura de cartao com `DataVencimento` no mes/ano, soma `ValorPago` (ou `ValorTotal - SaldoPendente`, via `FaturaSaldoCalculator`) em `TotalPago` e `SaldoPendente` em `TotalNaoPago` — inclusive fatura `Status=Aberta`/`Fechada` com pagamento parcial ja registrado; fatura `Status=Paga` soma `ValorTotal` inteiro em `TotalPago` (`SaldoPendente=0`); multiplas faturas de multiplos cartoes no mesmo mes somam nos mesmos 2 totais (sem breakdown por cartao); mes sem fatura retorna `(0,0)`.
 CRITERIO DE ACEITE:
 1. Compila contra o esqueleto.
 2. RED por `NotImplementedException`.
-3. Cobre Paga, Fechada e ausencia de fatura no mes.
+3. Cobre: fatura paga, fatura aberta sem pagamento, fatura aberta com pagamento parcial (fracionamento provado), 2 cartoes no mesmo mes (soma), ausencia de fatura no mes.
 ARQUIVOS PERMITIDOS: `MyFinances.Tests/Services/FaturaProjecaoServiceTests.cs` (criar)
-NAO FAZER: nao implementar o service.
+NAO FAZER: nao implementar o service; nao tratar fatura parcial como binaria.
 RETORNO ESPERADO: arquivo de teste + output RED.
 
 ---
@@ -808,7 +808,7 @@ AGENT: levi
 DEPENDENCIAS: TASK-057
 FLUXO: Implementacao
 CONTEXTO A LER: regra-de-negocio.md item 12; arquivo de teste de TASK-057 (leitura)
-ESCOPO: Implementar `CalcularProjecaoCartaoDoMes` usando `IFaturaRepository.ListarFaturasCartaoPorVencimentoNoMes` + `FaturaSaldoCalculator.Calcular`, bucket por `fatura.Status == Paga`.
+ESCOPO: Implementar `CalcularProjecaoCartaoDoMes` usando `IFaturaRepository.ListarFaturasCartaoPorVencimentoNoMes` + `FaturaSaldoCalculator.Calcular` por fatura, somando `ValorPago`/`ValorTotal-SaldoPendente` em `TotalPago` e `SaldoPendente` em `TotalNaoPago` (fracionado, nunca binario por `Status`).
 CRITERIO DE ACEITE:
 1. Testes de TASK-057 GREEN sem editar o arquivo de teste.
 2. Reusa `FaturaSaldoCalculator`, nao reimplementa calculo de saldo.
@@ -840,7 +840,7 @@ AGENT: style
 DEPENDENCIAS: TASK-059
 FLUXO: Implementacao
 CONTEXTO A LER: regra-de-negocio.md item 12; clean-code.md
-ESCOPO: Revisar contra regra de negocio, atencao ao tratamento binario pago/nao-pago de fatura parcialmente paga.
+ESCOPO: Revisar contra regra de negocio, atencao ao fracionamento correto de fatura parcialmente paga (nunca tratar como binario pago/nao-pago).
 CRITERIO DE ACEITE: veredito ou tarefa de correcao.
 ARQUIVOS PERMITIDOS: nenhum
 NAO FAZER: nao editar codigo.
@@ -953,45 +953,33 @@ RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 052 (repo fatura)     -> 057 (RED) -> 058 (GREEN) -> 059 (confirma) -> 060 (style) ─┼─> 061 (RED master) -> 062 (GREEN) -> 063 (confirma) -> 064 (style) -> 065 (endpoint) -> 066 (style)
 ```
 
-## Duvidas em aberto para o usuario (BLOQUEIAM TASK-052, 053 e 057)
+## Decisoes resolvidas com o usuario em 2026-07-20
 
-1. **Emprestimo (item 13) some do `total_pago_no_mes`.** A saida de emprestimo
-   usa `TransferenciaId` (perna unica, item 13). A exclusao de Transferencia
-   necessaria pra nao contar transferencia comum entre contas do usuario como
-   gasto (item 3) tambem exclui o emprestimo desembolsado. Resultado:
-   emprestar dinheiro NAO reduz o saldo projetado no mes do desembolso, mas
-   recuperar o emprestimo (recebimento, item 13) SOMA em
-   `total_recebido_no_mes`. Emprestimo vira "vitoria de graca" na projecao
-   sempre que ha emprestimo ativo. Emprestimo desembolsado deve contar em
-   `total_pago_no_mes` (fora da exclusao geral de Transferencia), ou a regra
-   realmente quer isso fora da projecao (dinheiro emprestado nao e "gasto",
-   vira "ativo" via ContaReceber, e so conta quando volta)?
-2. **Fatura parcialmente paga: binario ou fracionado?** Item 9 diz "status
-   pago / nao pago" (binario); item 12 diz que `Fatura.Status` so vira `Paga`
-   quando o saldo pendente ZERA. Se o usuario pagou metade da fatura este
-   mes, o VALOR TOTAL da fatura cairia inteiro em `total_a_pagar_no_mes`, e o
-   pagamento parcial ja realizado (transferencia real) nao apareceria em
-   lugar nenhum (excluido como Transferencia) — subestima o saldo projetado.
-   Alternativa: fracionar como `ContaReceber` ja faz (`ValorPago` do mes entra
-   em `total_pago_no_mes`, `ValorPendente` entra em `total_a_pagar_no_mes`).
-   Qual das duas a regra quer?
-3. **Qual fatura e "a fatura atual do mes"?** Killua assumiu `DataVencimento`
-   caindo no ano/mes consultado (simetrico ao `data_prevista` do
-   ContaReceber). Alternativa: a fatura com `Status == Aberta` no momento da
-   consulta, independente do mes de vencimento. Precisa travar antes do RED
-   de TASK-057.
-4. **Multiplos cartoes no mesmo mes:** killua assumiu soma de todas as
-   faturas de todas as contas Cartao cujo vencimento cai no mes (item 9 fala
-   "UMA conta a pagar" no singular, mas nao trata 2+ cartoes). Confirma que e
-   soma, e nao uma linha por cartao?
+1. **Emprestimo (item 13) fica FORA da projecao.** Confirmado: dinheiro
+   emprestado nao e "gasto" no sentido de `total_pago_no_mes` — vira "ativo"
+   via `ContaReceber` e so conta quando volta (`total_recebido_no_mes`). A
+   exclusao geral de Transferencia (item 3) em TASK-053/054 ja cobre isso
+   sem excecao adicional — nenhuma mudanca de escopo necessaria.
+2. **Fatura parcialmente paga e FRACIONADA**, nao binaria. `ValorPago`
+   (ou `ValorTotal - SaldoPendente`) entra em `total_pago_no_mes`,
+   `SaldoPendente` entra em `total_a_pagar_no_mes`, simetrico ao que
+   `ContaReceber` ja faz. Refletido em TASK-057/058/060.
+3. **"Fatura do mes" = `DataVencimento` caindo no ano/mes consultado**,
+   simetrico ao `data_prevista` do `ContaReceber`. Refletido em TASK-052.
+4. **Multiplos cartoes: SOMA tudo** num unico `total_pago_no_mes`/
+   `total_a_pagar_no_mes`, sem breakdown por cartao no endpoint.
+
+## Pendencias registradas, nao bloqueiam esta leva
+
 5. **Escopo de front nao incluido nesta leva.**
    `MyFinanceFrontEnd/src/features/dashboard/` so tem `.gitkeep` — nenhuma
    tela/hook/api existe. Nao ha wireframe/identidade especifica pra essa
-   tela alem do generico dark/roxo. Se quiser UI decomposta agora, definir
-   pelo menos: so saldo projetado, ou breakdown dos 4 termos, ou grafico.
-   NAO BLOQUEIA o backend acima — so registrado como pendente separado.
+   tela alem do generico dark/roxo. Se quiser UI decomposta, definir pelo
+   menos: so saldo projetado, ou breakdown dos 4 termos, ou grafico.
 6. **Conta Fixa (item 6) nao existe no codebase** (nem Domain, nem migration
-   da tabela, so a FK morta `conta_fixa_id` em `Lancamento`). NAO bloqueia
-   esta decomposicao (quando existir, so gera `Lancamento` comuns que o
-   agregador generico ja soma), mas nenhuma conta fixa aparece na projecao v1
-   ate esse modulo ser construido a parte. Registrado, nao amarrado aqui.
+   da tabela, so a FK morta `conta_fixa_id` em `Lancamento`). Quando existir,
+   so gera `Lancamento` comuns que o agregador generico ja soma — nenhuma
+   conta fixa aparece na projecao v1 ate esse modulo ser construido a parte.
+
+Nenhuma pendencia de decisao de produto restante para TASK-051 a TASK-066.
+Fila pronta para execucao.
