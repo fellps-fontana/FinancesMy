@@ -17,4 +17,19 @@ public class FluxoCaixaService : IFluxoCaixaService
         var lancamentos = await _lancamentoRepository.ListarParaFluxoCaixa(contaId);
         return lancamentos.Select(LancamentoResponseDto.FromLancamento);
     }
+
+    public Task<decimal> CalcularTotalRecebidoNoMes(int ano, int mes)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<decimal> CalcularTotalPagoNoMes(int ano, int mes)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<decimal> CalcularTotalAPagarNoMes(int ano, int mes)
+    {
+        throw new NotImplementedException();
+    }
 }
