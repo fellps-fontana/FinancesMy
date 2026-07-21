@@ -53,6 +53,7 @@ builder.Services.AddScoped<IContaFixaRepository, ContaFixaRepository>();
 // Services - Conta
 builder.Services.AddScoped<IContaService, ContaService>();
 builder.Services.AddScoped<IAtivoService, AtivoService>();
+builder.Services.AddScoped<IContaFixaService, ContaFixaService>();
 
 // Services - Contas a Receber
 builder.Services.AddScoped<IContaReceberService, ContaReceberService>();

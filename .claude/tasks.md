@@ -749,7 +749,7 @@ RETORNO ESPERADO: confirmacao de RED caso a caso.
 
 ## TASK-056 — [REGRA CRITICA] GREEN: implementar ContaFixaLancamentoFactory + ContaFixaService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (339/339 testes passando, sem regressao — 324 pre-existentes + 15 de ContaFixa. levi foi interrompido por limite de sessao da API no meio da task, mas a implementacao ja estava completa e correta no disco; Kira verificou build+suite geral e reverteu um desvio destrutivo fora de escopo que sobrou de uma investigacao anterior do proprio levi — TransferenciasController.cs tinha sido esvaziado (rotas/DI removidos) e TransferenciaResponse.cs alterado, nenhum dos dois no ARQUIVOS PERMITIDOS desta task; revertidos ao HEAD, build confirmado limpo sem eles)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-055
