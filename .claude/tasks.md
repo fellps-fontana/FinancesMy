@@ -650,7 +650,7 @@ RETORNO ESPERADO: metodo novo, compilando.
 
 ## TASK-053 — LimiteGastoCalculator + Repository + Service de LimiteGasto (com agregacao de hierarquia)
 
-STATUS: PENDENTE
+STATUS: EM ANDAMENTO
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-051, TASK-052

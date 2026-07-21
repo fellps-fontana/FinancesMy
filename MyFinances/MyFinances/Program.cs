@@ -48,6 +48,7 @@ builder.Services.AddScoped<IFaturaRepository, FaturaRepository>();
 builder.Services.AddScoped<IContaReceberRepository, ContaReceberRepository>();
 builder.Services.AddScoped<IAtivoRepository, AtivoRepository>();
 builder.Services.AddScoped<ICompraParceladaRepository, CompraParceladaRepository>();
+builder.Services.AddScoped<ILimiteGastoRepository, LimiteGastoRepository>();
 
 // Services - Conta
 builder.Services.AddScoped<IContaService, ContaService>();
@@ -73,6 +74,9 @@ builder.Services.AddScoped<SaldoCartaoService>();
 builder.Services.AddScoped<ILancamentoManualService, LancamentoManualService>();
 builder.Services.AddScoped<ITransferenciaService, TransferenciaService>();
 builder.Services.AddScoped<IFluxoCaixaService, FluxoCaixaService>();
+
+// Services - Limite de Gasto
+builder.Services.AddScoped<ILimiteGastoService, LimiteGastoService>();
 
 // Authentication and Authorization configuration
 builder.Services.AddAuthentication(options =>
