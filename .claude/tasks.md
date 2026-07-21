@@ -686,7 +686,7 @@ RETORNO ESPERADO: migration aplicavel; tabela conta_fixa criada.
 
 ## TASK-052 — Navegacao Lancamento.ContaFixa + FK
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo; migration so ajusta a FK ja existente por convencao do EF desde a TASK-051 para OnDelete=SetNull, sem recriar tabela/coluna)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-051
