@@ -76,7 +76,6 @@ public class LancamentoRepository : ILancamentoRepository
             .Include(l => l.Conta)
             .Include(l => l.Categoria)
             .Where(l => l.FaturaId == null)
-            .Where(l => !l.TransferenciaId.HasValue)
             .Where(l => !l.Oculto)
             .Where(l => l.Data.Year == ano && l.Data.Month == mes)
             .ToListAsync();

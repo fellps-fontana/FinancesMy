@@ -260,7 +260,7 @@ public class LancamentoRepositoryTests
     }
 
     [Fact]
-    public async Task ListarParaFluxoCaixaDoMes_ExcluiTransferencias_NaoRetornaTransferencia()
+    public async Task ListarParaFluxoCaixaDoMes_IncluiLancamentosDeTransferencia_ExclusaoFicaPorContaDoService()
     {
         // Arrange
         var (dbContext, connection) = await CriarDbContext();
@@ -354,10 +354,13 @@ public class LancamentoRepositoryTests
             var resultado = await repositorio.ListarParaFluxoCaixaDoMes(2026, 7);
 
             // Assert
-            Assert.Single(resultado);
-            var lancamento = resultado.First();
-            Assert.Null(lancamento.TransferenciaId);
-            Assert.Equal(lancamentoNormal.Id, lancamento.Id);
+            // O repository devolve a lista crua do mes (sem classificacao de negocio).
+            // Excluir Transferencia da soma e responsabilidade do Service
+            // (ClassificacaoLancamentoService), nao deste metodo.
+            Assert.Equal(3, resultado.Count());
+            Assert.Contains(resultado, l => l.Id == lancamentoNormal.Id);
+            Assert.Contains(resultado, l => l.Id == lancamentoTransferenciaSaida.Id);
+            Assert.Contains(resultado, l => l.Id == lancamentoTransferenciaEntrada.Id);
         }
         finally
         {
