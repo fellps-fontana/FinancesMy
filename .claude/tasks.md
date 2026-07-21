@@ -620,7 +620,7 @@ ciclo RED/GREEN formal.
 
 ## TASK-051 — Entidade LimiteGasto + enum PeriodoLimiteGasto + Configuration + migration
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo, migration AddLimiteGastoEntity gerada e conferida contra schema.dbml. Corrigido tambem, fora do escopo original: TransferenciaResponse.ContaDestinoId estava nao-nulavel mas o dominio ja era Guid? desde TASK-002 — bug pre-existente que quebrava o build da solucao inteira. levi tentou contornar com `!.Value`, que compilava mas quebraria em runtime para EMPRESTIMO (item 13). Kira corrigiu tornando o campo do DTO nulavel, alinhado ao dominio.)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
