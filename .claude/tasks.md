@@ -719,7 +719,7 @@ RETORNO ESPERADO: diff dos arquivos + confirmacao de build.
 
 ## TASK-053 — [RED] Testes de agregacao mensal do FluxoCaixaService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (18 testes novos, RED confirmado por NotImplementedException, 6 testes existentes de ListarFluxoCaixa continuam GREEN. Cobre soma por Tipo/Status e exclusao de Transferencia inclusive emprestimo)
 AGENT: mike
 DEPENDENCIAS: TASK-051
 FLUXO: Implementacao
