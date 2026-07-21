@@ -628,9 +628,10 @@ namespace MyFinances.Migrations
                         .HasForeignKey("ConciliadoCom")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("MyFinances.Domain.ContaFixa", null)
+                    b.HasOne("MyFinances.Domain.ContaFixa", "ContaFixa")
                         .WithMany("Lancamentos")
-                        .HasForeignKey("ContaFixaId");
+                        .HasForeignKey("ContaFixaId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("MyFinances.Domain.Conta", "Conta")
                         .WithMany()
@@ -658,6 +659,8 @@ namespace MyFinances.Migrations
                     b.Navigation("CompraParcelada");
 
                     b.Navigation("Conta");
+
+                    b.Navigation("ContaFixa");
 
                     b.Navigation("ContaReceber");
 
