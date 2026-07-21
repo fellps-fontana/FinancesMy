@@ -48,6 +48,7 @@ builder.Services.AddScoped<IFaturaRepository, FaturaRepository>();
 builder.Services.AddScoped<IContaReceberRepository, ContaReceberRepository>();
 builder.Services.AddScoped<IAtivoRepository, AtivoRepository>();
 builder.Services.AddScoped<ICompraParceladaRepository, CompraParceladaRepository>();
+builder.Services.AddScoped<IContaFixaRepository, ContaFixaRepository>();
 
 // Services - Conta
 builder.Services.AddScoped<IContaService, ContaService>();
