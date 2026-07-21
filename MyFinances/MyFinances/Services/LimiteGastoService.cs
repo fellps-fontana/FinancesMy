@@ -44,7 +44,8 @@ public class LimiteGastoService : ILimiteGastoService
             Id = Guid.NewGuid(),
             CategoriaId = categoriaId,
             ValorLimite = valorLimite,
-            Periodo = PeriodoLimiteGasto.Mensal
+            Periodo = PeriodoLimiteGasto.Mensal,
+            Categoria = categoria
         };
 
         await _limiteGastoRepository.Adicionar(novoLimite);

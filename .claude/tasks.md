@@ -665,7 +665,7 @@ RETORNO ESPERADO: arquivos criados, build limpo.
 
 ## TASK-054 — Controller LimitesGastoController + DTOs
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (5 endpoints + DTOs, build limpo. Kira corrigiu bug encontrado na revisao: LimiteGastoService.Definir nao atribuia Categoria ao criar um LimiteGasto novo, deixando CategoriaNome vazio na resposta 201 - agora atribui a categoria ja validada.)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-053
