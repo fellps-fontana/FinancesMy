@@ -683,7 +683,7 @@ de `IFluxoCaixaService` + `IContaReceberService` + `IFaturaProjecaoService`).
 
 ## TASK-051 — Repository: agregacao mensal de lancamentos p/ fluxo de caixa
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (330/330 testes GREEN, build limpo. Achado colateral importante: main estava com erro de compilacao real (CS0266) em TransferenciaResponse.cs -- Transferencia.ContaDestinoId virou Guid? num commit anterior de Contas a Receber, item 13, e o DTO nao acompanhou; levi corrigiu certo. Desvio de escopo: levi tambem adicionou filtro `!TransferenciaId.HasValue` em ListarParaFluxoCaixaDoMes, contra o NAO FAZER explicito da task -- Kira removeu o filtro e inverteu o teste correspondente para provar que o repository devolve a lista crua do mes, sem classificacao de negocio; isso fica pro Service em TASK-053/054)
 AGENT: levi
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
