@@ -4,32 +4,19 @@ Levantado em 2026-07-12 apos reconciliar main com origin/main (merge e118ee6).
 Base: contas/regra-de-negocio.md vs codigo real em MyFinances/MyFinances.
 Modulos ja fechados e mergeados: Usuario/Auth, Investimentos (conta manual),
 Investimento Detalhado (Ativo/Cotacao), Categorias (+ de-para), Cartao de
-Credito (fatura/compra/pagamento/estorno).
+Credito (fatura/compra/pagamento/estorno), Contas a Receber (Recebivel e
+Emprestimo), **Lancamento Geral / Fluxo de Caixa (DEMANDA-001)**.
 
 ---
 
 ## DEMANDA-001 — Lancamento Geral / Fluxo de Caixa
 
-**Situacao atual:** as entidades `Lancamento` e `Transferencia` existem
-(Domain + Repository + Configuration), mas so sao consumidas internamente
-pelo modulo Cartao (CompraCartaoService grava `Lancamento` para compras de
-cartao). Nao existe `LancamentoService`, `LancamentosController`,
-`TransferenciaService` nem endpoint de transferencia manual.
-
-**Escopo:**
-- CRUD de lancamento manual em conta BANCO/MANUAL (nao-cartao).
-- Regra de sinal (regra-de-negocio.md item 2): tipo DEBIT/CREDIT como fonte
-  da verdade, nunca o sinal cru de `valor`.
-- Transferencia entre contas do proprio usuario (item 3): duas pernas
-  compartilhando `transferencia_id`, excluidas do calculo de gasto/receita.
-- Contas a pagar — caminho manual (item 5): lancamento PENDENTE -> marcar
-  como PAGO direto (sem SUGERIDO, que e exclusivo do caminho Open Finance/v2).
-- Listagem geral / fluxo de caixa (item 12, visao CAIXA): lista lancamentos
-  exceto compras de cartao (essas ficam so na visao categorica).
-
-**Depende de:** Categorias (pronto) para vincular `categoria_id`.
-**Bloqueia:** Conta Fixa (DEMANDA-002) e Projecao do mes (DEMANDA-003), que
-geram/consomem lancamento.
+STATUS: CONCLUIDA E MERGEADA (fechada em 2026-07-21, PR #30 + #31). Ver
+`docs/lancamento-geral.md` para o resumo vivo do modulo (regras cobertas,
+endpoints reais, lacunas, o que cada agent entregou). `LancamentoManualService`,
+`TransferenciaService`, `FluxoCaixaService`, `LancamentosController` e
+`TransferenciasController` implementados, testados (324/324) e revisados
+pelo style. Detalhe de execucao em `tasks.md` (TASK-038 a TASK-050).
 
 ---
 
@@ -48,7 +35,8 @@ ainda nao foi criada.
   sync mensal). Como o sync (item 11) e v2, a geracao aqui precisa de um
   gatilho v1 (ex: on-demand ou job simples), a decidir com killua.
 
-**Depende de:** DEMANDA-001 (Lancamento Geral) pronto.
+**Depende de:** DEMANDA-001 (Lancamento Geral) — CONCLUIDA em 2026-07-21,
+dependencia satisfeita. Sem bloqueio restante para arquitetar esta demanda.
 
 ---
 
@@ -64,8 +52,9 @@ codigo.
 - Cartao de credito entra como UMA linha = total da fatura atual do mes
   (pago/nao pago) — nao lista compras individuais na projecao.
 
-**Depende de:** DEMANDA-001 (Lancamento Geral) e Cartao de Credito (pronto,
-ja expoe saldo/fatura calculados) para agregar os dois.
+**Depende de:** DEMANDA-001 (Lancamento Geral) — CONCLUIDA em 2026-07-21 — e
+Cartao de Credito (pronto, ja expoe saldo/fatura calculados) para agregar
+os dois. Sem bloqueio restante para arquitetar esta demanda.
 
 ---
 
