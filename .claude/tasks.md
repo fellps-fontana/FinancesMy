@@ -606,3 +606,227 @@ independente do resto — pode rodar em paralelo).
    contas ativas) e TASK-048 (casos de teste de rejeicao por conta inativa).
 
 Nenhuma pendencia de decisao de produto restante. Queue pronta para execucao.
+
+---
+
+# Modulo Limite de Gasto por Categoria (v1)
+
+Escopo confirmado: item 14 da regra-de-negocio.md (recem-adicionado, 2026-07-20).
+Tabela `limite_gasto` ja existia no schema.dbml, orfa no codigo. Regra NAO e
+critica (comparado a ContaReceberSaldoCalculator/ClassificacaoLancamentoService:
+erro aqui produz numero errado numa tela, nunca bloqueia escrita nem corrompe
+estado) — segue fluxo simples arquitetar -> codar -> testar -> style, sem
+ciclo RED/GREEN formal.
+
+## TASK-051 — Entidade LimiteGasto + enum PeriodoLimiteGasto + Configuration + migration
+
+STATUS: PENDENTE
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: nenhuma
+CONTEXTO A LER: regra-de-negocio.md item 14 (inteiro); schema.dbml tabela `limite_gasto`; `Domain/TipoConta.cs` (padrao de enum com ToStorageValue/FromStorageValue); `Infrastructure/Configurations/ContaReceberConfiguration.cs` (padrao de Configuration)
+ESCOPO: criar enum `PeriodoLimiteGasto` (so `Mensal` por enquanto, extensoes ToStorageValue/FromStorageValue no padrao MAIUSCULO ja usado); entidade `LimiteGasto` (Id, CategoriaId, ValorLimite, Periodo, navegacao Categoria); `LimiteGastoConfiguration : IEntityTypeConfiguration<LimiteGasto>` com indice UNICO em CategoriaId (1:1) e FK `OnDelete(DeleteBehavior.Cascade)`; registrar `DbSet<LimiteGasto>` no `MyFinancesDbContext`; gerar migration.
+CRITERIO DE ACEITE: projeto compila; migration aplicavel; tabela `limite_gasto` com indice unico em `categoria_id`.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/LimiteGasto.cs (novo), MyFinances/MyFinances/Domain/PeriodoLimiteGasto.cs (novo), MyFinances/MyFinances/Infrastructure/Configurations/LimiteGastoConfiguration.cs (novo), MyFinances/MyFinances/Data/MyFinancesDbContext.cs, MyFinances/MyFinances/Migrations/**
+NAO FAZER: nao criar Repository/Service ainda (TASK-053); nao permitir CategoriaId nulo nem tornar o indice unico opcional.
+RETORNO ESPERADO: arquivos criados, build limpo, migration gerada e conferida contra schema.dbml.
+
+---
+
+## TASK-052 — Extensao de ILancamentoRepository: ListarPorCategoriasEPeriodo
+
+STATUS: PENDENTE
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: nenhuma
+CONTEXTO A LER: `Repositories/ContaReceberRepository.cs` metodo `ListarParaProjecaoDoMes` (padrao exato de filtro `.Year == ano && .Month == mes`, sem construir range de data); regra-de-negocio.md item 14, bloco "Hierarquia" e formula `gasto_realizado_no_mes`
+ESCOPO: adicionar `Task<IEnumerable<Lancamento>> ListarPorCategoriasEPeriodo(IEnumerable<Guid> categoriaIds, int ano, int mes)` em `ILancamentoRepository`/`LancamentoRepository`, filtrando `categoriaIds.Contains(l.CategoriaId) && l.Data.Year == ano && l.Data.Month == mes`. Recebe uma LISTA de ids (nao um so) porque o item 14 soma categoria-pai + subcategorias diretas quando a categoria-pai tem limite.
+CRITERIO DE ACEITE: metodo novo aceita `IEnumerable<Guid>`, compila, filtra corretamente qualquer subconjunto de categorias no periodo informado.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Repositories/ILancamentoRepository.cs, MyFinances/MyFinances/Repositories/LancamentoRepository.cs
+NAO FAZER: nao filtrar Tipo/Oculto aqui (responsabilidade do `LimiteGastoCalculator`, TASK-053); nao remover metodos existentes.
+RETORNO ESPERADO: metodo novo, compilando.
+
+---
+
+## TASK-053 — LimiteGastoCalculator + Repository + Service de LimiteGasto (com agregacao de hierarquia)
+
+STATUS: PENDENTE
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-051, TASK-052
+CONTEXTO A LER: regra-de-negocio.md item 14 inteiro; `Domain/FaturaSaldoCalculator.cs` e `Domain/ContaReceberSaldoCalculator.cs` (padrao de calculator estatico + record de resultado); `Services/ContaReceberService.cs` metodo `CalcularTotalAReceberEsperadoNoMes` (padrao de agregacao por mes); `Repositories/CategoriaRepository.cs` metodo `ObterPorId` (ja inclui `Subcategorias` via `Include`)
+ESCOPO: implementar `Domain/LimiteGastoCalculator.Calcular(LimiteGasto, IEnumerable<Lancamento>)` retornando `record LimiteGastoStatus(decimal ValorLimite, decimal GastoRealizado, decimal PercentualUtilizado, bool Estourado)` (gasto = soma de `Tipo=Debit` e `!Oculto` do conjunto ja filtrado); `ILimiteGastoRepository`/`LimiteGastoRepository` (Adicionar, ObterPorCategoriaId, Listar, Remover, Salvar); `ILimiteGastoService`/`LimiteGastoService` com `Definir` (upsert — valida categoria existe via `ICategoriaRepository`, `categoria.Tipo == Despesa`, categoria nao arquivada, `valor > 0`), `Remover`, `Listar`, `ObterGastoVsLimite(categoriaId, ano, mes)` — resolve a categoria via `ICategoriaRepository.ObterPorId` (que ja inclui `Subcategorias`), monta a lista de ids `[categoria.Id, ...categoria.Subcategorias.Select(s => s.Id)]`, chama `ListarPorCategoriasEPeriodo` com essa lista —, e `ObterGastoVsLimiteTodasCategorias(ano, mes)`. Criar `Exceptions/LimiteGastoNaoEncontradoException.cs` e `Exceptions/CategoriaInvalidaParaLimiteGastoException.cs`. Registrar tudo no DI.
+CRITERIO DE ACEITE: 1) `Definir` em categoria tipo=Receita lanca `CategoriaInvalidaParaLimiteGastoException`; 2) `Definir` duas vezes na mesma categoria atualiza em vez de duplicar; 3) `ObterGastoVsLimite` de uma categoria-pai soma tanto os lancamentos da propria categoria quanto os de suas subcategorias diretas (Debit, nao-oculto), sem descer alem de 1 nivel.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/LimiteGastoCalculator.cs (novo), MyFinances/MyFinances/Repositories/ILimiteGastoRepository.cs (novo), MyFinances/MyFinances/Repositories/LimiteGastoRepository.cs (novo), MyFinances/MyFinances/Services/ILimiteGastoService.cs (novo), MyFinances/MyFinances/Services/LimiteGastoService.cs (novo), MyFinances/MyFinances/Exceptions/LimiteGastoNaoEncontradoException.cs (novo), MyFinances/MyFinances/Exceptions/CategoriaInvalidaParaLimiteGastoException.cs (novo), MyFinances/MyFinances/Program.cs
+NAO FAZER: nao permitir `Definir` em categoria tipo=Receita ou arquivada; nao bloquear/rejeitar criacao de lancamento com base no limite (item 14 proibe bloqueio); nao acessar `MyFinancesDbContext` direto no Service; nao somar subcategoria-de-subcategoria (so 1 nivel de profundidade, conforme item 14).
+RETORNO ESPERADO: arquivos criados, build limpo.
+
+---
+
+## TASK-054 — Controller LimitesGastoController + DTOs
+
+STATUS: PENDENTE
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-053
+CONTEXTO A LER: clean-code.md "Organizacao (.NET)"; `Controllers/ContasReceberController.cs` (padrao de traducao de excecao -> status HTTP e DTO factory)
+ESCOPO: criar `LimitesGastoController` com `POST /api/limites-gasto` (upsert, 200 se atualizou / 201 se criou), `DELETE /api/limites-gasto/{categoriaId}` (204), `GET /api/limites-gasto` (200), `GET /api/limites-gasto/gasto-vs-limite?ano=&mes=` (200), `GET /api/limites-gasto/gasto-vs-limite/{categoriaId}?ano=&mes=` (200/404). DTOs: `DefinirLimiteGastoRequest`, `LimiteGastoResponse` (com `CategoriaNome`), `GastoVsLimiteResponse` (com `PercentualUtilizado` e `Estourado`).
+CRITERIO DE ACEITE: os 5 endpoints compilam e respondem os status HTTP descritos no ESCOPO.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Controllers/LimitesGastoController.cs (novo), MyFinances/MyFinances/DTOs/LimiteGasto/*.cs (novo)
+NAO FAZER: nao colocar regra de negocio no controller; nao expor a entity `LimiteGasto` crua.
+RETORNO ESPERADO: endpoints funcionando conforme criterio.
+
+---
+
+## TASK-055 — Testes de LimiteGastoCalculator e LimiteGastoService (incluindo hierarquia)
+
+STATUS: PENDENTE
+AGENT: mike
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-053
+CONTEXTO A LER: regra-de-negocio.md item 14 inteiro
+ESCOPO: testar `LimiteGastoCalculator.Calcular`: soma so Debit+!Oculto, ignora Credit, ignora Oculto=true, `Estourado=true` quando gasto>limite, `PercentualUtilizado` correto (limite=0 sem divisao por zero). Testar `LimiteGastoService`: `Definir` em categoria Receita rejeita; `Definir` duas vezes atualiza (nao duplica); `Definir` valor<=0 rejeita; `Remover` categoria sem limite lanca `LimiteGastoNaoEncontradoException`; `ObterGastoVsLimiteTodasCategorias` retorna so categorias com limite cadastrado; `ObterGastoVsLimite` de categoria-pai com limite soma tambem os lancamentos de suas subcategorias diretas; gasto de uma subcategoria NAO soma no limite de outra subcategoria irma (so no pai).
+CRITERIO DE ACEITE: testes passando cobrindo os casos listados, incluindo hierarquia; relatorio de bug estruturado (arquivo+linha) se algum falhar por defeito de codigo.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Domain/LimiteGastoCalculatorTests.cs (novo), MyFinances/MyFinances.Tests/Services/LimiteGastoServiceTests.cs (novo)
+NAO FAZER: nao alterar `LimiteGastoCalculator`/`LimiteGastoService` para o teste passar.
+RETORNO ESPERADO: testes passando ou relatorio de bug estruturado.
+
+---
+
+## TASK-056 — Testes HTTP do LimitesGastoController
+
+STATUS: PENDENTE
+AGENT: mike
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-054
+CONTEXTO A LER: `MyFinances.Tests/Controllers/ContaReceberControllerTests.cs` (padrao WebApplicationFactory + InMemory DB + JWT ja usado no projeto)
+ESCOPO: testes HTTP: criar limite (201); redefinir limite existente (200, nao duplica); criar em categoria Receita (422); `DELETE` sem limite cadastrado (404); `GET gasto-vs-limite` retornando `estourado=true` quando gasto>limite; `GET gasto-vs-limite/{categoriaId}` para categoria sem limite (404).
+CRITERIO DE ACEITE: testes passando; relatorio de bug se houver.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Controllers/LimitesGastoControllerTests.cs (novo)
+NAO FAZER: nao alterar controller/service para o teste passar sem reportar.
+RETORNO ESPERADO: testes passando ou relatorio de bug.
+
+---
+
+## TASK-057 — Style: revisao do modulo backend LimiteGasto
+
+STATUS: PENDENTE
+AGENT: style
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-055, TASK-056
+CONTEXTO A LER: regra-de-negocio.md item 14; clean-code.md inteiro
+ESCOPO: validar que nenhum fluxo bloqueia lancamento por causa do limite (item 14: so alerta), que `LimiteGastoService` nao acessa `DbContext` direto, que o upsert de `Definir` nao duplica limite por categoria, e que o calculo de gasto realizado bate com o item 14 (Debit, !Oculto, mes calendario, hierarquia de 1 nivel).
+CRITERIO DE ACEITE: veredito (APROVADO ou tarefa de correcao no esquema padrao, redespachada a levi).
+ARQUIVOS PERMITIDOS: nenhum (style nao edita)
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito final do backend do modulo.
+
+---
+
+## TASK-058 — Front: camada de dados de LimiteGasto (types/api/hooks)
+
+STATUS: PENDENTE
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-057
+CONTEXTO A LER: stack.md secao "Frontend (React)"; `features/contas-receber/{types.ts,api.ts,query-keys.ts,hooks}` como padrao de estilo
+ESCOPO: criar feature nova `features/limite-gasto/` com `types.ts`, `api.ts`, `query-keys.ts` e hooks (`useLimitesGasto`, `useDefinirLimiteGasto`, `useRemoverLimiteGasto`, `useGastoVsLimite(categoriaId, ano, mes)`, `useGastoVsLimiteTodasCategorias(ano, mes)`), consumidos depois por dashboard, lancamentos, categorias e o relatorio (TASK-059 a TASK-062).
+CRITERIO DE ACEITE: hooks tipados (sem `any`), invalidacao de cache cruzada apos `Definir`/`Remover` (gasto-vs-limite muda).
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/limite-gasto/types.ts (novo), MyFinanceFrontEnd/src/features/limite-gasto/api.ts (novo), MyFinanceFrontEnd/src/features/limite-gasto/query-keys.ts (novo), MyFinanceFrontEnd/src/features/limite-gasto/hooks/*.ts (novo)
+NAO FAZER: nao renderizar UI aqui; nao fixar threshold de "perto do limite" no hook — expor `percentualUtilizado` cru.
+RETORNO ESPERADO: hooks prontos para consumo pelas tasks seguintes.
+
+---
+
+## TASK-059 — Front: indicador de limite no dashboard
+
+STATUS: PENDENTE
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-058
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 14
+ESCOPO: componente `LimiteGastoIndicador` (barra de progresso gasto/limite por categoria, cor de alerta quando `estourado=true`), consumindo `useGastoVsLimiteTodasCategorias`. ATENCAO: nao existe pagina raiz de Dashboard no front ainda (`features/dashboard/` so tem `.gitkeep`) — esta task entrega o componente pronto para embutir; a integracao na pagina de dashboard depende de um modulo de Dashboard ainda nao arquitetado.
+CRITERIO DE ACEITE: componente de apresentacao puro, consumindo o hook, pronto para ser embutido quando o Dashboard existir.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/dashboard/components/LimiteGastoIndicador.tsx (novo)
+NAO FAZER: nao construir a pagina de Dashboard inteira (fora de escopo); nao calcular gasto/limite no componente.
+RETORNO ESPERADO: componente pronto para embutir.
+
+---
+
+## TASK-060 — Front: aviso de limite na tela de lancamento
+
+STATUS: PENDENTE
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-058
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 14
+ESCOPO: componente `AvisoLimiteGasto` (alerta "perto do limite"/"limite estourado" ao selecionar uma categoria), consumindo `useGastoVsLimite(categoriaId, ano, mes)`; funcao pura em `lib/limiarAlertaLimite.ts` decidindo o threshold visual de "perto" a partir de `percentualUtilizado` (default 80% — nao esta na regra de negocio, decisao de UX isolada em funcao propria para poder ajustar depois sem tocar em contrato de API). ATENCAO: nao existe form de criacao de lancamento manual no front ainda (`features/lancamentos/` so tem `.gitkeep`, embora o backend — `LancamentoManualService`/Controller — ja exista) — esta task entrega o componente pronto para embutir quando o form existir, nao constroi o form.
+CRITERIO DE ACEITE: componente exibe estado "ok"/"perto"/"estourado" a partir de `percentualUtilizado`/`estourado`; funcao de threshold isolada e testavel.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/lancamentos/components/AvisoLimiteGasto.tsx (novo), MyFinanceFrontEnd/src/features/lancamentos/lib/limiarAlertaLimite.ts (novo)
+NAO FAZER: nao bloquear o submit do formulario por causa do limite (item 14: so alerta); nao construir o form de lancamento inteiro (fora de escopo).
+RETORNO ESPERADO: componente pronto para embutir.
+
+---
+
+## TASK-061 — Front: comparativo limite vs realizado por categoria
+
+STATUS: PENDENTE
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-058
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 14; `features/cartao/RelatorioCategoriaPage.tsx` + `features/cartao/hooks/useRelatorioCategoria.ts` — ACHADO: ja existe uma tela "Relatorio por categoria" no front, mas ela e escopada so a COMPRAS DE CARTAO (item 12) e chama um endpoint que nao existe no backend (gap documentado no proprio arquivo, pre-existente a esta entrega). O comparativo de limite (item 14) e um relatorio DIFERENTE (soma TODO Debit da categoria, nao so cartao) e usa o endpoint novo desta leva — NAO tentar consertar/fundir com `RelatorioCategoriaPage.tsx` aqui.
+ESCOPO: pagina/secao nova listando as categorias com limite cadastrado, comparando `valorLimite` x `gastoRealizado` (barra de progresso + `estourado`), consumindo `useGastoVsLimiteTodasCategorias`.
+CRITERIO DE ACEITE: pagina nova, rota propria, sem tocar no relatorio de cartao existente.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/limite-gasto/ComparativoLimiteGastoPage.tsx (novo), MyFinanceFrontEnd/src/features/limite-gasto/components/ItemComparativoLimite.tsx (novo), MyFinanceFrontEnd/src/app/routes.tsx (so para adicionar a rota nova)
+NAO FAZER: nao alterar `features/cartao/RelatorioCategoriaPage.tsx` nem seus arquivos (`api.ts`, `hooks/useRelatorioCategoria.ts`, `lib/relatorioCategoria.ts`) — gap pre-existente, fora de escopo; nao remover nem duplicar essa rota.
+RETORNO ESPERADO: pagina nova funcionando, sem tocar no relatorio de cartao.
+
+---
+
+## TASK-062 — Front: CRUD do limite dentro da tela de categoria
+
+STATUS: PENDENTE
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-058
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 14 (bloco "Onde aparece" — CRUD confirmado embutido na tela de categoria, decisao do usuario em 2026-07-20); `features/categorias/` hoje so tem `.gitkeep` (nao ha form de categoria construido ainda) — esta task constroi tambem o campo de limite dentro do que seria o form/lista de categoria.
+ESCOPO: campo "Limite de gasto mensal" na tela de categoria (tipo=Despesa apenas — campo oculto/desabilitado para Receita), com acao de definir/remover, consumindo `useDefinirLimiteGasto`/`useRemoverLimiteGasto`.
+CRITERIO DE ACEITE: componente oculta o campo quando a categoria e Receita; chama `Definir`/`Remover` corretamente.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/categorias/components/CampoLimiteGasto.tsx (novo)
+NAO FAZER: nao construir a tela de categoria inteira (CRUD de categoria em si e modulo separado, nao arquitetado nesta leva) — so o componente do campo de limite, isolado, pronto para embutir.
+RETORNO ESPERADO: componente pronto para embutir.
+
+---
+
+## Mapa de dependencia (TASK-051 a TASK-062)
+
+```
+051 (entidade) ─┬─> 053 (calculator+repo+service) ─┬─> 054 (controller) ─┬─> 055 (testes service) ─┬─> 057 (style) ─> 058 (front data) ─┬─> 059 (dashboard)
+052 (repo lanc) ┘                                   │                    └─> 056 (testes HTTP) ─────┘                                    ├─> 060 (aviso lancamento)
+                                                     └────────────────────────────────────────────────────────────────────────────────────┼─> 061 (comparativo)
+                                                                                                                                             └─> 062 (CRUD em categoria)
+```
+051 e 052 tocam arquivos disjuntos, rodam em paralelo. 059/060/061/062 idem entre si — todas dependem so de 058.
+
+## Pendencias — resolvidas com o usuario em 2026-07-20
+
+1. **Estouro de limite = so alerta visual, sem bloqueio.** Decisao do usuario;
+   nenhum service/controller deste modulo pode recusar um lancamento por
+   causa do limite.
+2. **Limite so em categoria tipo DESPESA.** `Definir` em categoria RECEITA
+   lanca `CategoriaInvalidaParaLimiteGastoException` (TASK-053).
+3. **Hierarquia: gasto de subcategoria SOMA no limite da categoria-pai**
+   (alem do limite proprio da subcategoria, se houver). Decisao do usuario —
+   inverteu a suposicao inicial do killua (que era "independentes"). Reflete
+   em TASK-052 (repository aceita lista de ids), TASK-053 (service resolve
+   subcategorias via `Categoria.Subcategorias`) e TASK-055 (teste especifico
+   de hierarquia).
+4. **Regime de competencia** (lancamento conta ao ser registrado, independente
+   de status PENDENTE/PAGO) — confirmado, mesma filosofia do item 12.
+5. **CRUD do valor do limite embutido na tela de categoria** (nao ha tela
+   separada de "Limites") — confirmado, TASK-062.
+6. **Threshold de "perto do limite" (80%) na tela de lancamento** — decisao
+   de UX, nao de regra de negocio; fica isolada em `lib/limiarAlertaLimite.ts`
+   (TASK-060) para poder mudar sem tocar em contrato de API.
+
+Nenhuma pendencia de decisao de produto restante. Queue pronta para execucao.
