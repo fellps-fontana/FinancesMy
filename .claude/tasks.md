@@ -734,7 +734,7 @@ RETORNO ESPERADO: Kira cria os 3 arquivos; projeto compila (so assinatura) antes
 
 ## TASK-055 — [REGRA CRITICA] RED: testes de ContaFixaLancamentoFactory + idempotencia de GerarLancamentosPendentes
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (15 testes, RED confirmado por NotImplementedException, verificado por Kira. Primeira rodada tinha 2 bugs de compilacao no proprio teste — mock de metodo inexistente ILancamentoRepository.ObterPorContaFixaId e It.Any em vez de It.IsAny do Moq — mike corrigiu na segunda rodada, sem tocar em codigo de producao)
 AGENT: mike
 FLUXO: Implementacao (rodada RED)
 DEPENDENCIAS: TASK-054
