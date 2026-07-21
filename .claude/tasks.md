@@ -680,7 +680,7 @@ RETORNO ESPERADO: endpoints funcionando conforme criterio.
 
 ## TASK-055 — Testes de LimiteGastoCalculator e LimiteGastoService (incluindo hierarquia)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (29 testes, 0 falhas, confirmado independentemente por Kira via dotnet test --filter. Cobre soma Debit/Oculto, estourado, percentual sem divisao por zero, upsert nao duplica, categoria Receita/arquivada rejeitada, hierarquia pai+subcategoria com Verify explicito da lista de ids passada ao repository)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-053
