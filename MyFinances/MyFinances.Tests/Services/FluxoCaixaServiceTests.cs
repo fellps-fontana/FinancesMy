@@ -271,4 +271,805 @@ public class FluxoCaixaServiceTests
         Assert.False(dto.Manual);
         Assert.True(dto.Oculto);
     }
+
+    // Testes para CalcularTotalRecebidoNoMes (REGRA: soma Credit+Pago, exclui Transferencia)
+
+    [Fact]
+    public async Task CalcularTotalRecebidoNoMes_SomaNormalmenteLancamentosCreditPago()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Salario",
+                Valor = 5000m,
+                Tipo = TipoLancamento.Credit,
+                Data = new DateOnly(2025, 2, 5),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Freelance",
+                Valor = 1500m,
+                Tipo = TipoLancamento.Credit,
+                Data = new DateOnly(2025, 2, 10),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalRecebidoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(6500m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalRecebidoNoMes_ExcluiTransferenciaPerna()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var transferId = Guid.NewGuid();
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Salario",
+                Valor = 5000m,
+                Tipo = TipoLancamento.Credit,
+                Data = new DateOnly(2025, 2, 5),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Transferencia entrada",
+                Valor = 1000m,
+                Tipo = TipoLancamento.Credit,
+                Data = new DateOnly(2025, 2, 8),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = transferId,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalRecebidoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(5000m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalRecebidoNoMes_ExcluiEmprestimoRecebidoPerna()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var emprestimoId = Guid.NewGuid();
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Salario",
+                Valor = 5000m,
+                Tipo = TipoLancamento.Credit,
+                Data = new DateOnly(2025, 2, 5),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Emprestimo amigo recebido",
+                Valor = 500m,
+                Tipo = TipoLancamento.Credit,
+                Data = new DateOnly(2025, 2, 10),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = emprestimoId,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalRecebidoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(5000m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalRecebidoNoMes_IgnoraPendente()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Salario",
+                Valor = 5000m,
+                Tipo = TipoLancamento.Credit,
+                Data = new DateOnly(2025, 2, 5),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Bonus (ainda pendente)",
+                Valor = 2000m,
+                Tipo = TipoLancamento.Credit,
+                Data = new DateOnly(2025, 2, 15),
+                Status = StatusLancamento.Pendente,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalRecebidoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(5000m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalRecebidoNoMes_IgnoraDebit()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Salario",
+                Valor = 5000m,
+                Tipo = TipoLancamento.Credit,
+                Data = new DateOnly(2025, 2, 5),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Aluguel",
+                Valor = 1000m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 10),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalRecebidoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(5000m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalRecebidoNoMes_ListaVaziaRetornaZero()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(new List<Lancamento>());
+
+        // Act
+        var resultado = await _service.CalcularTotalRecebidoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(0m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    // Testes para CalcularTotalPagoNoMes (REGRA: soma Debit+Pago, exclui Transferencia)
+
+    [Fact]
+    public async Task CalcularTotalPagoNoMes_SomaNormalmenteLancamentosDebitPago()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Aluguel",
+                Valor = 1500m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 5),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Supermercado",
+                Valor = 350m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 10),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalPagoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(1850m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalPagoNoMes_ExcluiTransferenciaPerna()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var transferId = Guid.NewGuid();
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Aluguel",
+                Valor = 1500m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 5),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Transferencia saida",
+                Valor = 500m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 8),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = transferId,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalPagoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(1500m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalPagoNoMes_ExcluiEmprestimoDadoPerna()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var emprestimoId = Guid.NewGuid();
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Aluguel",
+                Valor = 1500m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 5),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Emprestimo amigo dado",
+                Valor = 300m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 10),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = emprestimoId,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalPagoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(1500m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalPagoNoMes_IgnoraPendente()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Aluguel",
+                Valor = 1500m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 5),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Internet (pendente)",
+                Valor = 100m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 15),
+                Status = StatusLancamento.Pendente,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalPagoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(1500m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalPagoNoMes_IgnoraCredit()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Aluguel",
+                Valor = 1500m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 5),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Salario",
+                Valor = 5000m,
+                Tipo = TipoLancamento.Credit,
+                Data = new DateOnly(2025, 2, 10),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalPagoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(1500m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalPagoNoMes_ListaVaziaRetornaZero()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(new List<Lancamento>());
+
+        // Act
+        var resultado = await _service.CalcularTotalPagoNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(0m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    // Testes para CalcularTotalAPagarNoMes (REGRA: soma Debit+Pendente, exclui Transferencia)
+
+    [Fact]
+    public async Task CalcularTotalAPagarNoMes_SomaNormalmenteLancamentosDebitPendente()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Fatura cartao",
+                Valor = 2000m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 20),
+                Status = StatusLancamento.Pendente,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Conta telefone",
+                Valor = 150m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 25),
+                Status = StatusLancamento.Pendente,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalAPagarNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(2150m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalAPagarNoMes_ExcluiTransferenciaPendente()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var transferId = Guid.NewGuid();
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Fatura cartao",
+                Valor = 2000m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 20),
+                Status = StatusLancamento.Pendente,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Transferencia futura",
+                Valor = 500m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 25),
+                Status = StatusLancamento.Pendente,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = transferId,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalAPagarNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(2000m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalAPagarNoMes_ExcluiEmprestimoFuturoPerna()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var emprestimoId = Guid.NewGuid();
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Fatura cartao",
+                Valor = 2000m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 20),
+                Status = StatusLancamento.Pendente,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Emprestimo amigo futuro",
+                Valor = 200m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 28),
+                Status = StatusLancamento.Pendente,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = emprestimoId,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalAPagarNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(2000m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalAPagarNoMes_IgnoraPago()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Fatura cartao (paga)",
+                Valor = 2000m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 5),
+                Status = StatusLancamento.Pago,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Conta de agua",
+                Valor = 150m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 25),
+                Status = StatusLancamento.Pendente,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalAPagarNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(150m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalAPagarNoMes_IgnoraCredit()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+        var lancamentos = new List<Lancamento>
+        {
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Fatura cartao",
+                Valor = 2000m,
+                Tipo = TipoLancamento.Debit,
+                Data = new DateOnly(2025, 2, 20),
+                Status = StatusLancamento.Pendente,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            },
+            new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                ContaId = Guid.NewGuid(),
+                Descricao = "Bonus futuro",
+                Valor = 3000m,
+                Tipo = TipoLancamento.Credit,
+                Data = new DateOnly(2025, 2, 28),
+                Status = StatusLancamento.Pendente,
+                Manual = true,
+                Oculto = false,
+                TransferenciaId = null,
+                FaturaId = null
+            }
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(lancamentos);
+
+        // Act
+        var resultado = await _service.CalcularTotalAPagarNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(2000m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    [Fact]
+    public async Task CalcularTotalAPagarNoMes_ListaVaziaRetornaZero()
+    {
+        // Arrange
+        var ano = 2025;
+        var mes = 2;
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixaDoMes(ano, mes))
+            .ReturnsAsync(new List<Lancamento>());
+
+        // Act
+        var resultado = await _service.CalcularTotalAPagarNoMes(ano, mes);
+
+        // Assert
+        Assert.Equal(0m, resultado);
+        _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
 }
