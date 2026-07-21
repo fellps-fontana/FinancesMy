@@ -669,7 +669,7 @@ Refletido em `regra-de-negocio.md` item 6. TASK-056 e TASK-059 desbloqueadas.
 
 ## TASK-051 — Entidade ContaFixa + Configuration + migration
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo, migration AddContaFixa gerada; levi corrigiu de passagem um bug de build pre-existente e nao relacionado — TransferenciaResponse.ContaDestinoId estava Guid nao-nulo, incompativel com Transferencia.ContaDestinoId ja nullable desde TASK-002 de Contas a Receber; Kira verificou que e um fix minimo de 1 linha, ja identificado em outra branch, sem risco)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
