@@ -701,7 +701,7 @@ RETORNO ESPERADO: diff dos arquivos + confirmacao que o projeto compila (`dotnet
 
 ## TASK-052 — Repository: faturas de cartao por vencimento no mes
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (335/335 testes GREEN, build limpo. Escopo respeitado, sem desvios)
 AGENT: levi
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
