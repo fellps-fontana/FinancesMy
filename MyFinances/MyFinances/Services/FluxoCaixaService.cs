@@ -1,4 +1,5 @@
 using MyFinances.DTOs;
+using MyFinances.Domain;
 using MyFinances.Repositories;
 
 namespace MyFinances.Services;
@@ -18,18 +19,33 @@ public class FluxoCaixaService : IFluxoCaixaService
         return lancamentos.Select(LancamentoResponseDto.FromLancamento);
     }
 
-    public Task<decimal> CalcularTotalRecebidoNoMes(int ano, int mes)
+    public async Task<decimal> CalcularTotalRecebidoNoMes(int ano, int mes)
     {
-        throw new NotImplementedException();
+        var lancamentos = await _lancamentoRepository.ListarParaFluxoCaixaDoMes(ano, mes);
+
+        return lancamentos
+            .Where(l => l.Tipo == TipoLancamento.Credit && l.Status == StatusLancamento.Pago)
+            .Where(l => ClassificacaoLancamentoService.Classificar(l) != ClassificacaoLancamento.Transferencia)
+            .Sum(l => l.Valor);
     }
 
-    public Task<decimal> CalcularTotalPagoNoMes(int ano, int mes)
+    public async Task<decimal> CalcularTotalPagoNoMes(int ano, int mes)
     {
-        throw new NotImplementedException();
+        var lancamentos = await _lancamentoRepository.ListarParaFluxoCaixaDoMes(ano, mes);
+
+        return lancamentos
+            .Where(l => l.Tipo == TipoLancamento.Debit && l.Status == StatusLancamento.Pago)
+            .Where(l => ClassificacaoLancamentoService.Classificar(l) != ClassificacaoLancamento.Transferencia)
+            .Sum(l => l.Valor);
     }
 
-    public Task<decimal> CalcularTotalAPagarNoMes(int ano, int mes)
+    public async Task<decimal> CalcularTotalAPagarNoMes(int ano, int mes)
     {
-        throw new NotImplementedException();
+        var lancamentos = await _lancamentoRepository.ListarParaFluxoCaixaDoMes(ano, mes);
+
+        return lancamentos
+            .Where(l => l.Tipo == TipoLancamento.Debit && l.Status == StatusLancamento.Pendente)
+            .Where(l => ClassificacaoLancamentoService.Classificar(l) != ClassificacaoLancamento.Transferencia)
+            .Sum(l => l.Valor);
     }
 }
