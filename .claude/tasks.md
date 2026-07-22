@@ -782,7 +782,7 @@ RETORNO ESPERADO: GREEN confirmado ou relatorio de bug (arquivo+linha).
 
 ## TASK-058 — Style: revisao da regra critica
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA + APROVADA PELO STYLE (15/15 testes reconfirmados. Clamp de data identico ao padrao de FaturaCicloService, GerarLancamentosPendentes nunca gera fora do par mes-atual/proximo, idempotencia checada antes de cada criacao, EditarAsync/DesativarAsync nunca tocam Status=Pago. Lacuna nao-bloqueante apontada: falta teste de virada de ano dezembro->janeiro na geracao — logica depende de DateOnly.AddMonths do framework, sem risco, so polimento de cobertura se quiser fechar depois)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-057
