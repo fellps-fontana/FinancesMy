@@ -803,7 +803,7 @@ RETORNO ESPERADO: arquivo de teste + output RED.
 
 ## TASK-058 — [GREEN] Implementar FaturaProjecaoService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (7/7 testes RED da TASK-057 GREEN, suite completa 360/360. Reusa FaturaSaldoCalculator, sem reimplementar calculo de saldo)
 AGENT: levi
 DEPENDENCIAS: TASK-057
 FLUXO: Implementacao
@@ -820,7 +820,7 @@ RETORNO ESPERADO: diff do `FaturaProjecaoService.cs`.
 
 ## TASK-059 — [GREEN confirmado] Rodar testes do FaturaProjecaoService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (Kira confirmou inline ao rodar dotnet test antes de commitar a TASK-058 — 360/360 GREEN, sem reescrever nenhum teste)
 AGENT: mike
 DEPENDENCIAS: TASK-058
 FLUXO: Implementacao
