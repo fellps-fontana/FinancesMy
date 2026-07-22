@@ -797,7 +797,7 @@ RETORNO ESPERADO: veredito + (se houver) tarefa de correcao redespachada a levi.
 
 ## TASK-059 — Controller REST de ContaFixa + DTOs
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo, 339/339 testes sem regressao, so os 4 arquivos permitidos tocados; confirmado que nao repetiu o desvio de escopo em TransferenciasController/TransferenciaResponse da task anterior)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-058
