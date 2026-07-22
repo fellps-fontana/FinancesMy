@@ -815,7 +815,7 @@ RETORNO ESPERADO: contrato de API documentado (rota, verbo, body, shape de retor
 
 ## TASK-060 — Testes HTTP do ContaFixaController
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (8/8 GREEN, suite completa 347/347. So o arquivo permitido tocado)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-059
