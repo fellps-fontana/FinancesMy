@@ -695,7 +695,7 @@ RETORNO ESPERADO: testes passando ou relatorio de bug estruturado.
 
 ## TASK-056 — Testes HTTP do LimitesGastoController
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (6 testes HTTP, 0 falhas, confirmado independentemente por Kira. Cobre 201/200 upsert com CategoriaNome preenchido, 422 categoria Receita, 404 delete/consulta sem limite, estourado=true via gasto real. Removido arquivo residual test-output.txt deixado pelo mike, fora do escopo)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-054
