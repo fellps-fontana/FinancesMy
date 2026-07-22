@@ -725,7 +725,7 @@ RETORNO ESPERADO: veredito final do backend do modulo.
 
 ## TASK-058 — Front: camada de dados de LimiteGasto (types/api/hooks)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (types/api/query-keys/hooks criados, build/type-check limpo, dados crus sem threshold de UX embutido, invalidacao cruzada via limiteGastoKeys.all nas mutations)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-057
