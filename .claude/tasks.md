@@ -829,7 +829,7 @@ RETORNO ESPERADO: testes passando; relatorio de bug se houver.
 
 ## TASK-061 — Style: revisao geral do modulo Conta Fixa
 
-STATUS: PENDENTE
+STATUS: PRECISA CORRIGIR (rodada 1 — style achou 3 problemas reais: falta validacao de DiaVencimento 1-31 e Valor>0 em ContaFixaService.CriarAsync/EditarAsync, causando ArgumentOutOfRangeException nao tratada -> 500 generico via API publica quando DiaVencimento<=0; string magica `erro?.Contains("nao encontrada")` em ContaFixaController.Editar decidindo status HTTP, unico lugar do projeto que faz isso; Listar nao checa `sucesso` antes de usar `contasFixas!`. Config/Repository/DTOs ok, sem achado. Tarefa de correcao redespachada a levi, depois mike adiciona 5 testes faltantes, depois volta ao style)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-060
