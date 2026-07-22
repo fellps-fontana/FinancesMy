@@ -20,7 +20,7 @@ public class LimiteGastoService : ILimiteGastoService
         _lancamentoRepository = lancamentoRepository;
     }
 
-    public async Task<LimiteGasto> Definir(Guid categoriaId, decimal valorLimite)
+    public async Task<(LimiteGasto LimiteGasto, bool Criado)> Definir(Guid categoriaId, decimal valorLimite)
     {
         ValidarValor(valorLimite);
 
@@ -36,7 +36,7 @@ public class LimiteGastoService : ILimiteGastoService
         {
             limiteExistente.ValorLimite = valorLimite;
             await _limiteGastoRepository.Salvar();
-            return limiteExistente;
+            return (limiteExistente, false);
         }
 
         var novoLimite = new LimiteGasto
@@ -51,7 +51,7 @@ public class LimiteGastoService : ILimiteGastoService
         await _limiteGastoRepository.Adicionar(novoLimite);
         await _limiteGastoRepository.Salvar();
 
-        return novoLimite;
+        return (novoLimite, true);
     }
 
     public async Task Remover(Guid categoriaId)
@@ -69,7 +69,7 @@ public class LimiteGastoService : ILimiteGastoService
         return await _limiteGastoRepository.Listar();
     }
 
-    public async Task<LimiteGastoStatus> ObterGastoVsLimite(Guid categoriaId, int ano, int mes)
+    public async Task<(LimiteGasto LimiteGasto, LimiteGastoStatus Status)> ObterGastoVsLimite(Guid categoriaId, int ano, int mes)
     {
         var limite = await _limiteGastoRepository.ObterPorCategoriaId(categoriaId);
         if (limite == null)
@@ -83,7 +83,9 @@ public class LimiteGastoService : ILimiteGastoService
 
         var lancamentos = await _lancamentoRepository.ListarPorCategoriasEPeriodo(categoriaIds, ano, mes);
 
-        return LimiteGastoCalculator.Calcular(limite, lancamentos);
+        var status = LimiteGastoCalculator.Calcular(limite, lancamentos);
+
+        return (limite, status);
     }
 
     public async Task<IEnumerable<(LimiteGasto LimiteGasto, LimiteGastoStatus Status)>> ObterGastoVsLimiteTodasCategorias(int ano, int mes)
@@ -94,8 +96,8 @@ public class LimiteGastoService : ILimiteGastoService
 
         foreach (var limite in limites)
         {
-            var status = await ObterGastoVsLimite(limite.CategoriaId, ano, mes);
-            resultados.Add((limite, status));
+            var (limiteGasto, status) = await ObterGastoVsLimite(limite.CategoriaId, ano, mes);
+            resultados.Add((limiteGasto, status));
         }
 
         return resultados;

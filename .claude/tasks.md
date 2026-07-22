@@ -710,7 +710,7 @@ RETORNO ESPERADO: testes passando ou relatorio de bug.
 
 ## TASK-057 — Style: revisao do modulo backend LimiteGasto
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA — APROVADO (rodada 2). Rodada 1 reprovou por Controller fazer Listar() full-scan pra decidir 200/201 e pra achar CategoriaNome; levi corrigiu fazendo Definir/ObterGastoVsLimite retornarem tupla com o dado ja resolvido (mesmo padrao que ObterGastoVsLimiteTodasCategorias ja usava). Style confirmou 359/359 testes, sem regressao nem problema de camada novo. Backend do modulo fechado, liberado pro front.
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-055, TASK-056

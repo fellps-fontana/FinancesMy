@@ -20,16 +20,13 @@ public class LimitesGastoController : ControllerBase
     {
         try
         {
-            var limitesExistentes = await _limiteGastoService.Listar();
-            var jaExistia = limitesExistentes.Any(l => l.CategoriaId == request.CategoriaId);
-
-            var limiteGasto = await _limiteGastoService.Definir(request.CategoriaId, request.ValorLimite);
+            var (limiteGasto, criado) = await _limiteGastoService.Definir(request.CategoriaId, request.ValorLimite);
             var response = LimiteGastoResponse.FromLimiteGasto(limiteGasto);
 
-            if (jaExistia)
-                return Ok(response);
+            if (criado)
+                return Created($"/api/limites-gasto/{limiteGasto.CategoriaId}", response);
 
-            return Created($"/api/limites-gasto/{limiteGasto.CategoriaId}", response);
+            return Ok(response);
         }
         catch (CategoriaNaoEncontradaException ex)
         {
@@ -72,12 +69,7 @@ public class LimitesGastoController : ControllerBase
     {
         try
         {
-            var status = await _limiteGastoService.ObterGastoVsLimite(categoriaId, ano, mes);
-            var limite = (await _limiteGastoService.Listar()).FirstOrDefault(l => l.CategoriaId == categoriaId);
-
-            if (limite == null)
-                return NotFound(new { erro = $"Limite de gasto nao encontrado para a categoria com ID {categoriaId}." });
-
+            var (limite, status) = await _limiteGastoService.ObterGastoVsLimite(categoriaId, ano, mes);
             var response = GastoVsLimiteResponse.FromLimiteEStatus(limite, status);
             return Ok(response);
         }

@@ -217,9 +217,10 @@ public class LimiteGastoServiceTests
             .ReturnsAsync(limiteExistente);
 
         // Act
-        var resultado = await _service.Definir(categoriaId, novoValorLimite);
+        var (resultado, criado) = await _service.Definir(categoriaId, novoValorLimite);
 
         // Assert
+        Assert.False(criado);
         Assert.Equal(limiteExistente.Id, resultado.Id);
         Assert.Equal(categoriaId, resultado.CategoriaId);
         Assert.Equal(novoValorLimite, resultado.ValorLimite);
@@ -262,9 +263,10 @@ public class LimiteGastoServiceTests
             .ReturnsAsync((LimiteGasto?)null);
 
         // Act
-        var resultado = await _service.Definir(categoriaId, valorLimite);
+        var (resultado, criado) = await _service.Definir(categoriaId, valorLimite);
 
         // Assert
+        Assert.True(criado);
         Assert.NotEqual(Guid.Empty, resultado.Id);
         Assert.Equal(categoriaId, resultado.CategoriaId);
         Assert.Equal(valorLimite, resultado.ValorLimite);
@@ -510,7 +512,7 @@ public class LimiteGastoServiceTests
             Subcategorias = new List<Categoria> { subcategoria }
         };
 
-        var limite = new LimiteGasto
+        var limiteExistente = new LimiteGasto
         {
             Id = Guid.NewGuid(),
             CategoriaId = categoriaPai.Id,
@@ -526,7 +528,7 @@ public class LimiteGastoServiceTests
 
         _mockLimiteGastoRepository
             .Setup(r => r.ObterPorCategoriaId(categoriaPai.Id))
-            .ReturnsAsync(limite);
+            .ReturnsAsync(limiteExistente);
 
         _mockCategoriaRepository
             .Setup(r => r.ObterPorId(categoriaPai.Id))
@@ -537,7 +539,7 @@ public class LimiteGastoServiceTests
             .ReturnsAsync(lancamentos);
 
         // Act
-        var resultado = await _service.ObterGastoVsLimite(categoriaPai.Id, ano, mes);
+        var (limite, status) = await _service.ObterGastoVsLimite(categoriaPai.Id, ano, mes);
 
         // Assert
         // Verifica que ListarPorCategoriasEPeriodo foi chamado com UMA lista contendo AMBOS os IDs
@@ -552,8 +554,8 @@ public class LimiteGastoServiceTests
             Times.Once);
 
         // Verifica que o gasto foi calculado corretamente (soma dos dois lancamentos)
-        Assert.Equal(250m, resultado.GastoRealizado);
-        Assert.False(resultado.Estourado);
+        Assert.Equal(250m, status.GastoRealizado);
+        Assert.False(status.Estourado);
     }
 
     #endregion
@@ -576,7 +578,7 @@ public class LimiteGastoServiceTests
             Subcategorias = new List<Categoria>()
         };
 
-        var limite = new LimiteGasto
+        var limiteExistente = new LimiteGasto
         {
             Id = Guid.NewGuid(),
             CategoriaId = categoria.Id,
@@ -591,7 +593,7 @@ public class LimiteGastoServiceTests
 
         _mockLimiteGastoRepository
             .Setup(r => r.ObterPorCategoriaId(categoria.Id))
-            .ReturnsAsync(limite);
+            .ReturnsAsync(limiteExistente);
 
         _mockCategoriaRepository
             .Setup(r => r.ObterPorId(categoria.Id))
@@ -602,7 +604,7 @@ public class LimiteGastoServiceTests
             .ReturnsAsync(lancamentos);
 
         // Act
-        var resultado = await _service.ObterGastoVsLimite(categoria.Id, ano, mes);
+        var (limite, status) = await _service.ObterGastoVsLimite(categoria.Id, ano, mes);
 
         // Assert
         // Verifica que ListarPorCategoriasEPeriodo foi chamado com APENAS um ID
@@ -615,8 +617,8 @@ public class LimiteGastoServiceTests
                 mes),
             Times.Once);
 
-        Assert.Equal(200m, resultado.GastoRealizado);
-        Assert.False(resultado.Estourado);
+        Assert.Equal(200m, status.GastoRealizado);
+        Assert.False(status.Estourado);
     }
 
     #endregion
