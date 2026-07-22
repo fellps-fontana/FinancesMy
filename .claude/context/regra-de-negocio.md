@@ -328,6 +328,45 @@ permitir valor manual por parcela abriria brecha pra soma nao bater com
 `valor_total`, quebrando a auditoria da compra original sem cobrir nenhum
 caso de uso real.
 
+### Estorno de compra parcelada — decisao registrada em 2026-07-20
+
+Regra estava omissa (DEMANDA-006, Killua sinalizou) e foi decidida agora,
+complementando o estorno de compra a vista ja existente ("Estorno: compra
+negativa dentro do cartao", acima) e a regra de Parcelamento (subsecao
+anterior).
+
+**Acao unica sobre a compra inteira.** Estornar uma compra parcelada e UMA
+UNICA acao disparada sobre `compra_parcelada_id` — nao existe estorno de uma
+parcela especifica isolada (ex: so a parcela 5 de 10, mantendo as demais
+intactas). Nao e escolha parcela-por-parcela do usuario.
+
+**Cancela todas as parcelas restantes ainda nao pagas.** Essa acao unica
+cancela TODAS as parcelas que ainda restam da compra (as N-k que faltam),
+nunca so a proxima parcela isolada.
+
+**Alcanca retroativamente parcelas ja pagas.** O estorno NAO fica restrito a
+parcelas em fatura ABERTA/FECHADA. Ele tambem alcanca parcelas cuja fatura
+ja esta PAGA (dinheiro ja saiu): o estorno gera um lancamento de estorno
+(compra negativa, mesma mecanica ja descrita para estorno de compra a
+vista) dentro dessa fatura ja paga, em vez de apenas remover/anular
+lancamentos futuros ainda nao vencidos.
+
+**Relacao com o pagamento parcial (mesmo item 12):** o pagamento ja fechou
+o SALDO da fatura como um todo, nunca uma compra especifica — por isso
+estornar uma parcela de uma fatura ja paga NAO desfaz o pagamento em si (o
+pagamento permanece registrado como esta). O que muda e o total de compras
+da fatura, que diminui com o lancamento de estorno; como os pagamentos ja
+cobriam o total anterior, o saldo pendente dessa fatura (total das compras
+menos pagamentos) deixa de ser zero e passa a NEGATIVO — um credito em
+favor do usuario relativo a essa fatura.
+
+**Credito abate a proxima fatura — decidido em 2026-07-20.** A fatura
+estornada MANTEM o status PAGA (nao existe estado "PAGA com credito"). O
+saldo negativo gerado pelo estorno retroativo e automaticamente descontado
+do total da PROXIMA fatura em aberto do mesmo cartao, reduzindo o valor que
+o usuario precisa pagar naquele ciclo seguinte. Nao ha acao manual do
+usuario nem mudanca de status na fatura ja paga.
+
 ---
 
 ## 13. Contas a Receber (Recebivel e Emprestimo)

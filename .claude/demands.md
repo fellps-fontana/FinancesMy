@@ -114,25 +114,35 @@ vista (`EstornoCartaoService`, regra-de-negocio.md item 12 — "Estorno: compra
 negativa dentro do cartao"). Compra parcelada (DEMANDA-005, em andamento) nao
 cobre estorno — a leva de tasks TASK-025/037 exclui isso explicitamente.
 
-**Escopo:** regra omissa, nao decidida. Antes de arquitetar, perguntar ao
-usuario:
-- Estornar uma compra parcelada cancela **todas as parcelas futuras** (as
-  que ainda nao caíram numa fatura PAGA), so a proxima parcela, ou nenhuma
-  automaticamente (usuario estorna parcela por parcela manualmente, cada uma
-  como uma compra a vista qualquer, via o fluxo que ja existe)?
-- Parcelas que ja estao numa fatura PAGA (dinheiro ja saiu) podem ser
-  estornadas retroativamente, ou o estorno so alcança parcelas em fatura
-  ABERTA/FECHADA (ainda nao paga)? Isso decide se o estorno de parcela
-  precisa gerar um lancamento de estorno numa fatura ja fechada (regra de
-  pagamento parcial do item 12 fica mais complexa) ou so remove/anula
-  lancamentos futuros.
-- O estorno de uma compra parcelada e uma acao unica ("estornar a compra
-  inteira", que internamente cancela N-k parcelas restantes), ou o usuario
-  tambem precisa poder estornar SO uma parcela especifica no meio (ex:
-  parcela 5 de 10), deixando as demais intactas?
+**Decisao tomada em 2026-07-20 (nao mais regra omissa):** estorno de compra
+parcelada e uma ACAO UNICA sobre a compra inteira (via `compra_parcelada_id`),
+que cancela TODAS as parcelas restantes ainda nao pagas — nao existe estorno
+parcela-por-parcela isolado. O estorno tambem ALCANCA RETROATIVAMENTE
+parcelas ja em fatura PAGA, gerando um lancamento de estorno mesmo numa
+fatura ja fechada/paga (nao so removendo lancamentos futuros). Detalhe
+completo em regra-de-negocio.md item 12, subsecao "Estorno de compra
+parcelada".
+
+**Perguntas originais (respondidas em 2026-07-20 — mantidas como historico):**
+- Estornar cancela todas as parcelas futuras, so a proxima, ou nenhuma
+  automaticamente? -> RESPONDIDA: todas as parcelas restantes ainda nao
+  pagas, automaticamente.
+- Parcelas em fatura ja PAGA podem ser estornadas retroativamente? ->
+  RESPONDIDA: sim, gera lancamento de estorno na fatura ja paga.
+- Estorno e acao unica sobre a compra inteira ou tambem parcela-por-parcela
+  isolada? -> RESPONDIDA: acao unica sempre, sem estorno de parcela isolada.
+
+**Pendencia do credito em fatura paga — RESOLVIDA em 2026-07-20:** quando o
+estorno retroativo deixa o saldo pendente de uma fatura ja PAGA negativo
+(credito), a fatura MANTEM status PAGA e o credito e automaticamente
+abatido do total da PROXIMA fatura em aberto do mesmo cartao. Sem mudanca de
+status, sem acao manual. Detalhe em regra-de-negocio.md item 12, subsecao
+"Estorno de compra parcelada".
 
 **Depende de:** DEMANDA-005 (Lancamento-parcela + `compra_parcelada`)
-implementada, ja que o estorno opera sobre esse modelo.
+implementada, ja que o estorno opera sobre esse modelo — CONFIRMADO
+implementado e mesclado em main (`ComprasParceladasService`, `CompraParcelada`,
+`ICompraParceladaRepository` presentes no codebase em 2026-07-20).
 
 ---
 

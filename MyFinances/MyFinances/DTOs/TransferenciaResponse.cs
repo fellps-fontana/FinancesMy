@@ -24,7 +24,7 @@ public class TransferenciaResponse
             Data = transferencia.Data,
             Valor = transferencia.Valor,
             ContaOrigemId = transferencia.ContaOrigemId,
-            ContaDestinoId = transferencia.ContaDestinoId,
+            ContaDestinoId = transferencia.ContaDestinoId!.Value,
             Descricao = transferencia.Descricao
         };
     }
