@@ -785,7 +785,7 @@ RETORNO ESPERADO: veredito + (se reprovado) tarefa de correcao redespachada a le
 
 ## TASK-057 — [RED] Testes do FaturaProjecaoService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (7 testes, RED confirmado por NotImplementedException. Cobre fatura Paga, Aberta/Fechada sem pagamento, Aberta/Fechada com pagamento parcial (fracionamento), multiplos cartoes, mes sem fatura)
 AGENT: mike
 DEPENDENCIAS: TASK-052
 FLUXO: Implementacao
