@@ -364,7 +364,7 @@ RETORNO ESPERADO: esqueleto compilavel, sem logica.
 
 ## TASK-039 — [REGRA CRITICA] RED: testes de ClassificacaoLancamentoService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit 6e032f3 em 2026-07-19; tasks.md nao havia sido atualizado. Reconciliado em 2026-07-20 apos verificacao: decisions.md tem TASK-039 APROVADO, 7 testes cobrindo os 6 casos obrigatorios + 1 extra de precedencia dupla, suite GREEN)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-038
@@ -381,7 +381,7 @@ RETORNO ESPERADO: confirmacao de RED + lista dos 6 casos cobertos.
 
 ## TASK-040 — [REGRA CRITICA] GREEN: implementar Classificar
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit 6edf3e7 em 2026-07-19. decisions.md tem TASK-040 APROVADO)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-039
@@ -399,7 +399,7 @@ RETORNO ESPERADO: implementacao completa.
 
 ## TASK-041 — [REGRA CRITICA] Confirmar GREEN: ClassificacaoLancamentoService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira. decisions.md tem TASK-041 APROVADO)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-040
@@ -414,7 +414,7 @@ RETORNO ESPERADO: confirmacao GREEN ou relatorio de bug.
 
 ## TASK-042 — Style: revisao ClassificacaoLancamentoService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira. decisions.md tem TASK-042 APROVADO)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-041
@@ -429,7 +429,7 @@ RETORNO ESPERADO: veredito + (se houver) tarefa de correcao, redespachada a levi
 
 ## TASK-043 — Extensao de ILancamentoRepository (Remover + fluxo caixa)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit e331e8e em 2026-07-19. decisions.md tem TASK-043 APROVADO. Bug de filtro corrigido depois na rodada TASK-050: perna CREDIT de transferencia estava sendo descartada de ListarParaFluxoCaixa)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
@@ -448,7 +448,7 @@ RETORNO ESPERADO: 2 metodos novos, compilando.
 
 ## TASK-044 — LancamentoManualService + DTOs
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit 69f8cf7 em 2026-07-19. decisions.md tem TASK-044 APROVADO. Desvio de escopo real: interface `ILancamentoManualService` foi criada, contrariando o "NAO FAZER" original — sem impacto de regra, so estilo; nao revertido nesta reconciliacao)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-043
@@ -472,7 +472,7 @@ RETORNO ESPERADO: service + DTOs, compilando, registrado em `Program.cs`.
 
 ## TASK-045 — TransferenciaService + DTOs
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit d5cde3d em 2026-07-19. decisions.md tem TASK-045 APROVADO. Duplicacao com PagamentoFaturaService eliminada na rodada TASK-050 via TransferenciaLancamentoHelper)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
@@ -493,7 +493,7 @@ RETORNO ESPERADO: service + DTOs, compilando, registrado em `Program.cs`.
 
 ## TASK-046 — FluxoCaixaService + DTO
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit 37fddd8 em 2026-07-19. decisions.md tem TASK-046 APROVADO)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-043
@@ -513,7 +513,7 @@ RETORNO ESPERADO: service + DTO, compilando, registrado em `Program.cs`.
 
 ## TASK-047 — Controllers (Lancamentos, ContaLancamentos, Transferencias)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA COM DESVIO DE ROTA (feito diretamente pelo usuario fora da fila do Kira, commit 8d48e6a em 2026-07-19. decisions.md tem TASK-047 APROVADO. Desvio real: nao existe `ContaLancamentosController` separado nem `GET /api/lancamentos` cross-conta — tudo consolidado em `LancamentosController` sob `api/contas/{contaId}/lancamentos`, incluindo `GET .../fluxo-caixa` (sempre escopado a uma conta, nao cross-conta como o desenho original de killua previa). Ja revisado e aprovado pelo style na epoca; nao alterado nesta reconciliacao)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-044, TASK-045, TASK-046
@@ -533,7 +533,7 @@ RETORNO ESPERADO: contrato de API documentado (rota, verbo, shape de retorno, co
 
 ## TASK-048 — Testes de Service (LancamentoManual, Transferencia, FluxoCaixa)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit 4353598 em 2026-07-19. decisions.md tem TASK-048 APROVADO)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-044, TASK-045, TASK-046
@@ -551,7 +551,7 @@ RETORNO ESPERADO: testes passando; relatorio de bug se houver.
 
 ## TASK-049 — Testes HTTP dos controllers
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit 392e475 em 2026-07-19. decisions.md tem TASK-049 APROVADO)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-047
@@ -568,7 +568,9 @@ RETORNO ESPERADO: testes passando.
 
 ## TASK-050 — Style: revisao geral do modulo
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA + APROVADA (feito diretamente pelo usuario fora da fila do Kira. commit 6e3b8e4 em 2026-07-19 corrige 5 problemas encontrados na revisao: [CRITICO] filtro de ListarParaFluxoCaixa descartava a perna CREDIT de transferencias; [ALTO] faltava validacao de conta ativa em MarcarComoPagoAsync/EditarAsync; [MEDIO] status HTTP inconsistentes entre controllers; [MEDIO] duplicacao entre TransferenciaService e PagamentoFaturaService (extraido TransferenciaLancamentoHelper); [BAIXO] TransferenciaResponse reaproveitava PagamentoResponse. 3 testes RED do mike confirmados GREEN apos fix. decisions.md tem TASK-050 APROVADO.
+
+BUG POS-MERGE ENCONTRADO EM 2026-07-20: apos o merge do modulo Contas a Receber (PR anterior, que tornou `Transferencia.ContaDestinoId` de `Guid` para `Guid?` — TASK-002 daquele modulo), a `main` ficou QUEBRADA — `TransferenciaResponse.cs` (deste modulo) ainda declarava `ContaDestinoId` como `Guid` nao-nulo, causando erro de compilacao CS0266 na atribuicao `Guid?` -> `Guid`. Nenhum dos dois modulos, isolado, previa essa colisao. Corrigido nesta sessao (`ContaDestinoId` -> `Guid?` em `TransferenciaResponse.cs`); build e suite completa (324/324) confirmados verdes apos o fix.)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-049

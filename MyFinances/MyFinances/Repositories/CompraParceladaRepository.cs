@@ -23,6 +23,7 @@ public class CompraParceladaRepository : ICompraParceladaRepository
     {
         return await _context.ComprasParceladas
             .Include(cp => cp.Lancamentos)
+                .ThenInclude(l => l.Fatura)
             .FirstOrDefaultAsync(cp => cp.Id == id);
     }
 
