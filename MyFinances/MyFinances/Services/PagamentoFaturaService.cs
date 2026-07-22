@@ -10,17 +10,20 @@ public class PagamentoFaturaService
     private readonly ITransferenciaRepository _transferenciaRepository;
     private readonly ILancamentoRepository _lancamentoRepository;
     private readonly IContaRepository _contaRepository;
+    private readonly FaturaCreditoService _faturaCreditoService;
 
     public PagamentoFaturaService(
         IFaturaRepository faturaRepository,
         ITransferenciaRepository transferenciaRepository,
         ILancamentoRepository lancamentoRepository,
-        IContaRepository contaRepository)
+        IContaRepository contaRepository,
+        FaturaCreditoService faturaCreditoService)
     {
         _faturaRepository = faturaRepository;
         _transferenciaRepository = transferenciaRepository;
         _lancamentoRepository = lancamentoRepository;
         _contaRepository = contaRepository;
+        _faturaCreditoService = faturaCreditoService;
     }
 
     public async Task<(bool Sucesso, Transferencia? Pagamento, string? Erro)> PagarFaturaAsync(
@@ -49,10 +52,15 @@ public class PagamentoFaturaService
             return (false, null, "Conta de origem nao encontrada");
         }
 
-        var saldoFatura = FaturaSaldoCalculator.Calcular(fatura);
-        if (request.Valor > saldoFatura.ValorPendente)
+        var saldoAjustado = await _faturaCreditoService.ObterSaldoAjustadoAsync(fatura.ContaId, faturaId);
+        if (saldoAjustado == null)
         {
-            return (false, null, $"Valor de pagamento ({request.Valor}) nao pode exceder o saldo pendente da fatura ({saldoFatura.ValorPendente})");
+            return (false, null, "Fatura nao encontrada");
+        }
+
+        if (request.Valor > saldoAjustado.ValorPendenteAjustado)
+        {
+            return (false, null, $"Valor de pagamento ({request.Valor}) nao pode exceder o saldo pendente da fatura ({saldoAjustado.ValorPendenteAjustado})");
         }
 
         var transferencia = new Transferencia
@@ -76,7 +84,7 @@ public class PagamentoFaturaService
         await _lancamentoRepository.Adicionar(lancamentoSaida);
         await _lancamentoRepository.Adicionar(lancamentoEntrada);
 
-        var novoSaldoPendente = saldoFatura.ValorPendente - request.Valor;
+        var novoSaldoPendente = saldoAjustado.ValorPendenteAjustado - request.Valor;
         if (novoSaldoPendente <= 0)
         {
             fatura.Status = StatusFatura.Paga;

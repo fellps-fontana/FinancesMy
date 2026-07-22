@@ -65,8 +65,10 @@ builder.Services.AddScoped<ValidacaoCartaoService>();
 builder.Services.AddScoped<FaturaCicloService>();
 builder.Services.AddScoped<CompraCartaoService>();
 builder.Services.AddScoped<ComprasParceladasService>();
+builder.Services.AddScoped<FaturaCreditoService>();
 builder.Services.AddScoped<PagamentoFaturaService>();
 builder.Services.AddScoped<EstornoCartaoService>();
+builder.Services.AddScoped<EstornoCompraParceladaService>();
 builder.Services.AddScoped<SaldoCartaoService>();
 
 // Services - Lancamentos
