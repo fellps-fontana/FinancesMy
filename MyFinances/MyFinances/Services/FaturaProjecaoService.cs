@@ -1,3 +1,4 @@
+using MyFinances.Domain;
 using MyFinances.Repositories;
 
 namespace MyFinances.Services;
@@ -11,8 +12,28 @@ public class FaturaProjecaoService : IFaturaProjecaoService
         _faturaRepository = faturaRepository;
     }
 
-    public Task<FaturaProjecaoMes> CalcularProjecaoCartaoDoMes(int ano, int mes)
+    public async Task<FaturaProjecaoMes> CalcularProjecaoCartaoDoMes(int ano, int mes)
     {
-        throw new NotImplementedException();
+        var faturas = await _faturaRepository.ListarFaturasCartaoPorVencimentoNoMes(ano, mes);
+
+        var totalPago = 0m;
+        var totalNaoPago = 0m;
+
+        foreach (var fatura in faturas)
+        {
+            var saldo = FaturaSaldoCalculator.Calcular(fatura);
+
+            if (fatura.Status == StatusFatura.Paga)
+            {
+                totalPago += saldo.ValorTotal;
+            }
+            else
+            {
+                totalPago += saldo.ValorPago;
+                totalNaoPago += saldo.ValorPendente;
+            }
+        }
+
+        return new FaturaProjecaoMes(totalPago, totalNaoPago);
     }
 }
