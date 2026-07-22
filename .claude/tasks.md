@@ -611,244 +611,224 @@ Nenhuma pendencia de decisao de produto restante. Queue pronta para execucao.
 
 ---
 
-# Modulo Estorno de Compra Parcelada (DEMANDA-006)
+# Modulo Limite de Gasto por Categoria (v1)
 
-Gerado por killua em 2026-07-20, worktree `estorno-compra-parcelada`. Regra
-critica (cancelamento em massa + calculo de credito + abatimento em fatura
-futura = maquina de estado + calculo). Ciclo TDD completo obrigatorio
-(secao 5 do CLAUDE.md global).
+Escopo confirmado: item 14 da regra-de-negocio.md (recem-adicionado, 2026-07-20).
+Tabela `limite_gasto` ja existia no schema.dbml, orfa no codigo. Regra NAO e
+critica (comparado a ContaReceberSaldoCalculator/ClassificacaoLancamentoService:
+erro aqui produz numero errado numa tela, nunca bloqueia escrita nem corrompe
+estado) — segue fluxo simples arquitetar -> codar -> testar -> style, sem
+ciclo RED/GREEN formal.
 
-## Decisoes de modelagem (Killua)
+## TASK-051 — Entidade LimiteGasto + enum PeriodoLimiteGasto + Configuration + migration
 
-- **`EstornoCompraParceladaService` novo, nao extensao de
-  `EstornoCartaoService`.** `EstornoCartaoService` proibe explicitamente
-  estorno em fatura paga (linha 33-36 do arquivo atual); este novo servico
-  faz o oposto -- alcanca fatura paga retroativamente. Inverter essa regra
-  com um `if` no mesmo metodo violaria "funcao faz uma coisa"
-  (clean-code.md) e misturaria agregados diferentes (1 Lancamento vs N
-  Lancamentos de uma `CompraParcelada`). Mesmo raciocinio ja usado para
-  separar `ComprasParceladasService` de `CompraCartaoService`.
-- **Abatimento na proxima fatura: cadeia cronologica calculada sob
-  demanda, SEM campo novo no schema.** `Domain/FaturaCreditoCalculator`
-  anda as faturas da conta em ordem de `DataVencimento` e encadeia o
-  credito (fatura com `ValorPendente` bruto negativo) para a fatura
-  seguinte, fatura a fatura, ate se esgotar. Alternativa descartada: somar
-  "saldo negativo de qualquer fatura paga" toda vez que calcular a fatura
-  aberta -- o credito nunca se esgotaria (seria reaplicado para sempre em
-  toda fatura futura, mesmo depois de ja ter sido usado). A cadeia resolve
-  isso porque a fatura que absorveu o credito passa a mostrar
-  `ValorPendenteBruto` POSITIVO (o credito consumido vira a diferenca
-  entre bruto e ajustado), entao nunca mais aparece como fonte de credito
-  depois. Mantem a filosofia ja usada no dominio inteiro: saldo calculado,
-  nunca armazenado (item 10, item 12).
-- **`SaldoCartaoService` (saldo agregado do cartao) NAO precisa mudar.**
-  Confirmado por calculo: a soma bruta de `ValorPendente` de todas as
-  faturas ja bate certo com o credito automaticamente (ex: -100 da fatura
-  paga estornada + 300 da fatura aberta = 200, o valor real a pagar no
-  cartao como um todo). O problema e so de ATRIBUICAO por fatura
-  individual (qual fatura mostra pendente reduzido, qual fatura transiciona
-  para PAGA) -- por isso `FaturaCreditoService` e um servico novo e
-  pontual, nao uma reforma do agregador existente.
-- **Idempotencia do estorno retroativo via `CompraParceladaId` +
-  `ParcelaNumero` + `Tipo=Credit` no lancamento de estorno.** O lancamento
-  de estorno retroativo recebe o MESMO `CompraParceladaId`/`ParcelaNumero`
-  da parcela original que ele estorna (diferente de `EstornoCartaoService`,
-  que nao preenche esses campos no estorno de compra a vista). Isso nao
-  entra em nenhum calculo (item 12 garante que o agrupamento e so exibicao
-  -- `FaturaSaldoCalculator` soma por `Tipo`/`FaturaId`, nunca por
-  `CompraParceladaId`), mas permite detectar "esta parcela ja foi
-  estornada" antes de gerar um segundo lancamento de estorno duplicado se
-  o endpoint for chamado duas vezes. Beneficio extra de UI: permite mostrar
-  "estorno da parcela 5/10" agrupado.
-- **Cancelamento de parcela nao paga = HARD DELETE** (`ILancamentoRepository.Remover`,
-  ja existente), nao soft-delete. Mesma logica ja usada para lancamento
-  manual em geral (regra item 4 restringe soft-delete a lancamento Open
-  Finance) -- o dinheiro nunca saiu, nao ha nada a auditar retroativamente
-  para uma parcela futura cancelada.
-- **DTO de request (`EstornarCompraParceladaRequest`) entra no esqueleto,
-  nao na task de controller** -- e parametro obrigatorio da assinatura do
-  servico (convencao do modulo Cartao: `EstornoCartaoService`/
-  `ComprasParceladasService` recebem DTO direto). DTO de resposta fica
-  para a task de controller (TASK-055), reaproveitando `CompraResponse`/
-  `EstornoResponse` ja existentes -- mesmo padrao usado no modulo
-  ContaReceber (DTOs junto do controller, nao do esqueleto).
-
-## Suposicoes tecnicas assumidas (nao sao regra de negocio nova)
-
-1. "Proxima fatura em aberto" (regra-de-negocio.md) foi interpretada como
-   "a fatura nao-paga mais recente da conta" (inclui ABERTA e uma
-   eventual FECHADA-ainda-nao-paga), nao estritamente `Status==Aberta`.
-   Isso porque `FaturaCicloService` so fecha a fatura antiga quando a
-   proxima e criada -- pode existir uma janela onde a fatura "atual" do
-   ponto de vista do usuario esta FECHADA aguardando pagamento. Se essa
-   leitura estiver errada, e so um ajuste no filtro de
-   `FaturaCreditoService.ObterSaldoAjustadoAsync`, sem impacto no
-   algoritmo de cadeia.
-2. Linkar `CompraParceladaId`/`ParcelaNumero` no lancamento de estorno
-   retroativo (ponto acima) e decisao tecnica de idempotencia/
-   rastreabilidade, nao regra de negocio.
-
-## Mapa de dependencia
-
-```
-051 (esqueleto) -> 052 (RED) -> 053 (GREEN) -> 054 (confirma GREEN)
-  -> 055 (controller) -> 056 (testes HTTP) -> 057 (style)
-```
-Cadeia linear -- toda a logica critica (cancelamento + credito) e
-compartilhada entre as tasks, sem paralelismo seguro entre elas.
-
----
-
-## TASK-051 — Esqueleto: FaturaCreditoCalculator + FaturaCreditoService + EstornoCompraParceladaService (regra critica)
-
-STATUS: CONCLUIDA
-AGENT: killua
+STATUS: CONCLUIDA (build limpo, migration AddLimiteGastoEntity gerada e conferida contra schema.dbml. Corrigido tambem, fora do escopo original: TransferenciaResponse.ContaDestinoId estava nao-nulavel mas o dominio ja era Guid? desde TASK-002 — bug pre-existente que quebrava o build da solucao inteira. levi tentou contornar com `!.Value`, que compilava mas quebraria em runtime para EMPRESTIMO (item 13). Kira corrigiu tornando o campo do DTO nulavel, alinhado ao dominio.)
+AGENT: levi
+FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
-FLUXO: Implementacao
-CONTEXTO A LER: regra-de-negocio.md item 12 subsecao "Estorno de compra parcelada" INTEIRA e subsecao "Parcelamento"; `EstornoCartaoService.cs` e `ComprasParceladasService.cs` como padrao de estilo do modulo Cartao (sem interface, retorno em tupla)
-ESCOPO: Kira cria os 4 arquivos com corpo `NotImplementedException` (sem logica real): `Domain/FaturaCreditoCalculator.cs`, `Services/FaturaCreditoService.cs`, `Services/EstornoCompraParceladaService.cs`, `DTOs/EstornarCompraParceladaRequest.cs`.
-CRITERIO DE ACEITE:
-1. Projeto compila com os 4 arquivos novos, todo corpo de metodo lancando `NotImplementedException`.
-2. Nenhum arquivo existente (`EstornoCartaoService`, `ComprasParceladasService`, `PagamentoFaturaService`, `FaturaSaldoCalculator`, `CompraParceladaRepository`, `FaturaResponse`) foi alterado nesta task.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Domain/FaturaCreditoCalculator.cs` (novo), `MyFinances/MyFinances/Services/FaturaCreditoService.cs` (novo), `MyFinances/MyFinances/Services/EstornoCompraParceladaService.cs` (novo), `MyFinances/MyFinances/DTOs/EstornarCompraParceladaRequest.cs` (novo)
-NAO FAZER: nao implementar logica real; nao tocar em `PagamentoFaturaService`/`FaturaResponse`/`CompraParceladaRepository` ainda (isso e GREEN, TASK-053).
-RETORNO ESPERADO: build limpo, arquivos criados.
-NOTA DE FECHAMENTO: 4 arquivos criados pelo Kira a partir da modelagem de killua. Build tinha 1 erro PRE-EXISTENTE e alheio a esta task em `DTOs/TransferenciaResponse.cs:27` (CS0266, `Guid?`->`Guid`), ja presente no HEAD antes desta task (ultimo commit do arquivo: 6e3b8e4, TASK-050). Corrigido inline pelo Kira (fix mecanico de uma linha, `!.Value`) apos confirmar que e o MESMO padrao ja usado em `PagamentoResponse.cs:29` para o mesmo campo — nao e decisao de regra de negocio nova, e consistencia com codigo ja aprovado.
+CONTEXTO A LER: regra-de-negocio.md item 14 (inteiro); schema.dbml tabela `limite_gasto`; `Domain/TipoConta.cs` (padrao de enum com ToStorageValue/FromStorageValue); `Infrastructure/Configurations/ContaReceberConfiguration.cs` (padrao de Configuration)
+ESCOPO: criar enum `PeriodoLimiteGasto` (so `Mensal` por enquanto, extensoes ToStorageValue/FromStorageValue no padrao MAIUSCULO ja usado); entidade `LimiteGasto` (Id, CategoriaId, ValorLimite, Periodo, navegacao Categoria); `LimiteGastoConfiguration : IEntityTypeConfiguration<LimiteGasto>` com indice UNICO em CategoriaId (1:1) e FK `OnDelete(DeleteBehavior.Cascade)`; registrar `DbSet<LimiteGasto>` no `MyFinancesDbContext`; gerar migration.
+CRITERIO DE ACEITE: projeto compila; migration aplicavel; tabela `limite_gasto` com indice unico em `categoria_id`.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/LimiteGasto.cs (novo), MyFinances/MyFinances/Domain/PeriodoLimiteGasto.cs (novo), MyFinances/MyFinances/Infrastructure/Configurations/LimiteGastoConfiguration.cs (novo), MyFinances/MyFinances/Data/MyFinancesDbContext.cs, MyFinances/MyFinances/Migrations/**
+NAO FAZER: nao criar Repository/Service ainda (TASK-053); nao permitir CategoriaId nulo nem tornar o indice unico opcional.
+RETORNO ESPERADO: arquivos criados, build limpo, migration gerada e conferida contra schema.dbml.
 
 ---
 
-## TASK-052 — [REGRA CRITICA] RED: testes de EstornoCompraParceladaService + FaturaCreditoCalculator
+## TASK-052 — Extensao de ILancamentoRepository: ListarPorCategoriasEPeriodo
 
-STATUS: PENDENTE
-AGENT: mike
-FLUXO: Implementacao (rodada RED — testes devem FALHAR por `NotImplementedException`, nunca por erro de compilacao)
-DEPENDENCIAS: TASK-051
-CONTEXTO A LER: regra-de-negocio.md item 12 subsecao "Estorno de compra parcelada" INTEIRA
-ESCOPO: escrever testes cobrindo:
-(a) estornar compra parcelada cancela (remove) TODAS as parcelas cuja fatura NAO esta paga (ABERTA/FECHADA), preservando outras compras da mesma fatura intactas;
-(b) parcela em fatura JA PAGA gera lancamento de estorno (Credit, Pago) na MESMA fatura paga, valor igual ao da parcela original, mesma categoria, `CompraParceladaId`/`ParcelaNumero` iguais aos da parcela original;
-(c) fatura ja paga MANTEM `Status=Paga` apos o estorno retroativo;
-(d) chamar o estorno duas vezes na mesma `compra_parcelada` NAO duplica o lancamento de estorno de uma parcela ja estornada (idempotencia);
-(e) `FaturaCreditoCalculator.CalcularCadeia`: fatura paga com saldo negativo propaga o credito para a fatura seguinte cronologicamente; se o credito excede o pendente da fatura seguinte, o excedente continua adiante; fatura com `ValorPendenteAjustado` positivo/zero nao propaga nada;
-(f) sem nenhum estorno retroativo na conta, `ValorPendenteAjustado == ValorPendenteBruto` em toda fatura (nenhuma mudanca no caso comum);
-(g) `compra_parcelada` inexistente ou de outra conta retorna erro, sem estado alterado.
-Rodar e CONFIRMAR RED.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Domain/FaturaCreditoCalculatorTests.cs` (novo), `MyFinances/MyFinances.Tests/Services/EstornoCompraParceladaServiceTests.cs` (novo)
-NAO FAZER: nao implementar logica real em `EstornoCompraParceladaService`/`FaturaCreditoCalculator`/`FaturaCreditoService` para fazer o teste passar; nao marcar `NotImplementedException` como bug.
-RETORNO ESPERADO: suite compilando e falhando (RED) por ausencia de logica; relatorio confirmando RED caso a caso.
-
-STATUS: CONCLUIDA
-NOTA DE FECHAMENTO: 13 testes escritos (6 em `FaturaCreditoCalculatorTests.cs`, 7 em `EstornoCompraParceladaServiceTests.cs`), cobrindo os 7 pontos (a)-(g). Kira confirmou RED de forma independente: `dotnet test` com filtro nos dois arquivos -> 13/13 falham por `NotImplementedException`, 0 falha por erro de tipo/compilacao. Suite completa: 337 total, 324 aprovados (pre-existentes, sem regressao), 13 com falha (esperado).
-ACHADO — extrapolacao de escopo: mike editou `DTOs/TransferenciaResponse.cs` (fora de ARQUIVOS PERMITIDOS) para contornar o erro de build pre-existente da TASK-051, usando `!.Value`. Revertido pelo Kira; o mesmo fix foi reaplicado manualmente pelo Kira na TASK-051 apos confirmar que e identico ao padrao ja usado em `PagamentoResponse.cs`. Nenhuma perda de trabalho, mas mike nao deveria ter tocado arquivo de producao fora do escopo autorizado — sinalizar para reforcar o limite em rodadas futuras.
-
----
-
-## TASK-053 — [REGRA CRITICA] GREEN: EstornoCompraParceladaService + FaturaCreditoCalculator/FaturaCreditoService + integracao com PagamentoFaturaService/FaturaResponse
-
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo, metodo filtra por lista de categorias + ano/mes seguindo o padrao de ListarParaProjecaoDoMes; sem tocar em arquivo fora do escopo)
 AGENT: levi
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-052
-CONTEXTO A LER: regra-de-negocio.md item 12 INTEIRO; arquivos de teste da TASK-052 (LEITURA, nunca escrita); `ComprasParceladasService.cs` (padrao de transacao via `ICompraParceladaRepository.BeginTransactionAsync/CommitAsync/RollbackAsync`)
-ESCOPO: implementar `FaturaCreditoCalculator.CalcularCadeia` (algoritmo de cadeia cronologica descrito em "Decisoes de modelagem"); `FaturaCreditoService` (le `IFaturaRepository.ListarPorConta`, ordena por `DataVencimento`, aplica o calculator); `EstornoCompraParceladaService.EstornarCompraParceladaAsync` (cancela parcelas nao pagas via `ILancamentoRepository.Remover`, gera estorno retroativo para parcelas pagas com `CompraParceladaId`/`ParcelaNumero` preenchidos e checagem de idempotencia, tudo dentro de uma transacao); adicionar `.ThenInclude(l => l.Fatura)` no Include de `CompraParceladaRepository.ObterPorId` (necessario para o service ler `lancamento.Fatura.Status`); integrar o pendente AJUSTADO (via `FaturaCreditoService`) em `PagamentoFaturaService.PagarFaturaAsync` (validacao de overpayment e decisao de `StatusFatura.Paga` passam a usar o ajustado, nao o bruto) e em `FaturaResponse.FromFatura`/`FaturasController` (exibir o ajustado). Registrar `FaturaCreditoService`/`EstornoCompraParceladaService` no DI (`Program.cs`).
-CRITERIO DE ACEITE:
-1. Todos os testes da TASK-052 GREEN.
-2. Nenhuma regressao na suite ja existente de `PagamentoFaturaService`/`FaturasController` (fatura sem nenhum estorno continua se comportando identico a hoje).
-3. Fatura paga retroativamente estornada mantem `Status=Paga`.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Domain/FaturaCreditoCalculator.cs`, `MyFinances/MyFinances/Services/FaturaCreditoService.cs`, `MyFinances/MyFinances/Services/EstornoCompraParceladaService.cs`, `MyFinances/MyFinances/Services/PagamentoFaturaService.cs`, `MyFinances/MyFinances/Repositories/CompraParceladaRepository.cs`, `MyFinances/MyFinances/DTOs/FaturaResponse.cs`, `MyFinances/MyFinances/Controllers/FaturasController.cs`, `MyFinances/MyFinances/Program.cs`
-NAO FAZER: nao alterar nenhum arquivo em `MyFinances.Tests/**`; nao mudar a regra de `EstornoCartaoService` (estorno de compra a vista em fatura paga continua proibido, arquivo fora de escopo).
-RETORNO ESPERADO: implementacao completa; todos os testes da TASK-052 GREEN; suite completa sem regressao (roda local antes de devolver).
-
-STATUS: CONCLUIDA
-NOTA DE FECHAMENTO: levi implementou a logica principal (cadeia de credito, cancelamento/estorno retroativo, integracao com PagamentoFaturaService/FaturaResponse/FaturasController/Program.cs), mas a sessao caiu (limite de API) antes de rodar a suite final e reportar. Kira assumiu a verificacao e fechamento:
-1. Regressao real encontrada e corrigida: `PagamentoFaturaServiceTests.cs` nao mockava `IFaturaRepository.ListarPorConta`, usado agora por `PagamentoFaturaService` via `FaturaCreditoService`. Adicionado o stub que faltava em 4 testes (`ComPagamentoTotal`, `ComPagamentoParcial`, `ComValorMaiorQueSaldo`, `FaturaComEstornos`) — fix mecanico de dado de teste, nao logica nova.
-2. Achado de qualidade: `FaturaCreditoService.ObterSaldoAjustadoAsync` tinha um fallback ("se ListarPorConta retornar vazio, assume sem credito") que so existia para compensar o mock ausente do item 1 — mascarava a integracao real. Removido apos o fix do item 1 tornar o fallback desnecessario.
-3. **Achado CRITICO**: `CompraParceladaRepository.ObterPorId` nao tinha `.ThenInclude(l => l.Fatura)` (exigido no ESCOPO desta task, nao implementado por levi). Em EF Core real, `parcela.Fatura` viria sempre `null`, e `EstornoCompraParceladaService` pula toda parcela com `Fatura == null` -- ou seja, o endpoint faria NADA silenciosamente em producao, apesar de todos os 13 testes unitarios passarem (eles constroem `Lancamento.Fatura` manualmente, sem passar pelo EF). Corrigido pelo Kira.
-4. Bug de idempotencia encontrado e corrigido: o teste `EstornarCompraParcelada_Idempotente_EstornarDuasVezesNaoDuplica` pre-semeava o lancamento de estorno como "ja existente" ANTES de qualquer chamada real, fazendo a 1a chamada tambem pular a criacao (0 invocacoes, esperado 1). Kira removeu a pre-semeadura do teste e fez `EstornoCompraParceladaService` adicionar o estorno recem-criado a `compra.Lancamentos` apos persistir (mantem a colecao em memoria em sincronia quando a mesma instancia e reutilizada).
-5. `TransferenciaResponse.cs`: mike (TASK-052) e levi (TASK-053) ambos tentaram consertar o erro pre-existente fora do escopo autorizado; Kira ja tinha aplicado o fix correto (identico ao padrao de `PagamentoResponse.cs`) durante o fechamento da TASK-051 -- nao houve necessidade de nova alteracao aqui.
-Suite completa verificada pelo Kira apos todas as correcoes: `dotnet test MyFinances/MyFinances.sln` -> 337 total, 337 aprovados, 0 falhas.
-ACHADO DE PROCESSO: 3 rodadas seguidas (mike em TASK-052, levi 2x em TASK-053) tentaram ou pediram para tocar arquivos fora de `ARQUIVOS PERMITIDOS` para contornar erros de build/teste. Nenhuma perda de trabalho, mas reforca que o limite de escopo por task precisa ser mais enfatizado nos briefings, ou o erro pre-existente devia ter sido resolvido ANTES de abrir a leva de tasks (na TASK-051), nao remendado a cada rodada.
+DEPENDENCIAS: nenhuma
+CONTEXTO A LER: `Repositories/ContaReceberRepository.cs` metodo `ListarParaProjecaoDoMes` (padrao exato de filtro `.Year == ano && .Month == mes`, sem construir range de data); regra-de-negocio.md item 14, bloco "Hierarquia" e formula `gasto_realizado_no_mes`
+ESCOPO: adicionar `Task<IEnumerable<Lancamento>> ListarPorCategoriasEPeriodo(IEnumerable<Guid> categoriaIds, int ano, int mes)` em `ILancamentoRepository`/`LancamentoRepository`, filtrando `categoriaIds.Contains(l.CategoriaId) && l.Data.Year == ano && l.Data.Month == mes`. Recebe uma LISTA de ids (nao um so) porque o item 14 soma categoria-pai + subcategorias diretas quando a categoria-pai tem limite.
+CRITERIO DE ACEITE: metodo novo aceita `IEnumerable<Guid>`, compila, filtra corretamente qualquer subconjunto de categorias no periodo informado.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Repositories/ILancamentoRepository.cs, MyFinances/MyFinances/Repositories/LancamentoRepository.cs
+NAO FAZER: nao filtrar Tipo/Oculto aqui (responsabilidade do `LimiteGastoCalculator`, TASK-053); nao remover metodos existentes.
+RETORNO ESPERADO: metodo novo, compilando.
 
 ---
 
-## TASK-054 — Confirmar GREEN geral (mike)
+## TASK-053 — LimiteGastoCalculator + Repository + Service de LimiteGasto (com agregacao de hierarquia)
 
-STATUS: PENDENTE
-AGENT: mike
-FLUXO: Implementacao (rodada GREEN — so RODA os testes existentes, nao reescreve)
+STATUS: CONCLUIDA (build limpo, revisado por Kira: upsert nao duplica, valida categoria Despesa nao-arquivada, hierarquia soma so 1 nivel de subcategorias)
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-051, TASK-052
+CONTEXTO A LER: regra-de-negocio.md item 14 inteiro; `Domain/FaturaSaldoCalculator.cs` e `Domain/ContaReceberSaldoCalculator.cs` (padrao de calculator estatico + record de resultado); `Services/ContaReceberService.cs` metodo `CalcularTotalAReceberEsperadoNoMes` (padrao de agregacao por mes); `Repositories/CategoriaRepository.cs` metodo `ObterPorId` (ja inclui `Subcategorias` via `Include`)
+ESCOPO: implementar `Domain/LimiteGastoCalculator.Calcular(LimiteGasto, IEnumerable<Lancamento>)` retornando `record LimiteGastoStatus(decimal ValorLimite, decimal GastoRealizado, decimal PercentualUtilizado, bool Estourado)` (gasto = soma de `Tipo=Debit` e `!Oculto` do conjunto ja filtrado); `ILimiteGastoRepository`/`LimiteGastoRepository` (Adicionar, ObterPorCategoriaId, Listar, Remover, Salvar); `ILimiteGastoService`/`LimiteGastoService` com `Definir` (upsert — valida categoria existe via `ICategoriaRepository`, `categoria.Tipo == Despesa`, categoria nao arquivada, `valor > 0`), `Remover`, `Listar`, `ObterGastoVsLimite(categoriaId, ano, mes)` — resolve a categoria via `ICategoriaRepository.ObterPorId` (que ja inclui `Subcategorias`), monta a lista de ids `[categoria.Id, ...categoria.Subcategorias.Select(s => s.Id)]`, chama `ListarPorCategoriasEPeriodo` com essa lista —, e `ObterGastoVsLimiteTodasCategorias(ano, mes)`. Criar `Exceptions/LimiteGastoNaoEncontradoException.cs` e `Exceptions/CategoriaInvalidaParaLimiteGastoException.cs`. Registrar tudo no DI.
+CRITERIO DE ACEITE: 1) `Definir` em categoria tipo=Receita lanca `CategoriaInvalidaParaLimiteGastoException`; 2) `Definir` duas vezes na mesma categoria atualiza em vez de duplicar; 3) `ObterGastoVsLimite` de uma categoria-pai soma tanto os lancamentos da propria categoria quanto os de suas subcategorias diretas (Debit, nao-oculto), sem descer alem de 1 nivel.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/LimiteGastoCalculator.cs (novo), MyFinances/MyFinances/Repositories/ILimiteGastoRepository.cs (novo), MyFinances/MyFinances/Repositories/LimiteGastoRepository.cs (novo), MyFinances/MyFinances/Services/ILimiteGastoService.cs (novo), MyFinances/MyFinances/Services/LimiteGastoService.cs (novo), MyFinances/MyFinances/Exceptions/LimiteGastoNaoEncontradoException.cs (novo), MyFinances/MyFinances/Exceptions/CategoriaInvalidaParaLimiteGastoException.cs (novo), MyFinances/MyFinances/Program.cs
+NAO FAZER: nao permitir `Definir` em categoria tipo=Receita ou arquivada; nao bloquear/rejeitar criacao de lancamento com base no limite (item 14 proibe bloqueio); nao acessar `MyFinancesDbContext` direto no Service; nao somar subcategoria-de-subcategoria (so 1 nivel de profundidade, conforme item 14).
+RETORNO ESPERADO: arquivos criados, build limpo.
+
+---
+
+## TASK-054 — Controller LimitesGastoController + DTOs
+
+STATUS: CONCLUIDA (5 endpoints + DTOs, build limpo. Kira corrigiu bug encontrado na revisao: LimiteGastoService.Definir nao atribuia Categoria ao criar um LimiteGasto novo, deixando CategoriaNome vazio na resposta 201 - agora atribui a categoria ja validada.)
+AGENT: levi
+FLUXO: Implementacao
 DEPENDENCIAS: TASK-053
-CONTEXTO A LER: nenhum novo
-ESCOPO: rodar a suite COMPLETA (nao so `EstornoCompraParceladaServiceTests`/`FaturaCreditoCalculatorTests` — TASK-053 mexe em `PagamentoFaturaService`/`FaturaResponse`, que ja tem testes proprios) e confirmar GREEN geral.
-CRITERIO DE ACEITE: 100% dos testes GREEN, incluindo as suites ja existentes de `PagamentoFaturaService`/`FaturasController`.
-ARQUIVOS PERMITIDOS: nenhum (so execucao)
-NAO FAZER: nao reescrever teste para forcar passagem; nao editar codigo de producao.
-RETORNO ESPERADO: GREEN confirmado, ou relatorio estruturado de bug (arquivo+linha) para o Kira redespachar levi.
-
-STATUS: CONCLUIDA
-NOTA DE FECHAMENTO: mike reportou um erro de compilacao em `TransferenciaResponse.cs:27` que NAO existe no estado atual do arquivo -- Kira verificou diretamente (build limpo, 0 erros) e rodou a suite completa DUAS VEZES antes e depois deste relato: `dotnet test MyFinances/MyFinances.sln` -> 337 total, 337 aprovados, 0 falhas em ambas as verificacoes. O relato de mike parece decorrente de ambiente/cache stale do subagent ou leitura equivocada do arquivo (a atribuicao de causa tambem estava errada -- creditou a mudanca `Guid?` a TASK-053, quando na verdade e pre-existente de uma task anterior nao relacionada a este modulo). GREEN geral confirmado pelo Kira via execucao direta e repetida; nao houve necessidade de redespachar levi.
-ACHADO DE PROCESSO: 4 rodadas seguidas (mike x2, levi x2) reportaram ou tentaram corrigir o mesmo arquivo (`TransferenciaResponse.cs`) por motivos incorretos ou desatualizados. Investigar se ha algo no ambiente dos subagents (cache de build `obj`/`bin` compartilhado ou desatualizado) causando isso, antes de confiar cegamente em relatos de erro de compilacao sem verificacao direta do Kira.
+CONTEXTO A LER: clean-code.md "Organizacao (.NET)"; `Controllers/ContasReceberController.cs` (padrao de traducao de excecao -> status HTTP e DTO factory)
+ESCOPO: criar `LimitesGastoController` com `POST /api/limites-gasto` (upsert, 200 se atualizou / 201 se criou), `DELETE /api/limites-gasto/{categoriaId}` (204), `GET /api/limites-gasto` (200), `GET /api/limites-gasto/gasto-vs-limite?ano=&mes=` (200), `GET /api/limites-gasto/gasto-vs-limite/{categoriaId}?ano=&mes=` (200/404). DTOs: `DefinirLimiteGastoRequest`, `LimiteGastoResponse` (com `CategoriaNome`), `GastoVsLimiteResponse` (com `PercentualUtilizado` e `Estourado`).
+CRITERIO DE ACEITE: os 5 endpoints compilam e respondem os status HTTP descritos no ESCOPO.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Controllers/LimitesGastoController.cs (novo), MyFinances/MyFinances/DTOs/LimiteGasto/*.cs (novo)
+NAO FAZER: nao colocar regra de negocio no controller; nao expor a entity `LimiteGasto` crua.
+RETORNO ESPERADO: endpoints funcionando conforme criterio.
 
 ---
 
-## TASK-055 — Controller REST: endpoint de estorno de compra parcelada
+## TASK-055 — Testes de LimiteGastoCalculator e LimiteGastoService (incluindo hierarquia)
 
-STATUS: PENDENTE
-AGENT: levi
+STATUS: CONCLUIDA (29 testes, 0 falhas, confirmado independentemente por Kira via dotnet test --filter. Cobre soma Debit/Oculto, estourado, percentual sem divisao por zero, upsert nao duplica, categoria Receita/arquivada rejeitada, hierarquia pai+subcategoria com Verify explicito da lista de ids passada ao repository)
+AGENT: mike
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-053
+CONTEXTO A LER: regra-de-negocio.md item 14 inteiro
+ESCOPO: testar `LimiteGastoCalculator.Calcular`: soma so Debit+!Oculto, ignora Credit, ignora Oculto=true, `Estourado=true` quando gasto>limite, `PercentualUtilizado` correto (limite=0 sem divisao por zero). Testar `LimiteGastoService`: `Definir` em categoria Receita rejeita; `Definir` duas vezes atualiza (nao duplica); `Definir` valor<=0 rejeita; `Remover` categoria sem limite lanca `LimiteGastoNaoEncontradoException`; `ObterGastoVsLimiteTodasCategorias` retorna so categorias com limite cadastrado; `ObterGastoVsLimite` de categoria-pai com limite soma tambem os lancamentos de suas subcategorias diretas; gasto de uma subcategoria NAO soma no limite de outra subcategoria irma (so no pai).
+CRITERIO DE ACEITE: testes passando cobrindo os casos listados, incluindo hierarquia; relatorio de bug estruturado (arquivo+linha) se algum falhar por defeito de codigo.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Domain/LimiteGastoCalculatorTests.cs (novo), MyFinances/MyFinances.Tests/Services/LimiteGastoServiceTests.cs (novo)
+NAO FAZER: nao alterar `LimiteGastoCalculator`/`LimiteGastoService` para o teste passar.
+RETORNO ESPERADO: testes passando ou relatorio de bug estruturado.
+
+---
+
+## TASK-056 — Testes HTTP do LimitesGastoController
+
+STATUS: CONCLUIDA (6 testes HTTP, 0 falhas, confirmado independentemente por Kira. Cobre 201/200 upsert com CategoriaNome preenchido, 422 categoria Receita, 404 delete/consulta sem limite, estourado=true via gasto real. Removido arquivo residual test-output.txt deixado pelo mike, fora do escopo)
+AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-054
-CONTEXTO A LER: clean-code.md "Organizacao (.NET)"; `CartaoComprasParceladasController.cs` e `FaturasController.cs` (endpoint `POST estornos` existente) como padrao
-ESCOPO: adicionar `POST api/contas/{contaId}/compras-parceladas/{compraParceladaId}/estornos` em `CartaoComprasParceladasController`; criar `EstornoCompraParceladaResponse` (wrapper com `ParcelasCanceladas: List<CompraResponse>` e `EstornosRetroativos: List<EstornoResponse>`, reaproveitando as factories `FromLancamento` ja existentes).
-CRITERIO DE ACEITE:
-1. Endpoint compila e retorna 200 com o shape combinado (parcelas canceladas + estornos retroativos).
-2. `compra_parcelada` inexistente ou de outra conta -> 400 com erro do service traduzido.
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Controllers/CartaoComprasParceladasController.cs`, `MyFinances/MyFinances/DTOs/EstornoCompraParceladaResponse.cs` (novo)
-NAO FAZER: nao colocar regra de negocio no controller — so orquestra Service+DTO.
-RETORNO ESPERADO: contrato de API documentado (rota, verbo, shape de retorno).
-
-STATUS: CONCLUIDA
-NOTA DE FECHAMENTO: endpoint criado em `CartaoComprasParceladasController` (`POST api/contas/{contaId}/compras-parceladas/{compraParceladaId}/estornos`), DTO `EstornoCompraParceladaResponse` tipado. levi tambem removeu o endpoint provisorio/duplicado que havia surgido em `FaturasController.cs` durante a TASK-053 (rota errada, resposta anonima), mantendo la apenas a injecao de `FaturaCreditoService` (ainda usada por listagem/detalhe de fatura). Kira verificou diretamente: build limpo, suite completa 337/337 GREEN. Um erro de build transitorio (`Microsoft.AspNetCore.Mvc.Testing.Tasks.dll access denied`, provavelmente de builds `dotnet` concorrentes entre subagents lendo o cache global de pacotes NuGet) apareceu tanto no relato de mike (TASK-054) quanto no de levi aqui -- em ambos os casos sumiu ao rodar de novo. Nao e um bug de codigo; e ambiental. Registrado para nao gerar mais retrabalho: se um agent futuro reportar esse erro especifico, tentar de novo antes de investigar como bug real.
+CONTEXTO A LER: `MyFinances.Tests/Controllers/ContaReceberControllerTests.cs` (padrao WebApplicationFactory + InMemory DB + JWT ja usado no projeto)
+ESCOPO: testes HTTP: criar limite (201); redefinir limite existente (200, nao duplica); criar em categoria Receita (422); `DELETE` sem limite cadastrado (404); `GET gasto-vs-limite` retornando `estourado=true` quando gasto>limite; `GET gasto-vs-limite/{categoriaId}` para categoria sem limite (404).
+CRITERIO DE ACEITE: testes passando; relatorio de bug se houver.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Controllers/LimitesGastoControllerTests.cs (novo)
+NAO FAZER: nao alterar controller/service para o teste passar sem reportar.
+RETORNO ESPERADO: testes passando ou relatorio de bug.
 
 ---
 
-## TASK-056 — Testes de integracao HTTP do endpoint de estorno de compra parcelada
+## TASK-057 — Style: revisao do modulo backend LimiteGasto
 
-STATUS: PENDENTE
-AGENT: mike
-FLUXO: Implementacao
-DEPENDENCIAS: TASK-055
-CONTEXTO A LER: regra-de-negocio.md item 12 subsecao "Estorno de compra parcelada"
-ESCOPO: testes HTTP cobrindo os cenarios (a)-(g) da TASK-052 via pipeline real, incluindo o efeito no `GET` da proxima fatura (`ValorPendente` reduzido apos o estorno retroativo).
-ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Controllers/CartaoComprasParceladasControllerTests.cs` (novo, ou extensao se ja existir arquivo de teste do controller)
-NAO FAZER: nao alterar controller/service para fazer teste passar sem reportar.
-RETORNO ESPERADO: testes passando; relatorio estruturado se achar bug.
-
-STATUS: CONCLUIDA
-NOTA DE FECHAMENTO: mike escreveu 6 testes HTTP cobrindo (a)-(e), mas reportou a task como "pronta" com 5 dos 6 novos testes falhando (minimizando como "detalhe de fixture, nao da implementacao"). Kira NAO aceitou -- rodou os testes, achou e corrigiu 3 problemas reais em sequencia:
-1. Fixture duplicava insercao de `Lancamento` (via `compraParcelada.Lancamentos.Add(...)` antes de `AddCompraParceladaAsync` + `AddLancamentoAsync` separado) -- EF Core cascadeia o Add pela navegacao, causando `Dictionary key already added`. Corrigido removendo a dupla insercao em 5 metodos de teste.
-2. **Achado com impacto alem deste modulo**: apos corrigir (1), surgiu 500 (erro interno). Causa real: `EstornoCompraParceladaService` (e `ComprasParceladasService`, mesmo padrao) usa `IDbContextTransaction` real (`BeginTransactionAsync`), que o provider `UseInMemoryDatabase` do EF NAO suporta -- e exatamente por isso que `ComprasParceladasServiceIntegrationTests.cs` (nivel de service) usa SQLite, nao InMemory. Mike seguiu o padrao ERRADO (o de controllers sem transacao: Ativos/ContaReceber/Contas/Lancamentos/Transferencias) para este controller, que E transacional. Kira trocou o fixture HTTP para SQLite (`Microsoft.Data.Sqlite`, conexao `:memory:` mantida aberta pela factory), replicando o padrao ja usado no teste de service. **Isso e a primeira vez que um endpoint transacional deste projeto ganha teste HTTP -- qualquer controller futuro que use servico com `BeginTransactionAsync` precisa do mesmo padrao SQLite, nao `UseInMemoryDatabase`.**
-3. Trocar pra SQLite expos outro problema de ordem: `WebApplicationFactory.CreateClient()` sobe o host (ambiente Development) ANTES do fixture criar o schema, e o `DevUserSeeder` roda no startup do app -- com SQLite real (schema so existe apos EnsureCreated), o seeder falhava com "no such table". Corrigido criando o schema no CONSTRUTOR da factory (antes do host subir), nao no `InitializeAsync` do fixture (tarde demais).
-4. `FOREIGN KEY constraint failed`: um teste setava `Lancamento.CategoriaId` para uma `Categoria` nunca persistida -- SQLite (ao contrario do InMemory) valida FK de verdade. Adicionado `AddCategoriaAsync` ao fixture e a chamada que faltava.
-5. **Achado de regra/API real**: o teste de idempotencia esperava que a 2a chamada (idempotente) retornasse o MESMO estorno da 1a no corpo da resposta, mas `EstornoCompraParceladaService` so incluia lancamentos RECEM-criados em `EstornosRetroativos` -- numa chamada idempotente, a resposta vinha vazia mesmo com sucesso. Corrigido: quando o estorno ja existe, ele agora entra na resposta mesmo assim (resposta consistente entre chamadas repetidas).
-Suite completa verificada pelo Kira: 343/343 GREEN (337 + 6 novos).
-ACHADO DE PROCESSO (recorrente): 3a vez nesta leva de tasks que um agent (mike ou levi) declara "pronto"/"GREEN" com testes de fato falhando, minimizando a falha como ambiental/irrelevante. Daqui pra frente, Kira roda a suite ele mesmo SEMPRE antes de aceitar qualquer "GREEN" reportado por um agent, independente do relato.
-
----
-
-## TASK-057 — Style: revisao final do modulo de estorno de compra parcelada
-
-STATUS: PENDENTE
+STATUS: CONCLUIDA — APROVADO (rodada 2). Rodada 1 reprovou por Controller fazer Listar() full-scan pra decidir 200/201 e pra achar CategoriaNome; levi corrigiu fazendo Definir/ObterGastoVsLimite retornarem tupla com o dado ja resolvido (mesmo padrao que ObterGastoVsLimiteTodasCategorias ja usava). Style confirmou 359/359 testes, sem regressao nem problema de camada novo. Backend do modulo fechado, liberado pro front.
 AGENT: style
 FLUXO: Implementacao
-DEPENDENCIAS: TASK-056
-CONTEXTO A LER: regra-de-negocio.md item 12 INTEIRO; clean-code.md inteiro
-ESCOPO: revisar clean-code + regra de negocio, com atencao especial a: idempotencia do estorno retroativo, precisao do algoritmo de cadeia de credito (nenhum caso de esgotamento incorreto), e se `PagamentoFaturaService`/`FaturaResponse` foram ajustados sem regressao no caso sem estorno.
+DEPENDENCIAS: TASK-055, TASK-056
+CONTEXTO A LER: regra-de-negocio.md item 14; clean-code.md inteiro
+ESCOPO: validar que nenhum fluxo bloqueia lancamento por causa do limite (item 14: so alerta), que `LimiteGastoService` nao acessa `DbContext` direto, que o upsert de `Definir` nao duplica limite por categoria, e que o calculo de gasto realizado bate com o item 14 (Debit, !Oculto, mes calendario, hierarquia de 1 nivel).
 CRITERIO DE ACEITE: veredito (APROVADO ou tarefa de correcao no esquema padrao, redespachada a levi).
 ARQUIVOS PERMITIDOS: nenhum (style nao edita)
 NAO FAZER: nao editar codigo.
-RETORNO ESPERADO: veredito final do modulo.
+RETORNO ESPERADO: veredito final do backend do modulo.
 
-STATUS: CONCLUIDA
-NOTA DE FECHAMENTO: 1a rodada -- PRECISA CORRIGIR: (1) `ValidacaoCartaoService` injetado e nunca usado em `EstornoCompraParceladaService` (quebrava padrao de `ComprasParceladasService`/`EstornoCartaoService`); (2) `FaturaCreditoCalculator.CalcularCadeia` duplicava a formula de `FaturaSaldoCalculator.Calcular`. Achados menores registrados sem bloquear: teste HTTP de propagacao de credito fraco (nao prova cadeia entre 2 faturas de verdade) e uma linha de sincronizacao em memoria que so existe pra satisfazer teste de unidade com mock reutilizado -- ambos ficam como debito tecnico conhecido, nao bloqueiam o fechamento.
-Redespachado a levi: (1) adicionar chamada real a `ValidarOperacaoCartaoAsync` (decisao: aplicar o padrao ja estabelecido, nao regra nova) + teste de conta cartao inativa; (2) `CalcularCadeia` passa a chamar `FaturaSaldoCalculator.Calcular`. Suite: 344/344 apos a correcao (343 + 1 teste novo), confirmado por levi E pelo Kira de forma independente.
-2a rodada -- APROVADO. style confirmou as duas correcoes linha a linha (nao so "compilou"), incluindo que o setup do construtor de teste (ValidacaoCartaoService real + IContaRepository mockado) nao quebrou nenhum dos testes antigos.
-GATE FECHADO -- modulo pronto pra PR (Secao 7 do CLAUDE.md global).
+---
+
+## TASK-058 — Front: camada de dados de LimiteGasto (types/api/hooks)
+
+STATUS: CONCLUIDA (types/api/query-keys/hooks criados, build/type-check limpo, dados crus sem threshold de UX embutido, invalidacao cruzada via limiteGastoKeys.all nas mutations)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-057
+CONTEXTO A LER: stack.md secao "Frontend (React)"; `features/contas-receber/{types.ts,api.ts,query-keys.ts,hooks}` como padrao de estilo
+ESCOPO: criar feature nova `features/limite-gasto/` com `types.ts`, `api.ts`, `query-keys.ts` e hooks (`useLimitesGasto`, `useDefinirLimiteGasto`, `useRemoverLimiteGasto`, `useGastoVsLimite(categoriaId, ano, mes)`, `useGastoVsLimiteTodasCategorias(ano, mes)`), consumidos depois por dashboard, lancamentos, categorias e o relatorio (TASK-059 a TASK-062).
+CRITERIO DE ACEITE: hooks tipados (sem `any`), invalidacao de cache cruzada apos `Definir`/`Remover` (gasto-vs-limite muda).
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/limite-gasto/types.ts (novo), MyFinanceFrontEnd/src/features/limite-gasto/api.ts (novo), MyFinanceFrontEnd/src/features/limite-gasto/query-keys.ts (novo), MyFinanceFrontEnd/src/features/limite-gasto/hooks/*.ts (novo)
+NAO FAZER: nao renderizar UI aqui; nao fixar threshold de "perto do limite" no hook — expor `percentualUtilizado` cru.
+RETORNO ESPERADO: hooks prontos para consumo pelas tasks seguintes.
+
+---
+
+## TASK-059 — Front: indicador de limite no dashboard
+
+STATUS: CONCLUIDA (componente standalone, estados loading/erro/vazio, tokens de identidade visual corretos, sem calculo de dominio no front)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-058
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 14
+ESCOPO: componente `LimiteGastoIndicador` (barra de progresso gasto/limite por categoria, cor de alerta quando `estourado=true`), consumindo `useGastoVsLimiteTodasCategorias`. ATENCAO: nao existe pagina raiz de Dashboard no front ainda (`features/dashboard/` so tem `.gitkeep`) — esta task entrega o componente pronto para embutir; a integracao na pagina de dashboard depende de um modulo de Dashboard ainda nao arquitetado.
+CRITERIO DE ACEITE: componente de apresentacao puro, consumindo o hook, pronto para ser embutido quando o Dashboard existir.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/dashboard/components/LimiteGastoIndicador.tsx (novo)
+NAO FAZER: nao construir a pagina de Dashboard inteira (fora de escopo); nao calcular gasto/limite no componente.
+RETORNO ESPERADO: componente pronto para embutir.
+
+---
+
+## TASK-060 — Front: aviso de limite na tela de lancamento
+
+STATUS: CONCLUIDA (funcao pura de threshold + componente de aviso, nunca bloqueia submit, 404 tratado como ausencia silenciosa de aviso)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-058
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 14
+ESCOPO: componente `AvisoLimiteGasto` (alerta "perto do limite"/"limite estourado" ao selecionar uma categoria), consumindo `useGastoVsLimite(categoriaId, ano, mes)`; funcao pura em `lib/limiarAlertaLimite.ts` decidindo o threshold visual de "perto" a partir de `percentualUtilizado` (default 80% — nao esta na regra de negocio, decisao de UX isolada em funcao propria para poder ajustar depois sem tocar em contrato de API). ATENCAO: nao existe form de criacao de lancamento manual no front ainda (`features/lancamentos/` so tem `.gitkeep`, embora o backend — `LancamentoManualService`/Controller — ja exista) — esta task entrega o componente pronto para embutir quando o form existir, nao constroi o form.
+CRITERIO DE ACEITE: componente exibe estado "ok"/"perto"/"estourado" a partir de `percentualUtilizado`/`estourado`; funcao de threshold isolada e testavel.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/lancamentos/components/AvisoLimiteGasto.tsx (novo), MyFinanceFrontEnd/src/features/lancamentos/lib/limiarAlertaLimite.ts (novo)
+NAO FAZER: nao bloquear o submit do formulario por causa do limite (item 14: so alerta); nao construir o form de lancamento inteiro (fora de escopo).
+RETORNO ESPERADO: componente pronto para embutir.
+
+---
+
+## TASK-061 — Front: comparativo limite vs realizado por categoria
+
+STATUS: CONCLUIDA (pagina + rota /limites-gasto, confirmado que features/cartao/RelatorioCategoriaPage.tsx e arquivos relacionados nao foram tocados)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-058
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 14; `features/cartao/RelatorioCategoriaPage.tsx` + `features/cartao/hooks/useRelatorioCategoria.ts` — ACHADO: ja existe uma tela "Relatorio por categoria" no front, mas ela e escopada so a COMPRAS DE CARTAO (item 12) e chama um endpoint que nao existe no backend (gap documentado no proprio arquivo, pre-existente a esta entrega). O comparativo de limite (item 14) e um relatorio DIFERENTE (soma TODO Debit da categoria, nao so cartao) e usa o endpoint novo desta leva — NAO tentar consertar/fundir com `RelatorioCategoriaPage.tsx` aqui.
+ESCOPO: pagina/secao nova listando as categorias com limite cadastrado, comparando `valorLimite` x `gastoRealizado` (barra de progresso + `estourado`), consumindo `useGastoVsLimiteTodasCategorias`.
+CRITERIO DE ACEITE: pagina nova, rota propria, sem tocar no relatorio de cartao existente.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/limite-gasto/ComparativoLimiteGastoPage.tsx (novo), MyFinanceFrontEnd/src/features/limite-gasto/components/ItemComparativoLimite.tsx (novo), MyFinanceFrontEnd/src/app/routes.tsx (so para adicionar a rota nova)
+NAO FAZER: nao alterar `features/cartao/RelatorioCategoriaPage.tsx` nem seus arquivos (`api.ts`, `hooks/useRelatorioCategoria.ts`, `lib/relatorioCategoria.ts`) — gap pre-existente, fora de escopo; nao remover nem duplicar essa rota.
+RETORNO ESPERADO: pagina nova funcionando, sem tocar no relatorio de cartao.
+
+---
+
+## TASK-062 — Front: CRUD do limite dentro da tela de categoria
+
+STATUS: CONCLUIDA (campo oculto pra RECEITA, estados sem-limite/com-limite tratados, define/edita/remove via mutations)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-058
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 14 (bloco "Onde aparece" — CRUD confirmado embutido na tela de categoria, decisao do usuario em 2026-07-20); `features/categorias/` hoje so tem `.gitkeep` (nao ha form de categoria construido ainda) — esta task constroi tambem o campo de limite dentro do que seria o form/lista de categoria.
+ESCOPO: campo "Limite de gasto mensal" na tela de categoria (tipo=Despesa apenas — campo oculto/desabilitado para Receita), com acao de definir/remover, consumindo `useDefinirLimiteGasto`/`useRemoverLimiteGasto`.
+CRITERIO DE ACEITE: componente oculta o campo quando a categoria e Receita; chama `Definir`/`Remover` corretamente.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/categorias/components/CampoLimiteGasto.tsx (novo)
+NAO FAZER: nao construir a tela de categoria inteira (CRUD de categoria em si e modulo separado, nao arquitetado nesta leva) — so o componente do campo de limite, isolado, pronto para embutir.
+RETORNO ESPERADO: componente pronto para embutir.
+
+---
+
+## Mapa de dependencia (TASK-051 a TASK-062)
+
+```
+051 (entidade) ─┬─> 053 (calculator+repo+service) ─┬─> 054 (controller) ─┬─> 055 (testes service) ─┬─> 057 (style) ─> 058 (front data) ─┬─> 059 (dashboard)
+052 (repo lanc) ┘                                   │                    └─> 056 (testes HTTP) ─────┘                                    ├─> 060 (aviso lancamento)
+                                                     └────────────────────────────────────────────────────────────────────────────────────┼─> 061 (comparativo)
+                                                                                                                                             └─> 062 (CRUD em categoria)
+```
+051 e 052 tocam arquivos disjuntos, rodam em paralelo. 059/060/061/062 idem entre si — todas dependem so de 058.
+
+## Pendencias — resolvidas com o usuario em 2026-07-20
+
+1. **Estouro de limite = so alerta visual, sem bloqueio.** Decisao do usuario;
+   nenhum service/controller deste modulo pode recusar um lancamento por
+   causa do limite.
+2. **Limite so em categoria tipo DESPESA.** `Definir` em categoria RECEITA
+   lanca `CategoriaInvalidaParaLimiteGastoException` (TASK-053).
+3. **Hierarquia: gasto de subcategoria SOMA no limite da categoria-pai**
+   (alem do limite proprio da subcategoria, se houver). Decisao do usuario —
+   inverteu a suposicao inicial do killua (que era "independentes"). Reflete
+   em TASK-052 (repository aceita lista de ids), TASK-053 (service resolve
+   subcategorias via `Categoria.Subcategorias`) e TASK-055 (teste especifico
+   de hierarquia).
+4. **Regime de competencia** (lancamento conta ao ser registrado, independente
+   de status PENDENTE/PAGO) — confirmado, mesma filosofia do item 12.
+5. **CRUD do valor do limite embutido na tela de categoria** (nao ha tela
+   separada de "Limites") — confirmado, TASK-062.
+6. **Threshold de "perto do limite" (80%) na tela de lancamento** — decisao
+   de UX, nao de regra de negocio; fica isolada em `lib/limiarAlertaLimite.ts`
+   (TASK-060) para poder mudar sem tocar em contrato de API.
+
+Nenhuma pendencia de decisao de produto restante. Queue pronta para execucao.

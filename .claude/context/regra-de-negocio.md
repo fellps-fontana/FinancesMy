@@ -428,6 +428,61 @@ entra como entrada esperada, simetrica a conta a pagar.
 
 ---
 
+## 14. Limite de Gasto por Categoria
+
+Alerta de orcamento por categoria. NENHUM bloqueio de lancamento.
+
+**O que e:** o usuario define um `valor_limite` mensal para uma categoria de
+tipo DESPESA (`limite_gasto`, 1:1 com `categoria` — uma categoria tem no
+maximo um limite). Categoria tipo RECEITA nao pode ter limite; o conceito e
+orcamento de gasto, nao de entrada.
+
+**Hierarquia (categoria/subcategoria, item 7):** o gasto de uma subcategoria
+soma TAMBEM no limite da categoria-pai, alem de poder ter seu proprio limite
+independente. Ou seja, se a categoria-pai tem limite cadastrado, o gasto
+realizado dela e a soma dos lancamentos da propria categoria MAIS os
+lancamentos de todas as suas subcategorias diretas — mesmo que uma
+subcategoria tambem tenha limite proprio (os dois calculos coexistem, cada
+um comparado ao seu proprio `valor_limite`).
+
+**Gasto realizado no periodo:** soma de todos os lancamentos DEBIT
+vinculados a categoria (e suas subcategorias diretas, se for categoria-pai),
+dentro do mes calendario (mesmo recorte usado na projecao do mes, item 9).
+Conta tanto lancamento avulso (conta banco) quanto compra de cartao de
+credito daquela categoria — regime de COMPETENCIA: o lancamento conta assim
+que registrado na categoria, independente do status (PENDENTE ou PAGO),
+mesma filosofia do item 12 (a compra de cartao conta na hora, nao so quando
+a fatura e paga). Lancamento oculto (item 4) nao entra na soma.
+
+```
+gasto_realizado_no_mes(categoria) = soma(lancamento.valor)
+  onde lancamento.categoria_id IN (categoria.id, subcategorias_diretas(categoria).id)
+    e lancamento.tipo = DEBIT
+    e lancamento.oculto = false
+    e lancamento.data dentro do mes calendario consultado
+```
+
+**Estourar o limite:** `gasto_realizado_no_mes > valor_limite`.
+
+**Efeito: SOMENTE alerta visual.** O lancamento e salvo normalmente, sem
+bloqueio, mesmo ultrapassando o limite. A categoria so fica sinalizada como
+estourada nas superficies abaixo — nenhum fluxo de escrita (criar
+lancamento, compra de cartao) e impedido por causa do limite.
+
+**Onde aparece:**
+- Dashboard/resumo geral: indicador de progresso gasto/limite por categoria.
+- Tela de lancamento: aviso ao selecionar/criar lancamento numa categoria
+  perto ou acima do limite.
+- Relatorio por categoria: comparativo limite vs. realizado.
+- Tela de categoria: cadastro/edicao do `valor_limite` fica embutido no
+  form/lista de categoria (nao ha tela separada de "Limites").
+
+**Periodo:** so MENSAL nesta versao (`periodo` default `'MENSAL'`, campo
+pronto para extensao futura — nenhuma outra opcao de periodo esta
+implementada).
+
+---
+
 ## Escopo: v1 vs v2
 
 **Integracao real com Pierre (Open Finance) fica para a v2 — decisao

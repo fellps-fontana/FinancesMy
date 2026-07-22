@@ -70,6 +70,18 @@ public class LancamentoRepository : ILancamentoRepository
         return lancamentos;
     }
 
+    public async Task<IEnumerable<Lancamento>> ListarPorCategoriasEPeriodo(IEnumerable<Guid> categoriaIds, int ano, int mes)
+    {
+        var categoriasSet = categoriaIds.ToList();
+
+        return await _context.Lancamentos
+            .Include(l => l.Conta)
+            .Include(l => l.Categoria)
+            .Where(l => l.CategoriaId.HasValue && categoriasSet.Contains(l.CategoriaId.Value))
+            .Where(l => l.Data.Year == ano && l.Data.Month == mes)
+            .ToListAsync();
+    }
+
     public async Task Atualizar(Lancamento lancamento)
     {
         _context.Lancamentos.Update(lancamento);
