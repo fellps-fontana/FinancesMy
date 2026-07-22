@@ -740,7 +740,7 @@ RETORNO ESPERADO: hooks prontos para consumo pelas tasks seguintes.
 
 ## TASK-059 — Front: indicador de limite no dashboard
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (componente standalone, estados loading/erro/vazio, tokens de identidade visual corretos, sem calculo de dominio no front)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-058
@@ -755,7 +755,7 @@ RETORNO ESPERADO: componente pronto para embutir.
 
 ## TASK-060 — Front: aviso de limite na tela de lancamento
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (funcao pura de threshold + componente de aviso, nunca bloqueia submit, 404 tratado como ausencia silenciosa de aviso)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-058
@@ -770,7 +770,7 @@ RETORNO ESPERADO: componente pronto para embutir.
 
 ## TASK-061 — Front: comparativo limite vs realizado por categoria
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (pagina + rota /limites-gasto, confirmado que features/cartao/RelatorioCategoriaPage.tsx e arquivos relacionados nao foram tocados)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-058
@@ -785,7 +785,7 @@ RETORNO ESPERADO: pagina nova funcionando, sem tocar no relatorio de cartao.
 
 ## TASK-062 — Front: CRUD do limite dentro da tela de categoria
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (campo oculto pra RECEITA, estados sem-limite/com-limite tratados, define/edita/remove via mutations)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-058
