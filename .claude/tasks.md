@@ -868,7 +868,7 @@ RETORNO ESPERADO: arquivo de teste + output RED.
 
 ## TASK-062 — [GREEN] Implementar ProjecaoMesService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (6/6 testes RED da TASK-061 GREEN, suite completa 367/367. Formula bate com item 9)
 AGENT: levi
 DEPENDENCIAS: TASK-061
 FLUXO: Implementacao
@@ -885,7 +885,7 @@ RETORNO ESPERADO: diff do `ProjecaoMesService.cs`.
 
 ## TASK-063 — [GREEN confirmado] Rodar testes do ProjecaoMesService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (Kira confirmou inline ao rodar dotnet test antes de commitar a TASK-062 — 367/367 GREEN, sem reescrever nenhum teste)
 AGENT: mike
 DEPENDENCIAS: TASK-062
 FLUXO: Implementacao
