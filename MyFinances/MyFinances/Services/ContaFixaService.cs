@@ -1,4 +1,5 @@
 using MyFinances.Domain;
+using MyFinances.Exceptions;
 using MyFinances.Repositories;
 
 namespace MyFinances.Services;
@@ -22,6 +23,12 @@ public class ContaFixaService : IContaFixaService
     public async Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> CriarAsync(
         Guid contaId, string descricao, decimal valor, int diaVencimento, Guid? categoriaId)
     {
+        var validacao = ValidarDiaVencimentoEValor(diaVencimento, valor);
+        if (!validacao.Valido)
+        {
+            return (false, null, validacao.Erro);
+        }
+
         var conta = await _contaRepository.ObterPorId(contaId);
         if (conta == null)
         {
@@ -51,10 +58,16 @@ public class ContaFixaService : IContaFixaService
     public async Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> EditarAsync(
         Guid contaFixaId, decimal valor, int diaVencimento, Guid? categoriaId)
     {
+        var validacao = ValidarDiaVencimentoEValor(diaVencimento, valor);
+        if (!validacao.Valido)
+        {
+            return (false, null, validacao.Erro);
+        }
+
         var contaFixa = await _contaFixaRepository.ObterPorId(contaFixaId);
         if (contaFixa == null)
         {
-            return (false, null, "Conta fixa nao encontrada");
+            throw new ContaFixaNaoEncontradaException(contaFixaId);
         }
 
         contaFixa.Valor = valor;
@@ -173,5 +186,20 @@ public class ContaFixaService : IContaFixaService
         await _lancamentoRepository.Salvar();
 
         return (true, lancamentosGerados, null);
+    }
+
+    private static (bool Valido, string? Erro) ValidarDiaVencimentoEValor(int diaVencimento, decimal valor)
+    {
+        if (diaVencimento < 1 || diaVencimento > 31)
+        {
+            return (false, "Dia de vencimento deve estar entre 1 e 31");
+        }
+
+        if (valor <= 0)
+        {
+            return (false, "Valor deve ser maior que zero");
+        }
+
+        return (true, null);
     }
 }

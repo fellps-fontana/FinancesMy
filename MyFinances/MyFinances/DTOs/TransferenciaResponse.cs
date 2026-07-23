@@ -12,7 +12,7 @@ public class TransferenciaResponse
 
     public Guid ContaOrigemId { get; set; }
 
-    public Guid? ContaDestinoId { get; set; }
+    public Guid ContaDestinoId { get; set; }
 
     public string? Descricao { get; set; }
 
@@ -24,7 +24,7 @@ public class TransferenciaResponse
             Data = transferencia.Data,
             Valor = transferencia.Valor,
             ContaOrigemId = transferencia.ContaOrigemId,
-            ContaDestinoId = transferencia.ContaDestinoId,
+            ContaDestinoId = transferencia.ContaDestinoId!.Value,
             Descricao = transferencia.Descricao
         };
     }

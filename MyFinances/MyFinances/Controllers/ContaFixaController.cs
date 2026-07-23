@@ -1,4 +1,5 @@
 using MyFinances.DTOs.ContaFixa;
+using MyFinances.Exceptions;
 using MyFinances.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -37,24 +38,27 @@ public class ContaFixaController : ControllerBase
     [HttpPut("api/contas-fixas/{id}")]
     public async Task<ActionResult<ContaFixaResponse>> Editar(Guid id, EditarContaFixaRequest request)
     {
-        var (sucesso, contaFixa, erro) = await _contaFixaService.EditarAsync(
-            id,
-            request.Valor,
-            request.DiaVencimento,
-            request.CategoriaId
-        );
-
-        if (!sucesso)
+        try
         {
-            if (erro?.Contains("nao encontrada") == true)
-            {
-                return NotFound(new { erro });
-            }
-            return BadRequest(new { erro });
-        }
+            var (sucesso, contaFixa, erro) = await _contaFixaService.EditarAsync(
+                id,
+                request.Valor,
+                request.DiaVencimento,
+                request.CategoriaId
+            );
 
-        var response = ContaFixaResponse.FromContaFixa(contaFixa!);
-        return Ok(response);
+            if (!sucesso)
+            {
+                return BadRequest(new { erro });
+            }
+
+            var response = ContaFixaResponse.FromContaFixa(contaFixa!);
+            return Ok(response);
+        }
+        catch (ContaFixaNaoEncontradaException ex)
+        {
+            return NotFound(new { erro = ex.Message });
+        }
     }
 
     [HttpPost("api/contas-fixas/{id}/desativar")]
@@ -86,7 +90,12 @@ public class ContaFixaController : ControllerBase
     [HttpGet("api/contas-fixas")]
     public async Task<ActionResult<IEnumerable<ContaFixaResponse>>> Listar([FromQuery] bool? ativa)
     {
-        var (sucesso, contasFixas, _) = await _contaFixaService.Listar(ativa);
+        var (sucesso, contasFixas, erro) = await _contaFixaService.Listar(ativa);
+
+        if (!sucesso)
+        {
+            return BadRequest(new { erro });
+        }
 
         var response = contasFixas!.Select(cf => ContaFixaResponse.FromContaFixa(cf));
         return Ok(response);
