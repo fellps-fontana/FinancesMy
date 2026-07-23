@@ -900,7 +900,7 @@ RETORNO ESPERADO: relatorio GREEN ou falhas.
 
 ## TASK-064 — Style: revisao do ProjecaoMesService
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA + APROVADA PELO STYLE de primeira (367/367 testes GREEN). Formula do item 9 bate exatamente, sem sinal invertido. Verificacao especifica de double-counting entre FluxoCaixaService (exclui Transferencia/FaturaId) e FaturaProjecaoService (usa FaturaSaldoCalculator): sem sobreposicao, cada fonte cobre uma fatia distinta. Confirmado tambem que emprestimo (item 13) fica fora da projecao por decisao deliberada do usuario (2026-07-20), nao e regra omissa. Cadeia critica do item 9 fechada sem achado pendente
 AGENT: style
 DEPENDENCIAS: TASK-063
 FLUXO: Implementacao
