@@ -194,7 +194,7 @@ public class FaturaProjecaoServiceTests
     }
 
     [Fact]
-    public async Task CalcularProjecaoCartaoDoMes_ComMultiplasFaturasDeMultiplosCartoes_SomaTudoNosDoistotais()
+    public async Task CalcularProjecaoCartaoDoMes_ComMultiplasFaturasDeMultiplosCartoes_SomaTudoNosDoisTotais()
     {
         // Arrange - 3 faturas de cartoes diferentes, todas no mesmo mes
         int ano = 2026;
@@ -276,5 +276,42 @@ public class FaturaProjecaoServiceTests
         // Assert
         Assert.Equal(0m, resultado.TotalPago);
         Assert.Equal(0m, resultado.TotalNaoPago);
+    }
+
+    [Fact]
+    public async Task CalcularProjecaoCartaoDoMes_ComFaturaStatusPagaMasSaldoDiverge_UsaSaldoCalculadoNaoStatus()
+    {
+        // Arrange - Prova que o metodo confia no saldo CALCULADO, nao no Status
+        // Fatura com Status=Paga mas ValorPago != ValorTotal (payment parcial fracionado)
+        int ano = 2026;
+        int mes = 7;
+
+        var fatura = new Fatura
+        {
+            Id = Guid.NewGuid(),
+            ContaId = Guid.NewGuid(),
+            DataFechamento = new DateOnly(2026, 7, 1),
+            DataVencimento = new DateOnly(2026, 7, 15),
+            Status = StatusFatura.Paga,  // Status marcado como Paga
+            Lancamentos = new List<Lancamento>
+            {
+                new Lancamento { Valor = 1000m, Tipo = TipoLancamento.Debit }
+            },
+            Transferencias = new List<Transferencia>
+            {
+                new Transferencia { Valor = 400m }  // Mas saldo calculado e fracionado: 400 pago, 600 pendente
+            }
+        };
+
+        _mockFaturaRepository
+            .Setup(r => r.ListarFaturasCartaoPorVencimentoNoMes(ano, mes))
+            .ReturnsAsync(new[] { fatura });
+
+        // Act
+        var resultado = await _service.CalcularProjecaoCartaoDoMes(ano, mes);
+
+        // Assert - Deve usar o saldo CALCULADO (400 pago, 600 pendente), nao tratar como 100% pago por causa do Status
+        Assert.Equal(400m, resultado.TotalPago);
+        Assert.Equal(600m, resultado.TotalNaoPago);
     }
 }

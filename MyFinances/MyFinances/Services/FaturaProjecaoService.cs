@@ -23,15 +23,8 @@ public class FaturaProjecaoService : IFaturaProjecaoService
         {
             var saldo = FaturaSaldoCalculator.Calcular(fatura);
 
-            if (fatura.Status == StatusFatura.Paga)
-            {
-                totalPago += saldo.ValorTotal;
-            }
-            else
-            {
-                totalPago += saldo.ValorPago;
-                totalNaoPago += saldo.ValorPendente;
-            }
+            totalPago += saldo.ValorPago;
+            totalNaoPago += saldo.ValorPendente;
         }
 
         return new FaturaProjecaoMes(totalPago, totalNaoPago);
