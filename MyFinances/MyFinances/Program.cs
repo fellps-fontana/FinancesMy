@@ -74,6 +74,10 @@ builder.Services.AddScoped<ILancamentoManualService, LancamentoManualService>();
 builder.Services.AddScoped<ITransferenciaService, TransferenciaService>();
 builder.Services.AddScoped<IFluxoCaixaService, FluxoCaixaService>();
 
+// Services - Dashboard
+builder.Services.AddScoped<IFaturaProjecaoService, FaturaProjecaoService>();
+builder.Services.AddScoped<IProjecaoMesService, ProjecaoMesService>();
+
 // Authentication and Authorization configuration
 builder.Services.AddAuthentication(options =>
 {
