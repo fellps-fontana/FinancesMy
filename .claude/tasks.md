@@ -915,7 +915,7 @@ RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 
 ## TASK-065 — Endpoint do dashboard (DTO + Controller + DI)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (GET /api/dashboard/projecao-mes?ano=&mes= implementado, controller so orquestra, DI registrado. Suite completa 367/367)
 AGENT: levi
 DEPENDENCIAS: TASK-064
 FLUXO: Implementacao
