@@ -850,7 +850,7 @@ RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 
 ## TASK-061 — [RED] Testes do ProjecaoMesService (formula master)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (6 testes, RED confirmado por NotImplementedException. Cobre composicao dos 4 termos, formula exata, saldo positivo/negativo/zero, contrato de chamada das 3 dependencias)
 AGENT: mike
 DEPENDENCIAS: TASK-056, TASK-060
 FLUXO: Implementacao
