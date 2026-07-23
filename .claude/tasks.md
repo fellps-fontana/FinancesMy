@@ -933,7 +933,7 @@ RETORNO ESPERADO: diff dos 3 arquivos.
 
 ## TASK-066 — Style: revisao do endpoint do dashboard
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA + APROVADA PELO STYLE de primeira (367/367 testes GREEN). Contrato expoe exatamente os 7 campos da formula, convencao de rota/parametros consistente com o endpoint total-esperado-mes ja aprovado, controller so orquestra, DI correta. Observacao nao bloqueante: ProjecaoMesResponse e o unico DTO do projeto que mapeia a partir de um record de Services (ProjecaoMesResultado) em vez de Domain -- ja existe precedente (FaturaProjecaoMes), registrado como inconsistencia de padrao, nao violacao. MODULO PROJECAO DO MES FECHADO (TASK-051 a TASK-066)
 AGENT: style
 DEPENDENCIAS: TASK-065
 FLUXO: Implementacao
