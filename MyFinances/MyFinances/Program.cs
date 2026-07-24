@@ -80,6 +80,10 @@ builder.Services.AddScoped<IFluxoCaixaService, FluxoCaixaService>();
 // Services - Limite de Gasto
 builder.Services.AddScoped<ILimiteGastoService, LimiteGastoService>();
 
+// Services - Dashboard
+builder.Services.AddScoped<IFaturaProjecaoService, FaturaProjecaoService>();
+builder.Services.AddScoped<IProjecaoMesService, ProjecaoMesService>();
+
 // Authentication and Authorization configuration
 builder.Services.AddAuthentication(options =>
 {

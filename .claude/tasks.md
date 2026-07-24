@@ -832,3 +832,380 @@ RETORNO ESPERADO: componente pronto para embutir.
    (TASK-060) para poder mudar sem tocar em contrato de API.
 
 Nenhuma pendencia de decisao de produto restante. Queue pronta para execucao.
+
+---
+
+# Modulo Projecao do Mes (dashboard, item 9) — decomposto por killua em 2026-07-20
+
+Gerado por killua em 2026-07-20, worktree `lancamento-geral-task039`. Fórmula:
+
+```
+saldo_projetado = (total_recebido_no_mes + total_a_receber_esperado_no_mes)
+                  - (total_pago_no_mes + total_a_pagar_no_mes)
+```
+
+| Termo | Fonte | Status |
+|---|---|---|
+| `total_a_receber_esperado_no_mes` | `ContaReceberService.CalcularTotalAReceberEsperadoNoMes` | JA EXISTE |
+| `total_recebido_no_mes` | Lancamento generico, Credit/Pago, exclui Transferencia/compra cartao | FALTA |
+| `total_pago_no_mes` | Lancamento generico Debit/Pago (mesma exclusao) + fatura do mes ja paga | FALTA |
+| `total_a_pagar_no_mes` | Lancamento generico Debit/Pendente (mesma exclusao) + fatura do mes nao paga | FALTA |
+
+Conta Fixa (item 6) NAO existe no codebase (so a FK morta `conta_fixa_id` em
+`Lancamento`) — nao bloqueia esta decomposicao (quando existir, so vai gerar
+`Lancamento` comuns que o agregador generico ja soma), mas nenhuma conta fixa
+aparece na projecao ate esse modulo ser construido a parte.
+
+## Esqueleto compilavel (killua entrega, Kira materializa antes do RED)
+
+`Repositories/ILancamentoRepository.cs` (nova assinatura):
+```csharp
+Task<IEnumerable<Lancamento>> ListarParaFluxoCaixaDoMes(int ano, int mes);
+```
+
+`Repositories/IFaturaRepository.cs` (nova assinatura):
+```csharp
+Task<IEnumerable<Fatura>> ListarFaturasCartaoPorVencimentoNoMes(int ano, int mes);
+```
+
+`Services/IFluxoCaixaService.cs` (adiciona 3 metodos ao contrato existente):
+```csharp
+Task<decimal> CalcularTotalRecebidoNoMes(int ano, int mes);
+Task<decimal> CalcularTotalPagoNoMes(int ano, int mes);
+Task<decimal> CalcularTotalAPagarNoMes(int ano, int mes);
+```
+`FluxoCaixaService.cs`: os 3 corpos novos lancam `NotImplementedException`;
+`ListarFluxoCaixa` existente fica intocado.
+
+`Services/IFaturaProjecaoService.cs` (novo):
+```csharp
+public record FaturaProjecaoMes(decimal TotalPago, decimal TotalNaoPago);
+
+public interface IFaturaProjecaoService
+{
+    Task<FaturaProjecaoMes> CalcularProjecaoCartaoDoMes(int ano, int mes);
+}
+```
+
+`Services/FaturaProjecaoService.cs` (novo, corpo `NotImplementedException`,
+DI de `IFaturaRepository`).
+
+`Services/IProjecaoMesService.cs` (novo):
+```csharp
+public record ProjecaoMesResultado(
+    int Ano, int Mes,
+    decimal TotalRecebidoNoMes, decimal TotalAReceberEsperadoNoMes,
+    decimal TotalPagoNoMes, decimal TotalAPagarNoMes,
+    decimal SaldoProjetado);
+
+public interface IProjecaoMesService
+{
+    Task<ProjecaoMesResultado> CalcularProjecaoDoMes(int ano, int mes);
+}
+```
+
+`Services/ProjecaoMesService.cs` (novo, corpo `NotImplementedException`, DI
+de `IFluxoCaixaService` + `IContaReceberService` + `IFaturaProjecaoService`).
+
+## TASK-063 — Repository: agregacao mensal de lancamentos p/ fluxo de caixa
+
+STATUS: CONCLUIDA (330/330 testes GREEN, build limpo. Achado colateral importante: main estava com erro de compilacao real (CS0266) em TransferenciaResponse.cs -- Transferencia.ContaDestinoId virou Guid? num commit anterior de Contas a Receber, item 13, e o DTO nao acompanhou; levi corrigiu certo. Desvio de escopo: levi tambem adicionou filtro `!TransferenciaId.HasValue` em ListarParaFluxoCaixaDoMes, contra o NAO FAZER explicito da task -- Kira removeu o filtro e inverteu o teste correspondente para provar que o repository devolve a lista crua do mes, sem classificacao de negocio; isso fica pro Service em TASK-065/066)
+AGENT: levi
+DEPENDENCIAS: nenhuma
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 9 (formula) e item 3 (exclusao de transferencia); stack.md secao Repositories/
+ESCOPO: Adicionar `ListarParaFluxoCaixaDoMes(int ano, int mes)` em `ILancamentoRepository`/`LancamentoRepository`, mesmo filtro de `ListarParaFluxoCaixa` (`FaturaId == null`, `!Oculto`) restrito a `Data.Year==ano && Data.Month==mes`; NAO filtrar Transferencia aqui (fica a cargo do Service).
+CRITERIO DE ACEITE:
+1. Retorna so lancamentos do mes/ano informado com `FaturaId` nulo e `Oculto=false`.
+2. Nao aplica nenhuma logica de classificacao (isso e do Service).
+3. Assinatura identica ao esqueleto do killua.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Repositories/ILancamentoRepository.cs`, `MyFinances/MyFinances/Repositories/LancamentoRepository.cs`, `MyFinances.Tests/Repositories/LancamentoRepositoryTests.cs` (criar se nao existir)
+NAO FAZER: nao mexer em `ListarParaFluxoCaixa` existente; nao excluir Transferencia aqui.
+RETORNO ESPERADO: diff dos arquivos + confirmacao que o projeto compila (`dotnet build`).
+
+---
+
+## TASK-064 — Repository: faturas de cartao por vencimento no mes
+
+STATUS: CONCLUIDA (335/335 testes GREEN, build limpo. Escopo respeitado, sem desvios)
+AGENT: levi
+DEPENDENCIAS: nenhuma
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 12 (fatura, ciclo, saldo); stack.md secao Repositories/
+ESCOPO: Adicionar `ListarFaturasCartaoPorVencimentoNoMes(int ano, int mes)` em `IFaturaRepository`/`FaturaRepository`: join com Conta (`Tipo == Cartao`), filtro `DataVencimento.Year==ano && Month==mes`, `Include(Lancamentos)` e `Include(Transferencias)` (necessario para `FaturaSaldoCalculator`).
+CRITERIO DE ACEITE:
+1. So retorna faturas de contas `Tipo=Cartao`.
+2. Filtro por `DataVencimento` no ano/mes.
+3. `Lancamentos`/`Transferencias` vem carregados (sem lazy loading quebrado).
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Repositories/IFaturaRepository.cs`, `MyFinances/MyFinances/Repositories/FaturaRepository.cs`, `MyFinances.Tests/Repositories/FaturaRepositoryTests.cs` (criar se nao existir)
+NAO FAZER: nao mexer nos metodos existentes de `FaturaRepository`.
+RETORNO ESPERADO: diff dos arquivos + confirmacao de build.
+
+---
+
+## TASK-065 — [RED] Testes de agregacao mensal do FluxoCaixaService
+
+STATUS: CONCLUIDA (18 testes novos, RED confirmado por NotImplementedException, 6 testes existentes de ListarFluxoCaixa continuam GREEN. Cobre soma por Tipo/Status e exclusao de Transferencia inclusive emprestimo)
+AGENT: mike
+DEPENDENCIAS: TASK-063
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 9 (formula completa), item 3 (exclusao de transferencia mesma titularidade), item 12 (compra de cartao nao entra no fluxo de caixa geral); esqueleto `IFluxoCaixaService.cs` (secao acima)
+ESCOPO: Escrever testes para `CalcularTotalRecebidoNoMes`, `CalcularTotalPagoNoMes` e `CalcularTotalAPagarNoMes` cobrindo: soma so Credit/Pago (recebido); so Debit/Pago (pago); so Debit/Pendente (a pagar); exclui lancamento com `TransferenciaId` setado (transferencia comum); exclui lancamento com `FaturaId` setado (compra de cartao); ignora lancamento fora do mes/ano pedido; lista vazia retorna 0.
+CRITERIO DE ACEITE:
+1. Todos os testes compilam contra o esqueleto (mock de `ILancamentoRepository.ListarParaFluxoCaixaDoMes`).
+2. `dotnet test --filter FullyQualifiedName~FluxoCaixaServiceTests` da RED por `NotImplementedException`, nunca erro de compilacao.
+3. Cobre os 3 metodos.
+ARQUIVOS PERMITIDOS: `MyFinances.Tests/Services/FluxoCaixaServiceTests.cs` (estender o arquivo existente)
+NAO FAZER: nao implementar os metodos reais; nao mexer em producao.
+RETORNO ESPERADO: arquivo de teste + output do `dotnet test` confirmando RED.
+
+---
+
+## TASK-066 — [GREEN] Implementar agregacao mensal do FluxoCaixaService
+
+STATUS: CONCLUIDA (18/18 testes RED da TASK-065 GREEN, suite completa 353/353. Reusa ClassificacaoLancamentoService, sem duplicar checagem de TransferenciaId)
+AGENT: levi
+DEPENDENCIAS: TASK-065
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 9, item 3; arquivo de teste de TASK-065 (leitura, nunca escrita)
+ESCOPO: Implementar os 3 metodos usando `ListarParaFluxoCaixaDoMes` + `ClassificacaoLancamentoService.Classificar` para excluir Transferencia, somando por Tipo/Status conforme a formula.
+CRITERIO DE ACEITE:
+1. Testes de TASK-065 ficam GREEN sem alterar o arquivo de teste.
+2. Nenhuma logica de exclusao de Transferencia fica implicita/duplicada — reusa `ClassificacaoLancamentoService`.
+3. Nenhum acesso a `DbContext` direto (so via `ILancamentoRepository`).
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/FluxoCaixaService.cs`
+NAO FAZER: nao editar `MyFinances.Tests/Services/FluxoCaixaServiceTests.cs`.
+RETORNO ESPERADO: diff do `FluxoCaixaService.cs`.
+
+---
+
+## TASK-067 — [GREEN confirmado] Rodar testes do FluxoCaixaService
+
+STATUS: CONCLUIDA (Kira confirmou inline ao rodar dotnet test antes de commitar a TASK-066 — 353/353 GREEN, sem reescrever nenhum teste. Redispatch de mike dispensado por ser a mesma verificacao ja feita)
+AGENT: mike
+DEPENDENCIAS: TASK-066
+FLUXO: Implementacao
+CONTEXTO A LER: arquivo de teste de TASK-065
+ESCOPO: Rodar os testes de `FluxoCaixaServiceTests`, sem reescrever nenhum teste.
+CRITERIO DE ACEITE: todos GREEN; se algum falhar, reportar bug (nao corrigir).
+ARQUIVOS PERMITIDOS: nenhum (so execucao)
+NAO FAZER: nao editar nenhum arquivo.
+RETORNO ESPERADO: relatorio GREEN ou lista de falhas com stack trace.
+
+---
+
+## TASK-068 — Style: revisao do FluxoCaixaService
+
+STATUS: CONCLUIDA + APROVADA PELO STYLE apos 2 rodadas (353/353 testes GREEN no final). Rodada 1: apontou duplicacao real entre os 3 metodos de agregacao (mesma logica de exclusao de Transferencia copiada 3x); levi extraiu `SomarLancamentosDoMes` privado. Rodada 2: APROVADO — extracao mecanica, sem mudanca de comportamento, assinatura publica intacta. Achado paralelo nao bloqueante: 2 testes de "emprestimo" em FluxoCaixaServiceTests.cs (linhas ~376-424 e ~910-958) descrevem modelagem que nao bate com item 13 (recebimento deveria usar ContaReceberId, nao TransferenciaId; saida deveria ser sempre Pago, nunca Pendente) — funcionalmente inofensivo, mas documentacao de teste enganosa; registrado como pendencia separada, nao decidido ainda
+AGENT: style
+DEPENDENCIAS: TASK-067
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 9, item 3; clean-code.md
+ESCOPO: Revisar `FluxoCaixaService.cs` contra regra de negocio e clean-code, atencao especifica a exclusao de Transferencia (double counting).
+CRITERIO DE ACEITE: veredito APROVADO ou tarefa de correcao no esquema padrao.
+ARQUIVOS PERMITIDOS: nenhum (style nao edita)
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + (se reprovado) tarefa de correcao redespachada a levi.
+
+---
+
+## TASK-069 — [RED] Testes do FaturaProjecaoService
+
+STATUS: CONCLUIDA (7 testes, RED confirmado por NotImplementedException. Cobre fatura Paga, Aberta/Fechada sem pagamento, Aberta/Fechada com pagamento parcial (fracionamento), multiplos cartoes, mes sem fatura)
+AGENT: mike
+DEPENDENCIAS: TASK-064
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 12 (fatura, status Aberta/Fechada/Paga, pagamento parcial, `FaturaSaldoCalculator`) e item 9 ("cartao entra como UMA conta a pagar"); esqueleto `IFaturaProjecaoService.cs`/`FaturaProjecaoService.cs` (secao acima); decisao do usuario em 2026-07-20 (ver "Decisoes resolvidas" no fim do arquivo): fatura parcialmente paga e FRACIONADA (nao binaria), fatura do mes = `DataVencimento` no ano/mes, multiplos cartoes SOMAM.
+ESCOPO: Testar `CalcularProjecaoCartaoDoMes`: para cada fatura de cartao com `DataVencimento` no mes/ano, soma `ValorPago` (ou `ValorTotal - SaldoPendente`, via `FaturaSaldoCalculator`) em `TotalPago` e `SaldoPendente` em `TotalNaoPago` — inclusive fatura `Status=Aberta`/`Fechada` com pagamento parcial ja registrado; fatura `Status=Paga` soma `ValorTotal` inteiro em `TotalPago` (`SaldoPendente=0`); multiplas faturas de multiplos cartoes no mesmo mes somam nos mesmos 2 totais (sem breakdown por cartao); mes sem fatura retorna `(0,0)`.
+CRITERIO DE ACEITE:
+1. Compila contra o esqueleto.
+2. RED por `NotImplementedException`.
+3. Cobre: fatura paga, fatura aberta sem pagamento, fatura aberta com pagamento parcial (fracionamento provado), 2 cartoes no mesmo mes (soma), ausencia de fatura no mes.
+ARQUIVOS PERMITIDOS: `MyFinances.Tests/Services/FaturaProjecaoServiceTests.cs` (criar)
+NAO FAZER: nao implementar o service; nao tratar fatura parcial como binaria.
+RETORNO ESPERADO: arquivo de teste + output RED.
+
+---
+
+## TASK-070 — [GREEN] Implementar FaturaProjecaoService
+
+STATUS: CONCLUIDA (7/7 testes RED da TASK-069 GREEN, suite completa 360/360. Reusa FaturaSaldoCalculator, sem reimplementar calculo de saldo)
+AGENT: levi
+DEPENDENCIAS: TASK-069
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 12; arquivo de teste de TASK-069 (leitura)
+ESCOPO: Implementar `CalcularProjecaoCartaoDoMes` usando `IFaturaRepository.ListarFaturasCartaoPorVencimentoNoMes` + `FaturaSaldoCalculator.Calcular` por fatura, somando `ValorPago`/`ValorTotal-SaldoPendente` em `TotalPago` e `SaldoPendente` em `TotalNaoPago` (fracionado, nunca binario por `Status`).
+CRITERIO DE ACEITE:
+1. Testes de TASK-069 GREEN sem editar o arquivo de teste.
+2. Reusa `FaturaSaldoCalculator`, nao reimplementa calculo de saldo.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/FaturaProjecaoService.cs`
+NAO FAZER: nao editar o arquivo de teste.
+RETORNO ESPERADO: diff do `FaturaProjecaoService.cs`.
+
+---
+
+## TASK-071 — [GREEN confirmado] Rodar testes do FaturaProjecaoService
+
+STATUS: CONCLUIDA (Kira confirmou inline ao rodar dotnet test antes de commitar a TASK-070 — 360/360 GREEN, sem reescrever nenhum teste)
+AGENT: mike
+DEPENDENCIAS: TASK-070
+FLUXO: Implementacao
+CONTEXTO A LER: arquivo de teste de TASK-069
+ESCOPO: Rodar os testes, sem reescrever.
+CRITERIO DE ACEITE: todos GREEN; falha vira relatorio de bug, nao correcao direta.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar nenhum arquivo.
+RETORNO ESPERADO: relatorio GREEN ou falhas.
+
+---
+
+## TASK-072 — Style: revisao do FaturaProjecaoService
+
+STATUS: CONCLUIDA + APROVADA PELO STYLE apos 2 rodadas (361/361 testes GREEN no final). Rodada 1: achou acoplamento escondido -- o metodo confiava em fatura.Status pra decidir o calculo, so dando certo porque 3 arquivos externos (PagamentoFaturaService, CompraCartaoService, EstornoCartaoService) garantem ValorPago==ValorTotal quando Status=Paga, sem nenhum teste provando isso; tambem achou typo de PascalCase num nome de teste. Levi removeu o if/else (agora sempre usa saldo.ValorPago/ValorPendente do FaturaSaldoCalculator) e adicionou teste provando Status=Paga com saldo calculado divergente. Bonus: a correcao tambem eliminou um bug latente do if antigo (branch Paga nunca zerava totalNaoPago). Rodada 2: APROVADO, 8/8 testes do service GREEN
+AGENT: style
+DEPENDENCIAS: TASK-071
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 12; clean-code.md
+ESCOPO: Revisar contra regra de negocio, atencao ao fracionamento correto de fatura parcialmente paga (nunca tratar como binario pago/nao-pago).
+CRITERIO DE ACEITE: veredito ou tarefa de correcao.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
+
+---
+
+## TASK-073 — [RED] Testes do ProjecaoMesService (formula master)
+
+STATUS: CONCLUIDA (6 testes, RED confirmado por NotImplementedException. Cobre composicao dos 4 termos, formula exata, saldo positivo/negativo/zero, contrato de chamada das 3 dependencias)
+AGENT: mike
+DEPENDENCIAS: TASK-068, TASK-072
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 9 INTEIRO (formula, regra de cartao, referencia a item 13); esqueleto `IProjecaoMesService.cs`/`ProjecaoMesService.cs` (secao acima)
+ESCOPO: Testar `CalcularProjecaoDoMes`: compoe os 3 totais (`ContaReceberService`, `FluxoCaixaService`, `FaturaProjecaoService`) aplicando exatamente `saldo_projetado = (recebido + a_receber) - (pago + a_pagar)`, onde pago/a_pagar finais somam a fatia da fatura de cartao aos totais genericos de lancamento.
+CRITERIO DE ACEITE:
+1. Compila contra o esqueleto com mocks das 3 dependencias.
+2. RED por `NotImplementedException`.
+3. Pelo menos um caso cobrindo saldo negativo (mais a pagar que a receber).
+ARQUIVOS PERMITIDOS: `MyFinances.Tests/Services/ProjecaoMesServiceTests.cs` (criar)
+NAO FAZER: nao implementar o service.
+RETORNO ESPERADO: arquivo de teste + output RED.
+
+---
+
+## TASK-074 — [GREEN] Implementar ProjecaoMesService
+
+STATUS: CONCLUIDA (6/6 testes RED da TASK-073 GREEN, suite completa 367/367. Formula bate com item 9)
+AGENT: levi
+DEPENDENCIAS: TASK-073
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 9; arquivo de teste de TASK-073 (leitura)
+ESCOPO: Implementar `CalcularProjecaoDoMes` chamando as 3 dependencias injetadas e montando `ProjecaoMesResultado` com a formula.
+CRITERIO DE ACEITE:
+1. Testes de TASK-073 GREEN sem editar o arquivo de teste.
+2. Formula bate exatamente com regra-de-negocio.md item 9.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/ProjecaoMesService.cs`
+NAO FAZER: nao editar o arquivo de teste.
+RETORNO ESPERADO: diff do `ProjecaoMesService.cs`.
+
+---
+
+## TASK-075 — [GREEN confirmado] Rodar testes do ProjecaoMesService
+
+STATUS: CONCLUIDA (Kira confirmou inline ao rodar dotnet test antes de commitar a TASK-074 — 367/367 GREEN, sem reescrever nenhum teste)
+AGENT: mike
+DEPENDENCIAS: TASK-074
+FLUXO: Implementacao
+CONTEXTO A LER: arquivo de teste de TASK-073
+ESCOPO: Rodar os testes, sem reescrever.
+CRITERIO DE ACEITE: todos GREEN; falha vira relatorio de bug.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar nenhum arquivo.
+RETORNO ESPERADO: relatorio GREEN ou falhas.
+
+---
+
+## TASK-076 — Style: revisao do ProjecaoMesService
+
+STATUS: CONCLUIDA + APROVADA PELO STYLE de primeira (367/367 testes GREEN). Formula do item 9 bate exatamente, sem sinal invertido. Verificacao especifica de double-counting entre FluxoCaixaService (exclui Transferencia/FaturaId) e FaturaProjecaoService (usa FaturaSaldoCalculator): sem sobreposicao, cada fonte cobre uma fatia distinta. Confirmado tambem que emprestimo (item 13) fica fora da projecao por decisao deliberada do usuario (2026-07-20), nao e regra omissa. Cadeia critica do item 9 fechada sem achado pendente
+AGENT: style
+DEPENDENCIAS: TASK-075
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 9 inteiro; clean-code.md
+ESCOPO: Revisar a composicao final da formula contra a regra de negocio.
+CRITERIO DE ACEITE: veredito ou tarefa de correcao.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
+
+---
+
+## TASK-077 — Endpoint do dashboard (DTO + Controller + DI)
+
+STATUS: CONCLUIDA (GET /api/dashboard/projecao-mes?ano=&mes= implementado, controller so orquestra, DI registrado. Suite completa 367/367)
+AGENT: levi
+DEPENDENCIAS: TASK-076
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 9; stack.md secoes DTOs/ e Controllers/; padrao existente em `ContasReceberController.cs` (endpoint `total-esperado-mes`) e `FaturaResponse.cs` (`FromX`)
+ESCOPO: Criar `ProjecaoMesResponse` (com `FromResultado`), `DashboardController` com `GET /api/dashboard/projecao-mes?ano=&mes=`, e registrar `IFaturaProjecaoService`/`IProjecaoMesService` no `Program.cs`.
+CRITERIO DE ACEITE:
+1. GET retorna 200 com os 5 campos da formula.
+2. Controller so orquestra, sem logica de negocio.
+3. DI registrado (`AddScoped`) nos mesmos moldes dos servicos existentes.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/DTOs/ProjecaoMesResponse.cs` (criar), `MyFinances/MyFinances/Controllers/DashboardController.cs` (criar), `MyFinances/MyFinances/Program.cs`
+NAO FAZER: nao adicionar logica de calculo no controller.
+RETORNO ESPERADO: diff dos 3 arquivos.
+
+---
+
+## TASK-078 — Style: revisao do endpoint do dashboard
+
+STATUS: CONCLUIDA + APROVADA PELO STYLE de primeira (367/367 testes GREEN). Contrato expoe exatamente os 7 campos da formula, convencao de rota/parametros consistente com o endpoint total-esperado-mes ja aprovado, controller so orquestra, DI correta. Observacao nao bloqueante: ProjecaoMesResponse e o unico DTO do projeto que mapeia a partir de um record de Services (ProjecaoMesResultado) em vez de Domain -- ja existe precedente (FaturaProjecaoMes), registrado como inconsistencia de padrao, nao violacao. MODULO PROJECAO DO MES FECHADO (TASK-063 a TASK-078)
+AGENT: style
+DEPENDENCIAS: TASK-077
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 9; clean-code.md
+ESCOPO: Revisar `DashboardController` e `ProjecaoMesResponse` contra regra de negocio e convencao de contrato de API.
+CRITERIO DE ACEITE: veredito ou tarefa de correcao.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
+
+---
+
+## Mapa de dependencia (TASK-063 a TASK-078)
+
+```
+063 (repo lancamento) -> 065 (RED) -> 066 (GREEN) -> 067 (confirma) -> 068 (style) ─┐
+064 (repo fatura)     -> 069 (RED) -> 070 (GREEN) -> 071 (confirma) -> 072 (style) ─┼─> 073 (RED master) -> 074 (GREEN) -> 075 (confirma) -> 076 (style) -> 077 (endpoint) -> 078 (style)
+```
+
+## Decisoes resolvidas com o usuario em 2026-07-20
+
+1. **Emprestimo (item 13) fica FORA da projecao.** Confirmado: dinheiro
+   emprestado nao e "gasto" no sentido de `total_pago_no_mes` — vira "ativo"
+   via `ContaReceber` e so conta quando volta (`total_recebido_no_mes`). A
+   exclusao geral de Transferencia (item 3) em TASK-065/066 ja cobre isso
+   sem excecao adicional — nenhuma mudanca de escopo necessaria.
+2. **Fatura parcialmente paga e FRACIONADA**, nao binaria. `ValorPago`
+   (ou `ValorTotal - SaldoPendente`) entra em `total_pago_no_mes`,
+   `SaldoPendente` entra em `total_a_pagar_no_mes`, simetrico ao que
+   `ContaReceber` ja faz. Refletido em TASK-069/070/072.
+3. **"Fatura do mes" = `DataVencimento` caindo no ano/mes consultado**,
+   simetrico ao `data_prevista` do `ContaReceber`. Refletido em TASK-064.
+4. **Multiplos cartoes: SOMA tudo** num unico `total_pago_no_mes`/
+   `total_a_pagar_no_mes`, sem breakdown por cartao no endpoint.
+
+## Pendencias registradas, nao bloqueiam esta leva
+
+5. **Escopo de front nao incluido nesta leva.**
+   `MyFinanceFrontEnd/src/features/dashboard/` so tem `.gitkeep` — nenhuma
+   tela/hook/api existe. Nao ha wireframe/identidade especifica pra essa
+   tela alem do generico dark/roxo. Se quiser UI decomposta, definir pelo
+   menos: so saldo projetado, ou breakdown dos 4 termos, ou grafico.
+6. **Conta Fixa (item 6) nao existe no codebase** (nem Domain, nem migration
+   da tabela, so a FK morta `conta_fixa_id` em `Lancamento`). Quando existir,
+   so gera `Lancamento` comuns que o agregador generico ja soma — nenhuma
+   conta fixa aparece na projecao v1 ate esse modulo ser construido a parte.
+
+Nenhuma pendencia de decisao de produto restante para TASK-063 a TASK-078.
+Fila pronta para execucao.
