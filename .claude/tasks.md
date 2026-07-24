@@ -872,7 +872,7 @@ RETORNO ESPERADO: componente consumindo `useContasFixas`.
 
 ## TASK-064 — UI: formulario criar/editar conta fixa
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. Reaproveitou useContasParaSelecao de features/contas-receber/hooks/ via import cross-feature, ja que nao ha hook generico de listagem de contas no projeto — mesmo padrao ja documentado na TASK-014 de Contas a Receber; candidato a promover pra shared/hooks/ numa task futura, fora de escopo aqui. Achado relevante: EditarContaFixaRequest.categoriaId e substituicao total no backend, entao o form em modo edicao reenvia o categoriaId ja existente da ContaFixa em vez de omitir, evitando apagar categoria vinculada so por editar valor/dia_vencimento. Campo de conta de origem e descricao nao ofertados em modo edicao, coerente com o contrato do DTO)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-062
