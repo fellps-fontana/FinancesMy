@@ -364,7 +364,7 @@ RETORNO ESPERADO: esqueleto compilavel, sem logica.
 
 ## TASK-039 — [REGRA CRITICA] RED: testes de ClassificacaoLancamentoService
 
-STATUS: CONCLUIDA (tasks.md estava desatualizado — modulo inteiro ja mergeado em main via PR #28 antes desta sessao. Testes existem em ClassificacaoLancamentoServiceTests.cs, commit 6e032f3, 6/6 GREEN)
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit 6e032f3 em 2026-07-19; tasks.md nao havia sido atualizado. Reconciliado em 2026-07-20 apos verificacao: decisions.md tem TASK-039 APROVADO, 7 testes cobrindo os 6 casos obrigatorios + 1 extra de precedencia dupla, suite GREEN)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-038
@@ -381,7 +381,7 @@ RETORNO ESPERADO: confirmacao de RED + lista dos 6 casos cobertos.
 
 ## TASK-040 — [REGRA CRITICA] GREEN: implementar Classificar
 
-STATUS: CONCLUIDA (implementado no commit 6edf3e7, com precedencia Transferencia > CompetenciaCartao > Tipo, sem leitura de Valor. Ja mergeado em main via PR #28)
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit 6edf3e7 em 2026-07-19. decisions.md tem TASK-040 APROVADO)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-039
@@ -399,7 +399,7 @@ RETORNO ESPERADO: implementacao completa.
 
 ## TASK-041 — [REGRA CRITICA] Confirmar GREEN: ClassificacaoLancamentoService
 
-STATUS: CONCLUIDA (6/6 GREEN, confirmado nesta sessao ao reexecutar a suite; ja mergeado em main via PR #28)
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira. decisions.md tem TASK-041 APROVADO)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-040
@@ -414,7 +414,7 @@ RETORNO ESPERADO: confirmacao GREEN ou relatorio de bug.
 
 ## TASK-042 — Style: revisao ClassificacaoLancamentoService
 
-STATUS: CONCLUIDA + APROVADA PELO STYLE (coberta pela revisao geral do modulo, TASK-050, commit 6e3b8e4. Precedencia e ausencia de leitura de Valor confirmadas)
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira. decisions.md tem TASK-042 APROVADO)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-041
@@ -429,7 +429,7 @@ RETORNO ESPERADO: veredito + (se houver) tarefa de correcao, redespachada a levi
 
 ## TASK-043 — Extensao de ILancamentoRepository (Remover + fluxo caixa)
 
-STATUS: CONCLUIDA (implementado e corrigido no commit 6e3b8e4 — filtro de ListarParaFluxoCaixa que descartava a perna CREDIT de transferencias foi achado e corrigido no style da TASK-050. Ja mergeado em main via PR #28)
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit e331e8e em 2026-07-19. decisions.md tem TASK-043 APROVADO. Bug de filtro corrigido depois na rodada TASK-050: perna CREDIT de transferencia estava sendo descartada de ListarParaFluxoCaixa)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
@@ -448,7 +448,7 @@ RETORNO ESPERADO: 2 metodos novos, compilando.
 
 ## TASK-044 — LancamentoManualService + DTOs
 
-STATUS: CONCLUIDA (validacao de conta ativa em MarcarComoPagoAsync/EditarAsync completada no style-fix do commit 6e3b8e4, item 2 do commit. Ja mergeado em main via PR #28)
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit 69f8cf7 em 2026-07-19. decisions.md tem TASK-044 APROVADO. Desvio de escopo real: interface `ILancamentoManualService` foi criada, contrariando o "NAO FAZER" original — sem impacto de regra, so estilo; nao revertido nesta reconciliacao)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-043
@@ -472,7 +472,7 @@ RETORNO ESPERADO: service + DTOs, compilando, registrado em `Program.cs`.
 
 ## TASK-045 — TransferenciaService + DTOs
 
-STATUS: CONCLUIDA (TransferenciaLancamentoHelper extraido no style-fix do commit 6e3b8e4 pra eliminar duplicacao com PagamentoFaturaService; TransferenciaResponse criado sem FaturaId, ContaDestinoId nao-nulo. Ja mergeado em main via PR #28)
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit d5cde3d em 2026-07-19. decisions.md tem TASK-045 APROVADO. Duplicacao com PagamentoFaturaService eliminada na rodada TASK-050 via TransferenciaLancamentoHelper)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: nenhuma
@@ -493,7 +493,7 @@ RETORNO ESPERADO: service + DTOs, compilando, registrado em `Program.cs`.
 
 ## TASK-046 — FluxoCaixaService + DTO
 
-STATUS: CONCLUIDA (usa ClassificacaoLancamentoService.Classificar em producao desde o style-fix do commit 6e3b8e4, eliminando logica de classificacao duplicada no repository. Ja mergeado em main via PR #28)
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit 37fddd8 em 2026-07-19. decisions.md tem TASK-046 APROVADO)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-043
@@ -513,7 +513,7 @@ RETORNO ESPERADO: service + DTO, compilando, registrado em `Program.cs`.
 
 ## TASK-047 — Controllers (Lancamentos, ContaLancamentos, Transferencias)
 
-STATUS: CONCLUIDA (implementados no commit 8d48e6a; status codes HTTP padronizados no style-fix do commit 6e3b8e4. Ja mergeado em main via PR #28)
+STATUS: CONCLUIDA COM DESVIO DE ROTA (feito diretamente pelo usuario fora da fila do Kira, commit 8d48e6a em 2026-07-19. decisions.md tem TASK-047 APROVADO. Desvio real: nao existe `ContaLancamentosController` separado nem `GET /api/lancamentos` cross-conta — tudo consolidado em `LancamentosController` sob `api/contas/{contaId}/lancamentos`, incluindo `GET .../fluxo-caixa` (sempre escopado a uma conta, nao cross-conta como o desenho original de killua previa). Ja revisado e aprovado pelo style na epoca; nao alterado nesta reconciliacao)
 AGENT: levi
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-044, TASK-045, TASK-046
@@ -533,7 +533,7 @@ RETORNO ESPERADO: contrato de API documentado (rota, verbo, shape de retorno, co
 
 ## TASK-048 — Testes de Service (LancamentoManual, Transferencia, FluxoCaixa)
 
-STATUS: CONCLUIDA (testes no commit 4353598; mike reportou 3 bugs reais via testes RED no commit f67873d — perna de transferencia sumindo no fluxo de caixa e falta de validacao de conta ativa —, corrigidos no style-fix 6e3b8e4, todos GREEN. Ja mergeado em main via PR #28)
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit 4353598 em 2026-07-19. decisions.md tem TASK-048 APROVADO)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-044, TASK-045, TASK-046
@@ -551,7 +551,7 @@ RETORNO ESPERADO: testes passando; relatorio de bug se houver.
 
 ## TASK-049 — Testes HTTP dos controllers
 
-STATUS: CONCLUIDA (testes HTTP no commit 392e475. Ja mergeado em main via PR #28)
+STATUS: CONCLUIDA (feito diretamente pelo usuario fora da fila do Kira, commit 392e475 em 2026-07-19. decisions.md tem TASK-049 APROVADO)
 AGENT: mike
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-047
@@ -568,7 +568,9 @@ RETORNO ESPERADO: testes passando.
 
 ## TASK-050 — Style: revisao geral do modulo
 
-STATUS: CONCLUIDA + APROVADA PELO STYLE (5 problemas encontrados e corrigidos no commit 6e3b8e4 — 1 CRITICO: filtro de ListarParaFluxoCaixa descartava perna CREDIT de transferencias; 1 ALTO: faltava validacao de conta ativa em MarcarComoPagoAsync/EditarAsync; 2 MEDIO: status HTTP inconsistentes e duplicacao entre TransferenciaService/PagamentoFaturaService; 1 BAIXO: TransferenciaResponse reaproveitando PagamentoResponse. Resultado: 202 testes GREEN. Modulo mergeado em main via PR #28 (worktree-lancamento-geral-porte)
+STATUS: CONCLUIDA + APROVADA (feito diretamente pelo usuario fora da fila do Kira. commit 6e3b8e4 em 2026-07-19 corrige 5 problemas encontrados na revisao: [CRITICO] filtro de ListarParaFluxoCaixa descartava a perna CREDIT de transferencias; [ALTO] faltava validacao de conta ativa em MarcarComoPagoAsync/EditarAsync; [MEDIO] status HTTP inconsistentes entre controllers; [MEDIO] duplicacao entre TransferenciaService e PagamentoFaturaService (extraido TransferenciaLancamentoHelper); [BAIXO] TransferenciaResponse reaproveitava PagamentoResponse. 3 testes RED do mike confirmados GREEN apos fix. decisions.md tem TASK-050 APROVADO.
+
+BUG POS-MERGE ENCONTRADO EM 2026-07-20: apos o merge do modulo Contas a Receber (PR anterior, que tornou `Transferencia.ContaDestinoId` de `Guid` para `Guid?` — TASK-002 daquele modulo), a `main` ficou QUEBRADA — `TransferenciaResponse.cs` (deste modulo) ainda declarava `ContaDestinoId` como `Guid` nao-nulo, causando erro de compilacao CS0266 na atribuicao `Guid?` -> `Guid`. Nenhum dos dois modulos, isolado, previa essa colisao. Corrigido nesta sessao (`ContaDestinoId` -> `Guid?` em `TransferenciaResponse.cs`); build e suite completa (324/324) confirmados verdes apos o fix.)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-049
@@ -604,6 +606,230 @@ independente do resto — pode rodar em paralelo).
    `regra-de-negocio.md` nao dizendo explicitamente. Refletido em TASK-044
    (`conta.Origem == Manual` + `conta.Ativa == true`), TASK-045 (ambas as
    contas ativas) e TASK-048 (casos de teste de rejeicao por conta inativa).
+
+Nenhuma pendencia de decisao de produto restante. Queue pronta para execucao.
+
+---
+
+# Modulo Limite de Gasto por Categoria (v1)
+
+Escopo confirmado: item 14 da regra-de-negocio.md (recem-adicionado, 2026-07-20).
+Tabela `limite_gasto` ja existia no schema.dbml, orfa no codigo. Regra NAO e
+critica (comparado a ContaReceberSaldoCalculator/ClassificacaoLancamentoService:
+erro aqui produz numero errado numa tela, nunca bloqueia escrita nem corrompe
+estado) — segue fluxo simples arquitetar -> codar -> testar -> style, sem
+ciclo RED/GREEN formal.
+
+## TASK-051 — Entidade LimiteGasto + enum PeriodoLimiteGasto + Configuration + migration
+
+STATUS: CONCLUIDA (build limpo, migration AddLimiteGastoEntity gerada e conferida contra schema.dbml. Corrigido tambem, fora do escopo original: TransferenciaResponse.ContaDestinoId estava nao-nulavel mas o dominio ja era Guid? desde TASK-002 — bug pre-existente que quebrava o build da solucao inteira. levi tentou contornar com `!.Value`, que compilava mas quebraria em runtime para EMPRESTIMO (item 13). Kira corrigiu tornando o campo do DTO nulavel, alinhado ao dominio.)
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: nenhuma
+CONTEXTO A LER: regra-de-negocio.md item 14 (inteiro); schema.dbml tabela `limite_gasto`; `Domain/TipoConta.cs` (padrao de enum com ToStorageValue/FromStorageValue); `Infrastructure/Configurations/ContaReceberConfiguration.cs` (padrao de Configuration)
+ESCOPO: criar enum `PeriodoLimiteGasto` (so `Mensal` por enquanto, extensoes ToStorageValue/FromStorageValue no padrao MAIUSCULO ja usado); entidade `LimiteGasto` (Id, CategoriaId, ValorLimite, Periodo, navegacao Categoria); `LimiteGastoConfiguration : IEntityTypeConfiguration<LimiteGasto>` com indice UNICO em CategoriaId (1:1) e FK `OnDelete(DeleteBehavior.Cascade)`; registrar `DbSet<LimiteGasto>` no `MyFinancesDbContext`; gerar migration.
+CRITERIO DE ACEITE: projeto compila; migration aplicavel; tabela `limite_gasto` com indice unico em `categoria_id`.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/LimiteGasto.cs (novo), MyFinances/MyFinances/Domain/PeriodoLimiteGasto.cs (novo), MyFinances/MyFinances/Infrastructure/Configurations/LimiteGastoConfiguration.cs (novo), MyFinances/MyFinances/Data/MyFinancesDbContext.cs, MyFinances/MyFinances/Migrations/**
+NAO FAZER: nao criar Repository/Service ainda (TASK-053); nao permitir CategoriaId nulo nem tornar o indice unico opcional.
+RETORNO ESPERADO: arquivos criados, build limpo, migration gerada e conferida contra schema.dbml.
+
+---
+
+## TASK-052 — Extensao de ILancamentoRepository: ListarPorCategoriasEPeriodo
+
+STATUS: CONCLUIDA (build limpo, metodo filtra por lista de categorias + ano/mes seguindo o padrao de ListarParaProjecaoDoMes; sem tocar em arquivo fora do escopo)
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: nenhuma
+CONTEXTO A LER: `Repositories/ContaReceberRepository.cs` metodo `ListarParaProjecaoDoMes` (padrao exato de filtro `.Year == ano && .Month == mes`, sem construir range de data); regra-de-negocio.md item 14, bloco "Hierarquia" e formula `gasto_realizado_no_mes`
+ESCOPO: adicionar `Task<IEnumerable<Lancamento>> ListarPorCategoriasEPeriodo(IEnumerable<Guid> categoriaIds, int ano, int mes)` em `ILancamentoRepository`/`LancamentoRepository`, filtrando `categoriaIds.Contains(l.CategoriaId) && l.Data.Year == ano && l.Data.Month == mes`. Recebe uma LISTA de ids (nao um so) porque o item 14 soma categoria-pai + subcategorias diretas quando a categoria-pai tem limite.
+CRITERIO DE ACEITE: metodo novo aceita `IEnumerable<Guid>`, compila, filtra corretamente qualquer subconjunto de categorias no periodo informado.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Repositories/ILancamentoRepository.cs, MyFinances/MyFinances/Repositories/LancamentoRepository.cs
+NAO FAZER: nao filtrar Tipo/Oculto aqui (responsabilidade do `LimiteGastoCalculator`, TASK-053); nao remover metodos existentes.
+RETORNO ESPERADO: metodo novo, compilando.
+
+---
+
+## TASK-053 — LimiteGastoCalculator + Repository + Service de LimiteGasto (com agregacao de hierarquia)
+
+STATUS: CONCLUIDA (build limpo, revisado por Kira: upsert nao duplica, valida categoria Despesa nao-arquivada, hierarquia soma so 1 nivel de subcategorias)
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-051, TASK-052
+CONTEXTO A LER: regra-de-negocio.md item 14 inteiro; `Domain/FaturaSaldoCalculator.cs` e `Domain/ContaReceberSaldoCalculator.cs` (padrao de calculator estatico + record de resultado); `Services/ContaReceberService.cs` metodo `CalcularTotalAReceberEsperadoNoMes` (padrao de agregacao por mes); `Repositories/CategoriaRepository.cs` metodo `ObterPorId` (ja inclui `Subcategorias` via `Include`)
+ESCOPO: implementar `Domain/LimiteGastoCalculator.Calcular(LimiteGasto, IEnumerable<Lancamento>)` retornando `record LimiteGastoStatus(decimal ValorLimite, decimal GastoRealizado, decimal PercentualUtilizado, bool Estourado)` (gasto = soma de `Tipo=Debit` e `!Oculto` do conjunto ja filtrado); `ILimiteGastoRepository`/`LimiteGastoRepository` (Adicionar, ObterPorCategoriaId, Listar, Remover, Salvar); `ILimiteGastoService`/`LimiteGastoService` com `Definir` (upsert — valida categoria existe via `ICategoriaRepository`, `categoria.Tipo == Despesa`, categoria nao arquivada, `valor > 0`), `Remover`, `Listar`, `ObterGastoVsLimite(categoriaId, ano, mes)` — resolve a categoria via `ICategoriaRepository.ObterPorId` (que ja inclui `Subcategorias`), monta a lista de ids `[categoria.Id, ...categoria.Subcategorias.Select(s => s.Id)]`, chama `ListarPorCategoriasEPeriodo` com essa lista —, e `ObterGastoVsLimiteTodasCategorias(ano, mes)`. Criar `Exceptions/LimiteGastoNaoEncontradoException.cs` e `Exceptions/CategoriaInvalidaParaLimiteGastoException.cs`. Registrar tudo no DI.
+CRITERIO DE ACEITE: 1) `Definir` em categoria tipo=Receita lanca `CategoriaInvalidaParaLimiteGastoException`; 2) `Definir` duas vezes na mesma categoria atualiza em vez de duplicar; 3) `ObterGastoVsLimite` de uma categoria-pai soma tanto os lancamentos da propria categoria quanto os de suas subcategorias diretas (Debit, nao-oculto), sem descer alem de 1 nivel.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/LimiteGastoCalculator.cs (novo), MyFinances/MyFinances/Repositories/ILimiteGastoRepository.cs (novo), MyFinances/MyFinances/Repositories/LimiteGastoRepository.cs (novo), MyFinances/MyFinances/Services/ILimiteGastoService.cs (novo), MyFinances/MyFinances/Services/LimiteGastoService.cs (novo), MyFinances/MyFinances/Exceptions/LimiteGastoNaoEncontradoException.cs (novo), MyFinances/MyFinances/Exceptions/CategoriaInvalidaParaLimiteGastoException.cs (novo), MyFinances/MyFinances/Program.cs
+NAO FAZER: nao permitir `Definir` em categoria tipo=Receita ou arquivada; nao bloquear/rejeitar criacao de lancamento com base no limite (item 14 proibe bloqueio); nao acessar `MyFinancesDbContext` direto no Service; nao somar subcategoria-de-subcategoria (so 1 nivel de profundidade, conforme item 14).
+RETORNO ESPERADO: arquivos criados, build limpo.
+
+---
+
+## TASK-054 — Controller LimitesGastoController + DTOs
+
+STATUS: CONCLUIDA (5 endpoints + DTOs, build limpo. Kira corrigiu bug encontrado na revisao: LimiteGastoService.Definir nao atribuia Categoria ao criar um LimiteGasto novo, deixando CategoriaNome vazio na resposta 201 - agora atribui a categoria ja validada.)
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-053
+CONTEXTO A LER: clean-code.md "Organizacao (.NET)"; `Controllers/ContasReceberController.cs` (padrao de traducao de excecao -> status HTTP e DTO factory)
+ESCOPO: criar `LimitesGastoController` com `POST /api/limites-gasto` (upsert, 200 se atualizou / 201 se criou), `DELETE /api/limites-gasto/{categoriaId}` (204), `GET /api/limites-gasto` (200), `GET /api/limites-gasto/gasto-vs-limite?ano=&mes=` (200), `GET /api/limites-gasto/gasto-vs-limite/{categoriaId}?ano=&mes=` (200/404). DTOs: `DefinirLimiteGastoRequest`, `LimiteGastoResponse` (com `CategoriaNome`), `GastoVsLimiteResponse` (com `PercentualUtilizado` e `Estourado`).
+CRITERIO DE ACEITE: os 5 endpoints compilam e respondem os status HTTP descritos no ESCOPO.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Controllers/LimitesGastoController.cs (novo), MyFinances/MyFinances/DTOs/LimiteGasto/*.cs (novo)
+NAO FAZER: nao colocar regra de negocio no controller; nao expor a entity `LimiteGasto` crua.
+RETORNO ESPERADO: endpoints funcionando conforme criterio.
+
+---
+
+## TASK-055 — Testes de LimiteGastoCalculator e LimiteGastoService (incluindo hierarquia)
+
+STATUS: CONCLUIDA (29 testes, 0 falhas, confirmado independentemente por Kira via dotnet test --filter. Cobre soma Debit/Oculto, estourado, percentual sem divisao por zero, upsert nao duplica, categoria Receita/arquivada rejeitada, hierarquia pai+subcategoria com Verify explicito da lista de ids passada ao repository)
+AGENT: mike
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-053
+CONTEXTO A LER: regra-de-negocio.md item 14 inteiro
+ESCOPO: testar `LimiteGastoCalculator.Calcular`: soma so Debit+!Oculto, ignora Credit, ignora Oculto=true, `Estourado=true` quando gasto>limite, `PercentualUtilizado` correto (limite=0 sem divisao por zero). Testar `LimiteGastoService`: `Definir` em categoria Receita rejeita; `Definir` duas vezes atualiza (nao duplica); `Definir` valor<=0 rejeita; `Remover` categoria sem limite lanca `LimiteGastoNaoEncontradoException`; `ObterGastoVsLimiteTodasCategorias` retorna so categorias com limite cadastrado; `ObterGastoVsLimite` de categoria-pai com limite soma tambem os lancamentos de suas subcategorias diretas; gasto de uma subcategoria NAO soma no limite de outra subcategoria irma (so no pai).
+CRITERIO DE ACEITE: testes passando cobrindo os casos listados, incluindo hierarquia; relatorio de bug estruturado (arquivo+linha) se algum falhar por defeito de codigo.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Domain/LimiteGastoCalculatorTests.cs (novo), MyFinances/MyFinances.Tests/Services/LimiteGastoServiceTests.cs (novo)
+NAO FAZER: nao alterar `LimiteGastoCalculator`/`LimiteGastoService` para o teste passar.
+RETORNO ESPERADO: testes passando ou relatorio de bug estruturado.
+
+---
+
+## TASK-056 — Testes HTTP do LimitesGastoController
+
+STATUS: CONCLUIDA (6 testes HTTP, 0 falhas, confirmado independentemente por Kira. Cobre 201/200 upsert com CategoriaNome preenchido, 422 categoria Receita, 404 delete/consulta sem limite, estourado=true via gasto real. Removido arquivo residual test-output.txt deixado pelo mike, fora do escopo)
+AGENT: mike
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-054
+CONTEXTO A LER: `MyFinances.Tests/Controllers/ContaReceberControllerTests.cs` (padrao WebApplicationFactory + InMemory DB + JWT ja usado no projeto)
+ESCOPO: testes HTTP: criar limite (201); redefinir limite existente (200, nao duplica); criar em categoria Receita (422); `DELETE` sem limite cadastrado (404); `GET gasto-vs-limite` retornando `estourado=true` quando gasto>limite; `GET gasto-vs-limite/{categoriaId}` para categoria sem limite (404).
+CRITERIO DE ACEITE: testes passando; relatorio de bug se houver.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Controllers/LimitesGastoControllerTests.cs (novo)
+NAO FAZER: nao alterar controller/service para o teste passar sem reportar.
+RETORNO ESPERADO: testes passando ou relatorio de bug.
+
+---
+
+## TASK-057 — Style: revisao do modulo backend LimiteGasto
+
+STATUS: CONCLUIDA — APROVADO (rodada 2). Rodada 1 reprovou por Controller fazer Listar() full-scan pra decidir 200/201 e pra achar CategoriaNome; levi corrigiu fazendo Definir/ObterGastoVsLimite retornarem tupla com o dado ja resolvido (mesmo padrao que ObterGastoVsLimiteTodasCategorias ja usava). Style confirmou 359/359 testes, sem regressao nem problema de camada novo. Backend do modulo fechado, liberado pro front.
+AGENT: style
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-055, TASK-056
+CONTEXTO A LER: regra-de-negocio.md item 14; clean-code.md inteiro
+ESCOPO: validar que nenhum fluxo bloqueia lancamento por causa do limite (item 14: so alerta), que `LimiteGastoService` nao acessa `DbContext` direto, que o upsert de `Definir` nao duplica limite por categoria, e que o calculo de gasto realizado bate com o item 14 (Debit, !Oculto, mes calendario, hierarquia de 1 nivel).
+CRITERIO DE ACEITE: veredito (APROVADO ou tarefa de correcao no esquema padrao, redespachada a levi).
+ARQUIVOS PERMITIDOS: nenhum (style nao edita)
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito final do backend do modulo.
+
+---
+
+## TASK-058 — Front: camada de dados de LimiteGasto (types/api/hooks)
+
+STATUS: CONCLUIDA (types/api/query-keys/hooks criados, build/type-check limpo, dados crus sem threshold de UX embutido, invalidacao cruzada via limiteGastoKeys.all nas mutations)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-057
+CONTEXTO A LER: stack.md secao "Frontend (React)"; `features/contas-receber/{types.ts,api.ts,query-keys.ts,hooks}` como padrao de estilo
+ESCOPO: criar feature nova `features/limite-gasto/` com `types.ts`, `api.ts`, `query-keys.ts` e hooks (`useLimitesGasto`, `useDefinirLimiteGasto`, `useRemoverLimiteGasto`, `useGastoVsLimite(categoriaId, ano, mes)`, `useGastoVsLimiteTodasCategorias(ano, mes)`), consumidos depois por dashboard, lancamentos, categorias e o relatorio (TASK-059 a TASK-062).
+CRITERIO DE ACEITE: hooks tipados (sem `any`), invalidacao de cache cruzada apos `Definir`/`Remover` (gasto-vs-limite muda).
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/limite-gasto/types.ts (novo), MyFinanceFrontEnd/src/features/limite-gasto/api.ts (novo), MyFinanceFrontEnd/src/features/limite-gasto/query-keys.ts (novo), MyFinanceFrontEnd/src/features/limite-gasto/hooks/*.ts (novo)
+NAO FAZER: nao renderizar UI aqui; nao fixar threshold de "perto do limite" no hook — expor `percentualUtilizado` cru.
+RETORNO ESPERADO: hooks prontos para consumo pelas tasks seguintes.
+
+---
+
+## TASK-059 — Front: indicador de limite no dashboard
+
+STATUS: CONCLUIDA (componente standalone, estados loading/erro/vazio, tokens de identidade visual corretos, sem calculo de dominio no front)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-058
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 14
+ESCOPO: componente `LimiteGastoIndicador` (barra de progresso gasto/limite por categoria, cor de alerta quando `estourado=true`), consumindo `useGastoVsLimiteTodasCategorias`. ATENCAO: nao existe pagina raiz de Dashboard no front ainda (`features/dashboard/` so tem `.gitkeep`) — esta task entrega o componente pronto para embutir; a integracao na pagina de dashboard depende de um modulo de Dashboard ainda nao arquitetado.
+CRITERIO DE ACEITE: componente de apresentacao puro, consumindo o hook, pronto para ser embutido quando o Dashboard existir.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/dashboard/components/LimiteGastoIndicador.tsx (novo)
+NAO FAZER: nao construir a pagina de Dashboard inteira (fora de escopo); nao calcular gasto/limite no componente.
+RETORNO ESPERADO: componente pronto para embutir.
+
+---
+
+## TASK-060 — Front: aviso de limite na tela de lancamento
+
+STATUS: CONCLUIDA (funcao pura de threshold + componente de aviso, nunca bloqueia submit, 404 tratado como ausencia silenciosa de aviso)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-058
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 14
+ESCOPO: componente `AvisoLimiteGasto` (alerta "perto do limite"/"limite estourado" ao selecionar uma categoria), consumindo `useGastoVsLimite(categoriaId, ano, mes)`; funcao pura em `lib/limiarAlertaLimite.ts` decidindo o threshold visual de "perto" a partir de `percentualUtilizado` (default 80% — nao esta na regra de negocio, decisao de UX isolada em funcao propria para poder ajustar depois sem tocar em contrato de API). ATENCAO: nao existe form de criacao de lancamento manual no front ainda (`features/lancamentos/` so tem `.gitkeep`, embora o backend — `LancamentoManualService`/Controller — ja exista) — esta task entrega o componente pronto para embutir quando o form existir, nao constroi o form.
+CRITERIO DE ACEITE: componente exibe estado "ok"/"perto"/"estourado" a partir de `percentualUtilizado`/`estourado`; funcao de threshold isolada e testavel.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/lancamentos/components/AvisoLimiteGasto.tsx (novo), MyFinanceFrontEnd/src/features/lancamentos/lib/limiarAlertaLimite.ts (novo)
+NAO FAZER: nao bloquear o submit do formulario por causa do limite (item 14: so alerta); nao construir o form de lancamento inteiro (fora de escopo).
+RETORNO ESPERADO: componente pronto para embutir.
+
+---
+
+## TASK-061 — Front: comparativo limite vs realizado por categoria
+
+STATUS: CONCLUIDA (pagina + rota /limites-gasto, confirmado que features/cartao/RelatorioCategoriaPage.tsx e arquivos relacionados nao foram tocados)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-058
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 14; `features/cartao/RelatorioCategoriaPage.tsx` + `features/cartao/hooks/useRelatorioCategoria.ts` — ACHADO: ja existe uma tela "Relatorio por categoria" no front, mas ela e escopada so a COMPRAS DE CARTAO (item 12) e chama um endpoint que nao existe no backend (gap documentado no proprio arquivo, pre-existente a esta entrega). O comparativo de limite (item 14) e um relatorio DIFERENTE (soma TODO Debit da categoria, nao so cartao) e usa o endpoint novo desta leva — NAO tentar consertar/fundir com `RelatorioCategoriaPage.tsx` aqui.
+ESCOPO: pagina/secao nova listando as categorias com limite cadastrado, comparando `valorLimite` x `gastoRealizado` (barra de progresso + `estourado`), consumindo `useGastoVsLimiteTodasCategorias`.
+CRITERIO DE ACEITE: pagina nova, rota propria, sem tocar no relatorio de cartao existente.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/limite-gasto/ComparativoLimiteGastoPage.tsx (novo), MyFinanceFrontEnd/src/features/limite-gasto/components/ItemComparativoLimite.tsx (novo), MyFinanceFrontEnd/src/app/routes.tsx (so para adicionar a rota nova)
+NAO FAZER: nao alterar `features/cartao/RelatorioCategoriaPage.tsx` nem seus arquivos (`api.ts`, `hooks/useRelatorioCategoria.ts`, `lib/relatorioCategoria.ts`) — gap pre-existente, fora de escopo; nao remover nem duplicar essa rota.
+RETORNO ESPERADO: pagina nova funcionando, sem tocar no relatorio de cartao.
+
+---
+
+## TASK-062 — Front: CRUD do limite dentro da tela de categoria
+
+STATUS: CONCLUIDA (campo oculto pra RECEITA, estados sem-limite/com-limite tratados, define/edita/remove via mutations)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-058
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 14 (bloco "Onde aparece" — CRUD confirmado embutido na tela de categoria, decisao do usuario em 2026-07-20); `features/categorias/` hoje so tem `.gitkeep` (nao ha form de categoria construido ainda) — esta task constroi tambem o campo de limite dentro do que seria o form/lista de categoria.
+ESCOPO: campo "Limite de gasto mensal" na tela de categoria (tipo=Despesa apenas — campo oculto/desabilitado para Receita), com acao de definir/remover, consumindo `useDefinirLimiteGasto`/`useRemoverLimiteGasto`.
+CRITERIO DE ACEITE: componente oculta o campo quando a categoria e Receita; chama `Definir`/`Remover` corretamente.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/categorias/components/CampoLimiteGasto.tsx (novo)
+NAO FAZER: nao construir a tela de categoria inteira (CRUD de categoria em si e modulo separado, nao arquitetado nesta leva) — so o componente do campo de limite, isolado, pronto para embutir.
+RETORNO ESPERADO: componente pronto para embutir.
+
+---
+
+## Mapa de dependencia (TASK-051 a TASK-062)
+
+```
+051 (entidade) ─┬─> 053 (calculator+repo+service) ─┬─> 054 (controller) ─┬─> 055 (testes service) ─┬─> 057 (style) ─> 058 (front data) ─┬─> 059 (dashboard)
+052 (repo lanc) ┘                                   │                    └─> 056 (testes HTTP) ─────┘                                    ├─> 060 (aviso lancamento)
+                                                     └────────────────────────────────────────────────────────────────────────────────────┼─> 061 (comparativo)
+                                                                                                                                             └─> 062 (CRUD em categoria)
+```
+051 e 052 tocam arquivos disjuntos, rodam em paralelo. 059/060/061/062 idem entre si — todas dependem so de 058.
+
+## Pendencias — resolvidas com o usuario em 2026-07-20
+
+1. **Estouro de limite = so alerta visual, sem bloqueio.** Decisao do usuario;
+   nenhum service/controller deste modulo pode recusar um lancamento por
+   causa do limite.
+2. **Limite so em categoria tipo DESPESA.** `Definir` em categoria RECEITA
+   lanca `CategoriaInvalidaParaLimiteGastoException` (TASK-053).
+3. **Hierarquia: gasto de subcategoria SOMA no limite da categoria-pai**
+   (alem do limite proprio da subcategoria, se houver). Decisao do usuario —
+   inverteu a suposicao inicial do killua (que era "independentes"). Reflete
+   em TASK-052 (repository aceita lista de ids), TASK-053 (service resolve
+   subcategorias via `Categoria.Subcategorias`) e TASK-055 (teste especifico
+   de hierarquia).
+4. **Regime de competencia** (lancamento conta ao ser registrado, independente
+   de status PENDENTE/PAGO) — confirmado, mesma filosofia do item 12.
+5. **CRUD do valor do limite embutido na tela de categoria** (nao ha tela
+   separada de "Limites") — confirmado, TASK-062.
+6. **Threshold de "perto do limite" (80%) na tela de lancamento** — decisao
+   de UX, nao de regra de negocio; fica isolada em `lib/limiarAlertaLimite.ts`
+   (TASK-060) para poder mudar sem tocar em contrato de API.
 
 Nenhuma pendencia de decisao de produto restante. Queue pronta para execucao.
 
@@ -681,9 +907,9 @@ public interface IProjecaoMesService
 `Services/ProjecaoMesService.cs` (novo, corpo `NotImplementedException`, DI
 de `IFluxoCaixaService` + `IContaReceberService` + `IFaturaProjecaoService`).
 
-## TASK-051 — Repository: agregacao mensal de lancamentos p/ fluxo de caixa
+## TASK-063 — Repository: agregacao mensal de lancamentos p/ fluxo de caixa
 
-STATUS: CONCLUIDA (330/330 testes GREEN, build limpo. Achado colateral importante: main estava com erro de compilacao real (CS0266) em TransferenciaResponse.cs -- Transferencia.ContaDestinoId virou Guid? num commit anterior de Contas a Receber, item 13, e o DTO nao acompanhou; levi corrigiu certo. Desvio de escopo: levi tambem adicionou filtro `!TransferenciaId.HasValue` em ListarParaFluxoCaixaDoMes, contra o NAO FAZER explicito da task -- Kira removeu o filtro e inverteu o teste correspondente para provar que o repository devolve a lista crua do mes, sem classificacao de negocio; isso fica pro Service em TASK-053/054)
+STATUS: CONCLUIDA (330/330 testes GREEN, build limpo. Achado colateral importante: main estava com erro de compilacao real (CS0266) em TransferenciaResponse.cs -- Transferencia.ContaDestinoId virou Guid? num commit anterior de Contas a Receber, item 13, e o DTO nao acompanhou; levi corrigiu certo. Desvio de escopo: levi tambem adicionou filtro `!TransferenciaId.HasValue` em ListarParaFluxoCaixaDoMes, contra o NAO FAZER explicito da task -- Kira removeu o filtro e inverteu o teste correspondente para provar que o repository devolve a lista crua do mes, sem classificacao de negocio; isso fica pro Service em TASK-065/066)
 AGENT: levi
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -699,7 +925,7 @@ RETORNO ESPERADO: diff dos arquivos + confirmacao que o projeto compila (`dotnet
 
 ---
 
-## TASK-052 — Repository: faturas de cartao por vencimento no mes
+## TASK-064 — Repository: faturas de cartao por vencimento no mes
 
 STATUS: CONCLUIDA (335/335 testes GREEN, build limpo. Escopo respeitado, sem desvios)
 AGENT: levi
@@ -717,11 +943,11 @@ RETORNO ESPERADO: diff dos arquivos + confirmacao de build.
 
 ---
 
-## TASK-053 — [RED] Testes de agregacao mensal do FluxoCaixaService
+## TASK-065 — [RED] Testes de agregacao mensal do FluxoCaixaService
 
 STATUS: CONCLUIDA (18 testes novos, RED confirmado por NotImplementedException, 6 testes existentes de ListarFluxoCaixa continuam GREEN. Cobre soma por Tipo/Status e exclusao de Transferencia inclusive emprestimo)
 AGENT: mike
-DEPENDENCIAS: TASK-051
+DEPENDENCIAS: TASK-063
 FLUXO: Implementacao
 CONTEXTO A LER: regra-de-negocio.md item 9 (formula completa), item 3 (exclusao de transferencia mesma titularidade), item 12 (compra de cartao nao entra no fluxo de caixa geral); esqueleto `IFluxoCaixaService.cs` (secao acima)
 ESCOPO: Escrever testes para `CalcularTotalRecebidoNoMes`, `CalcularTotalPagoNoMes` e `CalcularTotalAPagarNoMes` cobrindo: soma so Credit/Pago (recebido); so Debit/Pago (pago); so Debit/Pendente (a pagar); exclui lancamento com `TransferenciaId` setado (transferencia comum); exclui lancamento com `FaturaId` setado (compra de cartao); ignora lancamento fora do mes/ano pedido; lista vazia retorna 0.
@@ -735,16 +961,16 @@ RETORNO ESPERADO: arquivo de teste + output do `dotnet test` confirmando RED.
 
 ---
 
-## TASK-054 — [GREEN] Implementar agregacao mensal do FluxoCaixaService
+## TASK-066 — [GREEN] Implementar agregacao mensal do FluxoCaixaService
 
-STATUS: CONCLUIDA (18/18 testes RED da TASK-053 GREEN, suite completa 353/353. Reusa ClassificacaoLancamentoService, sem duplicar checagem de TransferenciaId)
+STATUS: CONCLUIDA (18/18 testes RED da TASK-065 GREEN, suite completa 353/353. Reusa ClassificacaoLancamentoService, sem duplicar checagem de TransferenciaId)
 AGENT: levi
-DEPENDENCIAS: TASK-053
+DEPENDENCIAS: TASK-065
 FLUXO: Implementacao
-CONTEXTO A LER: regra-de-negocio.md item 9, item 3; arquivo de teste de TASK-053 (leitura, nunca escrita)
+CONTEXTO A LER: regra-de-negocio.md item 9, item 3; arquivo de teste de TASK-065 (leitura, nunca escrita)
 ESCOPO: Implementar os 3 metodos usando `ListarParaFluxoCaixaDoMes` + `ClassificacaoLancamentoService.Classificar` para excluir Transferencia, somando por Tipo/Status conforme a formula.
 CRITERIO DE ACEITE:
-1. Testes de TASK-053 ficam GREEN sem alterar o arquivo de teste.
+1. Testes de TASK-065 ficam GREEN sem alterar o arquivo de teste.
 2. Nenhuma logica de exclusao de Transferencia fica implicita/duplicada — reusa `ClassificacaoLancamentoService`.
 3. Nenhum acesso a `DbContext` direto (so via `ILancamentoRepository`).
 ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/FluxoCaixaService.cs`
@@ -753,13 +979,13 @@ RETORNO ESPERADO: diff do `FluxoCaixaService.cs`.
 
 ---
 
-## TASK-055 — [GREEN confirmado] Rodar testes do FluxoCaixaService
+## TASK-067 — [GREEN confirmado] Rodar testes do FluxoCaixaService
 
-STATUS: CONCLUIDA (Kira confirmou inline ao rodar dotnet test antes de commitar a TASK-054 — 353/353 GREEN, sem reescrever nenhum teste. Redispatch de mike dispensado por ser a mesma verificacao ja feita)
+STATUS: CONCLUIDA (Kira confirmou inline ao rodar dotnet test antes de commitar a TASK-066 — 353/353 GREEN, sem reescrever nenhum teste. Redispatch de mike dispensado por ser a mesma verificacao ja feita)
 AGENT: mike
-DEPENDENCIAS: TASK-054
+DEPENDENCIAS: TASK-066
 FLUXO: Implementacao
-CONTEXTO A LER: arquivo de teste de TASK-053
+CONTEXTO A LER: arquivo de teste de TASK-065
 ESCOPO: Rodar os testes de `FluxoCaixaServiceTests`, sem reescrever nenhum teste.
 CRITERIO DE ACEITE: todos GREEN; se algum falhar, reportar bug (nao corrigir).
 ARQUIVOS PERMITIDOS: nenhum (so execucao)
@@ -768,11 +994,11 @@ RETORNO ESPERADO: relatorio GREEN ou lista de falhas com stack trace.
 
 ---
 
-## TASK-056 — Style: revisao do FluxoCaixaService
+## TASK-068 — Style: revisao do FluxoCaixaService
 
 STATUS: CONCLUIDA + APROVADA PELO STYLE apos 2 rodadas (353/353 testes GREEN no final). Rodada 1: apontou duplicacao real entre os 3 metodos de agregacao (mesma logica de exclusao de Transferencia copiada 3x); levi extraiu `SomarLancamentosDoMes` privado. Rodada 2: APROVADO — extracao mecanica, sem mudanca de comportamento, assinatura publica intacta. Achado paralelo nao bloqueante: 2 testes de "emprestimo" em FluxoCaixaServiceTests.cs (linhas ~376-424 e ~910-958) descrevem modelagem que nao bate com item 13 (recebimento deveria usar ContaReceberId, nao TransferenciaId; saida deveria ser sempre Pago, nunca Pendente) — funcionalmente inofensivo, mas documentacao de teste enganosa; registrado como pendencia separada, nao decidido ainda
 AGENT: style
-DEPENDENCIAS: TASK-055
+DEPENDENCIAS: TASK-067
 FLUXO: Implementacao
 CONTEXTO A LER: regra-de-negocio.md item 9, item 3; clean-code.md
 ESCOPO: Revisar `FluxoCaixaService.cs` contra regra de negocio e clean-code, atencao especifica a exclusao de Transferencia (double counting).
@@ -783,11 +1009,11 @@ RETORNO ESPERADO: veredito + (se reprovado) tarefa de correcao redespachada a le
 
 ---
 
-## TASK-057 — [RED] Testes do FaturaProjecaoService
+## TASK-069 — [RED] Testes do FaturaProjecaoService
 
 STATUS: CONCLUIDA (7 testes, RED confirmado por NotImplementedException. Cobre fatura Paga, Aberta/Fechada sem pagamento, Aberta/Fechada com pagamento parcial (fracionamento), multiplos cartoes, mes sem fatura)
 AGENT: mike
-DEPENDENCIAS: TASK-052
+DEPENDENCIAS: TASK-064
 FLUXO: Implementacao
 CONTEXTO A LER: regra-de-negocio.md item 12 (fatura, status Aberta/Fechada/Paga, pagamento parcial, `FaturaSaldoCalculator`) e item 9 ("cartao entra como UMA conta a pagar"); esqueleto `IFaturaProjecaoService.cs`/`FaturaProjecaoService.cs` (secao acima); decisao do usuario em 2026-07-20 (ver "Decisoes resolvidas" no fim do arquivo): fatura parcialmente paga e FRACIONADA (nao binaria), fatura do mes = `DataVencimento` no ano/mes, multiplos cartoes SOMAM.
 ESCOPO: Testar `CalcularProjecaoCartaoDoMes`: para cada fatura de cartao com `DataVencimento` no mes/ano, soma `ValorPago` (ou `ValorTotal - SaldoPendente`, via `FaturaSaldoCalculator`) em `TotalPago` e `SaldoPendente` em `TotalNaoPago` — inclusive fatura `Status=Aberta`/`Fechada` com pagamento parcial ja registrado; fatura `Status=Paga` soma `ValorTotal` inteiro em `TotalPago` (`SaldoPendente=0`); multiplas faturas de multiplos cartoes no mesmo mes somam nos mesmos 2 totais (sem breakdown por cartao); mes sem fatura retorna `(0,0)`.
@@ -801,16 +1027,16 @@ RETORNO ESPERADO: arquivo de teste + output RED.
 
 ---
 
-## TASK-058 — [GREEN] Implementar FaturaProjecaoService
+## TASK-070 — [GREEN] Implementar FaturaProjecaoService
 
-STATUS: CONCLUIDA (7/7 testes RED da TASK-057 GREEN, suite completa 360/360. Reusa FaturaSaldoCalculator, sem reimplementar calculo de saldo)
+STATUS: CONCLUIDA (7/7 testes RED da TASK-069 GREEN, suite completa 360/360. Reusa FaturaSaldoCalculator, sem reimplementar calculo de saldo)
 AGENT: levi
-DEPENDENCIAS: TASK-057
+DEPENDENCIAS: TASK-069
 FLUXO: Implementacao
-CONTEXTO A LER: regra-de-negocio.md item 12; arquivo de teste de TASK-057 (leitura)
+CONTEXTO A LER: regra-de-negocio.md item 12; arquivo de teste de TASK-069 (leitura)
 ESCOPO: Implementar `CalcularProjecaoCartaoDoMes` usando `IFaturaRepository.ListarFaturasCartaoPorVencimentoNoMes` + `FaturaSaldoCalculator.Calcular` por fatura, somando `ValorPago`/`ValorTotal-SaldoPendente` em `TotalPago` e `SaldoPendente` em `TotalNaoPago` (fracionado, nunca binario por `Status`).
 CRITERIO DE ACEITE:
-1. Testes de TASK-057 GREEN sem editar o arquivo de teste.
+1. Testes de TASK-069 GREEN sem editar o arquivo de teste.
 2. Reusa `FaturaSaldoCalculator`, nao reimplementa calculo de saldo.
 ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/FaturaProjecaoService.cs`
 NAO FAZER: nao editar o arquivo de teste.
@@ -818,13 +1044,13 @@ RETORNO ESPERADO: diff do `FaturaProjecaoService.cs`.
 
 ---
 
-## TASK-059 — [GREEN confirmado] Rodar testes do FaturaProjecaoService
+## TASK-071 — [GREEN confirmado] Rodar testes do FaturaProjecaoService
 
-STATUS: CONCLUIDA (Kira confirmou inline ao rodar dotnet test antes de commitar a TASK-058 — 360/360 GREEN, sem reescrever nenhum teste)
+STATUS: CONCLUIDA (Kira confirmou inline ao rodar dotnet test antes de commitar a TASK-070 — 360/360 GREEN, sem reescrever nenhum teste)
 AGENT: mike
-DEPENDENCIAS: TASK-058
+DEPENDENCIAS: TASK-070
 FLUXO: Implementacao
-CONTEXTO A LER: arquivo de teste de TASK-057
+CONTEXTO A LER: arquivo de teste de TASK-069
 ESCOPO: Rodar os testes, sem reescrever.
 CRITERIO DE ACEITE: todos GREEN; falha vira relatorio de bug, nao correcao direta.
 ARQUIVOS PERMITIDOS: nenhum
@@ -833,11 +1059,11 @@ RETORNO ESPERADO: relatorio GREEN ou falhas.
 
 ---
 
-## TASK-060 — Style: revisao do FaturaProjecaoService
+## TASK-072 — Style: revisao do FaturaProjecaoService
 
 STATUS: CONCLUIDA + APROVADA PELO STYLE apos 2 rodadas (361/361 testes GREEN no final). Rodada 1: achou acoplamento escondido -- o metodo confiava em fatura.Status pra decidir o calculo, so dando certo porque 3 arquivos externos (PagamentoFaturaService, CompraCartaoService, EstornoCartaoService) garantem ValorPago==ValorTotal quando Status=Paga, sem nenhum teste provando isso; tambem achou typo de PascalCase num nome de teste. Levi removeu o if/else (agora sempre usa saldo.ValorPago/ValorPendente do FaturaSaldoCalculator) e adicionou teste provando Status=Paga com saldo calculado divergente. Bonus: a correcao tambem eliminou um bug latente do if antigo (branch Paga nunca zerava totalNaoPago). Rodada 2: APROVADO, 8/8 testes do service GREEN
 AGENT: style
-DEPENDENCIAS: TASK-059
+DEPENDENCIAS: TASK-071
 FLUXO: Implementacao
 CONTEXTO A LER: regra-de-negocio.md item 12; clean-code.md
 ESCOPO: Revisar contra regra de negocio, atencao ao fracionamento correto de fatura parcialmente paga (nunca tratar como binario pago/nao-pago).
@@ -848,11 +1074,11 @@ RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 
 ---
 
-## TASK-061 — [RED] Testes do ProjecaoMesService (formula master)
+## TASK-073 — [RED] Testes do ProjecaoMesService (formula master)
 
 STATUS: CONCLUIDA (6 testes, RED confirmado por NotImplementedException. Cobre composicao dos 4 termos, formula exata, saldo positivo/negativo/zero, contrato de chamada das 3 dependencias)
 AGENT: mike
-DEPENDENCIAS: TASK-056, TASK-060
+DEPENDENCIAS: TASK-068, TASK-072
 FLUXO: Implementacao
 CONTEXTO A LER: regra-de-negocio.md item 9 INTEIRO (formula, regra de cartao, referencia a item 13); esqueleto `IProjecaoMesService.cs`/`ProjecaoMesService.cs` (secao acima)
 ESCOPO: Testar `CalcularProjecaoDoMes`: compoe os 3 totais (`ContaReceberService`, `FluxoCaixaService`, `FaturaProjecaoService`) aplicando exatamente `saldo_projetado = (recebido + a_receber) - (pago + a_pagar)`, onde pago/a_pagar finais somam a fatia da fatura de cartao aos totais genericos de lancamento.
@@ -866,16 +1092,16 @@ RETORNO ESPERADO: arquivo de teste + output RED.
 
 ---
 
-## TASK-062 — [GREEN] Implementar ProjecaoMesService
+## TASK-074 — [GREEN] Implementar ProjecaoMesService
 
-STATUS: CONCLUIDA (6/6 testes RED da TASK-061 GREEN, suite completa 367/367. Formula bate com item 9)
+STATUS: CONCLUIDA (6/6 testes RED da TASK-073 GREEN, suite completa 367/367. Formula bate com item 9)
 AGENT: levi
-DEPENDENCIAS: TASK-061
+DEPENDENCIAS: TASK-073
 FLUXO: Implementacao
-CONTEXTO A LER: regra-de-negocio.md item 9; arquivo de teste de TASK-061 (leitura)
+CONTEXTO A LER: regra-de-negocio.md item 9; arquivo de teste de TASK-073 (leitura)
 ESCOPO: Implementar `CalcularProjecaoDoMes` chamando as 3 dependencias injetadas e montando `ProjecaoMesResultado` com a formula.
 CRITERIO DE ACEITE:
-1. Testes de TASK-061 GREEN sem editar o arquivo de teste.
+1. Testes de TASK-073 GREEN sem editar o arquivo de teste.
 2. Formula bate exatamente com regra-de-negocio.md item 9.
 ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/ProjecaoMesService.cs`
 NAO FAZER: nao editar o arquivo de teste.
@@ -883,13 +1109,13 @@ RETORNO ESPERADO: diff do `ProjecaoMesService.cs`.
 
 ---
 
-## TASK-063 — [GREEN confirmado] Rodar testes do ProjecaoMesService
+## TASK-075 — [GREEN confirmado] Rodar testes do ProjecaoMesService
 
-STATUS: CONCLUIDA (Kira confirmou inline ao rodar dotnet test antes de commitar a TASK-062 — 367/367 GREEN, sem reescrever nenhum teste)
+STATUS: CONCLUIDA (Kira confirmou inline ao rodar dotnet test antes de commitar a TASK-074 — 367/367 GREEN, sem reescrever nenhum teste)
 AGENT: mike
-DEPENDENCIAS: TASK-062
+DEPENDENCIAS: TASK-074
 FLUXO: Implementacao
-CONTEXTO A LER: arquivo de teste de TASK-061
+CONTEXTO A LER: arquivo de teste de TASK-073
 ESCOPO: Rodar os testes, sem reescrever.
 CRITERIO DE ACEITE: todos GREEN; falha vira relatorio de bug.
 ARQUIVOS PERMITIDOS: nenhum
@@ -898,11 +1124,11 @@ RETORNO ESPERADO: relatorio GREEN ou falhas.
 
 ---
 
-## TASK-064 — Style: revisao do ProjecaoMesService
+## TASK-076 — Style: revisao do ProjecaoMesService
 
 STATUS: CONCLUIDA + APROVADA PELO STYLE de primeira (367/367 testes GREEN). Formula do item 9 bate exatamente, sem sinal invertido. Verificacao especifica de double-counting entre FluxoCaixaService (exclui Transferencia/FaturaId) e FaturaProjecaoService (usa FaturaSaldoCalculator): sem sobreposicao, cada fonte cobre uma fatia distinta. Confirmado tambem que emprestimo (item 13) fica fora da projecao por decisao deliberada do usuario (2026-07-20), nao e regra omissa. Cadeia critica do item 9 fechada sem achado pendente
 AGENT: style
-DEPENDENCIAS: TASK-063
+DEPENDENCIAS: TASK-075
 FLUXO: Implementacao
 CONTEXTO A LER: regra-de-negocio.md item 9 inteiro; clean-code.md
 ESCOPO: Revisar a composicao final da formula contra a regra de negocio.
@@ -913,11 +1139,11 @@ RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 
 ---
 
-## TASK-065 — Endpoint do dashboard (DTO + Controller + DI)
+## TASK-077 — Endpoint do dashboard (DTO + Controller + DI)
 
 STATUS: CONCLUIDA (GET /api/dashboard/projecao-mes?ano=&mes= implementado, controller so orquestra, DI registrado. Suite completa 367/367)
 AGENT: levi
-DEPENDENCIAS: TASK-064
+DEPENDENCIAS: TASK-076
 FLUXO: Implementacao
 CONTEXTO A LER: regra-de-negocio.md item 9; stack.md secoes DTOs/ e Controllers/; padrao existente em `ContasReceberController.cs` (endpoint `total-esperado-mes`) e `FaturaResponse.cs` (`FromX`)
 ESCOPO: Criar `ProjecaoMesResponse` (com `FromResultado`), `DashboardController` com `GET /api/dashboard/projecao-mes?ano=&mes=`, e registrar `IFaturaProjecaoService`/`IProjecaoMesService` no `Program.cs`.
@@ -931,11 +1157,11 @@ RETORNO ESPERADO: diff dos 3 arquivos.
 
 ---
 
-## TASK-066 — Style: revisao do endpoint do dashboard
+## TASK-078 — Style: revisao do endpoint do dashboard
 
-STATUS: CONCLUIDA + APROVADA PELO STYLE de primeira (367/367 testes GREEN). Contrato expoe exatamente os 7 campos da formula, convencao de rota/parametros consistente com o endpoint total-esperado-mes ja aprovado, controller so orquestra, DI correta. Observacao nao bloqueante: ProjecaoMesResponse e o unico DTO do projeto que mapeia a partir de um record de Services (ProjecaoMesResultado) em vez de Domain -- ja existe precedente (FaturaProjecaoMes), registrado como inconsistencia de padrao, nao violacao. MODULO PROJECAO DO MES FECHADO (TASK-051 a TASK-066)
+STATUS: CONCLUIDA + APROVADA PELO STYLE de primeira (367/367 testes GREEN). Contrato expoe exatamente os 7 campos da formula, convencao de rota/parametros consistente com o endpoint total-esperado-mes ja aprovado, controller so orquestra, DI correta. Observacao nao bloqueante: ProjecaoMesResponse e o unico DTO do projeto que mapeia a partir de um record de Services (ProjecaoMesResultado) em vez de Domain -- ja existe precedente (FaturaProjecaoMes), registrado como inconsistencia de padrao, nao violacao. MODULO PROJECAO DO MES FECHADO (TASK-063 a TASK-078)
 AGENT: style
-DEPENDENCIAS: TASK-065
+DEPENDENCIAS: TASK-077
 FLUXO: Implementacao
 CONTEXTO A LER: regra-de-negocio.md item 9; clean-code.md
 ESCOPO: Revisar `DashboardController` e `ProjecaoMesResponse` contra regra de negocio e convencao de contrato de API.
@@ -946,11 +1172,11 @@ RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 
 ---
 
-## Mapa de dependencia (TASK-051 a TASK-066)
+## Mapa de dependencia (TASK-063 a TASK-078)
 
 ```
-051 (repo lancamento) -> 053 (RED) -> 054 (GREEN) -> 055 (confirma) -> 056 (style) ─┐
-052 (repo fatura)     -> 057 (RED) -> 058 (GREEN) -> 059 (confirma) -> 060 (style) ─┼─> 061 (RED master) -> 062 (GREEN) -> 063 (confirma) -> 064 (style) -> 065 (endpoint) -> 066 (style)
+063 (repo lancamento) -> 065 (RED) -> 066 (GREEN) -> 067 (confirma) -> 068 (style) ─┐
+064 (repo fatura)     -> 069 (RED) -> 070 (GREEN) -> 071 (confirma) -> 072 (style) ─┼─> 073 (RED master) -> 074 (GREEN) -> 075 (confirma) -> 076 (style) -> 077 (endpoint) -> 078 (style)
 ```
 
 ## Decisoes resolvidas com o usuario em 2026-07-20
@@ -958,14 +1184,14 @@ RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 1. **Emprestimo (item 13) fica FORA da projecao.** Confirmado: dinheiro
    emprestado nao e "gasto" no sentido de `total_pago_no_mes` — vira "ativo"
    via `ContaReceber` e so conta quando volta (`total_recebido_no_mes`). A
-   exclusao geral de Transferencia (item 3) em TASK-053/054 ja cobre isso
+   exclusao geral de Transferencia (item 3) em TASK-065/066 ja cobre isso
    sem excecao adicional — nenhuma mudanca de escopo necessaria.
 2. **Fatura parcialmente paga e FRACIONADA**, nao binaria. `ValorPago`
    (ou `ValorTotal - SaldoPendente`) entra em `total_pago_no_mes`,
    `SaldoPendente` entra em `total_a_pagar_no_mes`, simetrico ao que
-   `ContaReceber` ja faz. Refletido em TASK-057/058/060.
+   `ContaReceber` ja faz. Refletido em TASK-069/070/072.
 3. **"Fatura do mes" = `DataVencimento` caindo no ano/mes consultado**,
-   simetrico ao `data_prevista` do `ContaReceber`. Refletido em TASK-052.
+   simetrico ao `data_prevista` do `ContaReceber`. Refletido em TASK-064.
 4. **Multiplos cartoes: SOMA tudo** num unico `total_pago_no_mes`/
    `total_a_pagar_no_mes`, sem breakdown por cartao no endpoint.
 
@@ -981,5 +1207,5 @@ RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
    so gera `Lancamento` comuns que o agregador generico ja soma — nenhuma
    conta fixa aparece na projecao v1 ate esse modulo ser construido a parte.
 
-Nenhuma pendencia de decisao de produto restante para TASK-051 a TASK-066.
+Nenhuma pendencia de decisao de produto restante para TASK-063 a TASK-078.
 Fila pronta para execucao.

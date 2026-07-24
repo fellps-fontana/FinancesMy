@@ -48,6 +48,7 @@ builder.Services.AddScoped<IFaturaRepository, FaturaRepository>();
 builder.Services.AddScoped<IContaReceberRepository, ContaReceberRepository>();
 builder.Services.AddScoped<IAtivoRepository, AtivoRepository>();
 builder.Services.AddScoped<ICompraParceladaRepository, CompraParceladaRepository>();
+builder.Services.AddScoped<ILimiteGastoRepository, LimiteGastoRepository>();
 
 // Services - Conta
 builder.Services.AddScoped<IContaService, ContaService>();
@@ -65,14 +66,19 @@ builder.Services.AddScoped<ValidacaoCartaoService>();
 builder.Services.AddScoped<FaturaCicloService>();
 builder.Services.AddScoped<CompraCartaoService>();
 builder.Services.AddScoped<ComprasParceladasService>();
+builder.Services.AddScoped<FaturaCreditoService>();
 builder.Services.AddScoped<PagamentoFaturaService>();
 builder.Services.AddScoped<EstornoCartaoService>();
+builder.Services.AddScoped<EstornoCompraParceladaService>();
 builder.Services.AddScoped<SaldoCartaoService>();
 
 // Services - Lancamentos
 builder.Services.AddScoped<ILancamentoManualService, LancamentoManualService>();
 builder.Services.AddScoped<ITransferenciaService, TransferenciaService>();
 builder.Services.AddScoped<IFluxoCaixaService, FluxoCaixaService>();
+
+// Services - Limite de Gasto
+builder.Services.AddScoped<ILimiteGastoService, LimiteGastoService>();
 
 // Services - Dashboard
 builder.Services.AddScoped<IFaturaProjecaoService, FaturaProjecaoService>();

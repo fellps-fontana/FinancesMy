@@ -328,6 +328,45 @@ permitir valor manual por parcela abriria brecha pra soma nao bater com
 `valor_total`, quebrando a auditoria da compra original sem cobrir nenhum
 caso de uso real.
 
+### Estorno de compra parcelada — decisao registrada em 2026-07-20
+
+Regra estava omissa (DEMANDA-006, Killua sinalizou) e foi decidida agora,
+complementando o estorno de compra a vista ja existente ("Estorno: compra
+negativa dentro do cartao", acima) e a regra de Parcelamento (subsecao
+anterior).
+
+**Acao unica sobre a compra inteira.** Estornar uma compra parcelada e UMA
+UNICA acao disparada sobre `compra_parcelada_id` — nao existe estorno de uma
+parcela especifica isolada (ex: so a parcela 5 de 10, mantendo as demais
+intactas). Nao e escolha parcela-por-parcela do usuario.
+
+**Cancela todas as parcelas restantes ainda nao pagas.** Essa acao unica
+cancela TODAS as parcelas que ainda restam da compra (as N-k que faltam),
+nunca so a proxima parcela isolada.
+
+**Alcanca retroativamente parcelas ja pagas.** O estorno NAO fica restrito a
+parcelas em fatura ABERTA/FECHADA. Ele tambem alcanca parcelas cuja fatura
+ja esta PAGA (dinheiro ja saiu): o estorno gera um lancamento de estorno
+(compra negativa, mesma mecanica ja descrita para estorno de compra a
+vista) dentro dessa fatura ja paga, em vez de apenas remover/anular
+lancamentos futuros ainda nao vencidos.
+
+**Relacao com o pagamento parcial (mesmo item 12):** o pagamento ja fechou
+o SALDO da fatura como um todo, nunca uma compra especifica — por isso
+estornar uma parcela de uma fatura ja paga NAO desfaz o pagamento em si (o
+pagamento permanece registrado como esta). O que muda e o total de compras
+da fatura, que diminui com o lancamento de estorno; como os pagamentos ja
+cobriam o total anterior, o saldo pendente dessa fatura (total das compras
+menos pagamentos) deixa de ser zero e passa a NEGATIVO — um credito em
+favor do usuario relativo a essa fatura.
+
+**Credito abate a proxima fatura — decidido em 2026-07-20.** A fatura
+estornada MANTEM o status PAGA (nao existe estado "PAGA com credito"). O
+saldo negativo gerado pelo estorno retroativo e automaticamente descontado
+do total da PROXIMA fatura em aberto do mesmo cartao, reduzindo o valor que
+o usuario precisa pagar naquele ciclo seguinte. Nao ha acao manual do
+usuario nem mudanca de status na fatura ja paga.
+
 ---
 
 ## 13. Contas a Receber (Recebivel e Emprestimo)
@@ -386,6 +425,61 @@ RECEBIDO: saldo_pendente == 0
 **Projecao do mes:** ver item 9 — saldo pendente de PENDENTE (se
 `data_prevista` cair no mes) ou PARCIAL (todo mes corrente, ate zerar)
 entra como entrada esperada, simetrica a conta a pagar.
+
+---
+
+## 14. Limite de Gasto por Categoria
+
+Alerta de orcamento por categoria. NENHUM bloqueio de lancamento.
+
+**O que e:** o usuario define um `valor_limite` mensal para uma categoria de
+tipo DESPESA (`limite_gasto`, 1:1 com `categoria` — uma categoria tem no
+maximo um limite). Categoria tipo RECEITA nao pode ter limite; o conceito e
+orcamento de gasto, nao de entrada.
+
+**Hierarquia (categoria/subcategoria, item 7):** o gasto de uma subcategoria
+soma TAMBEM no limite da categoria-pai, alem de poder ter seu proprio limite
+independente. Ou seja, se a categoria-pai tem limite cadastrado, o gasto
+realizado dela e a soma dos lancamentos da propria categoria MAIS os
+lancamentos de todas as suas subcategorias diretas — mesmo que uma
+subcategoria tambem tenha limite proprio (os dois calculos coexistem, cada
+um comparado ao seu proprio `valor_limite`).
+
+**Gasto realizado no periodo:** soma de todos os lancamentos DEBIT
+vinculados a categoria (e suas subcategorias diretas, se for categoria-pai),
+dentro do mes calendario (mesmo recorte usado na projecao do mes, item 9).
+Conta tanto lancamento avulso (conta banco) quanto compra de cartao de
+credito daquela categoria — regime de COMPETENCIA: o lancamento conta assim
+que registrado na categoria, independente do status (PENDENTE ou PAGO),
+mesma filosofia do item 12 (a compra de cartao conta na hora, nao so quando
+a fatura e paga). Lancamento oculto (item 4) nao entra na soma.
+
+```
+gasto_realizado_no_mes(categoria) = soma(lancamento.valor)
+  onde lancamento.categoria_id IN (categoria.id, subcategorias_diretas(categoria).id)
+    e lancamento.tipo = DEBIT
+    e lancamento.oculto = false
+    e lancamento.data dentro do mes calendario consultado
+```
+
+**Estourar o limite:** `gasto_realizado_no_mes > valor_limite`.
+
+**Efeito: SOMENTE alerta visual.** O lancamento e salvo normalmente, sem
+bloqueio, mesmo ultrapassando o limite. A categoria so fica sinalizada como
+estourada nas superficies abaixo — nenhum fluxo de escrita (criar
+lancamento, compra de cartao) e impedido por causa do limite.
+
+**Onde aparece:**
+- Dashboard/resumo geral: indicador de progresso gasto/limite por categoria.
+- Tela de lancamento: aviso ao selecionar/criar lancamento numa categoria
+  perto ou acima do limite.
+- Relatorio por categoria: comparativo limite vs. realizado.
+- Tela de categoria: cadastro/edicao do `valor_limite` fica embutido no
+  form/lista de categoria (nao ha tela separada de "Limites").
+
+**Periodo:** so MENSAL nesta versao (`periodo` default `'MENSAL'`, campo
+pronto para extensao futura — nenhuma outra opcao de periodo esta
+implementada).
 
 ---
 
