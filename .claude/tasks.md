@@ -829,7 +829,7 @@ RETORNO ESPERADO: testes passando; relatorio de bug se houver.
 
 ## TASK-061 — Style: revisao geral do modulo Conta Fixa
 
-STATUS: PRECISA CORRIGIR (rodada 1 — style achou 3 problemas reais: falta validacao de DiaVencimento 1-31 e Valor>0 em ContaFixaService.CriarAsync/EditarAsync, causando ArgumentOutOfRangeException nao tratada -> 500 generico via API publica quando DiaVencimento<=0; string magica `erro?.Contains("nao encontrada")` em ContaFixaController.Editar decidindo status HTTP, unico lugar do projeto que faz isso; Listar nao checa `sucesso` antes de usar `contasFixas!`. Config/Repository/DTOs ok, sem achado. Tarefa de correcao redespachada a levi, depois mike adiciona 5 testes faltantes, depois volta ao style)
+STATUS: CONCLUIDA + APROVADA PELO STYLE apos 2 rodadas (354/354 testes GREEN no final). Rodada 1: 3 problemas reais achados (falta validacao DiaVencimento/Valor causando 500 nao tratado; string magica decidindo status HTTP; null-forgiving sem guard em Listar) + 5 lacunas de teste. Rodada 2 (correcao): levi corrigiu os 3 problemas (validacao no Service, excecao tipada ContaFixaNaoEncontradaException substituindo string matching, guard em Listar) — nesse meio tempo repetiu por 2x a alteracao fora de escopo em TransferenciaResponse.ContaDestinoId ja vista na TASK-051/056, revertida por Kira ambas as vezes (commit 2f5e313); mike adicionou os 7 testes cobrindo os 5 cenarios. Rodada 2 do style: APROVADO, conferido com execucao propria da suite (354/354).
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-060
