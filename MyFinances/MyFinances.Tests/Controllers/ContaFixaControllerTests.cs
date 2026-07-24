@@ -626,11 +626,241 @@ public class ContaFixaControllerTests
     #region GET /api/contas-fixas/{id}
 
     [Fact]
+    public async Task ObterPorId_ComIdExistente_Retorna200eValidaCamposResposta()
+    {
+        await _fixture.ClearAsync();
+
+        var contaConta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Conta Corrente Teste",
+            Tipo = TipoConta.Banco,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 10000m,
+            Ativa = true
+        };
+
+        var categoria = new Categoria
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Aluguel",
+            Tipo = TipoCategoria.Despesa,
+            Arquivada = false
+        };
+
+        await _fixture.AddContaAsync(contaConta);
+        await _fixture.AddCategoriaAsync(categoria);
+
+        var criarRequest = new CriarContaFixaRequest
+        {
+            ContaId = contaConta.Id,
+            Descricao = "Aluguel",
+            Valor = 1500m,
+            DiaVencimento = 15,
+            CategoriaId = categoria.Id
+        };
+
+        var json = JsonSerializer.Serialize(criarRequest);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var responseCriar = await _fixture.Client.PostAsync("/api/contas-fixas", content);
+        Assert.Equal(HttpStatusCode.Created, responseCriar.StatusCode);
+
+        var bodyCriar = await responseCriar.Content.ReadAsStringAsync();
+        var contaFixaCriada = JsonSerializer.Deserialize<ContaFixaResponse>(bodyCriar, ContaFixaControllerTestsFixture.JsonOptions);
+        Assert.NotNull(contaFixaCriada);
+
+        var response = await _fixture.Client.GetAsync($"/api/contas-fixas/{contaFixaCriada.Id}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var bodyResponse = await response.Content.ReadAsStringAsync();
+        var resultado = JsonSerializer.Deserialize<ContaFixaResponse>(bodyResponse, ContaFixaControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(resultado);
+        Assert.Equal(contaFixaCriada.Id, resultado.Id);
+        Assert.Equal(contaConta.Id, resultado.ContaId);
+        Assert.Equal("Aluguel", resultado.Descricao);
+        Assert.Equal(1500m, resultado.Valor);
+        Assert.Equal(15, resultado.DiaVencimento);
+        Assert.Equal(categoria.Id, resultado.CategoriaId);
+        Assert.True(resultado.Ativa);
+    }
+
+    [Fact]
     public async Task ObterPorId_ComIdInexistente_Retorna404()
     {
         await _fixture.ClearAsync();
 
         var response = await _fixture.Client.GetAsync($"/api/contas-fixas/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    #endregion
+
+    #region POST /api/contas-fixas - Validacoes
+
+    [Fact]
+    public async Task Criar_ComDiaVencimentoZero_Retorna400()
+    {
+        await _fixture.ClearAsync();
+
+        var contaConta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Conta Corrente Teste",
+            Tipo = TipoConta.Banco,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 10000m,
+            Ativa = true
+        };
+
+        await _fixture.AddContaAsync(contaConta);
+
+        var request = new CriarContaFixaRequest
+        {
+            ContaId = contaConta.Id,
+            Descricao = "Aluguel",
+            Valor = 1500m,
+            DiaVencimento = 0,
+            CategoriaId = null
+        };
+
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await _fixture.Client.PostAsync("/api/contas-fixas", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Criar_ComDiaVencimentoMaiorQue31_Retorna400()
+    {
+        await _fixture.ClearAsync();
+
+        var contaConta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Conta Corrente Teste",
+            Tipo = TipoConta.Banco,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 10000m,
+            Ativa = true
+        };
+
+        await _fixture.AddContaAsync(contaConta);
+
+        var request = new CriarContaFixaRequest
+        {
+            ContaId = contaConta.Id,
+            Descricao = "Aluguel",
+            Valor = 1500m,
+            DiaVencimento = 32,
+            CategoriaId = null
+        };
+
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await _fixture.Client.PostAsync("/api/contas-fixas", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Criar_ComValorZero_Retorna400()
+    {
+        await _fixture.ClearAsync();
+
+        var contaConta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Conta Corrente Teste",
+            Tipo = TipoConta.Banco,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 10000m,
+            Ativa = true
+        };
+
+        await _fixture.AddContaAsync(contaConta);
+
+        var request = new CriarContaFixaRequest
+        {
+            ContaId = contaConta.Id,
+            Descricao = "Aluguel",
+            Valor = 0m,
+            DiaVencimento = 15,
+            CategoriaId = null
+        };
+
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await _fixture.Client.PostAsync("/api/contas-fixas", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Criar_ComValorNegativo_Retorna400()
+    {
+        await _fixture.ClearAsync();
+
+        var contaConta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Conta Corrente Teste",
+            Tipo = TipoConta.Banco,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 10000m,
+            Ativa = true
+        };
+
+        await _fixture.AddContaAsync(contaConta);
+
+        var request = new CriarContaFixaRequest
+        {
+            ContaId = contaConta.Id,
+            Descricao = "Aluguel",
+            Valor = -1500m,
+            DiaVencimento = 15,
+            CategoriaId = null
+        };
+
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await _fixture.Client.PostAsync("/api/contas-fixas", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    #endregion
+
+    #region POST /api/contas-fixas/{id}/desativar - Casos 404
+
+    [Fact]
+    public async Task Desativar_ComIdInexistente_Retorna404()
+    {
+        await _fixture.ClearAsync();
+
+        var response = await _fixture.Client.PostAsync($"/api/contas-fixas/{Guid.NewGuid()}/desativar", null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    #endregion
+
+    #region POST /api/contas-fixas/{id}/reativar - Casos 404
+
+    [Fact]
+    public async Task Reativar_ComIdInexistente_Retorna404()
+    {
+        await _fixture.ClearAsync();
+
+        var response = await _fixture.Client.PostAsync($"/api/contas-fixas/{Guid.NewGuid()}/reativar", null);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
