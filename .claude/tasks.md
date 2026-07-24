@@ -858,7 +858,7 @@ RETORNO ESPERADO: hooks tipados, sem `any`, com invalidacao de cache apos criar/
 
 ## TASK-063 — UI: listar contas fixas
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build do frontend limpo. categoriaId omitido da tela — feature categorias/ ainda e so placeholder no projeto, sem lookup de nome; exibir UUID cru violaria identidade-visual.md, decisao documentada no componente. Kira tambem restaurou 2 arquivos de migration InitialCreate que tinham sido apagados/duplicados com outro timestamp por um processo anterior, nao relacionado a esta task, e encerrou um processo MyFinances.exe zumbi que travava o build)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-062
