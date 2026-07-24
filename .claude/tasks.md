@@ -886,7 +886,7 @@ RETORNO ESPERADO: componente chamando `useCriarContaFixa`/`useEditarContaFixa` c
 
 ## TASK-065 — UI: acao desativar/reativar
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. Desativar tem confirmacao inline (dois botoes sim/nao) por ser destrutivo — exclui Lancamentos PENDENTE ja gerados; Reativar e clique direto com aviso via title, ja que so gera lancamento novo, sem apagar nada. Loading e erro tratados no mesmo padrao de FormContaFixa.tsx. Modulo Conta Fixa (DEMANDA-002) fechado: TASK-051 a TASK-065 todas concluidas)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-062, TASK-063

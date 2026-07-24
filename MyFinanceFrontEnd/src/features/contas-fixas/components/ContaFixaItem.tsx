@@ -1,6 +1,12 @@
+import { useState } from "react"
 import { cn } from "@/shared/lib/utils"
+import { ApiError } from "@/shared/api/client"
 import { Card, CardContent } from "@/shared/ui/card"
+import { Button } from "@/shared/ui/button"
+import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
+import { useDesativarContaFixa } from "@/features/contas-fixas/hooks/useDesativarContaFixa"
+import { useReativarContaFixa } from "@/features/contas-fixas/hooks/useReativarContaFixa"
 import type { ContaFixaResponse } from "@/features/contas-fixas/types"
 
 type StatusContaFixa = "ATIVA" | "INATIVA"
@@ -39,6 +45,51 @@ export function ContaFixaItem({ contaFixa }: ContaFixaItemProps) {
   const status: StatusContaFixa = contaFixa.ativa ? "ATIVA" : "INATIVA"
   const statusConfig = CONFIG_POR_STATUS[status]
 
+  // Desativar excluir os Lancamentos PENDENTE ja gerados (regra-de-negocio.md
+  // item 6) - acao destrutiva, entao exige uma confirmacao inline antes de
+  // acionar a mutation (mesmo espirito de toggle usado em
+  // ContaReceberItem/registrandoRecebimento, so que aqui com dois botoes
+  // sim/nao em vez de formulario). Reativar nao apaga nada - so gera
+  // Lancamento novo - por isso segue com clique direto, so avisando via
+  // texto/title o que vai acontecer.
+  const [confirmandoDesativacao, setConfirmandoDesativacao] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+
+  const { mutate: desativar, isPending: desativando } = useDesativarContaFixa()
+  const { mutate: reativar, isPending: reativando } = useReativarContaFixa()
+
+  function confirmarDesativacao() {
+    desativar(contaFixa.id, {
+      onSuccess: () => {
+        setErro(null)
+        setConfirmandoDesativacao(false)
+      },
+      onError: (error) => {
+        console.error("Falha ao desativar conta fixa", error)
+        setErro(
+          error instanceof ApiError
+            ? error.message
+            : "Nao foi possivel desativar a conta fixa. Tente novamente.",
+        )
+        setConfirmandoDesativacao(false)
+      },
+    })
+  }
+
+  function handleReativar() {
+    reativar(contaFixa.id, {
+      onSuccess: () => setErro(null),
+      onError: (error) => {
+        console.error("Falha ao reativar conta fixa", error)
+        setErro(
+          error instanceof ApiError
+            ? error.message
+            : "Nao foi possivel reativar a conta fixa. Tente novamente.",
+        )
+      },
+    })
+  }
+
   return (
     <Card size="sm">
       <CardContent className="flex flex-col gap-2">
@@ -61,6 +112,65 @@ export function ContaFixaItem({ contaFixa }: ContaFixaItemProps) {
           </span>
           <span>Vence todo dia {contaFixa.diaVencimento}</span>
         </div>
+
+        {erro && (
+          <Alert variant="destructive">
+            <AlertDescription>{erro}</AlertDescription>
+          </Alert>
+        )}
+
+        {contaFixa.ativa ? (
+          confirmandoDesativacao ? (
+            <div className="flex items-center justify-end gap-2 text-[12px] text-text-muted">
+              <span className="text-alerta">
+                Desativar exclui os lancamentos pendentes ja gerados. Confirma?
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={desativando}
+                onClick={() => setConfirmandoDesativacao(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                disabled={desativando}
+                onClick={confirmarDesativacao}
+              >
+                {desativando ? "Desativando..." : "Sim, desativar"}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={desativando}
+                onClick={() => setConfirmandoDesativacao(true)}
+              >
+                Desativar
+              </Button>
+            </div>
+          )
+        ) : (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={reativando}
+              title="Reativar gera novos lancamentos pendentes para o mes corrente e o proximo"
+              onClick={handleReativar}
+            >
+              {reativando ? "Reativando..." : "Reativar"}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
