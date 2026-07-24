@@ -35,26 +35,26 @@ geram/consomem lancamento.
 
 ## DEMANDA-002 — Conta Fixa
 
-STATUS: EM ANDAMENTO — arquitetado por killua em 2026-07-20, tasks TASK-051
-a TASK-065 geradas em `tasks.md`. `Domain/ContaFixa.cs` ainda nao existe
-(greenfield), execucao ainda nao comecou.
+STATUS: CONCLUIDA em 2026-07-23 (worktree `conta-fixa-tasks`). Todas as
+tasks TASK-051 a TASK-065 fechadas (backend + front). Regra critica
+(ContaFixaLancamentoFactory/ContaFixaService) com ciclo TDD completo,
+aprovada pelo style em 2 rodadas apos achados reais (validacao de
+DiaVencimento/Valor ausente, string magica decidindo status HTTP). Ver
+`docs/conta-fixa.md` para o resumo completo do modulo.
 
-**Escopo (regra-de-negocio.md item 6, ja revisado):**
+**Escopo entregue (regra-de-negocio.md item 6):**
 - Entidade `ContaFixa`: molde com `dia_vencimento`.
 - Geracao: ao CRIAR ou REATIVAR uma ContaFixa, gera Lancamento PENDENTE pro
   mes corrente + proximo (2 meses), vinculado por `conta_fixa_id`,
-  idempotente. DECISOES CONFIRMADAS COM O USUARIO EM 2026-07-20 (horizonte
-  + gatilho v1) — nao sao mais pendencia.
+  idempotente.
+- Editar propaga pra Lancamentos `Status=Pendente` (nunca `Pago`); desativar
+  exclui os `Pendente` (nunca `Pago`). Tipo do lancamento gerado sempre
+  DEBIT.
 
-**Depende de:** DEMANDA-001 (Lancamento Geral) pronto — CONFIRMADO EM DISCO
-em 2026-07-20 (commits 69f8cf7..83b172e ja mergeados em main; `tasks.md`
-estava desatualizado, TASK-039/050 corrigidas para CONCLUIDA).
-
-**Bloqueios restantes antes de TASK-056 (GREEN) poder fechar:** 3 duvidas de
-regra ainda sem resposta do usuario (tipo do lancamento gerado, se edicao
-propaga pra lancamentos PENDENTE ja gerados, o que acontece com PENDENTE ao
-desativar) — ver secao "Duvidas em aberto para o usuario" em `tasks.md`
-dentro do bloco "Modulo Conta Fixa".
+**Dependia de:** DEMANDA-001 (Lancamento Geral) — CONFIRMADO EM DISCO em
+2026-07-20 que ja estava pronto (commits 69f8cf7..83b172e ja mergeados em
+main; `tasks.md` estava desatualizado, TASK-039/050 corrigidas para
+CONCLUIDA).
 
 ---
 
