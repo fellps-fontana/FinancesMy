@@ -844,7 +844,7 @@ RETORNO ESPERADO: veredito final do modulo backend.
 
 ## TASK-062 — Front: camada de dados (types/api/hooks) de Conta Fixa
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build do frontend limpo, sem `any`; invalidacao de cache cruzada — lista e porId — apos criar/editar/desativar/reativar)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-059
