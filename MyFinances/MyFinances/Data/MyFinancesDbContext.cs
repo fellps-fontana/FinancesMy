@@ -31,6 +31,8 @@ public class MyFinancesDbContext : DbContext
 
     public DbSet<CompraParcelada> ComprasParceladas { get; set; }
 
+    public DbSet<ContaFixa> ContasFixas { get; set; }
+
     public DbSet<LimiteGasto> LimitesGasto { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -47,6 +49,7 @@ public class MyFinancesDbContext : DbContext
         modelBuilder.ApplyConfiguration(new FaturaConfiguration());
         modelBuilder.ApplyConfiguration(new ContaReceberConfiguration());
         modelBuilder.ApplyConfiguration(new CompraParceladaConfiguration());
+        modelBuilder.ApplyConfiguration(new ContaFixaConfiguration());
         modelBuilder.ApplyConfiguration(new LimiteGastoConfiguration());
 
         // Se nao eh Npgsql (ex: SQLite em testes), remove o default value SQL do campo CriadoEm

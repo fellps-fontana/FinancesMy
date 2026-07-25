@@ -22,21 +22,27 @@ pelo style. Detalhe de execucao em `tasks.md` (TASK-038 a TASK-050).
 
 ## DEMANDA-002 — Conta Fixa
 
-**Situacao atual:** nao existe nenhum arquivo de codigo (`Domain/ContaFixa.cs`
-nao existe). `Lancamento.conta_fixa_id` no schema referencia uma tabela que
-ainda nao foi criada.
+STATUS: CONCLUIDA em 2026-07-23 (worktree `conta-fixa-tasks`). Todas as
+tasks TASK-051 a TASK-065 fechadas (backend + front). Regra critica
+(ContaFixaLancamentoFactory/ContaFixaService) com ciclo TDD completo,
+aprovada pelo style em 2 rodadas apos achados reais (validacao de
+DiaVencimento/Valor ausente, string magica decidindo status HTTP). Ver
+`docs/conta-fixa.md` para o resumo completo do modulo.
 
-**Escopo (regra-de-negocio.md item 6):**
+**Escopo entregue (regra-de-negocio.md item 6):**
 - Entidade `ContaFixa`: molde com `dia_vencimento`.
-- Geracao mensal: cada conta fixa origina um `Lancamento` novo PENDENTE,
-  vinculado por `conta_fixa_id`.
-- Definir quantos meses a frente sao gerados (pendencia em aberto no proprio
-  regra-de-negocio.md — sugestao la: mes corrente + proximo, regenerar no
-  sync mensal). Como o sync (item 11) e v2, a geracao aqui precisa de um
-  gatilho v1 (ex: on-demand ou job simples), a decidir com killua.
+- Geracao: ao CRIAR ou REATIVAR uma ContaFixa, gera Lancamento PENDENTE pro
+  mes corrente + proximo (2 meses), vinculado por `conta_fixa_id`,
+  idempotente.
+- Editar propaga pra Lancamentos `Status=Pendente` (nunca `Pago`); desativar
+  exclui os `Pendente` (nunca `Pago`). Tipo do lancamento gerado sempre
+  DEBIT.
 
-**Depende de:** DEMANDA-001 (Lancamento Geral) — CONCLUIDA em 2026-07-21,
-dependencia satisfeita. Sem bloqueio restante para arquitetar esta demanda.
+**Dependia de:** DEMANDA-001 (Lancamento Geral) — CONFIRMADO EM DISCO em
+2026-07-20 que ja estava pronto (commits 69f8cf7..83b172e ja mergeados em
+main; `tasks.md` estava desatualizado, TASK-039/050 corrigidas para
+CONCLUIDA), e formalmente fechada e mergeada em 2026-07-21 (PR #30/#31).
+Dependencia satisfeita, sem bloqueio.
 
 ---
 

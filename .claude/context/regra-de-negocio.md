@@ -107,10 +107,41 @@ quando a branch Open Finance entrar em v2).
 
 O usuario pode marcar/editar um lancamento como conta fixa.
 
-**Regra:** a conta fixa e um molde (CONTA_FIXA) com `dia_vencimento`. A cada mes
-ela origina um LANCAMENTO novo com status PENDENTE, vinculado por
-`conta_fixa_id`. Definir no codigo quantos meses a frente sao gerados
-(sugestao: gerar o mes corrente + proximo, regenerar no sync mensal).
+**Regra:** a conta fixa e um molde (`CONTA_FIXA`) com `dia_vencimento`. Ao
+CRIAR ou REATIVAR (`ativa` false->true) uma ContaFixa, o sistema gera
+automaticamente um LANCAMENTO PENDENTE para o MES CORRENTE e um para o
+PROXIMO MES (2 meses), vinculado por `conta_fixa_id`. Nao ha sync/job
+separado na v1 (item 11 e v2) — a geracao acontece SO nesses dois gatilhos.
+DECISAO CONFIRMADA COM O USUARIO EM 2026-07-20.
+
+**Idempotencia (obrigatoria):** antes de gerar o Lancamento de um par
+ano/mes para uma ContaFixa, o sistema verifica se ja existe um Lancamento
+com aquele `conta_fixa_id` + mes/ano de vencimento. Se existir, nao duplica.
+Rodar a geracao duas vezes para a mesma ContaFixa/mes e uma operacao segura
+(no-op na segunda vez).
+
+**Dia da geracao:** usa `dia_vencimento` da ContaFixa; se o mes tiver menos
+dias que esse valor (ex: 31 em abril, ou fevereiro), a data e ajustada para
+o ultimo dia do mes — mesmo padrao ja usado por
+`FaturaCicloService.CriarDataValida` para o ciclo do cartao.
+
+**Tipo do lancamento gerado:** sempre DEBIT (conta fixa e sempre despesa
+recorrente, mesma familia do item 5 "contas a pagar"). Nao existe conta fixa
+de recebimento (CREDIT) na v1. Status PENDENTE, `Manual = true`.
+
+**Edicao propaga para lancamentos PENDENTE ja gerados.** Editar valor,
+`dia_vencimento` ou categoria de uma ContaFixa atualiza os Lancamentos
+vinculados (`conta_fixa_id`) que ainda estao `Status = Pendente`. Lancamentos
+`Status = Pago` NUNCA sao alterados (fato historico, dinheiro ja saiu — mesmo
+principio do item 13 "valor_total nunca muda apos registro").
+
+**Desativar cancela os lancamentos PENDENTE ja gerados.** Ao desativar
+(`ativa = true -> false`) uma ContaFixa, os Lancamentos vinculados com
+`Status = Pendente` sao excluidos (hard delete, mesma regra de exclusao de
+lancamento manual do item 5/12). Lancamentos `Status = Pago` permanecem
+intocados. Reativar volta a gerar os 2 meses (mes corrente + proximo) do
+zero, respeitando a idempotencia acima.
+DECISOES CONFIRMADAS COM O USUARIO EM 2026-07-20.
 
 ---
 
@@ -550,7 +581,6 @@ relacao com Conta.
 
 - (v2) Rate limit dos endpoints do Pierre (testar com a key real).
 - (v2) Paginacao do get-transactions (confirmar se ha cursor ou se vem tudo).
-- Quantos meses a frente a conta fixa gera.
 - Tratamento de PENDING vs POSTED no painel (mostrar separado?).
 - Import da fatura Nubank (item 12): definir dedup sem `pierre_txn_id`
   (sugestao: hash de `data + valor + descricao`, ou so importar linhas apos a

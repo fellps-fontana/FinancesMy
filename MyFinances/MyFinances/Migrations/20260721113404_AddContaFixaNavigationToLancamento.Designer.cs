@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MyFinances.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyFinances.Migrations
 {
     [DbContext(typeof(MyFinancesDbContext))]
-    partial class MyFinancesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260721113404_AddContaFixaNavigationToLancamento")]
+    partial class AddContaFixaNavigationToLancamento
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -459,36 +462,6 @@ namespace MyFinances.Migrations
                     b.ToTable("lancamento", (string)null);
                 });
 
-            modelBuilder.Entity("MyFinances.Domain.LimiteGasto", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("CategoriaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("categoria_id");
-
-                    b.Property<string>("Periodo")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("MENSAL")
-                        .HasColumnName("periodo");
-
-                    b.Property<decimal>("ValorLimite")
-                        .HasColumnType("numeric")
-                        .HasColumnName("valor_limite");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CategoriaId")
-                        .IsUnique();
-
-                    b.ToTable("limite_gasto", (string)null);
-                });
-
             modelBuilder.Entity("MyFinances.Domain.Transferencia", b =>
                 {
                     b.Property<Guid>("Id")
@@ -699,17 +672,6 @@ namespace MyFinances.Migrations
                     b.Navigation("LancamentoConciliado");
 
                     b.Navigation("Transferencia");
-                });
-
-            modelBuilder.Entity("MyFinances.Domain.LimiteGasto", b =>
-                {
-                    b.HasOne("MyFinances.Domain.Categoria", "Categoria")
-                        .WithMany()
-                        .HasForeignKey("CategoriaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Categoria");
                 });
 
             modelBuilder.Entity("MyFinances.Domain.Transferencia", b =>
