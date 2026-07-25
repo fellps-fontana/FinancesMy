@@ -56,12 +56,23 @@ Endpoint: `POST /api/contas/{contaId}/compras-parceladas` — 201 com
 400 com `{ erro }` em falha de validação (quantidade < 2, valor ≤ 0, conta
 não-cartão).
 
+### Estorno de compra parcelada (DEMANDA-006, concluída)
+
+Decisão tomada em 2026-07-20 (não mais regra omissa): estorno é uma **ação
+única sobre a compra inteira**
+(`POST /api/cartao-compras-parceladas/{compraParceladaId}/estornos`,
+`EstornoCompraParceladaService`) — cancela TODAS as parcelas restantes
+ainda não pagas, sem opção de estornar parcela isolada. **Alcança
+retroativamente** parcelas já em fatura PAGA, gerando um
+lançamento de estorno mesmo numa fatura já fechada/paga. Quando isso deixa
+o saldo pendente de uma fatura PAGA negativo (crédito), a fatura mantém o
+status PAGA e o crédito é abatido automaticamente do total da próxima
+fatura em aberto do mesmo cartão — sem mudança de status, sem ação manual.
+Detalhe completo em `regra-de-negocio.md` item 12, subseção "Estorno de
+compra parcelada".
+
 ## Lacunas conhecidas
 
-- **Estorno de compra parcelada**: fora de escopo desta leva, regra omissa.
-  Virou demanda própria — ver `.claude/demands.md`, DEMANDA-006 (perguntas em
-  aberto: cancela todas as parcelas futuras ou só uma; alcança fatura já paga
-  ou só aberta/fechada; ação única ou por parcela).
 - **Edição de compra parcelada existente** (mudar quantidade de parcelas
   depois de criada): fora de escopo, regra omissa, sem demanda aberta ainda.
 - **Teto de `quantidade_parcelas`**: não há limite superior — `Service` só
