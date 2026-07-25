@@ -6,6 +6,7 @@ import { ListaAtivosPage } from "@/features/investimentos/ListaAtivosPage"
 import { ListaContasSimplesPage } from "@/features/investimentos/ListaContasSimplesPage"
 import { ContaCartaoPage } from "@/features/cartao/ContaCartaoPage"
 import { RelatorioCategoriaPage } from "@/features/cartao/RelatorioCategoriaPage"
+import { ComparativoLimiteGastoPage } from "@/features/limite-gasto/ComparativoLimiteGastoPage"
 
 export function AppRoutes() {
   return (
@@ -48,6 +49,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <RelatorioCategoriaPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/limites-gasto"
+        element={
+          <ProtectedRoute>
+            <ComparativoLimiteGastoPage />
           </ProtectedRoute>
         }
       />

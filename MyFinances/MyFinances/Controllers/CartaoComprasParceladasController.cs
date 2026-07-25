@@ -9,10 +9,14 @@ namespace MyFinances.Controllers;
 public class CartaoComprasParceladasController : ControllerBase
 {
     private readonly ComprasParceladasService _comprasParceladasService;
+    private readonly EstornoCompraParceladaService _estornoCompraParceladaService;
 
-    public CartaoComprasParceladasController(ComprasParceladasService comprasParceladasService)
+    public CartaoComprasParceladasController(
+        ComprasParceladasService comprasParceladasService,
+        EstornoCompraParceladaService estornoCompraParceladaService)
     {
         _comprasParceladasService = comprasParceladasService;
+        _estornoCompraParceladaService = estornoCompraParceladaService;
     }
 
     [HttpPost]
@@ -27,5 +31,25 @@ public class CartaoComprasParceladasController : ControllerBase
 
         var response = CompraParceladaResponse.FromDomain(compraParcelada!, contaId);
         return Created($"/api/contas/{contaId}/compras-parceladas/{response.Id}", response);
+    }
+
+    [HttpPost("{compraParceladaId}/estornos")]
+    public async Task<IActionResult> EstornarCompraParcelada(
+        Guid contaId,
+        Guid compraParceladaId,
+        [FromBody] EstornarCompraParceladaRequest request)
+    {
+        var (sucesso, canceladas, estornos, erro) = await _estornoCompraParceladaService.EstornarCompraParceladaAsync(
+            contaId,
+            compraParceladaId,
+            request);
+
+        if (!sucesso)
+        {
+            return BadRequest(new { erro });
+        }
+
+        var response = EstornoCompraParceladaResponse.FromDomain(canceladas!, estornos!);
+        return Ok(response);
     }
 }

@@ -26,7 +26,8 @@ public class PagamentoFaturaServiceTests
             _faturaRepositoryMock.Object,
             _transferenciaRepositoryMock.Object,
             _lancamentoRepositoryMock.Object,
-            _contaRepositoryMock.Object);
+            _contaRepositoryMock.Object,
+            new FaturaCreditoService(_faturaRepositoryMock.Object));
     }
 
     [Fact]
@@ -73,6 +74,8 @@ public class PagamentoFaturaServiceTests
 
         _faturaRepositoryMock.Setup(r => r.ObterPorId(faturaId))
             .ReturnsAsync(fatura);
+        _faturaRepositoryMock.Setup(r => r.ListarPorConta(contaCartaoId))
+            .ReturnsAsync(new List<Fatura> { fatura });
         _contaRepositoryMock.Setup(r => r.ObterPorId(contaOrigemId))
             .ReturnsAsync(contaOrigem);
 
@@ -136,6 +139,8 @@ public class PagamentoFaturaServiceTests
 
         _faturaRepositoryMock.Setup(r => r.ObterPorId(faturaId))
             .ReturnsAsync(fatura);
+        _faturaRepositoryMock.Setup(r => r.ListarPorConta(contaCartaoId))
+            .ReturnsAsync(new List<Fatura> { fatura });
         _contaRepositoryMock.Setup(r => r.ObterPorId(contaOrigemId))
             .ReturnsAsync(contaOrigem);
 
@@ -199,6 +204,8 @@ public class PagamentoFaturaServiceTests
 
         _faturaRepositoryMock.Setup(r => r.ObterPorId(faturaId))
             .ReturnsAsync(fatura);
+        _faturaRepositoryMock.Setup(r => r.ListarPorConta(contaCartaoId))
+            .ReturnsAsync(new List<Fatura> { fatura });
         _contaRepositoryMock.Setup(r => r.ObterPorId(contaOrigemId))
             .ReturnsAsync(contaOrigem);
 
@@ -342,6 +349,8 @@ public class PagamentoFaturaServiceTests
 
         _faturaRepositoryMock.Setup(r => r.ObterPorId(faturaId))
             .ReturnsAsync(fatura);
+        _faturaRepositoryMock.Setup(r => r.ListarPorConta(contaCartaoId))
+            .ReturnsAsync(new List<Fatura> { fatura });
         _contaRepositoryMock.Setup(r => r.ObterPorId(contaOrigemId))
             .ReturnsAsync(contaOrigem);
 

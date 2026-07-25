@@ -46,6 +46,18 @@ public class FaturaRepository : IFaturaRepository
             .FirstOrDefaultAsync(f => f.ContaId == contaId && f.Status == StatusFatura.Aberta);
     }
 
+    public async Task<IEnumerable<Fatura>> ListarFaturasCartaoPorVencimentoNoMes(int ano, int mes)
+    {
+        return await _context.Faturas
+            .Include(f => f.Conta)
+            .Include(f => f.Transferencias)
+            .Include(f => f.Lancamentos)
+            .Where(f => f.Conta!.Tipo == TipoConta.Cartao &&
+                        f.DataVencimento.Year == ano &&
+                        f.DataVencimento.Month == mes)
+            .ToListAsync();
+    }
+
     public async Task Atualizar(Fatura fatura)
     {
         _context.Faturas.Update(fatura);

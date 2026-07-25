@@ -60,11 +60,9 @@ usado em `features/investimentos/`.
 
 ## Lacunas conhecidas
 
-- Sem endpoint de projeção/dashboard completo (`saldo_projetado` do item 9)
-  — nenhum módulo do codebase ainda agrega `total_recebido_no_mes`/
-  `total_pago_no_mes`/`total_a_pagar_no_mes`. Esta entrega é só a fatia
-  isolada de contas a receber, mesmo padrão que Investimentos usou pra
-  "total investido != patrimônio total".
+- ~~Sem endpoint de projeção/dashboard completo~~ — resolvido no módulo
+  [Projeção do Mês](projecao-do-mes.md), que reaproveita
+  `total_a_receber_esperado_no_mes` sem alteração.
 - Sem combobox de categoria no frontend (não existe endpoint de listagem de
   categorias do usuário ainda) — `categoriaId` fica de fora dos formulários,
   embora continue opcional na API.

@@ -459,6 +459,36 @@ namespace MyFinances.Migrations
                     b.ToTable("lancamento", (string)null);
                 });
 
+            modelBuilder.Entity("MyFinances.Domain.LimiteGasto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CategoriaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("categoria_id");
+
+                    b.Property<string>("Periodo")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("MENSAL")
+                        .HasColumnName("periodo");
+
+                    b.Property<decimal>("ValorLimite")
+                        .HasColumnType("numeric")
+                        .HasColumnName("valor_limite");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId")
+                        .IsUnique();
+
+                    b.ToTable("limite_gasto", (string)null);
+                });
+
             modelBuilder.Entity("MyFinances.Domain.Transferencia", b =>
                 {
                     b.Property<Guid>("Id")
@@ -669,6 +699,17 @@ namespace MyFinances.Migrations
                     b.Navigation("LancamentoConciliado");
 
                     b.Navigation("Transferencia");
+                });
+
+            modelBuilder.Entity("MyFinances.Domain.LimiteGasto", b =>
+                {
+                    b.HasOne("MyFinances.Domain.Categoria", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Categoria");
                 });
 
             modelBuilder.Entity("MyFinances.Domain.Transferencia", b =>
