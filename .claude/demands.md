@@ -1,11 +1,20 @@
 # Demands — modulos pendentes (v1)
 
 Levantado em 2026-07-12 apos reconciliar main com origin/main (merge e118ee6).
-Base: contas/regra-de-negocio.md vs codigo real em MyFinances/MyFinances.
+Atualizado em 2026-07-25: reconciliado de novo contra o codigo real em
+MyFinances/MyFinances/ (Controllers/, Services/) e docs/. As 6 demandas
+abertas neste arquivo (DEMANDA-001 a DEMANDA-006) estao TODAS concluidas e
+mergeadas — o arquivo estava desatualizado em varios blocos (mesmo problema
+ja registrado em DEMANDA-002: "tasks.md estava desatualizado"). Nao ha
+demanda pendente de v1 neste momento.
+
 Modulos ja fechados e mergeados: Usuario/Auth, Investimentos (conta manual),
 Investimento Detalhado (Ativo/Cotacao), Categorias (+ de-para), Cartao de
 Credito (fatura/compra/pagamento/estorno), Contas a Receber (Recebivel e
-Emprestimo), **Lancamento Geral / Fluxo de Caixa (DEMANDA-001)**.
+Emprestimo), Lancamento Geral / Fluxo de Caixa (DEMANDA-001), Conta Fixa
+(DEMANDA-002), Projecao do mes / Dashboard (DEMANDA-003), Limite de gasto
+por categoria (DEMANDA-004), Parcelamento de compra no cartao (DEMANDA-005),
+Estorno de compra parcelada (DEMANDA-006).
 
 ---
 
@@ -48,40 +57,38 @@ Dependencia satisfeita, sem bloqueio.
 
 ## DEMANDA-003 — Projecao do mes (Dashboard)
 
-**Situacao atual:** nenhum controller/service de projecao ou dashboard no
-codigo.
+STATUS: CONCLUIDA E MERGEADA. `ProjecaoMesService`, `FaturaProjecaoService`
+e `DashboardController` (endpoint `GET /api/dashboard/projecao-mes`)
+implementados e testados (TDD RED->GREEN, TASK-057/066). Ver
+`docs/projecao-do-mes.md` para o resumo do modulo.
 
-**Escopo (regra-de-negocio.md item 9):**
+**Escopo entregue (regra-de-negocio.md item 9):**
 - `saldo_projetado = total_recebido_no_mes - (total_pago + total_a_pagar)`.
 - Considera todas as contas a pagar do mes (PENDENTE ate PAGO) e todo valor
   recebido no mes.
 - Cartao de credito entra como UMA linha = total da fatura atual do mes
   (pago/nao pago) — nao lista compras individuais na projecao.
 
-**Depende de:** DEMANDA-001 (Lancamento Geral) — CONCLUIDA em 2026-07-21 — e
-Cartao de Credito (pronto, ja expoe saldo/fatura calculados) para agregar
-os dois. Sem bloqueio restante para arquitetar esta demanda.
+**Dependia de:** DEMANDA-001 (Lancamento Geral) e Cartao de Credito — ambos
+prontos, dependencia satisfeita.
 
 ---
 
 ## DEMANDA-004 — Limite de gasto por categoria
 
-**Situacao atual:** tabela `limite_gasto` existe no schema.dbml mas nao esta
-descrita em nenhum item numerado da regra-de-negocio.md, e nao ha nenhum
-codigo (`Domain/LimiteGasto.cs` inexistente).
-
-**Escopo:** indefinido alem do schema (`categoria_id`, `valor_limite`,
-`periodo` default MENSAL). **Nao assumir comportamento** — regra omissa.
-Antes de arquitetar, perguntar ao usuario: o que acontece ao estourar o
-limite (bloqueio? alerta? so exibicao no relatorio por categoria)? Onde isso
-aparece na UI?
+STATUS: CONCLUIDA E MERGEADA (PR #35, worktree `worktree-limite-de-gastos-tasks`).
+`LimiteGastoService`, `ILimiteGastoService` e `LimitesGastoController`
+implementados; front com dashboard/comparativo por categoria (TASK-059 a
+TASK-062). Ver `docs/limite-gasto.md` para a decisao tomada sobre
+comportamento ao estourar o limite e o resumo do modulo.
 
 ---
 
 ## DEMANDA-005 — Parcelamento de compra no cartao
 
-STATUS: EM ANDAMENTO — arquitetado e com tasks geradas na worktree
-`parcelamento-cartao-tasks` (TASK-025 a TASK-037, ver tasks.md la).
+STATUS: CONCLUIDA E MERGEADA. `ComprasParceladasService` e
+`CartaoComprasParceladasController` implementados (TASK-025 a TASK-037). Ver
+`docs/modulo-parcelamento-cartao.md` para o resumo do modulo.
 
 **Decisao tomada em 2026-07-12 (nao mais regra omissa):** compra parcelada
 gera N `Lancamento`s, um por parcela, cada um com `fatura_id` proprio
@@ -92,22 +99,27 @@ so de exibicao. Split de valor automatico (`valor_total / quantidade`, resto
 na ultima parcela). Detalhe completo em regra-de-negocio.md item 12,
 subsecao "Parcelamento".
 
-**Escopo original desta demanda ja resolvido** — o que falta agora e so
-execucao das tasks (levi/mike/style), nao mais arquitetura.
-
-**Ficou fora desta leva, viraram demandas proprias:** ver DEMANDA-006
-(estorno de compra parcelada). Edicao de compra parcelada existente (mudar
-`quantidade_parcelas` depois de criada) continua sem demanda aberta — regra
-omissa, nao pedida ainda.
+**Ficou fora desta leva, virou demanda propria ja tambem concluida:** ver
+DEMANDA-006 (estorno de compra parcelada). Edicao de compra parcelada
+existente (mudar `quantidade_parcelas` depois de criada) continua sem
+demanda aberta — regra omissa, nao pedida ainda.
 
 ---
 
 ## DEMANDA-006 — Estorno de compra parcelada
 
-**Situacao atual:** o modulo Cartao de Credito ja tem estorno de compra a
-vista (`EstornoCartaoService`, regra-de-negocio.md item 12 — "Estorno: compra
-negativa dentro do cartao"). Compra parcelada (DEMANDA-005, em andamento) nao
-cobre estorno — a leva de tasks TASK-025/037 exclui isso explicitamente.
+STATUS: CONCLUIDA E MERGEADA (PR #33, worktree
+`worktree-estorno-compra-parcelada`). `EstornoCompraParceladaService`
+implementado. NOTA: `docs/modulo-parcelamento-cartao.md` ainda lista
+"Estorno de compra parcelada: fora de escopo desta leva, regra omissa" —
+doc desatualizada, precisa de patch separado (fora do escopo deste ajuste
+em demands.md).
+
+**Situacao anterior (historico):** o modulo Cartao de Credito ja tinha
+estorno de compra a vista (`EstornoCartaoService`, regra-de-negocio.md item
+12 — "Estorno: compra negativa dentro do cartao"). Compra parcelada
+(DEMANDA-005) nao cobria estorno — a leva de tasks TASK-025/037 excluia
+isso explicitamente. Resolvido por esta demanda (ver decisao abaixo).
 
 **Decisao tomada em 2026-07-20 (nao mais regra omissa):** estorno de compra
 parcelada e uma ACAO UNICA sobre a compra inteira (via `compra_parcelada_id`),
