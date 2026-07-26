@@ -38,6 +38,16 @@ reconciliar o `main` local com `origin/main` (merge `e118ee6`) — ver
 - **Persistência transacional**: resolução das N faturas + criação da
   `CompraParcelada` + N `Lancamento` só commitam como uma única operação —
   se qualquer fatura falhar no meio, nada fica órfão no banco.
+- **Estorno de compra parcelada** (DEMANDA-006, concluída e mergeada em
+  2026-07-20, ver `.claude/demands.md`): ação única sobre a compra inteira
+  via `compra_parcelada_id`, cancela todas as parcelas restantes ainda não
+  pagas — nunca estorno parcela-por-parcela isolado. Alcança
+  retroativamente parcelas já em fatura PAGA, gerando lançamento de estorno
+  mesmo numa fatura já fechada/paga; se isso deixa o saldo da fatura PAGA
+  negativo, a fatura mantém status PAGA e o crédito é abatido automaticamente
+  do total da próxima fatura em aberto do mesmo cartão. `EstornoCompraParceladaService`
+  implementa a regra. Detalhe completo em `regra-de-negocio.md` item 12,
+  subseção "Estorno de compra parcelada".
 
 ## Modelo de dados e endpoints
 
@@ -58,10 +68,6 @@ não-cartão).
 
 ## Lacunas conhecidas
 
-- **Estorno de compra parcelada**: fora de escopo desta leva, regra omissa.
-  Virou demanda própria — ver `.claude/demands.md`, DEMANDA-006 (perguntas em
-  aberto: cancela todas as parcelas futuras ou só uma; alcança fatura já paga
-  ou só aberta/fechada; ação única ou por parcela).
 - **Edição de compra parcelada existente** (mudar quantidade de parcelas
   depois de criada): fora de escopo, regra omissa, sem demanda aberta ainda.
 - **Teto de `quantidade_parcelas`**: não há limite superior — `Service` só
