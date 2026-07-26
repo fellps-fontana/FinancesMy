@@ -1526,3 +1526,119 @@ RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 
 Nenhuma pendencia de decisao de produto restante para TASK-063 a TASK-078.
 Fila pronta para execucao.
+
+---
+
+# Modulo Dashboard (front) — Opcao C aprovada pelo usuario em 2026-07-24
+
+Arquitetado por killua a partir da pendencia 5 acima (backend do item 9 fechado
+em TASK-063 a TASK-078; front nunca decomposto). Usuario aprovou Opcao C:
+saldo projetado + breakdown dos 4 termos + grafico entradas vs saidas.
+`LimiteGastoIndicador` (TASK-059 do modulo Limite de Gasto, ja implementado)
+entra embutido nesta pagina — e o consumidor que faltava pra ele.
+
+Suposicoes/pendencias sinalizadas por killua, nao decididas:
+1. Sem seletor de mes/ano nesta leva — mostra `new Date()` fixo.
+2. Sem shell de navegacao global (sidebar/topbar) ligando as rotas ja
+   existentes (`/investimentos`, `/contas`, `/cartao`, `/limites-gasto`) —
+   fica mais visivel ao aposentar Home.tsx, mas e lacuna pre-existente, fora
+   de escopo aqui.
+3. `recharts` esta citado em stack.md mas ausente do `package.json` (drift
+   documental do modulo de cotacao por ticker removido em 2026-07-12) — a
+   TASK-082 instala a dependencia real.
+4. Integracao Conta Fixa -> agregador de fluxo de caixa (ver pendencia 6
+   acima) nunca rodou de ponta a ponta ainda; os `Lancamento` gerados por
+   Conta Fixa devem aparecer na projecao sem mudanca de codigo, mas ninguem
+   confirmou isso na pratica.
+
+## TASK-079 — Front: camada de dados da Projecao do Mes (types/api/query-keys/hook)
+
+STATUS: CONCLUIDA (build do frontend limpo via tsc -b, sem `any`; campos de types.ts conferidos 1:1 contra DTOs/ProjecaoMesResponse.cs real do backend; padrao de contas-receber/api.ts seguido exatamente. Kira verificou os 4 arquivos e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-078
+CONTEXTO A LER: regra-de-negocio.md item 9; stack.md secao "Frontend (React)" (estrutura de pastas); padrao ja usado em features/contas-receber/api.ts, types.ts, query-keys.ts, hooks/useTotalAReceberEsperadoNoMes.ts; contrato ja mergeado MyFinances/MyFinances/Controllers/DashboardController.cs e DTOs/ProjecaoMesResponse.cs (GET /api/dashboard/projecao-mes?ano=&mes=)
+ESCOPO: criar types.ts (ProjecaoMesResponse: ano, mes, totalRecebidoNoMes, totalAReceberEsperadoNoMes, totalPagoNoMes, totalAPagarNoMes, saldoProjetado), api.ts (buscarProjecaoMes(ano, mes)), query-keys.ts (dashboardKeys.projecaoMes(ano, mes)) e hooks/useProjecaoMes.ts (useQuery), seguindo exatamente o padrao de useTotalAReceberEsperadoNoMes.
+CRITERIO DE ACEITE:
+1. useProjecaoMes(ano, mes) retorna os 5 campos numericos tipados, sem `any`.
+2. api.ts so monta a chamada HTTP (GET /api/dashboard/projecao-mes?ano=&mes=), sem decisao de cache/retry.
+3. Chave do React Query centralizada em query-keys.ts (mesmo padrao de contasReceberKeys), nao string magica espalhada no hook.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/dashboard/types.ts (novo), MyFinanceFrontEnd/src/features/dashboard/api.ts (novo), MyFinanceFrontEnd/src/features/dashboard/query-keys.ts (novo), MyFinanceFrontEnd/src/features/dashboard/hooks/useProjecaoMes.ts (novo)
+NAO FAZER: nao calcular saldo/breakdown no front (os 5 valores vem prontos do backend, item 9); nao criar nenhum componente de apresentacao nesta task.
+RETORNO ESPERADO: diff dos 4 arquivos.
+
+---
+
+## TASK-080 — Front: card de saldo projetado + breakdown dos 4 termos
+
+STATUS: CONCLUIDA (build limpo via tsc -b. Segue exatamente a forma de LimiteGastoIndicador.tsx: mesmo Card/CardContent, mesmos estados loading/erro/vazio, mesmo formatarMoeda. Cor semantica so no saldo central (positivo >= 0, negativo < 0); os 4 termos sao apresentacao neutra, sem soma/subtracao no componente. Kira conferiu o arquivo e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-079
+CONTEXTO A LER: identidade-visual.md INTEIRO; regra-de-negocio.md item 9; clean-code.md secao "Organizacao (React)"; padrao ja usado em features/dashboard/components/LimiteGastoIndicador.tsx (mesmo Card do shared/ui, mesma forma de tratar loading/erro/vazio, mesmo import de formatarMoeda de features/investimentos/lib)
+ESCOPO: componente `CardSaldoProjetado` (recebe ano/mes via props, chama useProjecaoMes internamente) exibindo o saldo_projetado central (cor positivo se >= 0, negativo se < 0) e, abaixo, os 4 termos rotulados e formatados em moeda: total_recebido_no_mes, total_a_receber_esperado_no_mes, total_pago_no_mes, total_a_pagar_no_mes.
+CRITERIO DE ACEITE:
+1. saldo negativo usa token `negativo`, saldo >= 0 usa `positivo` (mesma logica semantica ja aplicada em LimiteGastoIndicador).
+2. os 4 termos aparecem rotulados e formatados via formatarMoeda (mesmo helper ja reusado por LimiteGastoIndicador).
+3. estados loading/erro/vazio tratados; nenhum calculo de saldo/soma de dominio no componente (so vem pronto do hook).
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/dashboard/components/CardSaldoProjetado.tsx (novo)
+NAO FAZER: nao buscar dados fora do hook useProjecaoMes; nao incluir grafico (fica na TASK-082).
+RETORNO ESPERADO: componente pronto para embutir.
+
+---
+
+## TASK-081 — Front: pagina de Dashboard (composicao + rota)
+
+STATUS: CONCLUIDA (build limpo via tsc -b. DashboardPage compoe CardSaldoProjetado + LimiteGastoIndicador para o mes corrente via new Date(), saudacao+logout preservados de Home.tsx. routes.tsx trocado, Home.tsx removido do repo sem import orfao. Kira conferiu os 3 arquivos e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-080
+CONTEXTO A LER: stack.md "Estrutura de pastas (src/)" (raiz da feature = componente roteado); MyFinanceFrontEnd/src/app/Home.tsx e routes.tsx atuais; regra-de-negocio.md itens 9 e 14 (bloco "Onde aparece": "Dashboard/resumo geral")
+ESCOPO: criar `DashboardPage.tsx` na raiz de features/dashboard/, compondo CardSaldoProjetado (TASK-080) + LimiteGastoIndicador (ja existente) para o mes corrente (new Date(), sem seletor nesta leva); substituir Home.tsx pela DashboardPage na rota "/" em routes.tsx; remover Home.tsx (placeholder cumpriu o proposito e nao tem outro consumidor).
+CRITERIO DE ACEITE:
+1. rota "/" renderiza DashboardPage dentro do mesmo ProtectedRoute de antes (guarda preservada).
+2. saudacao ao usuario ("Ola, {usuario}") + botao de logout (useAuth) preservados dentro da nova pagina — nao perder a unica funcionalidade que Home.tsx entregava.
+3. Home.tsx removido do repo, routes.tsx sem import orfao.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/dashboard/DashboardPage.tsx (novo), MyFinanceFrontEnd/src/app/routes.tsx (editar), MyFinanceFrontEnd/src/app/Home.tsx (remover)
+NAO FAZER: nao criar layout/shell global de navegacao (sidebar/topbar linkando as outras rotas ja existentes) — pendencia separada, fora de escopo; nao adicionar seletor de mes/ano nesta leva.
+RETORNO ESPERADO: diff dos 3 arquivos + confirmacao de que "/" mostra a nova pagina sem quebrar o logout.
+
+---
+
+## TASK-082 — Front: grafico entradas vs saidas
+
+STATUS: CONCLUIDA (build limpo via tsc -b. recharts instalado de verdade, corrigindo o drift documental do stack.md. Barras coloridas via var(--color-positivo)/var(--color-negativo), mesmos tokens ja usados em CardSaldoProjetado. Soma entradas/saidas e agrupamento de exibicao, nao recalcula saldoProjetado. Kira conferiu o CSS var real em index.css, o arquivo e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-079, TASK-081
+CONTEXTO A LER: stack.md (linha "Grafico (frontend): Recharts" — hoje sem correspondencia em package.json, drift documental do modulo de cotacao por ticker removido em 2026-07-12); identidade-visual.md (tokens positivo/negativo)
+ESCOPO: instalar `recharts` como dependencia nova do front; criar componente `GraficoEntradasSaidas` (barra comparando entradas = total_recebido_no_mes + total_a_receber_esperado_no_mes vs saidas = total_pago_no_mes + total_a_pagar_no_mes), usando tokens positivo/negativo; embutir no DashboardPage abaixo do CardSaldoProjetado.
+CRITERIO DE ACEITE:
+1. grafico usa cor positivo para entradas e negativo para saidas.
+2. soma dos dois pares de valores e trivial de exibicao (equivalente a largura de barra ja calculada em LimiteGastoIndicador) — NAO reintroduz a formula do saldo_projetado no front, so agrupa os 4 valores ja recebidos prontos em 2 barras.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/package.json, MyFinanceFrontEnd/src/features/dashboard/components/GraficoEntradasSaidas.tsx (novo), MyFinanceFrontEnd/src/features/dashboard/DashboardPage.tsx (editar, so para incluir o componente)
+NAO FAZER: nao recalcular saldo_projetado no front; nao adicionar outra lib de grafico alem de recharts.
+RETORNO ESPERADO: diff + print do grafico renderizado.
+
+---
+
+## TASK-083 — Style: revisao do modulo front de Dashboard
+
+STATUS: CONCLUIDA + APROVADA PELO STYLE de primeira (npm run build e npm run lint rodados pelo proprio style, sem erro nos arquivos da entrega). Separacao apresentacao/dados confirmada; soma entradas/saidas do grafico e agrupamento de exibicao, nao regra nova; cores var(--color-positivo)/var(--color-negativo) conferidas contra index.css; padrao de Card/loading/erro/vazio/formatarMoeda consistente com LimiteGastoIndicador.tsx; routes.tsx sem import orfao. 2 observacoes nao bloqueantes registradas: formatarMoeda mora em features/investimentos/lib (divida pre-existente, nao introduzida aqui); obterBarras(data) chamado 2x no render de GraficoEntradasSaidas (cosmetico). MODULO DASHBOARD (FRONT) FECHADO (TASK-079 a TASK-083)
+AGENT: style
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-081, TASK-082
+CONTEXTO A LER: identidade-visual.md; clean-code.md secao "Organizacao (React)"; regra-de-negocio.md itens 9 e 14
+ESCOPO: revisar toda a entrega do modulo Dashboard (camada de dados, CardSaldoProjetado, DashboardPage, rota, e GraficoEntradasSaidas) contra clean-code.md e regra de negocio.
+CRITERIO DE ACEITE: veredito ou tarefa de correcao, cobrindo especificamente: separacao apresentacao/dados; ausencia de calculo de dominio no front; consistencia semantica de cor com identidade-visual.md.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
+
+---
+
+## Mapa de dependencia (TASK-079 a TASK-083)
+
+```
+079 (dados) -> 080 (card+breakdown) -> 081 (pagina+rota) -> 082 (grafico) -> 083 (style)
+```
