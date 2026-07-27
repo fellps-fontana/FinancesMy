@@ -9,6 +9,7 @@ import { RelatorioCategoriaPage } from "@/features/cartao/RelatorioCategoriaPage
 import { ComparativoLimiteGastoPage } from "@/features/limite-gasto/ComparativoLimiteGastoPage"
 import { ListaContasReceber } from "@/features/contas-receber/ListaContasReceber"
 import { ListaContasFixas } from "@/features/contas-fixas/ListaContasFixas"
+import { CategoriasPage } from "@/features/categorias/CategoriasPage"
 
 export function AppRoutes() {
   return (
@@ -23,6 +24,7 @@ export function AppRoutes() {
         <Route path="/limites-gasto" element={<ComparativoLimiteGastoPage />} />
         <Route path="/contas-receber" element={<ListaContasReceber />} />
         <Route path="/contas-fixas" element={<ListaContasFixas />} />
+        <Route path="/categorias" element={<CategoriasPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

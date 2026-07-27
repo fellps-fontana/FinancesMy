@@ -2100,7 +2100,7 @@ RETORNO ESPERADO: arquivo novo.
 
 ## TASK-105 — Rota /categorias
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. /categorias adicionada dentro de AuthenticatedLayout, todas as rotas anteriores preservadas incluindo /contas-fixas e /contas-receber. Kira conferiu o arquivo e o build antes de aprovar)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-104, TASK-088
