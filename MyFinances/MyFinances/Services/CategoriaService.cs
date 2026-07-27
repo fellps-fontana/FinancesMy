@@ -85,6 +85,16 @@ public class CategoriaService : ICategoriaService
     {
         var categoria = await ObterCategoriaOuFalhar(id);
 
+        if (categoria.ParentId.HasValue)
+        {
+            var parent = await ObterCategoriaOuFalhar(categoria.ParentId.Value);
+
+            if (parent.Arquivada)
+            {
+                throw new InvalidOperationException("Nao e permitido vincular a uma categoria arquivada.");
+            }
+        }
+
         categoria.Arquivada = false;
 
         await _categoriaRepository.Salvar();

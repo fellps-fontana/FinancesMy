@@ -42,8 +42,9 @@ type CategoriaItemProps = {
 // tempo): dependem so de `categoria.arquivada`, mesmo par de acoes/estado ja
 // usado em ContaFixaItem para ativa/inativa (regra-de-negocio.md item 6).
 //
-// Editar (FormCategoria, TASK-102) ainda nao existe — este componente so
-// expõe o gatilho via `onEditar`, sem importar formulario nenhum.
+// Editar: este componente so dispara o gatilho via `onEditar`, sem importar
+// formulario nenhum - quem decide renderizar o FormCategoria (TASK-102, ja
+// existente e em uso via onEditar em CategoriasPage) e o componente pai.
 export function CategoriaItem({ categoria, limitesPorCategoriaId, onEditar }: CategoriaItemProps) {
   const [erro, setErro] = useState<string | null>(null)
 

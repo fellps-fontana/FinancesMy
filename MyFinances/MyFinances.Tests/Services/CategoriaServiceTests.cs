@@ -756,4 +756,123 @@ public class CategoriaServiceTests
     }
 
     #endregion
+
+    #region Regra 12: Reativar com validacao de parent arquivado
+
+    [Fact]
+    public async Task Reativar_Subcategoria_ParentArquivada_Falha()
+    {
+        // Arrange
+        var parentId = Guid.NewGuid();
+        var categoriaId = Guid.NewGuid();
+
+        var parent = new Categoria
+        {
+            Id = parentId,
+            Nome = "Categoria Arquivada",
+            Tipo = TipoCategoria.Despesa,
+            ParentId = null,
+            Arquivada = true,
+            Subcategorias = new List<Categoria>()
+        };
+
+        var categoria = new Categoria
+        {
+            Id = categoriaId,
+            Nome = "Subcategoria",
+            Tipo = TipoCategoria.Despesa,
+            ParentId = parentId,
+            Arquivada = true,
+            Subcategorias = new List<Categoria>()
+        };
+
+        _mockRepository
+            .Setup(r => r.ObterPorId(categoriaId))
+            .ReturnsAsync(categoria);
+
+        _mockRepository
+            .Setup(r => r.ObterPorId(parentId))
+            .ReturnsAsync(parent);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.Reativar(categoriaId)
+        );
+
+        Assert.Contains("categoria arquivada", ex.Message);
+        _mockRepository.Verify(r => r.Salvar(), Times.Never);
+    }
+
+    [Fact]
+    public async Task Reativar_CategoriaRaiz_SemParent_Sucesso()
+    {
+        // Arrange
+        var categoriaId = Guid.NewGuid();
+
+        var categoria = new Categoria
+        {
+            Id = categoriaId,
+            Nome = "Categoria Raiz",
+            Tipo = TipoCategoria.Despesa,
+            ParentId = null,
+            Arquivada = true,
+            Subcategorias = new List<Categoria>()
+        };
+
+        _mockRepository
+            .Setup(r => r.ObterPorId(categoriaId))
+            .ReturnsAsync(categoria);
+
+        // Act
+        await _service.Reativar(categoriaId);
+
+        // Assert
+        Assert.False(categoria.Arquivada);
+        _mockRepository.Verify(r => r.Salvar(), Times.Once);
+    }
+
+    [Fact]
+    public async Task Reativar_Subcategoria_ParentAtivo_Sucesso()
+    {
+        // Arrange
+        var parentId = Guid.NewGuid();
+        var categoriaId = Guid.NewGuid();
+
+        var parent = new Categoria
+        {
+            Id = parentId,
+            Nome = "Categoria Ativa",
+            Tipo = TipoCategoria.Despesa,
+            ParentId = null,
+            Arquivada = false,
+            Subcategorias = new List<Categoria>()
+        };
+
+        var categoria = new Categoria
+        {
+            Id = categoriaId,
+            Nome = "Subcategoria",
+            Tipo = TipoCategoria.Despesa,
+            ParentId = parentId,
+            Arquivada = true,
+            Subcategorias = new List<Categoria>()
+        };
+
+        _mockRepository
+            .Setup(r => r.ObterPorId(categoriaId))
+            .ReturnsAsync(categoria);
+
+        _mockRepository
+            .Setup(r => r.ObterPorId(parentId))
+            .ReturnsAsync(parent);
+
+        // Act
+        await _service.Reativar(categoriaId);
+
+        // Assert
+        Assert.False(categoria.Arquivada);
+        _mockRepository.Verify(r => r.Salvar(), Times.Once);
+    }
+
+    #endregion
 }

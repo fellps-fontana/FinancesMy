@@ -27,10 +27,21 @@ const INDENTACAO_SUBCATEGORIA = "  "
 // pode ser arquivada, nao deletada") nunca vira opcao selecionavel -
 // arquivar e o jeito do usuario aposentar uma categoria sem apagar o
 // historico que ja aponta pra ela.
+//
+// GET /api/categorias (sem parentId na query) devolve TODAS as categorias no
+// array raiz, incluindo subcategorias soltas ali (alem de ja aninhadas em
+// `categoria.subcategorias` do pai). O loop externo so processa como
+// raiz+subcategorias os itens SEM parentId (mesmo filtro de
+// filtrarOpcoesDeCategoriaPai/categoriasTopLevel) - senao a subcategoria
+// aparece duas vezes (aninhada + solta), com id duplicado.
 function achatarCategorias(categorias: CategoriaResponse[]): CategoriaOpcao[] {
   const opcoes: CategoriaOpcao[] = []
 
   for (const categoria of categorias) {
+    if (categoria.parentId) {
+      continue
+    }
+
     if (!categoria.arquivada) {
       opcoes.push({ id: categoria.id, label: categoria.nome })
     }

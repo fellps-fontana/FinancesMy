@@ -1921,7 +1921,7 @@ RETORNO ESPERADO: 3 arquivos novos.
 
 ## TASK-095 — LancamentosPage (com segmented control Lancamento/Transferencia)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. Seletor de conta via useContasParaSelecao, fetch de fluxo-caixa isolado em componente interno FluxoDeCaixaDaConta so montado com conta selecionada + key={contaId} pra remount limpo ao trocar de conta - desvio pragmatico documentado por restricao de arquivo unico. Estado EstadoFormulario cobre criar(lancamento/transferencia)/editar. Kira conferiu o arquivo e o build antes de aprovar)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-094
@@ -2115,7 +2115,7 @@ RETORNO ESPERADO: diff de routes.tsx.
 
 ## TASK-106 — Style review Bloco D
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA + APROVADA PELO STYLE apos 2 rodadas (455/455 testes GREEN no final). Rodada 1: 2 achados reais - CategoriaSelect duplicava subcategoria como opcao raiz com key repetida (GET /api/categorias sem parentId devolve subcategorias soltas no array alem de aninhadas, achatarCategorias nao filtrava); CategoriaService.Reativar nao validava se o pai da subcategoria estava arquivado (ValidarParent ja fazia essa checagem em Criar/Editar, mas Reativar foi escrito do zero na TASK-098 sem reusar - zero teste cobria Reativar). Rodada 2: hanzo filtrou achatarCategorias por !parentId (mesmo padrao de filtrarOpcoesDeCategoriaPai/categoriasTopLevel) e corrigiu comentario desatualizado em CategoriaItem; levi adicionou validacao de pai arquivado em Reativar (reaproveitando ObterCategoriaOuFalhar, sem tupla) + 3 testes novos (parent arquivado falha, raiz sucesso, parent ativo sucesso). MODULO CATEGORIAS FECHADO (TASK-098 a 106)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-098, TASK-099, TASK-100, TASK-101, TASK-102, TASK-103, TASK-104, TASK-105
