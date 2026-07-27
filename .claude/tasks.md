@@ -2065,7 +2065,7 @@ RETORNO ESPERADO: componente unico cobrindo criar+editar.
 
 ## TASK-103 — components/: CategoriaSelect
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. Achata categoria+subcategorias num select nativo com indentacao textual, filtra arquivadas. Mesma classe de select ja usada em FormRegistrarContaReceber, sem cor nova. Kira conferiu o arquivo e o build antes de aprovar)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-100
