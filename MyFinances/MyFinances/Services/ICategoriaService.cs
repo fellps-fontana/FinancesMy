@@ -8,4 +8,5 @@ public interface ICategoriaService
     Task<IEnumerable<Categoria>> Listar(TipoCategoria? tipo = null, bool? arquivada = null, Guid? parentId = null);
     Task<Categoria> Editar(Guid id, string nome, Guid? parentId);
     Task Arquivar(Guid id);
+    Task Reativar(Guid id);
 }

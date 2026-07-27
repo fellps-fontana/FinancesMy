@@ -1642,3 +1642,497 @@ RETORNO ESPERADO: veredito + tarefa de correcao se reprovado.
 ```
 079 (dados) -> 080 (card+breakdown) -> 081 (pagina+rota) -> 082 (grafico) -> 083 (style)
 ```
+
+---
+
+# Modulo Front-Gaps — rotas orfas, shell de navegacao, Lancamentos, Categorias
+
+Arquitetado por killua em 2026-07-26 a partir de achado do Kira: `features/contas-fixas/`
+e `features/contas-receber/` estao completos mas sem rota (inalcancaveis); nao existe
+shell de navegacao (nenhum menu liga as rotas existentes); Lancamentos (itens 1,2,3,5 da
+regra-de-negocio.md) e Categorias (item 7) tem backend fechado ha tempo mas zero tela.
+
+Apos estes 4 blocos, nao ha nenhuma tela v1 conhecida faltando (Faturas ja embutida em
+ContaCartaoPage; conciliacao item 5 e so "marcar como pago", coberta no Bloco C; De-Para
+categoria e saldo de conta ja cobertos/fora de escopo v1 - ver decisao Open Finance).
+
+**NOTA OPERACIONAL (2026-07-26):** durante a execucao em paralelo da Onda 1, um dos
+agents rodou um comando git amplo (provavel `git checkout --`/`git restore` sem
+pathspec) que reverteu TODOS os arquivos tracked-porem-modificados do worktree pro
+estado do HEAD - isso incluiu este proprio `tasks.md` (a secao inteira do modulo
+Front-Gaps sumiu) e `ListaContasFixas.tsx` (mudancas da TASK-084 perdidas). Arquivos
+NOVOS/untracked (AppShell.tsx, features/lancamentos/*) sobreviveram intactos. Kira
+detectou via `git status`/build e reconstruiu manualmente o que foi perdido antes de
+comitar. Licao aplicada: a partir daqui, Kira comita cada task aprovada imediatamente
+(protege contra revert futuro) e toda nova task despachada nesta leva recebe instrucao
+explicita de NUNCA rodar `git checkout`/`restore`/`reset`/`clean` amplo, e de ignorar
+arquivos modificados fora do proprio escopo em vez de "limpar" o que parece estranho.
+
+## Decisoes/pendencias aprovadas pelo usuario em 2026-07-26
+
+- Sidebar fixa (desktop) / topbar+drawer (mobile) para navegacao, nao topbar linear
+  (8+ destinos nao cabem sem overflow menu).
+- Layout compoe ProtectedRoute + AppShell via Outlet, sem editar ProtectedRoute.tsx.
+- DashboardPage perde a saudacao/logout proprios (TASK-089) - o shell global assume isso.
+- Lancamentos: sem periodo/paginacao no backend endpoint atual - filtro de mes feito
+  client-side (mesma limitacao ja aceita no Dashboard).
+- Lancamentos: sem endpoint agregado "todas as contas" - selector de conta no topo da
+  pagina (banco+investimento, cartao fica de fora, mesmo motivo de useContasParaSelecao).
+- Lancamento normal e Transferencia ficam na MESMA tela via segmented control (aprovado,
+  P4) - nao telas separadas.
+- Categoria: reativar ENTRA nesta leva (aprovado, contra a recomendacao original do
+  killua) - precisou de endpoint novo no backend (nao existia). Nao cascateia para
+  subcategorias (pendencia sinalizada, regra-de-negocio.md item 7 e omissa sobre isso -
+  decisao por seguranca, nao confirmada explicitamente).
+- Categoria: editar (nome/parentId) ENTRA nesta leva (aprovado) - endpoint PUT ja existia.
+- Categoria: arquivar ENTRA nesta leva (aprovado como recomendado) - endpoint PATCH ja existia.
+- CategoriasController fica com verbo assimetrico (Arquivar=PATCH ja existente,
+  Reativar=POST novo, replicando o padrao de rota do ContaFixaController por instrucao
+  explicita) - registrado, nao corrigido (mudar Arquivar pra POST arriscaria rota ja
+  em uso, fora de escopo).
+- Achado de contrato (nao e decisao, e fato do codigo): `CategoriaResponse.Tipo` serializa
+  como PascalCase ("Despesa"/"Receita"), NAO caixa-alta ("DESPESA"/"RECEITA") como
+  `CampoLimiteGasto.tsx` ja espera - TASK-101 precisa converter antes de passar a prop.
+
+---
+
+## Bloco A — Rotas orfas (Contas Fixas e Contas a Receber)
+
+## TASK-084 — Rota + entrada de criacao para Contas Fixas
+
+STATUS: CONCLUIDA (build limpo via tsc -b. Rota /contas-fixas cabeada, botao "Nova conta fixa" abre FormContaFixa embutido em toggle, sem contaFixaParaEditar. Nenhum hook/api/type tocado. Reconstruida manualmente por Kira apos revert acidental de outro agent - ver nota operacional acima. Commit 49b760d)
+AGENT: hanzo
+FLUXO: Correcao
+DEPENDENCIAS: nenhuma
+CONTEXTO A LER: regra-de-negocio.md item 6; stack.md "Estrutura de pastas (src/)"
+ESCOPO: adicionar rota `/contas-fixas` -> `ListaContasFixas` em routes.tsx, e dentro de `ListaContasFixas.tsx` embutir um toggle "Nova conta fixa" que abre `FormContaFixa` (modo criar) acima da lista - hoje o form existe mas nao e renderizado em nenhuma tela alcancavel.
+CRITERIO DE ACEITE:
+1. `/contas-fixas` renderiza a lista sem erro de rota.
+2. Botao "Nova conta fixa" abre `FormContaFixa` sem `contaFixaParaEditar`, e ao salvar a lista reflete o item novo (invalidacao de cache ja existe no hook).
+3. Nenhum hook/api/type e alterado.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/app/routes.tsx, MyFinanceFrontEnd/src/features/contas-fixas/ListaContasFixas.tsx
+NAO FAZER: nao editar FormContaFixa.tsx, hooks/ ou types.ts; nao adicionar edicao de conta fixa existente nesta task.
+RETORNO ESPERADO: diff dos dois arquivos + confirmacao de que a rota funciona localmente.
+
+---
+
+## TASK-085 — Rota + entrada de criacao para Contas a Receber
+
+STATUS: CONCLUIDA (build limpo via tsc -b. Rota /contas-receber cabeada, botao "Nova conta a receber" abre FormRegistrarContaReceber embutido em toggle. Nenhum hook/api/type tocado. Commit 49b760d junto com TASK-084)
+AGENT: hanzo
+FLUXO: Correcao
+DEPENDENCIAS: nenhuma
+CONTEXTO A LER: regra-de-negocio.md item 13; stack.md "Estrutura de pastas (src/)"
+ESCOPO: adicionar rota `/contas-receber` -> `ListaContasReceber` em routes.tsx, e dentro de `ListaContasReceber.tsx` embutir um toggle "Nova conta a receber" que abre `FormRegistrarContaReceber` acima da lista.
+CRITERIO DE ACEITE:
+1. `/contas-receber` renderiza a lista sem erro de rota.
+2. Botao abre `FormRegistrarContaReceber` (RECEBIVEL/EMPRESTIMO ja resolvidos internamente pelo form).
+3. Nenhum hook/api/type e alterado.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/app/routes.tsx, MyFinanceFrontEnd/src/features/contas-receber/ListaContasReceber.tsx
+NAO FAZER: nao editar FormRegistrarContaReceber.tsx, FormRegistrarRecebimento.tsx, hooks/ ou types.ts.
+RETORNO ESPERADO: diff dos dois arquivos + confirmacao de que a rota funciona localmente.
+
+---
+
+## TASK-086 — Style review Bloco A
+
+STATUS: CONCLUIDA + APROVADA PELO STYLE de primeira (build+lint limpos, itens 6 e 13 respeitados, nenhuma logica nova vazou pro componente de rota). 2 observacoes nao bloqueantes: UX de toggle inconsistente entre as duas telas (nao e regra quebrada); FormContaFixa/FormRegistrarContaReceber deveriam estar em components/ por convencao do stack.md, mas isso e divida pre-existente de tasks anteriores, fora do escopo desta entrega
+AGENT: style
+FLUXO: Correcao
+DEPENDENCIAS: TASK-084, TASK-085
+CONTEXTO A LER: clean-code.md; regra-de-negocio.md itens 6 e 13
+ESCOPO: revisar as duas rotas e os toggles de criacao embutidos contra clean-code.md e a regra de negocio (nada de logica nova sendo criada, so cabeamento).
+CRITERIO DE ACEITE: aprovado ou lista de correcoes pontuais.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + tarefa de correcao no esquema da Secao 4, se houver.
+
+**Mapa de dependencia Bloco A:** 084 e 085 paralelas (arquivos disjuntos) -> 086 depende de ambas.
+
+---
+
+## Bloco B — Shell de navegacao
+
+## TASK-087 — AppShell (sidebar desktop + topbar/drawer mobile)
+
+STATUS: CONCLUIDA (build+lint limpos. Sidebar sticky desktop, topbar+drawer mobile, NavLink com destaque bg-primary/10 no ativo, rodape com usuario+logout via useAuth. So tokens de identidade-visual.md, zero cor crua. Commit d6c7578)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: nenhuma
+CONTEXTO A LER: identidade-visual.md inteiro; stack.md "Estrutura de pastas (src/)" secao app/
+ESCOPO: criar `app/AppShell.tsx`, componente de layout puro (sem fetch, sem regra de negocio) que recebe `children` e renderiza a navegacao com os 9 destinos: Dashboard(/), Contas(/contas), Cartao(/cartao), Investimentos(/investimentos), Contas Fixas(/contas-fixas), Contas a Receber(/contas-receber), Lancamentos(/lancamentos), Categorias(/categorias), Limites de Gasto(/limites-gasto). Usa `useAuth` (ja existente) so pra exibir nome do usuario + acao Sair na sidebar/topbar. Item ativo via NavLink.
+  Wireframe desktop (sidebar fixa a esquerda, bg-surface/border-subtle; main em bg-base):
+  ```
+  +-------------------------------------------+-------------------+
+  | Financeiro Pessoal                         | <conteudo da      |
+  | ------------------------                   |  rota atual,      |
+  | > Dashboard        (ativo: accent)         |  max-w-2xl        |
+  |   Contas                                   |  mx-auto>         |
+  |   Cartao de credito                        |                   |
+  |   Investimentos                            |                   |
+  |   Contas Fixas                              |                   |
+  |   Contas a Receber                          |                   |
+  |   Lancamentos                               |                   |
+  |   Categorias                                |                   |
+  |   Limites de Gasto                          |                   |
+  | ------------------------                    |                   |
+  | Ola, {usuario}   [ Sair ]                   |                   |
+  +-------------------------------------------+-------------------+
+  ```
+  Wireframe mobile (< md, topbar compacta com hamburguer abrindo drawer com os mesmos itens + Sair).
+  Contrato ilustrativo (esqueleto, nao implementacao): `type AppShellProps = { children: ReactNode }`; `export function AppShell({ children }: AppShellProps): JSX.Element`
+CRITERIO DE ACEITE:
+1. Todos os 9 links renderizam com `to` correto (mesmo que /lancamentos e /categorias ainda nao tenham rota ate os Blocos C/D rodarem - nao e bloqueante, e so um link ainda sem destino).
+2. Rota ativa recebe destaque visual (accent) via NavLink.
+3. < md esconde a sidebar fixa e mostra topbar com toggle de drawer.
+4. Usa exclusivamente tokens de identidade-visual.md (nenhuma cor hardcoded fora da paleta).
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/app/AppShell.tsx (novo)
+NAO FAZER: nao tocar routes.tsx, ProtectedRoute.tsx ou paginas de feature nesta task.
+RETORNO ESPERADO: arquivo novo + descricao do resultado em desktop e mobile.
+
+---
+
+## TASK-088 — AuthenticatedLayout + rotas aninhadas em routes.tsx
+
+STATUS: CONCLUIDA (build limpo. Todas as 10 rotas (login+8 protegidas+catch-all) preservadas, incluindo /contas-fixas e /contas-receber. ProtectedRoute > AppShell > Outlet, nenhum dos dois editado. Kira conferiu o arquivo e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-087, TASK-084, TASK-085
+CONTEXTO A LER: stack.md "Estrutura de pastas (src/)"
+ESCOPO: criar `app/AuthenticatedLayout.tsx` que compoe `ProtectedRoute` (existente, intocado) + `AppShell` (087) + `<Outlet/>` do react-router. Refatorar `routes.tsx` de `<Routes>` flat para uma `<Route element={<AuthenticatedLayout/>}>` pai envolvendo todas as rotas hoje protegidas (/, /investimentos, /contas, /cartao, /cartao/relatorio, /limites-gasto) MAIS as duas rotas orfas ja cabeadas em 084/085 (/contas-fixas, /contas-receber). /login e o catch-all `*` ficam FORA do layout autenticado.
+  Contrato ilustrativo: `export function AuthenticatedLayout(): JSX.Element` // ProtectedRoute > AppShell > Outlet
+CRITERIO DE ACEITE:
+1. Todas as rotas hoje existentes continuam navegaveis nos mesmos paths.
+2. Usuario nao autenticado acessando qualquer rota protegida ainda cai em /login (comportamento de ProtectedRoute preservado).
+3. O shell (087) envolve visualmente toda pagina protegida.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/app/AuthenticatedLayout.tsx (novo), MyFinanceFrontEnd/src/app/routes.tsx
+NAO FAZER: nao editar ProtectedRoute.tsx nem AppShell.tsx; nao mudar nenhum path de rota existente.
+RETORNO ESPERADO: diff + confirmacao manual de que /login e as rotas protegidas continuam funcionando.
+
+---
+
+## TASK-089 — Remover header duplicado do Dashboard
+
+STATUS: CONCLUIDA (build limpo. Saudacao/logout removidos, imports orfaos limpos. Wrapper externo (mx-auto max-w-2xl px-4 py-8) tambem removido por duplicar o <main> do AppShell - so os 3 cards de dominio restam, intactos. Kira conferiu o arquivo e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Melhoria
+DEPENDENCIAS: TASK-088
+CONTEXTO A LER: DashboardPage.tsx atual
+ESCOPO: remover a saudacao "Ola, {usuario}" + botao Sair do header de `DashboardPage.tsx`, ja que `AppShell` (087) passa a exibir isso globalmente.
+CRITERIO DE ACEITE:
+1. DashboardPage nao duplica nome/logout.
+2. Os 3 cards de dominio (CardSaldoProjetado, GraficoEntradasSaidas, LimiteGastoIndicador) continuam intactos.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/dashboard/DashboardPage.tsx
+NAO FAZER: nao tocar nos componentes filhos (CardSaldoProjetado, GraficoEntradasSaidas, LimiteGastoIndicador).
+RETORNO ESPERADO: diff do arquivo.
+
+---
+
+## TASK-090 — Style review Bloco B
+
+STATUS: CONCLUIDA + APROVADA PELO STYLE apos 2 rodadas (build+lint limpos no final). Rodada 1: 3 achados reais - NAV_ITEMS com links pra /lancamentos e /categorias sem sinalizacao de rota pendente; sentence case quebrado em 3 labels (Contas Fixas/Contas a Receber/Limites de Gasto); "Financeiro Pessoal" duplicado 3x sem extracao, diferente do padrao ja aplicado em NavList/UserFooter. Rodada 2: hanzo comentou explicitamente a pendencia de rota (referenciando TASK-096/Bloco D), corrigiu os 3 labels pra sentence case, extraiu BrandTitle(). Kira conferiu o diff e o build antes de aprovar
+AGENT: style
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-087, TASK-088, TASK-089
+CONTEXTO A LER: clean-code.md; identidade-visual.md
+ESCOPO: revisar AppShell/AuthenticatedLayout/routes.tsx contra clean-code.md (responsabilidade unica: guarda de auth vs. chrome visual) e identidade-visual.md (tokens corretos).
+CRITERIO DE ACEITE: aprovado ou lista de correcoes pontuais.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + tarefa de correcao, se houver.
+
+**Mapa de dependencia Bloco B:** 087 independente -> 088 depende de 087+084+085 -> 089 depende de 088 -> 090 depende de 087/088/089.
+
+---
+
+## Bloco C — Pagina de Lancamentos
+
+## TASK-091 — Camada de dados: types/api/query-keys (lancamentos)
+
+STATUS: CONCLUIDA (build limpo via tsc -b. Campos conferidos 1:1 contra CriarLancamentoRequest.cs/EditarLancamentoRequest.cs/LancamentoResponseDto.cs reais. StatusLancamento inclui os 3 valores do backend, PAGO/PENDENTE/SUGERIDO com comentario explicando que SUGERIDO e v2. Reconstruido intacto apos o incidente de revert - era untracked, sobreviveu. Commit 5046a53)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: nenhuma
+CONTEXTO A LER: regra-de-negocio.md itens 1, 2, 5; MyFinances/Controllers/LancamentosController.cs; DTOs/CriarLancamentoRequest.cs, EditarLancamentoRequest.cs, LancamentoResponseDto.cs; stack.md "Estrutura de pastas (src/)"
+ESCOPO: criar types.ts (ProjecaoMesResponse: ano, mes, totalRecebidoNoMes, totalAReceberEsperadoNoMes, totalPagoNoMes, totalAPagarNoMes, saldoProjetado), api.ts (criarLancamento, editarLancamento, marcarLancamentoComoPago, removerLancamento, listarFluxoCaixa), query-keys.ts centralizando as chaves de cache por contaId.
+CRITERIO DE ACEITE:
+1. Todo campo de CriarLancamentoRequest/EditarLancamentoRequest/LancamentoResponseDto tem correspondente no TS.
+2. StatusLancamento inclui os 3 valores do backend (PENDENTE/SUGERIDO/PAGO), mesmo que o form (094) so ofereca PENDENTE/PAGO como opcao (v1 nao usa SUGERIDO, item 5).
+3. Nenhuma chamada http fora de api.ts.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/lancamentos/types.ts, MyFinanceFrontEnd/src/features/lancamentos/api.ts, MyFinanceFrontEnd/src/features/lancamentos/query-keys.ts
+NAO FAZER: nao criar hooks nem componentes nesta task.
+RETORNO ESPERADO: os 3 arquivos novos.
+
+---
+
+## TASK-092 — hooks/ de lancamentos e transferencia
+
+STATUS: CONCLUIDA (build limpo via tsc -b. hooks de criar/editar/marcar-pago/remover lancamento invalidando fluxoCaixa(contaId); useCriarTransferencia invalida as DUAS contas (origem e destino). types.ts/api.ts ganharam TransferenciaResponse/CriarTransferenciaRequest, campos conferidos contra os DTOs reais. Commit 5046a53)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-091
+CONTEXTO A LER: regra-de-negocio.md itens 3, 12 (transferencia); DTOs/CriarTransferenciaRequest.cs, TransferenciaResponse.cs; Controllers/TransferenciasController.cs
+ESCOPO: criar hooks/useFluxoCaixa(contaId), hooks/useCriarLancamento, hooks/useEditarLancamento, hooks/useMarcarComoPago, hooks/useRemoverLancamento - todos invalidando query-keys.ts (091) apos mutation. Criar tambem hooks/useCriarTransferencia (POST /api/transferencias, request: contaOrigemId, contaDestinoId, valor, data, descricao?) e o types/api correspondente (TransferenciaResponse: id, data, valor, contaOrigemId, contaDestinoId?, descricao?) dentro da mesma feature lancamentos/ - decisao: transferencia so e alcancavel a partir da tela de Lancamentos (nao tem rota propria), entao fica colocada aqui em vez de abrir uma feature "transferencias/" quase vazia.
+CRITERIO DE ACEITE:
+1. Mutation de criar/editar/marcar-pago/remover invalida o fluxo-caixa da MESMA conta (contaId).
+2. useCriarTransferencia invalida o fluxo-caixa de AMBAS as contas envolvidas.
+3. Nenhum calculo de dominio no hook, so orquestracao de cache.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/lancamentos/hooks/*.ts, MyFinanceFrontEnd/src/features/lancamentos/types.ts (so para adicionar tipos de transferencia), MyFinanceFrontEnd/src/features/lancamentos/api.ts (so para adicionar chamada de transferencia), MyFinanceFrontEnd/src/features/lancamentos/query-keys.ts
+NAO FAZER: nao criar componentes JSX.
+RETORNO ESPERADO: arquivos novos/editados.
+
+---
+
+## TASK-093 — lib/: filtro de periodo (mes corrente)
+
+STATUS: CONCLUIDA (build limpo via tsc -b. filtrarLancamentosDoMes usa split de string ISO em vez de new Date() pra evitar deslocamento de fuso. Commit 5046a53)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-091
+CONTEXTO A LER: regra-de-negocio.md item 9 (recorte de mes calendario)
+ESCOPO: funcao pura `filtrarLancamentosDoMes(lancamentos: LancamentoResponseDto[], ano: number, mes: number): LancamentoResponseDto[]` que filtra client-side pela `data` do lancamento, ja que o endpoint nao aceita periodo.
+CRITERIO DE ACEITE:
+1. Funcao pura, sem hook, sem fetch (testavel isolada).
+2. Mesmo recorte de mes calendario usado no resto do dominio (item 9).
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/lancamentos/lib/filtrarPeriodo.ts
+NAO FAZER: nao decidir paginacao nem indicar "carregar mais" (fora do contrato atual do backend).
+RETORNO ESPERADO: arquivo novo.
+
+---
+
+## TASK-094 — components/: LancamentoItem, FormLancamento, FormTransferencia
+
+STATUS: CONCLUIDA (build limpo. Sinal DEBIT/CREDIT nunca decidido pelo front (so tabela label/cor sobre tipo ja resolvido); status v1 restrito a PENDENTE/PAGO no form (SUGERIDO cobre badge de exibicao mas nunca e opcao); FormTransferencia sem campo tipo/status; AvisoLimiteGasto so em DEBIT+categoria selecionada, ano/mes extraidos da data do lancamento. Kira conferiu os 3 arquivos, os imports cruzados (formatarData, AvisoLimiteGasto, CategoriaSelect, useContasParaSelecao) e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-092, TASK-093, TASK-103
+CONTEXTO A LER: regra-de-negocio.md itens 1 (simbolo manual), 2 (DEBIT/CREDIT), 3 (transferencia), 5 (PENDENTE->PAGO), 14 (aviso de limite); identidade-visual.md (badges de status); features/lancamentos/components/AvisoLimiteGasto.tsx (ja existente, reaproveitar); features/categorias/components/CategoriaSelect.tsx (TASK-103, dependencia cruzada)
+ESCOPO: `LancamentoItem` (apresentacao: descricao, valor, badge tipo DEBIT/CREDIT com cor negativo/positivo, badge status com cor pago/pendente, simbolo de `manual`, acoes Marcar como pago [so se PENDENTE]/Editar/Remover com confirmacao). `FormLancamento` (criar/editar, mesmo padrao de FormContaFixa: prop opcional `lancamentoParaEditar` decide o modo; campos descricao, valor, tipo, data, status [PENDENTE|PAGO apenas, item 5 v1], categoria via CategoriaSelect (103), renderiza AvisoLimiteGasto abaixo do campo categoria quando tipo=DEBIT e categoriaId selecionado). `FormTransferencia` (contaOrigemId, contaDestinoId, valor, data, descricao? - sem campo tipo/status). Segmented control "Lancamento"/"Transferencia" alternando os dois formularios (aprovado, P4) fica na pagina (TASK-095), nao aqui.
+CRITERIO DE ACEITE:
+1. Status PENDENTE mostra acao "Marcar como pago", status PAGO nao mostra essa acao.
+2. Remover exige confirmacao inline (mesmo padrao ContaFixaItem).
+3. FormLancamento so oferece PENDENTE/PAGO no select de status (nunca SUGERIDO, item 5).
+4. AvisoLimiteGasto so aparece com tipo=DEBIT.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/lancamentos/components/LancamentoItem.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FormLancamento.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FormTransferencia.tsx
+NAO FAZER: nao editar AvisoLimiteGasto.tsx nem CategoriaSelect.tsx (so consumir).
+RETORNO ESPERADO: 3 arquivos novos.
+
+---
+
+## TASK-095 — LancamentosPage (com segmented control Lancamento/Transferencia)
+
+STATUS: CONCLUIDA (build limpo. Seletor de conta via useContasParaSelecao, fetch de fluxo-caixa isolado em componente interno FluxoDeCaixaDaConta so montado com conta selecionada + key={contaId} pra remount limpo ao trocar de conta - desvio pragmatico documentado por restricao de arquivo unico. Estado EstadoFormulario cobre criar(lancamento/transferencia)/editar. Kira conferiu o arquivo e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-094
+CONTEXTO A LER: features/contas-receber/hooks/useContasParaSelecao.ts (reaproveitar, banco+investimento, exclui cartao); features/contas-receber/FormRegistrarContaReceber.tsx (padrao de segmented control ja usado, replicar aqui pra Lancamento/Transferencia)
+ESCOPO: componente roteado `LancamentosPage`: seletor de conta no topo (reaproveita useContasParaSelecao), lista de lancamentos da conta selecionada filtrada pelo mes corrente (093), segmented control "Lancamento"/"Transferencia" alternando FormLancamento/FormTransferencia (094), botao "Novo".
+CRITERIO DE ACEITE:
+1. Sem conta selecionada, mostra estado vazio pedindo selecao.
+2. Troca de conta refaz o fetch do fluxo-caixa daquela conta.
+3. Criar transferencia nao exige que a conta selecionada seja necessariamente a origem (usuario escolhe origem/destino dentro do FormTransferencia).
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/lancamentos/LancamentosPage.tsx
+NAO FAZER: nao criar rota nesta task.
+RETORNO ESPERADO: arquivo novo.
+
+---
+
+## TASK-096 — Rota /lancamentos
+
+STATUS: CONCLUIDA (build limpo. /lancamentos adicionada, todas as 9 rotas do AppShell agora tem destino real - nenhum link morto restante. Kira conferiu o arquivo e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-095, TASK-088
+CONTEXTO A LER: stack.md "Estrutura de pastas (src/)"
+ESCOPO: adicionar `<Route path="/lancamentos" element={<LancamentosPage/>}/>` dentro do bloco aninhado sob AuthenticatedLayout em routes.tsx.
+CRITERIO DE ACEITE: /lancamentos navegavel, protegida, dentro do shell.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/app/routes.tsx
+NAO FAZER: nao alterar outras rotas.
+RETORNO ESPERADO: diff de routes.tsx.
+
+---
+
+## TASK-097 — Style review Bloco C
+
+STATUS: CONCLUIDA + APROVADA PELO STYLE apos 2 rodadas (build+lint limpos no final). Regra critica (itens 2, 3, 5, 9, 14) sem nenhum furo - sinal sempre de tipo, SUGERIDO nunca ofertado, transferencia sem tipo/status visivel, recorte de mes correto, aviso de limite so em DEBIT+categoria. Rodada 1: unico achado foi validarValor/converterValorParaNumero duplicadas identicas entre FormLancamento e FormTransferencia. Rodada 2: hanzo extraiu pra lib/validarValorLancamento.ts, mesmo padrao de contas-fixas/lib/validarContaFixa.ts. MODULO FRONT-GAPS FECHADO (TASK-084 a 106, 23/23)
+AGENT: style
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-091, TASK-092, TASK-093, TASK-094, TASK-095, TASK-096
+CONTEXTO A LER: clean-code.md; regra-de-negocio.md itens 1, 2, 3, 5, 9, 14
+ESCOPO: revisar toda a feature lancamentos/ contra clean-code.md e a regra (sinal DEBIT/CREDIT nunca decidido no front, status v1 sem SUGERIDO, exclusao de gasto/receita de transferencia continua responsabilidade do backend).
+CRITERIO DE ACEITE: aprovado ou lista de correcoes pontuais.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + tarefa de correcao, se houver.
+
+**Mapa de dependencia Bloco C:** 091 -> 092, 093 (paralelas) -> 094 (depende de 092+093 **e de TASK-103, Bloco D**) -> 095 -> 096 (depende tambem de 088) -> 097.
+
+**Dependencia cruzada critica: TASK-094 (Bloco C) depende de TASK-103 (Bloco D, CategoriaSelect).** Recomenda-se rodar TASK-098 a 103 (Bloco D) antes de fechar TASK-094, mesmo a ordem de apresentacao sendo A/B/C/D.
+
+---
+
+## Bloco D — Pagina de Categorias (revisado em 2026-07-26: reativar + editar aprovados)
+
+## TASK-098 — Backend: endpoint Reativar categoria
+
+STATUS: CONCLUIDA (452/452 testes GREEN, sem regressao. Reativar seta Arquivada=false, lanca CategoriaNaoEncontradaException se nao existir, NAO cascateia pra subcategorias. Mantido padrao de excecao do CategoriaService, sem migrar pra tupla. POST /api/categorias/{id}/reativar, 204/404, mesmo padrao de rota do ContaFixaController. Commit 2b2cde9, feito pelo proprio levi sem Kira pedir - aceito pois tocou so os 3 arquivos permitidos)
+AGENT: levi
+FLUXO: Implementacao
+DEPENDENCIAS: nenhuma
+CONTEXTO A LER: regra-de-negocio.md item 7 inteiro; MyFinances/MyFinances/Controllers/ContaFixaController.cs (metodo Reativar) e Services/ContaFixaService.cs (metodo ReativarAsync) como referencia de rota/verbo/retorno a replicar (POST .../reativar, 204 sucesso, 404 nao encontrado); Services/CategoriaService.cs metodo Arquivar (padrao interno de excecao ja estabelecido nesta classe - CategoriaNaoEncontradaException - a MANTER, nunca migrar para tupla)
+ESCOPO: adicionar `Task Reativar(Guid id)` em ICategoriaService/CategoriaService (seta Arquivada=false, lanca CategoriaNaoEncontradaException se nao existir, SEM cascatear para subcategorias) e POST /api/categorias/{id}/reativar em CategoriasController (204 sucesso via try/catch traduzindo CategoriaNaoEncontradaException para 404, mesmo padrao ja usado no metodo Arquivar do proprio controller).
+CRITERIO DE ACEITE:
+1. POST /api/categorias/{id}/reativar em categoria com Arquivada=true retorna 204 e Arquivada passa a false.
+2. Mesma chamada em id inexistente retorna 404.
+3. Subcategorias da categoria reativada NAO tem Arquivada alterado por este endpoint (pendencia sinalizada: regra-de-negocio.md item 7 nao define isso explicitamente; decisao de nao cascatear e por seguranca, nao confirmada).
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/ICategoriaService.cs, MyFinances/MyFinances/Services/CategoriaService.cs, MyFinances/MyFinances/Controllers/CategoriasController.cs
+NAO FAZER: nao cascatear reativacao para subcategorias; nao adotar retorno em tupla (bool,string?) do ContaFixaService - CategoriaService so usa excecao; nao alterar o verbo de Arquivar (PATCH) para uniformizar com Reativar (POST) - risco de regressao em rota ja usada, fora de escopo.
+RETORNO ESPERADO: endpoint funcionando; confirmar explicitamente que a decisao de nao cascatear foi aplicada, nao esquecida.
+
+---
+
+## TASK-099 — Front: camada de dados (types/api/query-keys) de Categoria
+
+STATUS: CONCLUIDA (build limpo. Tipo PascalCase confirmado contra Program.cs/TipoCategoria.cs reais, comentario documenta a conversao pendente pro CampoLimiteGasto. Rotas conferidas 1:1 contra CategoriasController.cs (GET com tipo/arquivada, PUT, PATCH arquivar, POST reativar). Kira conferiu os 3 arquivos e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-098
+CONTEXTO A LER: regra-de-negocio.md item 7; MyFinances/MyFinances/Controllers/CategoriasController.cs; DTOs/Categoria/*.cs; stack.md "Frontend (React)"; features/contas-fixas/{types.ts,api.ts,query-keys.ts} como padrao de estilo
+ESCOPO: types.ts com CategoriaResponse (id, nome, tipo: "Despesa"|"Receita" - PascalCase, NAO "DESPESA"/"RECEITA", ver achado de contrato acima -, parentId?, subcategorias: CategoriaResponse[] ja aninhadas, arquivada), CriarCategoriaRequest (nome, tipo, parentId?), EditarCategoriaRequest (nome, parentId? - tipo NAO faz parte do payload de edicao, imutavel). api.ts: criarCategoria, editarCategoria, listarCategorias(tipo?, arquivada?), arquivarCategoria, reativarCategoria. query-keys.ts.
+CRITERIO DE ACEITE:
+1. Tipo tipado como "Despesa"|"Receita" com comentario explicando a serializacao (mesmo padrao do comentario em investimentos/types.ts sobre TipoAtivo).
+2. listarCategorias sem parentId de query (hierarquia ja vem aninhada no response).
+3. Nao existe GET /api/categorias/{id} no backend (so GET lista) - nao inventar funcao de "porId".
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/categorias/types.ts (novo), MyFinanceFrontEnd/src/features/categorias/api.ts (novo), MyFinanceFrontEnd/src/features/categorias/query-keys.ts (novo)
+NAO FAZER: nao criar hooks nem componentes nesta task.
+RETORNO ESPERADO: os 3 arquivos.
+
+---
+
+## TASK-100 — Front: hooks de Categoria
+
+STATUS: CONCLUIDA (build limpo. 5 hooks - useCategorias, useCriarCategoria, useEditarCategoria, useArquivarCategoria, useReativarCategoria - todos invalidando categoriasKeys.lista() (prefix match cobre qualquer filtro). Nao duplicou hooks de limite de gasto ja existentes. Kira conferiu os 5 arquivos e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-099
+CONTEXTO A LER: regra-de-negocio.md item 7
+ESCOPO: hooks/useCategorias(tipo?: "Despesa"|"Receita"), hooks/useCriarCategoria, hooks/useEditarCategoria, hooks/useArquivarCategoria, hooks/useReativarCategoria - todos invalidando a query-key de lista (099) apos mutation.
+CRITERIO DE ACEITE:
+1. Criar subcategoria (parentId preenchido) invalida a mesma query-key da lista pai.
+2. Nenhum calculo de hierarquia no hook (arvore ja vem pronta do backend).
+3. Nao reimplementar hooks de limite de gasto (useDefinirLimiteGasto/useRemoverLimiteGasto ja existem em features/limite-gasto/hooks e ja sao consumidos por CampoLimiteGasto.tsx).
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/categorias/hooks/*.ts (novo)
+NAO FAZER: nao criar componentes JSX.
+RETORNO ESPERADO: arquivos novos.
+
+---
+
+## TASK-101 — components/: CategoriaItem (recursivo, com arquivar/reativar e limite embutido)
+
+STATUS: CONCLUIDA (build limpo. Recursao aninha subcategorias com pl-4 border-l, CampoLimiteGasto so em Despesa com conversao tipada PascalCase->CAIXA-ALTA, arquivar/reativar mutuamente exclusivos, badge Arquivada com token neutro. Kira conferiu o arquivo, o tipo de CampoLimiteGasto e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-100
+CONTEXTO A LER: regra-de-negocio.md itens 7 e 14; features/categorias/components/CampoLimiteGasto.tsx (ja existente, espera categoriaTipo em CAIXA ALTA - converter o PascalCase do backend antes de passar como prop, ver achado de contrato); features/limite-gasto/hooks/useLimitesGasto.ts (reaproveitar, nao criar endpoint novo)
+ESCOPO: componente recursivo que renderiza uma categoria e suas `subcategorias` aninhadas (indentacao), com `CampoLimiteGasto` embutido quando `tipo === "Despesa"` (convertendo pra "DESPESA" antes de passar a prop). Badge "Arquivada" quando aplicavel. Botao Arquivar (categoria ativa) OU Reativar (categoria arquivada) via useArquivarCategoria/useReativarCategoria - nunca os dois ao mesmo tempo. Acao "Editar" abrindo FormCategoria (102) em modo edicao. `limiteAtual` de cada categoria vem de um mapa categoriaId->LimiteGastoResponse construido no componente pai (104) a partir de useLimitesGasto(), passado via prop.
+CRITERIO DE ACEITE:
+1. Subcategorias renderizam aninhadas, nao em lista plana.
+2. Categoria tipo Receita nunca renderiza CampoLimiteGasto.
+3. Categoria arquivada mostra Reativar (nunca Arquivar); categoria ativa mostra Arquivar (nunca Reativar).
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/categorias/components/CategoriaItem.tsx (novo)
+NAO FAZER: nao editar CampoLimiteGasto.tsx.
+RETORNO ESPERADO: arquivo novo.
+
+---
+
+## TASK-102 — components/: FormCategoria (criar + editar)
+
+STATUS: CONCLUIDA (build limpo. Prop categoriaParaEditar decide modo, tipo desabilitado e nunca reenviado em edicao, select de categoria-pai filtra por tipo+nivel0+ativa. Kira conferiu o arquivo e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-100
+CONTEXTO A LER: regra-de-negocio.md item 7; features/contas-fixas/FormContaFixa.tsx como padrao EXATO de prop opcional decidindo modo (contaFixaParaEditar -> aqui categoriaParaEditar)
+ESCOPO: FormCategoria.tsx com prop opcional `categoriaParaEditar?: CategoriaResponse`. Ausente = modo CRIAR: pede nome, tipo (Despesa/Receita via segmented control), parentId opcional (select de categorias do MESMO tipo, nivel 0 - sem subcategoria de subcategoria, item 7). Presente = modo EDITAR: tipo exibido mas desabilitado/nao reenviado (imutavel - EditarCategoriaRequest so aceita nome/parentId); so nome e parentId editaveis.
+CRITERIO DE ACEITE:
+1. Modo criar envia CriarCategoriaRequest (nome, tipo, parentId opcional) via useCriarCategoria.
+2. Modo editar envia EditarCategoriaRequest (nome, parentId) via useEditarCategoria, tipo nunca no payload.
+3. Select de parentId, em ambos os modos, so lista categorias ativas (nao arquivada) do mesmo tipo e sem parentId proprio (nivel 0).
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/categorias/FormCategoria.tsx (novo), MyFinanceFrontEnd/src/features/categorias/lib/validarCategoria.ts (novo)
+NAO FAZER: nao ofertar parentId de tipo diferente do selecionado nem de categoria arquivada/subcategoria; nao reintroduzir tipo como campo editavel em modo edicao.
+RETORNO ESPERADO: componente unico cobrindo criar+editar.
+
+---
+
+## TASK-103 — components/: CategoriaSelect
+
+STATUS: CONCLUIDA (build limpo. Achata categoria+subcategorias num select nativo com indentacao textual, filtra arquivadas. Mesma classe de select ja usada em FormRegistrarContaReceber, sem cor nova. Kira conferiu o arquivo e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-100
+CONTEXTO A LER: regra-de-negocio.md item 7
+ESCOPO: dropdown reutilizavel de categorias (achatando a arvore com indentacao textual por nivel, ex: "  Alimentacao > Restaurante"), filtravel por tipo (Despesa para lancamento DEBIT, Receita para CREDIT). Consumido por FormLancamento (Bloco C, TASK-094) alem da propria feature categorias.
+  Contrato ilustrativo: `type CategoriaSelectProps = { tipo: "Despesa" | "Receita"; value: string | undefined; onChange: (categoriaId: string) => void }`; `export function CategoriaSelect(props: CategoriaSelectProps): JSX.Element`
+CRITERIO DE ACEITE:
+1. Categorias arquivadas nao aparecem como opcao selecionavel.
+2. Hierarquia fica visualmente distinguivel (indentacao), sem duplicar chamada de API (reusa useCategorias de 100).
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/categorias/components/CategoriaSelect.tsx (novo)
+NAO FAZER: nao importar nada de features/lancamentos/ aqui (a dependencia e no sentido contrario: lancamentos importa categorias).
+RETORNO ESPERADO: arquivo novo.
+
+---
+
+## TASK-104 — CategoriasPage
+
+STATUS: CONCLUIDA (build limpo. Segmented control Despesa/Receita, mapa de limites montado por indexacao simples, um unico estado EstadoFormulario cobre criar/editar. Nova subcategoria via select de categoria-pai do proprio FormCategoria, decisao documentada, sem atalho dedicado. Kira conferiu o arquivo e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-101, TASK-102
+CONTEXTO A LER: regra-de-negocio.md item 7; features/contas-receber/FormRegistrarContaReceber.tsx (padrao de segmented control ja usado)
+ESCOPO: componente roteado: segmented control Despesa/Receita, lista de categorias top-level daquele tipo via CategoriaItem (101), busca useLimitesGasto() uma vez e monta o mapa categoriaId->limite passado a cada CategoriaItem, botao "Nova categoria" (FormCategoria, 102, sem parentId) e, por categoria, acao "Nova subcategoria" (mesmo FormCategoria com parentId preenchido).
+CRITERIO DE ACEITE:
+1. Trocar o toggle Despesa/Receita refaz a busca.
+2. Criar subcategoria a partir de uma categoria especifica preenche parentId corretamente sem o usuario digitar id nenhum.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/categorias/CategoriasPage.tsx (novo)
+NAO FAZER: nao criar rota nesta task.
+RETORNO ESPERADO: arquivo novo.
+
+---
+
+## TASK-105 — Rota /categorias
+
+STATUS: CONCLUIDA (build limpo. /categorias adicionada dentro de AuthenticatedLayout, todas as rotas anteriores preservadas incluindo /contas-fixas e /contas-receber. Kira conferiu o arquivo e o build antes de aprovar)
+AGENT: hanzo
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-104, TASK-088
+CONTEXTO A LER: stack.md "Estrutura de pastas (src/)"
+ESCOPO: adicionar `<Route path="/categorias" element={<CategoriasPage/>}/>` dentro do bloco aninhado sob AuthenticatedLayout em routes.tsx.
+CRITERIO DE ACEITE: /categorias navegavel, protegida, dentro do shell.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/app/routes.tsx
+NAO FAZER: nao alterar outras rotas.
+RETORNO ESPERADO: diff de routes.tsx.
+
+---
+
+## TASK-106 — Style review Bloco D
+
+STATUS: CONCLUIDA + APROVADA PELO STYLE apos 2 rodadas (455/455 testes GREEN no final). Rodada 1: 2 achados reais - CategoriaSelect duplicava subcategoria como opcao raiz com key repetida (GET /api/categorias sem parentId devolve subcategorias soltas no array alem de aninhadas, achatarCategorias nao filtrava); CategoriaService.Reativar nao validava se o pai da subcategoria estava arquivado (ValidarParent ja fazia essa checagem em Criar/Editar, mas Reativar foi escrito do zero na TASK-098 sem reusar - zero teste cobria Reativar). Rodada 2: hanzo filtrou achatarCategorias por !parentId (mesmo padrao de filtrarOpcoesDeCategoriaPai/categoriasTopLevel) e corrigiu comentario desatualizado em CategoriaItem; levi adicionou validacao de pai arquivado em Reativar (reaproveitando ObterCategoriaOuFalhar, sem tupla) + 3 testes novos (parent arquivado falha, raiz sucesso, parent ativo sucesso). MODULO CATEGORIAS FECHADO (TASK-098 a 106)
+AGENT: style
+FLUXO: Implementacao
+DEPENDENCIAS: TASK-098, TASK-099, TASK-100, TASK-101, TASK-102, TASK-103, TASK-104, TASK-105
+CONTEXTO A LER: regra-de-negocio.md itens 7 e 14 inteiros; clean-code.md; stack.md
+ESCOPO: validar TODO o Bloco D contra regra-de-negocio.md (hierarquia 1 nivel, tipo imutavel em edicao, limite so em DESPESA, nao-cascata de reativacao documentada) e clean-code.md (nenhum `any`, service sem acesso a DbContext direto, DTO nunca expondo entity crua).
+CRITERIO DE ACEITE: veredito (APROVADO ou tarefa de correcao no esquema padrao, redespachada ao agent original).
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito final do Bloco D.
+
+**Mapa de dependencia Bloco D:**
+```
+098 (backend: Reativar)
+  -> 099 (front: data layer) -> 100 (hooks)
+       -> 101 (CategoriaItem), 102 (FormCategoria), 103 (CategoriaSelect) [paralelas]
+            -> 104 (CategoriasPage, depende de 101+102) -> 105 (rota, depende de 104+088)
+  -> 106 (style, depende de 098 a 105) — ULTIMA task do bloco
+```
+
+**Nota de renumeracao:** a primeira proposta do killua (antes da aprovacao de reativar/editar) numerava o Bloco D como TASK-098 a 105 sem o endpoint de backend. Apos a aprovacao do usuario em 2026-07-26 (reativar + editar categoria), o bloco foi renumerado para TASK-098 a 106 pra caber a nova task de backend (098) no inicio. TASK-094 (Bloco C) referencia TASK-103 (CategoriaSelect), nao mais TASK-102 como numerado na proposta original.
