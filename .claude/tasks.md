@@ -1736,7 +1736,7 @@ RETORNO ESPERADO: diff dos dois arquivos + confirmacao de que a rota funciona lo
 
 ## TASK-086 — Style review Bloco A
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA + APROVADA PELO STYLE de primeira (build+lint limpos, itens 6 e 13 respeitados, nenhuma logica nova vazou pro componente de rota). 2 observacoes nao bloqueantes: UX de toggle inconsistente entre as duas telas (nao e regra quebrada); FormContaFixa/FormRegistrarContaReceber deveriam estar em components/ por convencao do stack.md, mas isso e divida pre-existente de tasks anteriores, fora do escopo desta entrega
 AGENT: style
 FLUXO: Correcao
 DEPENDENCIAS: TASK-084, TASK-085
@@ -2029,7 +2029,7 @@ RETORNO ESPERADO: arquivos novos.
 
 ## TASK-101 — components/: CategoriaItem (recursivo, com arquivar/reativar e limite embutido)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. Recursao aninha subcategorias com pl-4 border-l, CampoLimiteGasto so em Despesa com conversao tipada PascalCase->CAIXA-ALTA, arquivar/reativar mutuamente exclusivos, badge Arquivada com token neutro. Kira conferiu o arquivo, o tipo de CampoLimiteGasto e o build antes de aprovar)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-100
@@ -2047,7 +2047,7 @@ RETORNO ESPERADO: arquivo novo.
 
 ## TASK-102 — components/: FormCategoria (criar + editar)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. Prop categoriaParaEditar decide modo, tipo desabilitado e nunca reenviado em edicao, select de categoria-pai filtra por tipo+nivel0+ativa. Kira conferiu o arquivo e o build antes de aprovar)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-100
