@@ -2083,7 +2083,7 @@ RETORNO ESPERADO: arquivo novo.
 
 ## TASK-104 — CategoriasPage
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. Segmented control Despesa/Receita, mapa de limites montado por indexacao simples, um unico estado EstadoFormulario cobre criar/editar. Nova subcategoria via select de categoria-pai do proprio FormCategoria, decisao documentada, sem atalho dedicado. Kira conferiu o arquivo e o build antes de aprovar)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-101, TASK-102
