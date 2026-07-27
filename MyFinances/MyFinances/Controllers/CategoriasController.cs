@@ -79,4 +79,18 @@ public class CategoriasController : ControllerBase
             return NotFound(new { erro = ex.Message });
         }
     }
+
+    [HttpPost("{id}/reativar")]
+    public async Task<IActionResult> Reativar(Guid id)
+    {
+        try
+        {
+            await _categoriaService.Reativar(id);
+            return NoContent();
+        }
+        catch (CategoriaNaoEncontradaException ex)
+        {
+            return NotFound(new { erro = ex.Message });
+        }
+    }
 }

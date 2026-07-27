@@ -81,6 +81,15 @@ public class CategoriaService : ICategoriaService
         await _categoriaRepository.Salvar();
     }
 
+    public async Task Reativar(Guid id)
+    {
+        var categoria = await ObterCategoriaOuFalhar(id);
+
+        categoria.Arquivada = false;
+
+        await _categoriaRepository.Salvar();
+    }
+
     private async Task ValidarParentParaCriar(Guid parentId, TipoCategoria novoTipo)
     {
         await ValidarParent(parentId, novoTipo, isEdicao: false);
