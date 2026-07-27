@@ -14,26 +14,10 @@ import { dataDeHoje } from "@/features/cartao/lib/formatarData"
 // registrado no mesmo espirito da nota ja deixada em FormContaFixa.tsx.
 import { useContasParaSelecao } from "@/features/contas-receber/hooks/useContasParaSelecao"
 import { useCriarTransferencia } from "@/features/lancamentos/hooks/useCriarTransferencia"
-
-function validarValor(valor: string): string | null {
-  const valorNormalizado = valor.trim().replace(",", ".")
-
-  if (valorNormalizado.length === 0) {
-    return "Informe o valor."
-  }
-
-  const valorNumerico = Number(valorNormalizado)
-
-  if (Number.isNaN(valorNumerico) || valorNumerico <= 0) {
-    return "Informe um valor valido, maior que zero."
-  }
-
-  return null
-}
-
-function converterValorParaNumero(valorBruto: string): number {
-  return Number(valorBruto.trim().replace(",", "."))
-}
+import {
+  converterValorParaNumero,
+  validarValor,
+} from "@/features/lancamentos/lib/validarValorLancamento"
 
 // Validacao pura do formulario de transferencia (regra-de-negocio.md itens 3
 // e 12: movimentacao entre contas do proprio usuario, sem categoria/tipo -

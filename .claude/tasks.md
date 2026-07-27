@@ -1954,7 +1954,7 @@ RETORNO ESPERADO: diff de routes.tsx.
 
 ## TASK-097 — Style review Bloco C
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA + APROVADA PELO STYLE apos 2 rodadas (build+lint limpos no final). Regra critica (itens 2, 3, 5, 9, 14) sem nenhum furo - sinal sempre de tipo, SUGERIDO nunca ofertado, transferencia sem tipo/status visivel, recorte de mes correto, aviso de limite so em DEBIT+categoria. Rodada 1: unico achado foi validarValor/converterValorParaNumero duplicadas identicas entre FormLancamento e FormTransferencia. Rodada 2: hanzo extraiu pra lib/validarValorLancamento.ts, mesmo padrao de contas-fixas/lib/validarContaFixa.ts. MODULO FRONT-GAPS FECHADO (TASK-084 a 106, 23/23)
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-091, TASK-092, TASK-093, TASK-094, TASK-095, TASK-096

@@ -10,6 +10,10 @@ import { CategoriaSelect } from "@/features/categorias/components/CategoriaSelec
 import { AvisoLimiteGasto } from "@/features/lancamentos/components/AvisoLimiteGasto"
 import { useCriarLancamento } from "@/features/lancamentos/hooks/useCriarLancamento"
 import { useEditarLancamento } from "@/features/lancamentos/hooks/useEditarLancamento"
+import {
+  converterValorParaNumero,
+  validarValor,
+} from "@/features/lancamentos/lib/validarValorLancamento"
 import type { LancamentoResponse, TipoLancamento } from "@/features/lancamentos/types"
 
 // Status ofertado no form (regra-de-negocio.md item 5): SUGERIDO NUNCA e uma
@@ -31,26 +35,6 @@ const STATUS_OPCOES: { value: StatusFormLancamento; label: string }[] = [
 const LABEL_POR_TIPO: Record<TipoLancamento, string> = {
   DEBIT: "Despesa",
   CREDIT: "Receita",
-}
-
-function validarValor(valor: string): string | null {
-  const valorNormalizado = valor.trim().replace(",", ".")
-
-  if (valorNormalizado.length === 0) {
-    return "Informe o valor."
-  }
-
-  const valorNumerico = Number(valorNormalizado)
-
-  if (Number.isNaN(valorNumerico) || valorNumerico <= 0) {
-    return "Informe um valor valido, maior que zero."
-  }
-
-  return null
-}
-
-function converterValorParaNumero(valorBruto: string): number {
-  return Number(valorBruto.trim().replace(",", "."))
 }
 
 function validarFormulario(descricao: string, valor: string, data: string): string | null {
