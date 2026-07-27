@@ -272,6 +272,55 @@ Soft-delete (`ativa = false`), mesmo padrao ja usado no resto do dominio
 hard-delete. Desativar o Ativo NAO apaga o historico de aportes (mesmo
 principio de fato historico imutavel do item 8.1).
 
+### 8.4 Rendimento (dividendo e valorizacao) — DECISAO CONFIRMADA COM O USUARIO EM 2026-07-27
+
+Rendimento e SEMPRE vinculado a um Ativo especifico — nunca solto/agregado
+sem ativo. Dois tipos, com origem MUITO diferente:
+
+- **DIVIDENDO:** cadastro MANUAL pelo usuario (form: `valor` + `data`,
+  vinculado ao ativo). E o unico tipo que o usuario lanca diretamente.
+- **VALORIZACAO:** NUNCA lancado manualmente — e derivado AUTOMATICAMENTE
+  pelo sistema, conforme os gatilhos abaixo.
+
+**Entidade `rendimento`:** `ativo_id` (FK, not null), `tipo` (`DIVIDENDO` |
+`VALORIZACAO`), `origem` (`MANUAL` | `AUTOMATICO`), `valor` (sempre > 0 se
+`DIVIDENDO`; pode ser negativo se `VALORIZACAO` — desvalorizacao, mesmo
+espirito de `evolucao_percentual`, item 8.2, que ja aceita negativo),
+`data`.
+
+**Criacao de DIVIDENDO (manual):** valida `valor > 0` e `ativo` existente E
+`ativa = true`. `origem = MANUAL`.
+
+**Criacao AUTOMATICA de VALORIZACAO — gatilho (b): edicao de `valor_atual`
+(item 8.2).** Ao atualizar `valor_atual` de `V_anterior` para `V_novo`, o
+sistema cria `Rendimento(tipo=VALORIZACAO, origem=AUTOMATICO, valor=V_novo
+- V_anterior, data=hoje)`. Se `V_novo == V_anterior`, NENHUM registro e
+criado (delta zero nao e evento). O valor pode ser negativo — nao ha piso
+em zero, desvalorizacao e informacao real, nao erro. Este mecanismo
+TAMBEM resolve a pendencia historica de falta de tabela de historico de
+`valor_atual` (ver "Pendencias a definir") — cada edicao vira um registro
+datado e auditavel.
+
+**Criacao AUTOMATICA de VALORIZACAO — gatilho (a): novo APORTE (item
+8.1) — `[REVISAR: pendente de confirmacao do usuario]`.** A regra 8.2 e
+explicita: "aportar mais NAO altera `valor_atual` automaticamente". Logo,
+um aporte isolado, por definicao, nao move `valor_atual` — e a unica
+formula honesta de VALORIZACAO e um delta de `valor_atual` (gatilho b).
+Gerar um registro de R$0,00 a cada aporte e ruido sem informacao; calcular
+uma "desvalorizacao por diluicao" (porque `valor_investido` sobe e
+`evolucao_percentual` cai) e matematicamente incoerente e economicamente
+falso — aportar capital novo nao e perda, e mostrar isso como
+desvalorizacao enganaria o usuario no grafico. RECOMENDACAO (nao decisao
+final): o gatilho (a) NAO gera nenhum registro de `Rendimento` — o aporte
+ja fica auditado por `ativo_aporte` (item 8.1), nenhuma informacao se
+perde. Fica como NO-OP explicito ate confirmacao do usuario.
+
+**Rendimento NAO entra em nenhum calculo de saldo.** Nao entra em
+`saldo_projetado` (item 9), nem em saldo de Conta (item 10), nem em
+`gasto_realizado_no_mes` (item 14). E puramente informativo — grafico/
+widget do dashboard (rendimento por tipo) e tela "Investimentos". Sem
+relacao com `Lancamento`/fluxo de caixa.
+
 ---
 
 ## 9. Projecao do mes (dashboard)
@@ -635,13 +684,18 @@ Historico da decisao (registrado para nao se perder de novo):
     valor atual, desativar.
   - Resumo por tipo (renda fixa vs renda variavel) para a tela
     "Investimentos".
+  - **Rendimento vinculado a Ativo (item 8.4, decisao de 2026-07-27):**
+    dividendo cadastrado manualmente pelo usuario e valorizacao derivada
+    automaticamente da edicao de `valor_atual`. Puramente informativo
+    (grafico/widget), sem entrar em `saldo_projetado` nem em saldo de
+    conta. SEM cotacao externa em nenhum ponto — mesma restricao do resto
+    do modulo (gatilho automatico via aporte segue `[REVISAR]`, ver 8.4).
 - **v2 (fora por enquanto):**
   - Qualquer cotacao via API externa (Brapi ou outra), em qualquer
     modalidade (sob demanda ou automatica).
   - Rentabilidade/serie historica automatica, sparkline com base em
     snapshots de valor (nao ha tabela de historico na v1 — ver "Pendencias a
     definir").
-  - Dividendos/proventos.
 
 **Na v1**, cofrinho e XP (sem detalhe de ativo) continuam como conta manual
 simples com `saldo_manual` (ver item 8). Ativo e um modulo separado, sem
@@ -661,8 +715,13 @@ relacao com Conta.
 - Ciclo da fatura: como capturar `data_fechamento` e `data_vencimento` do cartao
   (fixo por cartao ou lido do import).
 - (item 8) Sparkline por ativo e "% no mes" do total (presentes no mockup)
-  exigem historico de snapshots de `valor_atual` ao longo do tempo — nao
-  existe tabela de historico na v1. Ativo nasce mostrando evolucao "desde a
-  compra" (item 8.2), sem serie temporal; o historico de APORTES (item 8.1)
-  ja existe e pode alimentar essa serie temporal quando essa pendencia for
-  resolvida. Decidir se entra em v1.2 ou v2.
+  — **RESOLVIDO PARCIALMENTE em 2026-07-27 pelo item 8.4.** Toda edicao de
+  `valor_atual` agora gera `Rendimento(VALORIZACAO)` com delta e data — o
+  historico que faltava passa a existir a partir dai. Ressalva: a serie so
+  comeca a crescer a partir do primeiro registro gerado apos a
+  implementacao (TASK-155 em diante); edicoes de `valor_atual` anteriores
+  a essa data nao sao reconstruidas retroativamente. O historico de
+  APORTES (item 8.1) continua a parte, alimentando a serie de aportes.
+  Gatilho de VALORIZACAO por APORTE (item 8.4, gatilho a) segue
+  `[REVISAR]` — pendente de confirmacao do usuario, nao afeta o gatilho
+  por edicao de `valor_atual`, que ja esta fechado.

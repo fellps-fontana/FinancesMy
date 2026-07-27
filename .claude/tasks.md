@@ -2675,18 +2675,20 @@ RETORNO ESPERADO: veredito + achados.
 
 ---
 
-## TASK-141 — Front: botoes de acao rapida no Dashboard [REVISAR "Pagar conta"]
+## TASK-141 — Front: botoes de acao rapida no Dashboard
 
 STATUS: PENDENTE
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
 CONTEXTO A LER: mockups `.claude/context/mockups/02 Dashboard.dc.html`
-ESCOPO: adicionar os 3 botoes de acao rapida do mockup (Novo Lancamento, Transferir, Pagar Conta) ao `DashboardPage.tsx`. "Novo Lancamento" e "Transferir" tem destino claro (navegar para `/lancamentos` ja com o segmented control certo pre-selecionado, via query param ou state de rota). [REVISAR: "Pagar Conta" e ambiguo — pode significar marcar um Lancamento PENDENTE existente como pago (fluxo hoje em `/lancamentos`, acao "Marcar como pago" por item) OU pagar fatura de cartao (`PagarFaturaModal` em `/cartao`). Regra de negocio nao define isso. Kira deve perguntar ao usuario qual fluxo o botao abre antes do dispatch desta task, ou hanzo abre um menu com as duas opcoes.]
-CRITERIO DE ACEITE: 3 botoes navegam para destino funcional real (nenhum fica so visual).
+ESCOPO: adicionar os 3 botoes de acao rapida do mockup (Novo Lancamento, Transferir, Pagar Conta) ao `DashboardPage.tsx`. "Novo Lancamento" e "Transferir" navegam para `/lancamentos` ja com o segmented control certo pre-selecionado, via query param ou state de rota. "Pagar Conta" navega para `/cartao` (rota do modulo Cartao, onde ja existe o fluxo de pagamento de fatura via `PagarFaturaModal`) — decisao confirmada pelo usuario em 2026-07-27, resolve o `[REVISAR]` anterior.
+CRITERIO DE ACEITE:
+1. Os 3 botoes navegam para destino funcional real, nenhum fica so visual.
+2. "Pagar Conta" abre `/cartao` (nao a lista de lancamentos, nao um menu com duas opcoes).
 ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/dashboard/DashboardPage.tsx`, `MyFinanceFrontEnd/src/features/dashboard/components/AcoesRapidas.tsx` (novo)
-NAO FAZER: nao inventar fluxo novo de "pagar conta" no backend — so navegar para o que ja existe.
-RETORNO ESPERADO: 3 acoes funcionais (ou 2 + decisao pendente documentada, se "Pagar Conta" nao for esclarecido a tempo).
+NAO FAZER: nao inventar fluxo novo de "pagar conta" no backend — so navegar para o que ja existe em `/cartao`.
+RETORNO ESPERADO: 3 acoes funcionais.
 
 ---
 
@@ -2711,17 +2713,17 @@ RETORNO ESPERADO: widget funcional + confirmacao de que a garantia de contraste 
 
 STATUS: PENDENTE
 AGENT: hanzo
-DEPENDENCIAS: TASK-142
+DEPENDENCIAS: TASK-142, TASK-164
 FLUXO: Implementacao
-CONTEXTO A LER: `DashboardPage.tsx` (composicao atual: `CardSaldoProjetado`, `GraficoEntradasSaidas`, `LimiteGastoIndicador`)
-ESCOPO: sistema de widgets escolhiveis pelo usuario (modelo confirmado pelo usuario — decisao ja tomada, nao e omissao) incluindo, alem dos widgets ja existentes, grafico de investimentos (reusar `GraficoConsolidadoAtivos` da TASK-125) e um novo widget de "rendimentos" ([REVISAR: regra-de-negocio.md nao define "rendimento" como metrica — nao ha campo de rendimento/proventos no dominio (item 8: "Dividendos/proventos" esta EXPLICITAMENTE em v2, fora de escopo v1). Ate essa decisao ser tomada, o widget de "rendimentos" so pode mostrar `evolucao_percentual` agregada dos ativos (item 8.1, ja calculada), nao "rendimento" no sentido de proventos recebidos — confirmar com o usuario se e isso que ele quer dizer]). Preferencia de quais widgets exibir persistida (localStorage e suficiente na v1, sem endpoint de preferencia de usuario no backend).
+CONTEXTO A LER: `DashboardPage.tsx` (composicao atual: `CardSaldoProjetado`, `GraficoEntradasSaidas`, `LimiteGastoIndicador`); regra-de-negocio.md item 8.4
+ESCOPO: sistema de widgets escolhiveis pelo usuario (modelo confirmado pelo usuario) incluindo, alem dos widgets ja existentes, grafico de investimentos (reusar `GraficoConsolidadoAtivos` da TASK-125) e o widget de "rendimentos" (resolvido pelo item 8.4: reusa `GraficoRendimentosPorTipo`/`useRendimentosResumo` da TASK-164 — dividendo cadastrado manualmente + valorizacao automatica derivada da edicao de `valor_atual`; NUNCA proventos de fonte externa). Preferencia de quais widgets exibir persistida (localStorage, sem endpoint de preferencia de usuario no backend).
 CRITERIO DE ACEITE:
-1. Usuario consegue ligar/desligar cada widget.
+1. Usuario consegue ligar/desligar cada widget, incluindo o de rendimentos.
 2. Preferencia sobrevive a reload da pagina.
 3. `CardSaldoProjetado` (formula do item 9, regra critica ja aprovada) NAO tem sua semantica alterada — so pode ser ligado/desligado, nunca reinterpretado.
 ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/dashboard/DashboardPage.tsx`, `MyFinanceFrontEnd/src/features/dashboard/components/SeletorWidgets.tsx` (novo), `MyFinanceFrontEnd/src/features/dashboard/lib/preferenciaWidgets.ts` (novo)
-NAO FAZER: nao criar endpoint de backend para preferencia de widget (localStorage resolve na v1); nao alterar a formula/logica de `CardSaldoProjetado`/`ProjecaoMesService` (regra critica ja fechada no item 9).
-RETORNO ESPERADO: dashboard configuravel funcional.
+NAO FAZER: nao criar endpoint de backend para preferencia de widget; nao alterar a formula/logica de `CardSaldoProjetado`/`ProjecaoMesService`; nao misturar rendimento com "cotacao"/proventos externos (item 8.4 e explicito: dividendo e so manual).
+RETORNO ESPERADO: dashboard configuravel funcional, incluindo widget de rendimentos.
 
 ---
 
@@ -2857,6 +2859,229 @@ FLUXO: Implementacao
 CONTEXTO A LER: identidade-visual.md; clean-code.md
 ESCOPO: revisao geral do bloco Global/infra (tema, PWA, nav mobile).
 CRITERIO DE ACEITE: veredito.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+
+---
+
+# Bloco M — Rendimentos (dividendo + valorizacao, regra-de-negocio.md item 8.4)
+
+Depende do bloco Investimentos ja existente (TASK-115 a 126), ainda
+PENDENTE nesta leva — `AtivoService.RegistrarAporte` (gatilho a) NAO
+existe no codigo hoje. O gatilho (b) — `AtivoService.AtualizarValorAtual`
+— ja existe e e o unico gatilho automatico com formula fechada (ver item
+8.4). Gatilho (a) fica como NO-OP documentado ate confirmacao do usuario
+(ver `[REVISAR]` em 8.4) — nenhuma task abaixo tenta calcular valorizacao
+a partir de aporte.
+
+Regra CRITICA deste bloco: calculo automatico de VALORIZACAO (delta de
+`valor_atual`, gatilho b). Segue ciclo TDD completo (killua esqueleto ->
+mike RED -> levi GREEN -> mike confirma -> style), mesmo padrao das
+rodadas anteriores (TASK-107 a 111, TASK-115 a 119). Dividendo manual e
+CRUD simples, sem TDD pesado — implementado junto no GREEN da regra
+critica (mesma classe de Service) e coberto por teste HTTP de integracao.
+
+---
+
+## TASK-153 — Enum TipoRendimento/OrigemRendimento + Entidade Rendimento + Configuration + migration
+
+STATUS: PENDENTE
+AGENT: levi
+DEPENDENCIAS: nenhuma
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 8.4 INTEIRO; `Domain/TipoAtivo.cs`/`Infrastructure/Configurations/AtivoConfiguration.cs` como padrao de estilo (enum com `ToStorageValue`/`FromStorageValue`, Configuration com `HasConversion`)
+ESCOPO: criar enum `TipoRendimento` (Dividendo, Valorizacao) e `OrigemRendimento` (Manual, Automatico), storage value MAIUSCULO snake (`DIVIDENDO`, `VALORIZACAO`, `MANUAL`, `AUTOMATICO`), seguindo exatamente `TipoAtivo.cs`. Criar entidade `Rendimento` (Id, AtivoId, Tipo, Origem, Valor, Data, CriadoEm) e navegacao `Ativo.Rendimentos` (`ICollection<Rendimento>`). Criar `RendimentoConfiguration : IEntityTypeConfiguration<Rendimento>` (`ToTable("rendimento")`, FK `AtivoId -> ativo.id`, `Valor` com `HasPrecision(18,2)`, sem `OnDelete` especial — `Ativo` nunca sofre hard-delete, item 8.3). Registrar `DbSet<Rendimento>` no `MyFinancesDbContext` e gerar a migration.
+CRITERIO DE ACEITE:
+1. Projeto compila.
+2. Migration aplicavel; tabela `rendimento` criada com FK para `ativo`.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Domain/Rendimento.cs` (novo), `MyFinances/MyFinances/Domain/TipoRendimento.cs` (novo), `MyFinances/MyFinances/Domain/OrigemRendimento.cs` (novo), `MyFinances/MyFinances/Domain/Ativo.cs`, `MyFinances/MyFinances/Infrastructure/Configurations/RendimentoConfiguration.cs` (novo), `MyFinances/MyFinances/Data/MyFinancesDbContext.cs`, `MyFinances/MyFinances/Migrations/**`
+NAO FAZER: nao criar Repository/Service ainda (TASK-154/155); nao adicionar CHECK de banco para "valor > 0 se DIVIDENDO" — validacao e do Service.
+RETORNO ESPERADO: migration aplicavel; build limpo.
+
+---
+
+## TASK-154 — Repository de Rendimento
+
+STATUS: PENDENTE
+AGENT: levi
+DEPENDENCIAS: TASK-153
+FLUXO: Implementacao
+CONTEXTO A LER: `Repositories/IAtivoRepository.cs`/`AtivoRepository.cs` como padrao de estilo
+ESCOPO: criar `IRendimentoRepository`/`RendimentoRepository` com `Adicionar(Rendimento)`, `ListarPorAtivo(Guid ativoId)` (ordenado por `Data`), `ListarTodos()` (para o resumo agregado do dashboard, TASK-160), `Salvar()`. Registrar no DI (`Program.cs`).
+CRITERIO DE ACEITE: build limpo; metodos nomeados por intencao.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Repositories/IRendimentoRepository.cs` (novo), `MyFinances/MyFinances/Repositories/RendimentoRepository.cs` (novo), `MyFinances/MyFinances/Program.cs`
+NAO FAZER: nao implementar nenhum calculo aqui (isso e Service/Calculator, TASK-155).
+RETORNO ESPERADO: repository testavel.
+
+---
+
+## TASK-155 — [REGRA CRITICA] Esqueleto: RendimentoService + RendimentoValorizacaoCalculator
+
+STATUS: PENDENTE
+AGENT: killua
+DEPENDENCIAS: TASK-154
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 8.4 INTEIRO; `Domain/ContaReceberSaldoCalculator.cs` como padrao arquitetural (calculadora pura estatica); `Services/AtivoService.cs` (metodo `AtualizarValorAtual`, sera o ponto de integracao)
+ESCOPO: esqueleto compilavel (corpo `NotImplementedException`) para: `Domain/RendimentoValorizacaoCalculator.cs` (metodo estatico puro `decimal? Calcular(decimal valorAtualAnterior, decimal valorAtualNovo)` — retorna `null` quando os dois valores sao iguais, delta caso contrario, conforme item 8.4 gatilho b); `Services/IRendimentoService.cs`/`Services/RendimentoService.cs` com `Task<Rendimento> RegistrarDividendo(Guid ativoId, decimal valor, DateOnly data)`, `Task RegistrarValorizacaoAutomatica(Guid ativoId, decimal valorAtualAnterior, decimal valorAtualNovo, DateOnly data)` (usa o Calculator; NO-OP se retornar `null`), `Task<IEnumerable<Rendimento>> ObterHistorico(Guid ativoId)`, `Task<RendimentosResumo> ObterResumoGeral()` (record `RendimentosResumo(decimal TotalDividendos, decimal TotalValorizacao, IEnumerable<Rendimento> Historico)` para o widget do dashboard, TASK-160). Definir tambem a assinatura de integracao: `AtivoService.AtualizarValorAtual` passa a receber `IRendimentoService` via construtor e, apos capturar `valorAtualAnterior` (ANTES de sobrescrever), chama `RegistrarValorizacaoAutomatica`. Kira cria/edita os arquivos a partir deste esqueleto.
+CRITERIO DE ACEITE:
+1. Projeto compila com a nova assinatura, incluindo `AtivoService` recebendo `IRendimentoService` no construtor, sem logica real nova.
+2. Nenhum metodo novo com logica real — todos `NotImplementedException`.
+ARQUIVOS PERMITIDOS: nenhum (killua nao escreve arquivo — Kira cria a partir do esqueleto)
+NAO FAZER: nao implementar a formula real (TASK-157); nao implementar nenhum caminho do gatilho (a)/aporte — esse gatilho e NO-OP explicito ate confirmacao do usuario (ver regra-de-negocio.md item 8.4).
+RETORNO ESPERADO: esqueleto compilavel + confirmacao de que `AtivoService` ja tem o ponto de integracao definido.
+
+---
+
+## TASK-156 — [REGRA CRITICA] RED: testes de valorizacao automatica
+
+STATUS: PENDENTE
+AGENT: mike
+DEPENDENCIAS: TASK-155
+FLUXO: Implementacao (rodada RED)
+CONTEXTO A LER: regra-de-negocio.md item 8.4 INTEIRO (gatilho b)
+ESCOPO: testes cobrindo: `RendimentoValorizacaoCalculator.Calcular` com delta positivo, delta negativo (desvalorizacao) e delta zero (retorna `null`); `RendimentoService.RegistrarValorizacaoAutomatica` cria `Rendimento(VALORIZACAO, origem=AUTOMATICO, valor=delta)` quando delta != 0, e NAO cria nada quando delta == 0; `AtivoService.AtualizarValorAtual`, ao ser chamado, gera exatamente UM `Rendimento(VALORIZACAO)` com o delta correto (integracao real, nao mock do calculator); chamar `AtualizarValorAtual` duas vezes com o MESMO valor nao duplica registro na segunda vez; duas edicoes sucessivas com valores diferentes geram dois registros distintos, `ObterHistorico` retorna ambos ordenados por `Data`. NAO escrever testes de `RegistrarDividendo` aqui (CRUD simples, sem TDD pesado — cobertura vem via TASK-161, testes HTTP).
+CRITERIO DE ACEITE: testes compilam e falham por `NotImplementedException`, nunca por erro de compilacao.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Domain/RendimentoValorizacaoCalculatorTests.cs` (novo), `MyFinances/MyFinances.Tests/Services/RendimentoServiceTests.cs` (novo), `MyFinances/MyFinances.Tests/Services/AtivoServiceTests.cs`
+NAO FAZER: nao implementar logica real; nao testar o gatilho (a)/aporte (NO-OP, fora de escopo ate confirmacao do usuario).
+RETORNO ESPERADO: RED confirmado.
+
+---
+
+## TASK-157 — [REGRA CRITICA] GREEN: implementar RendimentoService (valorizacao automatica + dividendo manual)
+
+STATUS: PENDENTE
+AGENT: levi
+DEPENDENCIAS: TASK-156
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 8.4 INTEIRO; testes da TASK-156 (leitura, nunca escrita)
+ESCOPO: implementar `RendimentoValorizacaoCalculator.Calcular` e `RendimentoService.RegistrarValorizacaoAutomatica`/`ObterHistorico`/`ObterResumoGeral` ate os testes da TASK-156 ficarem GREEN; integrar a chamada em `AtivoService.AtualizarValorAtual` (capturar `valorAtualAnterior` ANTES de sobrescrever `ativo.ValorAtual`, chamar `RegistrarValorizacaoAutomatica` DEPOIS de persistir). Implementar TAMBEM (sem RED dedicado, CRUD simples) `RendimentoService.RegistrarDividendo`: valida `valor > 0` (`ValorInvalidoException`, reaproveitar), valida `ativo` existente E `Ativa == true` (`AtivoNaoEncontradoException`, reaproveitar), cria `Rendimento(DIVIDENDO, origem=MANUAL)`.
+CRITERIO DE ACEITE:
+1. Todos os testes da TASK-156 GREEN.
+2. `RegistrarDividendo` rejeita valor <= 0 e ativo inexistente/desativado.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Domain/RendimentoValorizacaoCalculator.cs`, `MyFinances/MyFinances/Services/RendimentoService.cs`, `MyFinances/MyFinances/Services/IRendimentoService.cs`, `MyFinances/MyFinances/Services/AtivoService.cs`, `MyFinances/MyFinances/Services/IAtivoService.cs` (so se a assinatura do construtor precisar ajuste real), `MyFinances/MyFinances/Program.cs`
+NAO FAZER: nao alterar `MyFinances.Tests/**`; nao implementar nenhum caminho do gatilho (a)/aporte.
+RETORNO ESPERADO: implementacao completa, GREEN.
+
+---
+
+## TASK-158 — Confirmar GREEN valorizacao (mike)
+
+STATUS: PENDENTE
+AGENT: mike
+DEPENDENCIAS: TASK-157
+FLUXO: Implementacao (rodada GREEN)
+CONTEXTO A LER: nenhum — so roda a suite da TASK-156
+ESCOPO: rodar `RendimentoValorizacaoCalculatorTests`/`RendimentoServiceTests`/`AtivoServiceTests` (parte nova) e confirmar GREEN.
+CRITERIO DE ACEITE: 100% GREEN ou relatorio de bug.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao reescrever teste.
+RETORNO ESPERADO: confirmacao GREEN ou relatorio estruturado.
+
+---
+
+## TASK-159 — Style: revisao RendimentoService (regra critica + dividendo)
+
+STATUS: PENDENTE
+AGENT: style
+DEPENDENCIAS: TASK-158
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 8.4; clean-code.md
+ESCOPO: validar a formula de valorizacao (delta, aceita negativo, NO-OP em delta zero), a integracao com `AtivoService.AtualizarValorAtual` (ordem de captura do valor anterior), e a validacao de `RegistrarDividendo` (valor>0, ativo existente/ativo).
+CRITERIO DE ACEITE: veredito (APROVADO ou tarefa de correcao no esquema padrao).
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+
+---
+
+## TASK-160 — Controller/DTOs de Rendimento (dividendo + historico + resumo)
+
+STATUS: PENDENTE
+AGENT: levi
+DEPENDENCIAS: TASK-159
+FLUXO: Implementacao
+CONTEXTO A LER: clean-code.md "Organizacao (.NET)"; `Controllers/AtivosController.cs` (extender, padrao de excecao tipada -> status HTTP)
+ESCOPO: adicionar em `AtivosController.cs`: `POST /api/ativos/{id}/rendimentos` (`RegistrarDividendoRequest{ valor, data }` — SO tipo DIVIDENDO aceito no body, `VALORIZACAO` nunca vem de fora), `GET /api/ativos/{id}/rendimentos` (historico do ativo, os dois tipos juntos, ordenado por data), `GET /api/ativos/rendimentos-resumo` (agregado para o widget do dashboard: `{ totalDividendos, totalValorizacao, historico: RendimentoResponse[] }` combinando TODOS os ativos). DTOs: `RegistrarDividendoRequest`, `RendimentoResponse` (Id, AtivoId, Tipo, Origem, Valor, Data), `RendimentosResumoResponse`. Traducao de excecoes: `AtivoNaoEncontradoException`->404, `ValorInvalidoException`->400.
+CRITERIO DE ACEITE:
+1. Contrato documentado (rota, verbo, body, shape) para os 3 endpoints.
+2. `POST` rejeita qualquer tentativa de enviar `tipo` no body (nao existe campo tipo no request).
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Controllers/AtivosController.cs`, `MyFinances/MyFinances/DTOs/Rendimento/*.cs` (novo)
+NAO FAZER: nao colocar regra de negocio no controller.
+RETORNO ESPERADO: contrato de API dos 3 endpoints.
+
+---
+
+## TASK-161 — Testes HTTP dos endpoints de Rendimento (cobre dividendo CRUD)
+
+STATUS: PENDENTE
+AGENT: mike
+DEPENDENCIAS: TASK-160
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 8.4
+ESCOPO: testes HTTP cobrindo: registrar dividendo (201, valor/data corretos, origem=MANUAL); dividendo com valor<=0 -> 400; dividendo em ativo inexistente/desativado -> 404; `GET .../rendimentos` retorna dividendo + valorizacao juntos, ordenados; `PATCH .../valor-atual` seguido de `GET .../rendimentos` mostra o `Rendimento(VALORIZACAO)` gerado automaticamente (prova end-to-end do gatilho b via HTTP); `GET /api/ativos/rendimentos-resumo` soma corretamente totais de dividendo e valorizacao de multiplos ativos.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Controllers/AtivosControllerTests.cs`
+NAO FAZER: nao alterar controller/service sem reportar.
+RETORNO ESPERADO: testes passando ou relatorio de bug.
+
+---
+
+## TASK-162 — Front: camada de dados (types/api/hooks) de Rendimento
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-160
+FLUXO: Implementacao
+CONTEXTO A LER: stack.md "Frontend (React)"; `features/investimentos/{types.ts,api.ts,query-keys.ts}` (padrao existente)
+ESCOPO: adicionar em `types.ts` (`TipoRendimento`, `RendimentoResponse`, `RegistrarDividendoRequest`, `RendimentosResumoResponse`), `api.ts` (`registrarDividendo`, `listarRendimentosDoAtivo`, `buscarRendimentosResumo`), `query-keys.ts` (`investimentosKeys.rendimentos(ativoId)`, `investimentosKeys.rendimentosResumo()`), novos hooks `useRegistrarDividendo` (invalida `rendimentos(ativoId)` + `rendimentosResumo`), `useHistoricoRendimentos(ativoId)`, `useRendimentosResumo`.
+CRITERIO DE ACEITE: hooks tipados, sem `any`, invalidacao de cache cruzada apos registrar dividendo.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/types.ts`, `MyFinanceFrontEnd/src/features/investimentos/api.ts`, `MyFinanceFrontEnd/src/features/investimentos/query-keys.ts`, `MyFinanceFrontEnd/src/features/investimentos/hooks/useRegistrarDividendo.ts` (novo), `MyFinanceFrontEnd/src/features/investimentos/hooks/useHistoricoRendimentos.ts` (novo), `MyFinanceFrontEnd/src/features/investimentos/hooks/useRendimentosResumo.ts` (novo)
+NAO FAZER: nao renderizar UI aqui.
+RETORNO ESPERADO: hooks tipados prontos para consumo.
+
+---
+
+## TASK-163 — Front: formulario de cadastro de dividendo vinculado ao ativo
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-162
+FLUXO: Implementacao
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 8.4
+ESCOPO: `FormRegistrarDividendo.tsx` (valor + data), acao disponivel a partir de `AtivoItem.tsx`/`AtivoCard.tsx` ("Registrar dividendo"), disparando `useRegistrarDividendo`. Validacao client-side de valor > 0.
+CRITERIO DE ACEITE: dividendo registrado aparece no historico do ativo apos sucesso (cache invalidado).
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/components/FormRegistrarDividendo.tsx` (novo), `MyFinanceFrontEnd/src/features/investimentos/lib/validarDividendo.ts` (novo), `MyFinanceFrontEnd/src/features/investimentos/components/AtivoItem.tsx`, `MyFinanceFrontEnd/src/features/investimentos/components/AtivoCard.tsx`
+NAO FAZER: nao expor campo `tipo`/`origem` no form (sempre DIVIDENDO/MANUAL, decidido no backend).
+RETORNO ESPERADO: formulario funcional integrado a tela de ativo.
+
+---
+
+## TASK-164 — Front: grafico de rendimento por tipo (dividendo vs valorizacao)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-162, TASK-124, TASK-125
+FLUXO: Implementacao
+CONTEXTO A LER: stack.md ("Grafico (frontend): Recharts"); `features/investimentos/components/GraficoHistoricoAportes.tsx` (TASK-124) e `GraficoConsolidadoAtivos.tsx` (TASK-125) como padrao de estilo — NAO reusa-los diretamente (dimensoes diferentes: aporte e por ativo/quantidade, consolidado e por `TipoAtivo` RENDA_FIXA/RENDA_VARIAVEL; rendimento e por `TipoRendimento` DIVIDENDO/VALORIZACAO — misturar as taxonomias no mesmo componente confundiria o eixo do grafico)
+ESCOPO: novo componente `GraficoRendimentosPorTipo.tsx` (Recharts, barras empilhadas por mes: dividendo vs valorizacao), consumindo `useRendimentosResumo` (agregado de todos os ativos) para a tela `ListaAtivosPage.tsx`; funcao pura `agruparRendimentosPorMes.ts` em `lib/` (testavel, recebe `historico` flat do backend e bucketiza por mes/tipo — logica de agrupamento fora do componente, conforme clean-code.md "Logica de calculo NAO vive no componente").
+CRITERIO DE ACEITE:
+1. Grafico mostra dividendo e valorizacao separados visualmente (empilhado ou series distintas).
+2. Nenhum calculo de agregacao roda dentro do JSX do componente (vem de `lib/agruparRendimentosPorMes.ts`).
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/components/GraficoRendimentosPorTipo.tsx` (novo), `MyFinanceFrontEnd/src/features/investimentos/lib/agruparRendimentosPorMes.ts` (novo), `MyFinanceFrontEnd/src/features/investimentos/ListaAtivosPage.tsx`
+NAO FAZER: nao inventar serie de cotacao; nao misturar `TipoAtivo` com `TipoRendimento` no mesmo grafico.
+RETORNO ESPERADO: componente de grafico consumindo dado real, integrado a pagina de Investimentos.
+
+---
+
+## TASK-165 — Style review Bloco M (Rendimentos)
+
+STATUS: PENDENTE
+AGENT: style
+DEPENDENCIAS: TASK-160, TASK-161, TASK-163, TASK-164
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 8.4 INTEIRO; clean-code.md; identidade-visual.md
+ESCOPO: revisao geral do bloco Rendimentos (backend TASK-153/154/157/159 + front TASK-162/163/164), com atencao especial a: Rendimento nunca influenciar `saldo_projetado`/saldo de conta, gatilho (a)/aporte permanecer NO-OP documentado, e `POST /rendimentos` nao aceitar `tipo`/`origem` de fora.
+CRITERIO DE ACEITE: veredito (APROVADO ou tarefa de correcao no esquema padrao).
 ARQUIVOS PERMITIDOS: nenhum
 NAO FAZER: nao editar codigo.
 RETORNO ESPERADO: veredito + achados.
