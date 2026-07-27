@@ -1939,7 +1939,7 @@ RETORNO ESPERADO: arquivo novo.
 
 ## TASK-096 — Rota /lancamentos
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. /lancamentos adicionada, todas as 9 rotas do AppShell agora tem destino real - nenhum link morto restante. Kira conferiu o arquivo e o build antes de aprovar)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-095, TASK-088

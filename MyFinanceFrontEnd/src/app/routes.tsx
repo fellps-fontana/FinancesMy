@@ -10,6 +10,7 @@ import { ComparativoLimiteGastoPage } from "@/features/limite-gasto/ComparativoL
 import { ListaContasReceber } from "@/features/contas-receber/ListaContasReceber"
 import { ListaContasFixas } from "@/features/contas-fixas/ListaContasFixas"
 import { CategoriasPage } from "@/features/categorias/CategoriasPage"
+import { LancamentosPage } from "@/features/lancamentos/LancamentosPage"
 
 export function AppRoutes() {
   return (
@@ -25,6 +26,7 @@ export function AppRoutes() {
         <Route path="/contas-receber" element={<ListaContasReceber />} />
         <Route path="/contas-fixas" element={<ListaContasFixas />} />
         <Route path="/categorias" element={<CategoriasPage />} />
+        <Route path="/lancamentos" element={<LancamentosPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
