@@ -107,18 +107,36 @@ quando a branch Open Finance entrar em v2).
 
 O usuario pode marcar/editar um lancamento como conta fixa.
 
-**Regra:** a conta fixa e um molde (`CONTA_FIXA`) com `dia_vencimento`. Ao
-CRIAR ou REATIVAR (`ativa` false->true) uma ContaFixa, o sistema gera
-automaticamente um LANCAMENTO PENDENTE para o MES CORRENTE e um para o
-PROXIMO MES (2 meses), vinculado por `conta_fixa_id`. Nao ha sync/job
-separado na v1 (item 11 e v2) — a geracao acontece SO nesses dois gatilhos.
-DECISAO CONFIRMADA COM O USUARIO EM 2026-07-20.
+**Regra:** a conta fixa e um molde (`CONTA_FIXA`) com `dia_vencimento` e
+`periodicidade`. Ao CRIAR ou REATIVAR (`ativa` false->true) uma ContaFixa, o
+sistema gera automaticamente um LANCAMENTO PENDENTE para a ocorrencia atual e
+um para a PROXIMA ocorrencia da periodicidade configurada (2 ocorrencias),
+vinculado por `conta_fixa_id`. Nao ha sync/job separado na v1 (item 11 e v2)
+— a geracao acontece SO nesses dois gatilhos. DECISAO CONFIRMADA COM O
+USUARIO EM 2026-07-20 (regra original); periodicidade adicionada em
+2026-07-27.
 
-**Idempotencia (obrigatoria):** antes de gerar o Lancamento de um par
-ano/mes para uma ContaFixa, o sistema verifica se ja existe um Lancamento
-com aquele `conta_fixa_id` + mes/ano de vencimento. Se existir, nao duplica.
-Rodar a geracao duas vezes para a mesma ContaFixa/mes e uma operacao segura
-(no-op na segunda vez).
+**Periodicidade (revisao de 2026-07-27, DECISAO CONFIRMADA COM O USUARIO).**
+Campo `periodicidade` no cadastro, valores suportados: `MENSAL` (padrao) e
+`ANUAL`. `SEMANAL` avaliado e descartado nesta rodada — contas fixas
+domesticas (aluguel, internet, assinaturas) recorrem em base mensal ou
+anual; recorrencia semanal e atipica para o dominio e pode ser adicionada
+depois se surgir caso de uso real, mesmo espirito do campo `periodo` de
+`limite_gasto` (item 14: "pronto para extensao futura"). Registros
+existentes de `conta_fixa` recebem `periodicidade = MENSAL` por default
+(migracao aditiva — preserva o comportamento hoje ja implementado, que
+sempre foi mensal).
+
+A "proxima ocorrencia" depende da periodicidade: `MENSAL` soma 1 mes a data
+de vencimento; `ANUAL` soma 1 ano. A geracao continua criando exatamente 2
+lancamentos por vez (ocorrencia atual + proxima), preservando a idempotencia
+abaixo — so muda a unidade de tempo somada entre uma ocorrencia e outra.
+
+**Idempotencia (obrigatoria):** antes de gerar o Lancamento de uma
+ocorrencia (ano/mes de vencimento) para uma ContaFixa, o sistema verifica se
+ja existe um Lancamento com aquele `conta_fixa_id` + mes/ano de vencimento.
+Se existir, nao duplica. Rodar a geracao duas vezes para a mesma
+ContaFixa/ocorrencia e uma operacao segura (no-op na segunda vez).
 
 **Dia da geracao:** usa `dia_vencimento` da ContaFixa; se o mes tiver menos
 dias que esse valor (ex: 31 em abril, ou fevereiro), a data e ajustada para
@@ -129,19 +147,33 @@ o ultimo dia do mes — mesmo padrao ja usado por
 recorrente, mesma familia do item 5 "contas a pagar"). Nao existe conta fixa
 de recebimento (CREDIT) na v1. Status PENDENTE, `Manual = true`.
 
+**Categoria vinculada.** Cadastro de ContaFixa tem campo `categoria_id` (FK
+opcional para `categoria`). Todo Lancamento PENDENTE gerado automaticamente
+(criacao ou reativacao) herda essa categoria. Registros existentes sem
+categoria: campo fica `null`, sem quebra.
+
 **Edicao propaga para lancamentos PENDENTE ja gerados.** Editar valor,
-`dia_vencimento` ou categoria de uma ContaFixa atualiza os Lancamentos
-vinculados (`conta_fixa_id`) que ainda estao `Status = Pendente`. Lancamentos
-`Status = Pago` NUNCA sao alterados (fato historico, dinheiro ja saiu — mesmo
-principio do item 13 "valor_total nunca muda apos registro").
+`dia_vencimento`, `periodicidade` ou `categoria_id` de uma ContaFixa
+atualiza os Lancamentos vinculados (`conta_fixa_id`) que ainda estao
+`Status = Pendente`. Lancamentos `Status = Pago` NUNCA sao alterados (fato
+historico, dinheiro ja saiu — mesmo principio do item 13 "valor_total nunca
+muda apos registro"). Mudanca de `periodicidade` em edicao NAO regenera o
+par de lancamentos ja existente — `[REVISAR: se o usuario editar
+periodicidade de MENSAL pra ANUAL com um lancamento PENDENTE ja gerado pro
+mes seguinte (que nao deveria mais existir sob a nova periodicidade), esse
+lancamento fica como esta ate ser pago/a conta ser desativada; nenhuma
+limpeza automatica do "excesso" de ocorrencias geradas sob a periodicidade
+antiga esta definida — confirmar com o usuario se e aceitavel ou se editar
+periodicidade deveria disparar uma regeracao]`.
 
 **Desativar cancela os lancamentos PENDENTE ja gerados.** Ao desativar
 (`ativa = true -> false`) uma ContaFixa, os Lancamentos vinculados com
 `Status = Pendente` sao excluidos (hard delete, mesma regra de exclusao de
 lancamento manual do item 5/12). Lancamentos `Status = Pago` permanecem
-intocados. Reativar volta a gerar os 2 meses (mes corrente + proximo) do
-zero, respeitando a idempotencia acima.
-DECISOES CONFIRMADAS COM O USUARIO EM 2026-07-20.
+intocados. Reativar volta a gerar as 2 ocorrencias (atual + proxima,
+conforme periodicidade) do zero, respeitando a idempotencia acima.
+DECISOES CONFIRMADAS COM O USUARIO EM 2026-07-20 (regra original) e
+2026-07-27 (periodicidade).
 
 ---
 
@@ -175,21 +207,57 @@ formas independentes, sem relacao uma com a outra:
   uma acao especifica, fundo imobiliario etc. Registro STANDALONE, SEM
   vinculo com Conta — o usuario nao precisa cadastrar uma "conta XP" antes de
   lancar um Tesouro Selic. Campos: `nome`, `tipo` (RENDA_FIXA |
-  RENDA_VARIAVEL), `instituicao` (texto livre, ex: "Nubank"),
-  `valor_investido`, `data_compra`, `valor_atual`.
+  RENDA_VARIAVEL), `instituicao` (texto livre, ex: "Nubank"), `quantidade`
+  (total de unidades/cotas em carteira, soma de todos os aportes),
+  `valor_investido` (soma monetaria de todos os aportes, NUNCA editado
+  diretamente apos o cadastro — so muda por novo aporte, ver 8.1),
+  `data_compra` (data do primeiro aporte), `valor_atual`.
 
 **Decisao de 2026-07-12 (substitui a decisao de 2026-07-06, ver "Escopo: v1
 vs v2"):** o modulo anterior de ativo por ticker (compra/venda, preco medio,
 cotacao via Brapi sob demanda) foi REMOVIDO do codigo. Investimento detalhado
 na v1 NAO tem conexao com nenhuma API de bolsa/cotacao, em nenhuma fase.
-`valor_atual` e 100% manual.
+`valor_atual` e 100% manual. **Revisao de 2026-07-27 (ver 8.1 abaixo):** o
+conceito de `quantidade` e preco medio VOLTA ao modelo, mas sem nenhuma
+cotacao externa — e so aritmetica sobre o que o usuario digita em cada
+aporte, nao tem relacao com o modelo por ticker+Brapi removido em 2026-07-12.
 
-### 8.1 Valor atual e evolucao (100% manual)
+### 8.1 Aportes e preco medio (DECISAO CONFIRMADA COM O USUARIO EM 2026-07-27)
+
+Comprar mais de um ativo que ja existe na carteira NUNCA sobrescreve o
+registro. Toda compra — inclusive a primeira, no cadastro do Ativo — e um
+APORTE: gera um registro imutavel em `ativo_aporte` com `data`, `quantidade`
+e `preco_unitario` daquele aporte especifico. Cadastrar um Ativo novo E, na
+pratica, registrar o primeiro aporte dele (o formulario de cadastro passa a
+pedir `quantidade` + `preco_unitario` em vez de `valor_investido` direto).
+
+Preco medio, recalculado a cada aporte por MEDIA PONDERADA:
+
+```
+preco_medio_novo = (preco_medio_atual * qtd_atual + preco_aporte * qtd_aporte)
+                    / (qtd_atual + qtd_aporte)
+```
+
+`preco_medio` e CALCULADO sob demanda (`valor_investido / quantidade`),
+NUNCA armazenado como campo proprio — mesmo espirito de `evolucao_percentual`
+(8.2). `Ativo.quantidade` e `Ativo.valor_investido` SAO armazenados e
+incrementados a cada aporte (nao recalculados varrendo o historico inteiro a
+cada leitura), e permanecem sempre consistentes com essa formula.
+
+Aporte individual e registro historico IMUTAVEL — sem edicao nem exclusao
+isolada (mesmo principio de fato historico que nao muda depois de registrado,
+ja usado em `lancamento.valor`/item 13 "valor_total nunca muda apos
+registro"). Historico completo de aportes fica consultavel por ativo — base
+do grafico de aportes por ativo (tela "Investimentos").
+
+### 8.2 Valor atual e evolucao (100% manual)
 
 `valor_atual` e definido pelo usuario — mesmo espirito do `saldo_manual` de
 conta manual (item 10), so que no nivel do ativo em vez da conta inteira. No
-cadastro, `valor_atual` nasce IGUAL a `valor_investido` (evolucao = 0). So
-muda quando o usuario edita explicitamente.
+cadastro, `valor_atual` nasce IGUAL a `valor_investido` do primeiro aporte
+(evolucao = 0). So muda quando o usuario edita explicitamente — independente
+de aportes: aportar mais NAO altera `valor_atual` automaticamente, e o
+usuario quem atualiza.
 
 ```
 evolucao_percentual = (valor_atual - valor_investido) / valor_investido
@@ -197,11 +265,61 @@ evolucao_percentual = (valor_atual - valor_investido) / valor_investido
 
 Calculada sob demanda para exibicao, NUNCA armazenada.
 
-### 8.2 Exclusao de ativo
+### 8.3 Exclusao de ativo
 
 Soft-delete (`ativa = false`), mesmo padrao ja usado no resto do dominio
 (`conta.ativa`, `categoria.arquivada`, `lancamento.oculto` — item 4). Sem
-hard-delete.
+hard-delete. Desativar o Ativo NAO apaga o historico de aportes (mesmo
+principio de fato historico imutavel do item 8.1).
+
+### 8.4 Rendimento (dividendo e valorizacao) — DECISAO CONFIRMADA COM O USUARIO EM 2026-07-27
+
+Rendimento e SEMPRE vinculado a um Ativo especifico — nunca solto/agregado
+sem ativo. Dois tipos, com origem MUITO diferente:
+
+- **DIVIDENDO:** cadastro MANUAL pelo usuario (form: `valor` + `data`,
+  vinculado ao ativo). E o unico tipo que o usuario lanca diretamente.
+- **VALORIZACAO:** NUNCA lancado manualmente — e derivado AUTOMATICAMENTE
+  pelo sistema, conforme os gatilhos abaixo.
+
+**Entidade `rendimento`:** `ativo_id` (FK, not null), `tipo` (`DIVIDENDO` |
+`VALORIZACAO`), `origem` (`MANUAL` | `AUTOMATICO`), `valor` (sempre > 0 se
+`DIVIDENDO`; pode ser negativo se `VALORIZACAO` — desvalorizacao, mesmo
+espirito de `evolucao_percentual`, item 8.2, que ja aceita negativo),
+`data`.
+
+**Criacao de DIVIDENDO (manual):** valida `valor > 0` e `ativo` existente E
+`ativa = true`. `origem = MANUAL`.
+
+**Criacao AUTOMATICA de VALORIZACAO — gatilho (b): edicao de `valor_atual`
+(item 8.2).** Ao atualizar `valor_atual` de `V_anterior` para `V_novo`, o
+sistema cria `Rendimento(tipo=VALORIZACAO, origem=AUTOMATICO, valor=V_novo
+- V_anterior, data=hoje)`. Se `V_novo == V_anterior`, NENHUM registro e
+criado (delta zero nao e evento). O valor pode ser negativo — nao ha piso
+em zero, desvalorizacao e informacao real, nao erro. Este mecanismo
+TAMBEM resolve a pendencia historica de falta de tabela de historico de
+`valor_atual` (ver "Pendencias a definir") — cada edicao vira um registro
+datado e auditavel.
+
+**Criacao AUTOMATICA de VALORIZACAO — gatilho (a): novo APORTE (item
+8.1) — `[REVISAR: pendente de confirmacao do usuario]`.** A regra 8.2 e
+explicita: "aportar mais NAO altera `valor_atual` automaticamente". Logo,
+um aporte isolado, por definicao, nao move `valor_atual` — e a unica
+formula honesta de VALORIZACAO e um delta de `valor_atual` (gatilho b).
+Gerar um registro de R$0,00 a cada aporte e ruido sem informacao; calcular
+uma "desvalorizacao por diluicao" (porque `valor_investido` sobe e
+`evolucao_percentual` cai) e matematicamente incoerente e economicamente
+falso — aportar capital novo nao e perda, e mostrar isso como
+desvalorizacao enganaria o usuario no grafico. RECOMENDACAO (nao decisao
+final): o gatilho (a) NAO gera nenhum registro de `Rendimento` — o aporte
+ja fica auditado por `ativo_aporte` (item 8.1), nenhuma informacao se
+perde. Fica como NO-OP explicito ate confirmacao do usuario.
+
+**Rendimento NAO entra em nenhum calculo de saldo.** Nao entra em
+`saldo_projetado` (item 9), nem em saldo de Conta (item 10), nem em
+`gasto_realizado_no_mes` (item 14). E puramente informativo — grafico/
+widget do dashboard (rendimento por tipo) e tela "Investimentos". Sem
+relacao com `Lancamento`/fluxo de caixa.
 
 ---
 
@@ -527,8 +645,8 @@ de schema. Decisao NAO-retroativa: esse schema fica como esta, nao ha
 migration de remocao. O que muda e o que entra na v1 daqui pra frente:
 
 - **v1:** contas MANUAL, incluindo investimento em modo carteira de ativos
-  (ver item 8 — compra/venda, preco medio, saldo calculado, cotacao Brapi sob
-  demanda, grafico de diferenca). Sem sync (item 11), sem exclusao/conciliacao
+  (ver item 8 — aporte com preco medio calculado localmente, sem cotacao
+  externa, ver 8.1). Sem sync (item 11), sem exclusao/conciliacao
   Open Finance (itens 4 e 5, branch OF), sem endpoint de integracao com
   Pierre. Pendencias de rate limit/paginacao do Pierre (ver "Pendencias a
   definir") saem da v1 tambem — so voltam a importar quando a integracao
@@ -558,18 +676,26 @@ Historico da decisao (registrado para nao se perder de novo):
   grafico no front) foi removido, nao mantido como legado morto.**
 
 - **v1 (entra agora):**
-  - Ativo standalone (item 8): nome, tipo, instituicao, valor investido, data
-    da compra, valor atual (editavel manualmente pelo usuario).
-  - Listar, criar, atualizar valor atual, desativar.
+  - Ativo standalone (item 8): nome, tipo, instituicao, quantidade, valor
+    investido (soma dos aportes), data da compra, valor atual (editavel
+    manualmente pelo usuario).
+  - Listar, criar (= registrar o primeiro aporte), registrar novo aporte
+    (media ponderada, item 8.1), consultar historico de aportes, atualizar
+    valor atual, desativar.
   - Resumo por tipo (renda fixa vs renda variavel) para a tela
     "Investimentos".
+  - **Rendimento vinculado a Ativo (item 8.4, decisao de 2026-07-27):**
+    dividendo cadastrado manualmente pelo usuario e valorizacao derivada
+    automaticamente da edicao de `valor_atual`. Puramente informativo
+    (grafico/widget), sem entrar em `saldo_projetado` nem em saldo de
+    conta. SEM cotacao externa em nenhum ponto — mesma restricao do resto
+    do modulo (gatilho automatico via aporte segue `[REVISAR]`, ver 8.4).
 - **v2 (fora por enquanto):**
   - Qualquer cotacao via API externa (Brapi ou outra), em qualquer
     modalidade (sob demanda ou automatica).
   - Rentabilidade/serie historica automatica, sparkline com base em
     snapshots de valor (nao ha tabela de historico na v1 — ver "Pendencias a
     definir").
-  - Dividendos/proventos.
 
 **Na v1**, cofrinho e XP (sem detalhe de ativo) continuam como conta manual
 simples com `saldo_manual` (ver item 8). Ativo e um modulo separado, sem
@@ -589,6 +715,13 @@ relacao com Conta.
 - Ciclo da fatura: como capturar `data_fechamento` e `data_vencimento` do cartao
   (fixo por cartao ou lido do import).
 - (item 8) Sparkline por ativo e "% no mes" do total (presentes no mockup)
-  exigem historico de snapshots de `valor_atual` ao longo do tempo — nao
-  existe tabela de historico na v1. Ativo nasce mostrando evolucao "desde a
-  compra" (item 8.1), sem serie temporal. Decidir se entra em v1.2 ou v2.
+  — **RESOLVIDO PARCIALMENTE em 2026-07-27 pelo item 8.4.** Toda edicao de
+  `valor_atual` agora gera `Rendimento(VALORIZACAO)` com delta e data — o
+  historico que faltava passa a existir a partir dai. Ressalva: a serie so
+  comeca a crescer a partir do primeiro registro gerado apos a
+  implementacao (TASK-155 em diante); edicoes de `valor_atual` anteriores
+  a essa data nao sao reconstruidas retroativamente. O historico de
+  APORTES (item 8.1) continua a parte, alimentando a serie de aportes.
+  Gatilho de VALORIZACAO por APORTE (item 8.4, gatilho a) segue
+  `[REVISAR]` — pendente de confirmacao do usuario, nao afeta o gatilho
+  por edicao de `valor_atual`, que ja esta fechado.
