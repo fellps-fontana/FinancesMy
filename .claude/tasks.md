@@ -1794,7 +1794,7 @@ RETORNO ESPERADO: arquivo novo + descricao do resultado em desktop e mobile.
 
 ## TASK-088 — AuthenticatedLayout + rotas aninhadas em routes.tsx
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. Todas as 10 rotas (login+8 protegidas+catch-all) preservadas, incluindo /contas-fixas e /contas-receber. ProtectedRoute > AppShell > Outlet, nenhum dos dois editado. Kira conferiu o arquivo e o build antes de aprovar)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-087, TASK-084, TASK-085
