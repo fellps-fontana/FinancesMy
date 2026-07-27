@@ -1993,7 +1993,7 @@ RETORNO ESPERADO: endpoint funcionando; confirmar explicitamente que a decisao d
 
 ## TASK-099 — Front: camada de dados (types/api/query-keys) de Categoria
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. Tipo PascalCase confirmado contra Program.cs/TipoCategoria.cs reais, comentario documenta a conversao pendente pro CampoLimiteGasto. Rotas conferidas 1:1 contra CategoriasController.cs (GET com tipo/arquivada, PUT, PATCH arquivar, POST reativar). Kira conferiu os 3 arquivos e o build antes de aprovar)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-098
