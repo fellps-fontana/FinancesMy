@@ -1902,7 +1902,7 @@ RETORNO ESPERADO: arquivo novo.
 
 ## TASK-094 — components/: LancamentoItem, FormLancamento, FormTransferencia
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. Sinal DEBIT/CREDIT nunca decidido pelo front (so tabela label/cor sobre tipo ja resolvido); status v1 restrito a PENDENTE/PAGO no form (SUGERIDO cobre badge de exibicao mas nunca e opcao); FormTransferencia sem campo tipo/status; AvisoLimiteGasto so em DEBIT+categoria selecionada, ano/mes extraidos da data do lancamento. Kira conferiu os 3 arquivos, os imports cruzados (formatarData, AvisoLimiteGasto, CategoriaSelect, useContasParaSelecao) e o build antes de aprovar)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-092, TASK-093, TASK-103
