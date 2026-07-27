@@ -34,16 +34,23 @@ type NavItem = {
 // visao geral primeiro, depois contas/dinheiro, depois organizacao (regras,
 // categorias, limites). Puramente estrutural - nenhuma regra de dominio mora
 // aqui, so rotulo + rota + icone.
+//
+// ATENCAO: "/lancamentos" e "/categorias" ainda NAO tem rota registrada em
+// routes.tsx - sao links mortos ate a TASK-096 (rota /lancamentos) e a
+// TASK-105 (rota /categorias, fechamento do Bloco D - Categorias,
+// TASK-098 a 106) serem concluidas. Ambas ja estao no tasks.md e serao
+// ligadas nesta mesma leva de trabalho; os itens ficam no array desde ja
+// para nao exigir retrabalho de remover/recriar.
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/contas", label: "Contas", icon: Wallet },
   { to: "/cartao", label: "Cartao de credito", icon: CreditCard },
   { to: "/investimentos", label: "Investimentos", icon: TrendingUp },
-  { to: "/contas-fixas", label: "Contas Fixas", icon: Repeat },
-  { to: "/contas-receber", label: "Contas a Receber", icon: HandCoins },
+  { to: "/contas-fixas", label: "Contas fixas", icon: Repeat },
+  { to: "/contas-receber", label: "Contas a receber", icon: HandCoins },
   { to: "/lancamentos", label: "Lancamentos", icon: Receipt },
   { to: "/categorias", label: "Categorias", icon: Tags },
-  { to: "/limites-gasto", label: "Limites de Gasto", icon: Target },
+  { to: "/limites-gasto", label: "Limites de gasto", icon: Target },
 ]
 
 function navLinkClassName(isActive: boolean) {
@@ -80,6 +87,12 @@ function NavList({ onNavigate }: NavListProps) {
   )
 }
 
+// Nome do app, repetido na topbar mobile, no header do drawer e no header da
+// sidebar - centralizado aqui para nao duplicar texto/classe nos 3 pontos.
+function BrandTitle() {
+  return <span className="text-[19px] font-medium text-text-primary">Financeiro Pessoal</span>
+}
+
 type UserFooterProps = {
   username: string | undefined
   onLogout: () => void
@@ -107,7 +120,7 @@ export function AppShell({ children }: AppShellProps) {
     <div className="flex min-h-svh flex-col bg-background md:flex-row">
       {/* Topbar mobile (< md): titulo + hamburguer que abre o drawer. */}
       <header className="flex items-center justify-between border-b border-border bg-card px-4 py-3 md:hidden">
-        <span className="text-[19px] font-medium text-text-primary">Financeiro Pessoal</span>
+        <BrandTitle />
         <button
           type="button"
           onClick={() => setIsDrawerOpen(true)}
@@ -130,7 +143,7 @@ export function AppShell({ children }: AppShellProps) {
           />
           <div className="relative z-10 flex h-full w-72 max-w-[80vw] flex-col bg-card">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <span className="text-[19px] font-medium text-text-primary">Financeiro Pessoal</span>
+              <BrandTitle />
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}
@@ -149,7 +162,7 @@ export function AppShell({ children }: AppShellProps) {
       {/* Sidebar fixa (>= md). */}
       <aside className="hidden shrink-0 border-r border-border bg-card md:sticky md:top-0 md:flex md:h-svh md:w-64 md:flex-col">
         <div className="border-b border-border px-4 py-4">
-          <span className="text-[19px] font-medium text-text-primary">Financeiro Pessoal</span>
+          <BrandTitle />
         </div>
         <NavList />
         <UserFooter username={usuario?.username} onLogout={logout} />

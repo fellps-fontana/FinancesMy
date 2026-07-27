@@ -1830,7 +1830,7 @@ RETORNO ESPERADO: diff do arquivo.
 
 ## TASK-090 — Style review Bloco B
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA + APROVADA PELO STYLE apos 2 rodadas (build+lint limpos no final). Rodada 1: 3 achados reais - NAV_ITEMS com links pra /lancamentos e /categorias sem sinalizacao de rota pendente; sentence case quebrado em 3 labels (Contas Fixas/Contas a Receber/Limites de Gasto); "Financeiro Pessoal" duplicado 3x sem extracao, diferente do padrao ja aplicado em NavList/UserFooter. Rodada 2: hanzo comentou explicitamente a pendencia de rota (referenciando TASK-096/Bloco D), corrigiu os 3 labels pra sentence case, extraiu BrandTitle(). Kira conferiu o diff e o build antes de aprovar
 AGENT: style
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-087, TASK-088, TASK-089
