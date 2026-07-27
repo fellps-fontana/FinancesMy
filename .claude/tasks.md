@@ -2136,3 +2136,727 @@ RETORNO ESPERADO: veredito final do Bloco D.
 ```
 
 **Nota de renumeracao:** a primeira proposta do killua (antes da aprovacao de reativar/editar) numerava o Bloco D como TASK-098 a 105 sem o endpoint de backend. Apos a aprovacao do usuario em 2026-07-26 (reativar + editar categoria), o bloco foi renumerado para TASK-098 a 106 pra caber a nova task de backend (098) no inicio. TASK-094 (Bloco C) referencia TASK-103 (CategoriaSelect), nao mais TASK-102 como numerado na proposta original.
+
+---
+
+# Backlog mockups vs app rodando — TASK-107 em diante
+
+Gerado por killua em 2026-07-27, a partir de comparacao do app contra
+`.claude/context/mockups/`. Cobre Fase 1 (regra de negocio ja alterada acima)
++ gaps de UI levantados pelo usuario. Numeracao continua de TASK-106 (ultima
+existente no arquivo).
+
+---
+
+## TASK-107 — [REGRA CRITICA] Esqueleto: PeriodicidadeContaFixa + geracao por ocorrencia
+
+STATUS: PENDENTE
+AGENT: killua
+DEPENDENCIAS: nenhuma
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 6 INTEIRO (revisado); `Domain/ContaFixa.cs`, `Domain/ContaFixaLancamentoFactory.cs`, `Services/ContaFixaService.cs` (codigo atual)
+ESCOPO: entregar esqueleto de assinatura compilavel (corpo `NotImplementedException` onde houver logica nova) para: enum `PeriodicidadeContaFixa` (Mensal, Anual, com `ToStorageValue`/`FromStorageValue` no padrao de `TipoConta.cs`); campo `ContaFixa.Periodicidade`; metodo estatico `Domain/ContaFixaLancamentoFactory.ProximaOcorrencia(DateOnly dataAtual, PeriodicidadeContaFixa periodicidade)` (AddMonths(1) se Mensal, AddYears(1) se Anual); ajuste de assinatura em `ContaFixaService.GerarLancamentosPendentes` para usar `ProximaOcorrencia` em vez do array fixo `{0,1}` de meses. Kira cria os arquivos/edita os existentes a partir deste esqueleto.
+CRITERIO DE ACEITE:
+1. Projeto compila com o novo enum e a nova assinatura, sem logica real na parte nova.
+2. Migration de `periodicidade` (default MENSAL) esboçada/planejada (aplicada na TASK-109).
+ARQUIVOS PERMITIDOS: nenhum (killua nao escreve arquivo — Kira aplica a partir do esqueleto)
+NAO FAZER: nao implementar a logica de `ProximaOcorrencia` nem o novo fluxo de `GerarLancamentosPendentes` (isso e TASK-109); nao mexer em categoria (ja implementada, Fase 1 mudanca 3).
+RETORNO ESPERADO: esqueleto compilavel + migration planejada.
+
+---
+
+## TASK-108 — [REGRA CRITICA] RED: testes de periodicidade
+
+STATUS: PENDENTE
+AGENT: mike
+DEPENDENCIAS: TASK-107
+FLUXO: Implementacao (rodada RED)
+CONTEXTO A LER: regra-de-negocio.md item 6 paragrafo "Periodicidade"; `Domain/ContaFixaLancamentoFactoryTests.cs` (padrao existente)
+ESCOPO: testes cobrindo: `ProximaOcorrencia` com Mensal soma 1 mes; com Anual soma 1 ano; `GerarLancamentosPendentes` para ContaFixa Mensal gera lancamento no mes atual + proximo mes (comportamento hoje ja existente, nao pode regredir); para ContaFixa Anual gera lancamento no ano atual + proximo ano, mesmo dia_vencimento; idempotencia preservada em ambos os casos (rodar duas vezes nao duplica); dia_vencimento=31 em periodicidade Anual clampado corretamente em fevereiro.
+CRITERIO DE ACEITE: testes compilam e falham por `NotImplementedException`, nunca por erro de compilacao.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Domain/ContaFixaLancamentoFactoryTests.cs`, `MyFinances/MyFinances.Tests/Services/ContaFixaServiceTests.cs`
+NAO FAZER: nao implementar logica em `ContaFixaLancamentoFactory`/`ContaFixaService`.
+RETORNO ESPERADO: RED confirmado, casos listados.
+
+---
+
+## TASK-109 — [REGRA CRITICA] GREEN: implementar periodicidade + migration
+
+STATUS: PENDENTE
+AGENT: levi
+DEPENDENCIAS: TASK-108
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 6 INTEIRO; testes da TASK-108 (leitura, nunca escrita)
+ESCOPO: implementar `ProximaOcorrencia` e o novo fluxo de `GerarLancamentosPendentes` (2 ocorrencias: atual + proxima, conforme periodicidade) ate os testes da TASK-108 ficarem GREEN; gerar migration adicionando `conta_fixa.periodicidade` (default `MENSAL`, NOT NULL) sem quebrar registros existentes; atualizar `ContaFixaConfiguration.cs`.
+CRITERIO DE ACEITE:
+1. Todos os testes da TASK-108 GREEN.
+2. Migration aplicavel sem perda de dado; ContaFixa existente vira `MENSAL` automaticamente.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Domain/ContaFixa.cs`, `MyFinances/MyFinances/Domain/PeriodicidadeContaFixa.cs`, `MyFinances/MyFinances/Domain/ContaFixaLancamentoFactory.cs`, `MyFinances/MyFinances/Services/ContaFixaService.cs`, `MyFinances/MyFinances/Infrastructure/Configurations/ContaFixaConfiguration.cs`, `MyFinances/MyFinances/Migrations/**`
+NAO FAZER: nao alterar arquivos em `MyFinances.Tests/**`.
+RETORNO ESPERADO: implementacao completa, testes GREEN, migration pronta.
+
+---
+
+## TASK-110 — Confirmar GREEN periodicidade (mike)
+
+STATUS: PENDENTE
+AGENT: mike
+DEPENDENCIAS: TASK-109
+FLUXO: Implementacao (rodada GREEN)
+CONTEXTO A LER: nenhum — so roda a suite da TASK-108
+ESCOPO: rodar os testes de periodicidade e confirmar GREEN.
+CRITERIO DE ACEITE: 100% GREEN ou relatorio de bug (arquivo+linha).
+ARQUIVOS PERMITIDOS: nenhum (so execucao)
+NAO FAZER: nao reescrever teste; nao editar producao.
+RETORNO ESPERADO: confirmacao GREEN ou relatorio estruturado.
+
+---
+
+## TASK-111 — Style: revisao periodicidade + DTOs
+
+STATUS: PENDENTE
+AGENT: style
+DEPENDENCIAS: TASK-110
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 6; clean-code.md
+ESCOPO: revisar a implementacao de periodicidade contra a regra (inclusive o ponto em aberto marcado [REVISAR] sobre edicao de periodicidade nao regenerar lancamentos); expor `periodicidade` em `CriarContaFixaRequest`/`EditarContaFixaRequest`/`ContaFixaResponse` (CRUD simples, sem TDD — controller so orquestra); validar que `Controllers/ContaFixaController.cs` passa o novo campo adiante.
+CRITERIO DE ACEITE: veredito (APROVADO ou tarefa de correcao no esquema padrao, redespachada a levi).
+ARQUIVOS PERMITIDOS: nenhum (style nao edita)
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+
+---
+
+## TASK-112 — Front: FormContaFixa ganha periodicidade + categoria
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-111
+FLUXO: Implementacao
+CONTEXTO A LER: identidade-visual.md; regra-de-negocio.md item 6 (paragrafos "Periodicidade" e "Categoria vinculada"); `features/categorias/components/CategoriaSelect.tsx` (componente pronto, reusar)
+ESCOPO: adicionar campo `periodicidade` (toggle Mensal/Anual, mesmo padrao de segmented control ja usado no proprio `FormContaFixa.tsx` para outros campos) e campo `categoriaId` (via `CategoriaSelect`, tipo Despesa — conta fixa e sempre DEBIT) ao formulario de criar/editar ContaFixa.
+CRITERIO DE ACEITE:
+1. Criar ContaFixa envia `periodicidade` e `categoriaId` (opcional).
+2. Editar ContaFixa reenvia o `categoriaId` atual por padrao (nunca zera por omissao, mesmo cuidado ja documentado no arquivo para os outros campos).
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/contas-fixas/FormContaFixa.tsx`, `MyFinanceFrontEnd/src/features/contas-fixas/types.ts`, `MyFinanceFrontEnd/src/features/contas-fixas/api.ts`
+NAO FAZER: nao mover `useContasParaSelecao` de `contas-receber` para `shared/hooks` (fora de escopo, ja documentado como pendencia no arquivo).
+RETORNO ESPERADO: formulario funcional com os 2 campos novos.
+
+---
+
+## TASK-113 — Front: reconstruir ListaContasFixas/ContaFixaItem (mockup 09)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-112
+FLUXO: Melhoria
+CONTEXTO A LER: mockups `.claude/context/mockups/09 Conta Fixa.dc.html`; identidade-visual.md
+ESCOPO: reconstruir `ListaContasFixas.tsx`/`ContaFixaItem.tsx` seguindo o layout do mockup 09 (usuario confirmou que o layout atual esta "bem diferente do sketch"); exibir periodicidade e categoria (nome) no item da lista.
+CRITERIO DE ACEITE: layout alinhado ao mockup 09 (icone, badge de periodicidade, categoria visivel); acoes existentes (editar/desativar/reativar) preservadas.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/contas-fixas/ListaContasFixas.tsx`, `MyFinanceFrontEnd/src/features/contas-fixas/components/ContaFixaItem.tsx`
+NAO FAZER: nao alterar `FormContaFixa.tsx` (TASK-112 ja fechou).
+RETORNO ESPERADO: telas reconstruidas.
+
+---
+
+## TASK-114 — Style review Bloco E (Conta Fixa)
+
+STATUS: PENDENTE
+AGENT: style
+DEPENDENCIAS: TASK-113
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 6; clean-code.md; identidade-visual.md
+ESCOPO: revisao geral do bloco Conta Fixa (backend TASK-107/109/111 + front TASK-112/113).
+CRITERIO DE ACEITE: veredito.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+
+---
+
+## TASK-115 — [REGRA CRITICA] Esqueleto: AtivoAporte + preco medio ponderado
+
+STATUS: PENDENTE
+AGENT: killua
+DEPENDENCIAS: nenhuma
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 8.1 INTEIRO (revisado); `Domain/Ativo.cs`, `Services/AtivoService.cs`, `Repositories/AtivoRepository.cs`, `Controllers/AtivosController.cs`, `DTOs/Ativo/*.cs` (codigo atual — a mudanca quebra `CriarAtivoRequest`, ver PONTO DE ATENCAO da Fase 1)
+ESCOPO: esqueleto compilavel (corpo `NotImplementedException`) para: `Domain/AtivoAporte.cs` (Id, AtivoId, Data, Quantidade, PrecoUnitario, ValorTotal calculado, CriadoEm); campo `Ativo.Quantidade`; `Domain/AtivoPrecoMedioCalculator.Calcular(decimal precoMedioAtual, decimal qtdAtual, decimal precoAporte, decimal qtdAporte)` (funcao pura, formula da regra 8.1); nova assinatura de `IAtivoService.CriarAtivo` (quantidade + precoUnitario em vez de valorInvestido) e novo `IAtivoService.RegistrarAporte(Guid ativoId, decimal quantidade, decimal precoUnitario, DateOnly data)`. Definir tambem, no esqueleto, a estrategia de migracao de dados dos `Ativo` ja existentes (sem `quantidade`) — recomendacao: `quantidade = 1` + um `AtivoAporte` sintetico reconstruido a partir de `valor_investido`/`data_compra` atuais, para nao perder o registro. Kira cria/edita os arquivos a partir deste esqueleto.
+CRITERIO DE ACEITE:
+1. Projeto compila com a nova assinatura, sem logica real na parte nova.
+2. Estrategia de migracao de dados documentada no retorno.
+ARQUIVOS PERMITIDOS: nenhum (killua nao escreve arquivo)
+NAO FAZER: nao implementar a formula real (isso e TASK-117); nao reintroduzir cotacao externa/Brapi em nenhum ponto (item 8, "Escopo: v1 vs v2" continua proibindo).
+RETORNO ESPERADO: esqueleto compilavel + plano de migracao de dados.
+
+---
+
+## TASK-116 — [REGRA CRITICA] RED: testes de preco medio ponderado
+
+STATUS: PENDENTE
+AGENT: mike
+DEPENDENCIAS: TASK-115
+FLUXO: Implementacao (rodada RED)
+CONTEXTO A LER: regra-de-negocio.md item 8.1 INTEIRO
+ESCOPO: testes cobrindo: primeiro aporte (cadastro) define `quantidade`/`valor_investido`/`preco_medio` iniciais corretamente; segundo aporte recalcula `preco_medio` pela formula ponderada (caso didatico: 10 cotas a R$10 + 10 cotas a R$20 = preco medio R$15); aporte com quantidade/preco invalidos (<=0) e rejeitado; `valor_atual` NAO muda automaticamente ao aportar; historico de aportes (`ListarAportes`) retorna todos os aportes em ordem cronologica; `AtivoNaoEncontradoException` ao aportar em ativo inexistente ou desativado.
+CRITERIO DE ACEITE: testes compilam e falham por `NotImplementedException`.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Domain/AtivoPrecoMedioCalculatorTests.cs` (novo), `MyFinances/MyFinances.Tests/Services/AtivoServiceTests.cs`
+NAO FAZER: nao implementar logica real.
+RETORNO ESPERADO: RED confirmado.
+
+---
+
+## TASK-117 — [REGRA CRITICA] GREEN: implementar aporte + migracao de dados
+
+STATUS: PENDENTE
+AGENT: levi
+DEPENDENCIAS: TASK-116
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 8.1; testes da TASK-116 (leitura, nunca escrita); plano de migracao de dados da TASK-115
+ESCOPO: implementar `AtivoPrecoMedioCalculator`, `AtivoService.CriarAtivo` (nova assinatura) e `AtivoService.RegistrarAporte` ate os testes da TASK-116 ficarem GREEN; gerar migration criando `ativo_aporte` e `ativo.quantidade`, com script de migracao de dados dos `Ativo` existentes conforme a estrategia da TASK-115 (nunca perder `valor_investido`/`data_compra` ja gravados).
+CRITERIO DE ACEITE:
+1. Todos os testes da TASK-116 GREEN.
+2. Migration aplicavel sem perda de dado em `Ativo` existente.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Domain/Ativo.cs`, `MyFinances/MyFinances/Domain/AtivoAporte.cs`, `MyFinances/MyFinances/Domain/AtivoPrecoMedioCalculator.cs`, `MyFinances/MyFinances/Services/AtivoService.cs`, `MyFinances/MyFinances/Services/IAtivoService.cs`, `MyFinances/MyFinances/Repositories/AtivoRepository.cs`, `MyFinances/MyFinances/Repositories/IAtivoRepository.cs`, `MyFinances/MyFinances/Infrastructure/Configurations/AtivoConfiguration.cs`, `MyFinances/MyFinances/Infrastructure/Configurations/AtivoAporteConfiguration.cs`, `MyFinances/MyFinances/Migrations/**`, `MyFinances/MyFinances/Program.cs`
+NAO FAZER: nao alterar `MyFinances.Tests/**`; nao adicionar nenhuma chamada a API externa de cotacao.
+RETORNO ESPERADO: implementacao completa, GREEN, migration com dado preservado.
+
+---
+
+## TASK-118 — Confirmar GREEN aporte (mike)
+
+STATUS: PENDENTE
+AGENT: mike
+DEPENDENCIAS: TASK-117
+FLUXO: Implementacao (rodada GREEN)
+CONTEXTO A LER: nenhum — so roda a suite da TASK-116
+ESCOPO: rodar os testes e confirmar GREEN.
+CRITERIO DE ACEITE: 100% GREEN ou relatorio de bug.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao reescrever teste.
+RETORNO ESPERADO: confirmacao GREEN ou relatorio estruturado.
+
+---
+
+## TASK-119 — Style: revisao preco medio + migracao de dados
+
+STATUS: PENDENTE
+AGENT: style
+DEPENDENCIAS: TASK-118
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 8.1; clean-code.md
+ESCOPO: revisar a formula, a imutabilidade do aporte, e ESPECIALMENTE a migracao de dados (nenhum Ativo existente pode perder valor_investido/data_compra).
+CRITERIO DE ACEITE: veredito.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+
+---
+
+## TASK-120 — Controller/DTOs de aporte (registrar + historico)
+
+STATUS: PENDENTE
+AGENT: levi
+DEPENDENCIAS: TASK-119
+FLUXO: Implementacao
+CONTEXTO A LER: clean-code.md "Organizacao (.NET)"; `Controllers/AtivosController.cs` (padrao de estilo, excecao tipada -> status HTTP)
+ESCOPO: `POST /api/ativos/{id}/aportes` (RegistrarAporte), `GET /api/ativos/{id}/aportes` (historico). Atualizar `POST /api/ativos` para a nova assinatura (quantidade+precoUnitario). DTOs: `RegistrarAporteRequest`, `AtivoAporteResponse`, `CriarAtivoRequest` (revisado), `AtivoResponse` (ganha `quantidade`/`precoMedio` calculado).
+CRITERIO DE ACEITE: contrato documentado (rota, verbo, body, shape de retorno) para os 3 endpoints.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Controllers/AtivosController.cs`, `MyFinances/MyFinances/DTOs/Ativo/*.cs`
+NAO FAZER: nao colocar regra de negocio no controller.
+RETORNO ESPERADO: contrato de API dos 3 endpoints.
+
+---
+
+## TASK-121 — Testes HTTP de aporte
+
+STATUS: PENDENTE
+AGENT: mike
+DEPENDENCIAS: TASK-120
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 8.1
+ESCOPO: testes HTTP cobrindo criar ativo (novo contrato), registrar aporte (preco medio correto na resposta), listar historico de aportes, erros (ativo inexistente/desativado, quantidade/preco invalidos).
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Controllers/AtivosControllerTests.cs`
+NAO FAZER: nao alterar controller/service sem reportar.
+RETORNO ESPERADO: testes passando ou relatorio de bug.
+
+---
+
+## TASK-122 — Front: camada de dados de aporte
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-120
+FLUXO: Implementacao
+CONTEXTO A LER: stack.md "Frontend (React)"; `features/investimentos/api.ts`/`types.ts` (padrao existente)
+ESCOPO: atualizar `types.ts` (`CriarAtivoRequest`, `AtivoResponse` com quantidade/precoMedio), `api.ts` (novo `registrarAporte`, `listarAportes`), novos hooks `useRegistrarAporte`, `useHistoricoAportes`.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/types.ts`, `MyFinanceFrontEnd/src/features/investimentos/api.ts`, `MyFinanceFrontEnd/src/features/investimentos/hooks/useRegistrarAporte.ts` (novo), `MyFinanceFrontEnd/src/features/investimentos/hooks/useHistoricoAportes.ts` (novo)
+NAO FAZER: nao renderizar UI aqui.
+RETORNO ESPERADO: hooks tipados, sem `any`, com invalidacao de cache cruzada (ativo + resumo).
+
+---
+
+## TASK-123 — Front: cadastro vira primeiro aporte + novo formulario de aporte
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-122
+FLUXO: Implementacao
+CONTEXTO A LER: mockups `.claude/context/mockups/11 Investimentos.dc.html`; identidade-visual.md
+ESCOPO: `ModalNovoAtivo.tsx` troca o campo "Valor investido" por "Quantidade" + "Preco unitario" (primeiro aporte); `AtivoItem.tsx`/`AtivoCard.tsx` — a acao de "editar valor investido" deixa de existir; nasce `FormRegistrarAporte.tsx` ("Novo aporte": quantidade + preco unitario + data), disparando `useRegistrarAporte`. A edicao de `valor_atual` (item 8.2, inalterada) continua existindo separadamente, sem confundir com aporte.
+CRITERIO DE ACEITE:
+1. Cadastro de ativo novo pede quantidade+preco unitario, nao mais valor investido direto.
+2. Acao "Novo aporte" disponivel por ativo, mostrando preco medio atualizado apos sucesso.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/components/ModalNovoAtivo.tsx`, `MyFinanceFrontEnd/src/features/investimentos/components/AtivoItem.tsx`, `MyFinanceFrontEnd/src/features/investimentos/components/AtivoCard.tsx`, `MyFinanceFrontEnd/src/features/investimentos/components/FormRegistrarAporte.tsx` (novo), `MyFinanceFrontEnd/src/features/investimentos/lib/validarNovoAtivo.ts`, `MyFinanceFrontEnd/src/features/investimentos/hooks/useCriarAtivo.ts`
+NAO FAZER: nao remover a edicao de `valor_atual` (item 8.2, continua manual e separada de aporte).
+RETORNO ESPERADO: fluxo de cadastro+aporte funcional.
+
+---
+
+## TASK-124 — Front: grafico por ativo individual
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-122
+FLUXO: Implementacao
+CONTEXTO A LER: stack.md ("Grafico (frontend): Recharts"); regra-de-negocio.md item 8.1
+ESCOPO: grafico (Recharts) por ativo mostrando o historico de aportes (quantidade acumulada e/ou preco medio ao longo do tempo, a partir de `useHistoricoAportes`) na tela de detalhe do ativo.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/components/GraficoHistoricoAportes.tsx` (novo)
+NAO FAZER: nao inventar serie de cotacao (item 8: sem API externa); o grafico e so sobre os aportes que o proprio usuario registrou.
+RETORNO ESPERADO: componente de grafico consumindo dado real do historico.
+
+---
+
+## TASK-125 — Front: grafico consolidado de todos os ativos
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-122
+FLUXO: Implementacao
+CONTEXTO A LER: `features/investimentos/hooks/useResumoAtivos.ts`, `lib/obterResumoPorTipo.ts` (dado ja existente via `AtivosResumoResponse`)
+ESCOPO: grafico consolidado (ex: pizza/barras por tipo RENDA_FIXA vs RENDA_VARIAVEL, usando `AtivosResumoResponse.porTipo` ja calculado no backend) na tela `ListaAtivosPage.tsx`.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/components/GraficoConsolidadoAtivos.tsx` (novo), `MyFinanceFrontEnd/src/features/investimentos/ListaAtivosPage.tsx`
+NAO FAZER: nao recalcular percentual no front (ja vem pronto de `ObterResumo`).
+RETORNO ESPERADO: grafico consolidado integrado a pagina.
+
+---
+
+## TASK-126 — Style review Bloco F (Investimentos)
+
+STATUS: PENDENTE
+AGENT: style
+DEPENDENCIAS: TASK-123, TASK-124, TASK-125, TASK-121
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 8 INTEIRO; clean-code.md; identidade-visual.md
+ESCOPO: revisao geral do bloco Investimentos (backend TASK-115/117/119 + front TASK-122 a 125).
+CRITERIO DE ACEITE: veredito.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+
+---
+
+## TASK-127 — Backend: Conta ganha subtipo, icone e cor
+
+STATUS: PENDENTE
+AGENT: levi
+DEPENDENCIAS: nenhuma
+FLUXO: Implementacao
+CONTEXTO A LER: `Domain/Conta.cs`, `Domain/TipoConta.cs` (padrao de enum), `Infrastructure/Configurations/ContaConfiguration.cs`, `.claude/context/mockups/03 Contas.dc.html`
+ESCOPO: **achado confirmado** — `Conta` hoje NAO tem subtipo bancario (corrente/poupanca), nem icone nem cor; `TipoConta` (Banco/Cartao/Investimento) e um eixo diferente. Adicionar `SubtipoConta` (enum: `Corrente`, `Poupanca`, `DinheiroFisico`, nullable, so aplicavel quando `Tipo=Banco`, storage no padrao de `TipoConta.cs`), `Icone` (string nullable, nome de icone de um catalogo fixo do front — sem catalogo no backend, so string livre validada no front), `Cor` (string nullable, hex). Nao e regra critica (metadado descritivo, sem calculo/maquina de estado) — sem TDD, mas cobrir com testes unitarios basicos no mesmo PR.
+CRITERIO DE ACEITE:
+1. `POST /api/contas` aceita os 3 campos novos, todos opcionais.
+2. `ContaResponse` expoe os 3 campos.
+3. Contas existentes ficam com os 3 campos `null` sem quebrar.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Domain/Conta.cs`, `MyFinances/MyFinances/Domain/SubtipoConta.cs` (novo), `MyFinances/MyFinances/Infrastructure/Configurations/ContaConfiguration.cs`, `MyFinances/MyFinances/DTOs/Conta/CriarContaRequest.cs`, `MyFinances/MyFinances/DTOs/Conta/ContaResponse.cs`, `MyFinances/MyFinances/Migrations/**`, `MyFinances/MyFinances.Tests/**` (testes basicos do novo campo)
+NAO FAZER: nao criar catalogo de icones no backend (front decide os valores validos); nao tornar nenhum dos 3 campos obrigatorio.
+RETORNO ESPERADO: migration aditiva, contrato atualizado.
+
+---
+
+## TASK-128 — Front: nova pagina generica de Contas (mockup 03)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-127
+FLUXO: Implementacao
+CONTEXTO A LER: mockups `.claude/context/mockups/03 Contas.dc.html`; stack.md "Estrutura de pastas (src/)"
+ESCOPO: **achado confirmado** — a rota `/contas` hoje aponta pra `ListaContasSimplesPage.tsx` (dentro de `features/investimentos/`), que so cria/lista contas `tipo=INVESTIMENTO` (hardcoded). NAO existe hoje nenhuma pagina generica de "Contas" (bancarias: corrente/poupanca/dinheiro). Criar `features/contas/ContasPage.tsx` (feature hoje e so `.gitkeep`) que lista TODAS as contas manuais (banco + investimento, sem cartao — que tem pagina propria), combinando `GET /api/contas?tipo=banco` e `?tipo=investimento` (mesmo padrao ja usado por `useContasParaSelecao` em contas-receber), exibindo icone, subtitulo (subtipo/tipo), valor, badge origem (Manual/OFX), patrimonio total, seguindo o mockup 03. Criar `types.ts`/`api.ts`/`query-keys.ts`/`hooks/` da feature.
+CRITERIO DE ACEITE:
+1. Lista mostra contas banco + investimento juntas com patrimonio total somado.
+2. Icone e cor (quando cadastrados) aparecem no card/item.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/contas/ContasPage.tsx` (novo), `MyFinanceFrontEnd/src/features/contas/types.ts` (novo), `MyFinanceFrontEnd/src/features/contas/api.ts` (novo), `MyFinanceFrontEnd/src/features/contas/query-keys.ts` (novo), `MyFinanceFrontEnd/src/features/contas/hooks/*.ts` (novo), `MyFinanceFrontEnd/src/features/contas/components/*.tsx` (novo)
+NAO FAZER: nao incluir contas CARTAO nesta lista (tem pagina propria, `/cartao`).
+RETORNO ESPERADO: pagina nova funcional, ainda nao roteada (TASK-129 troca a rota).
+
+---
+
+## TASK-129 — Front: modal nova conta (icone, subtipo, mascara de moeda, cor) + troca de rota
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-128
+FLUXO: Implementacao
+CONTEXTO A LER: mockups `.claude/context/mockups/03 Contas.dc.html` (secao "Modal nova conta")
+ESCOPO: formulario "Nova conta" com nome, tipo/subtipo (dropdown: Corrente/Poupanca/Dinheiro fisico/Investimento), saldo inicial com MASCARA de moeda enquanto digita (input hoje e `type=number` cru, sem mascara — achado confirmado em `FormCriarContaInvestimento.tsx`, mesmo padrao a evitar aqui), seletor de icone (catalogo fixo de icones Lucide, mesmo padrao visual ja usado nos mockups) e seletor de cor (paleta fixa curta, nao color-picker livre — consistente com identidade-visual.md "sem cor so por enfeite"). Trocar rota `/contas` em `routes.tsx` para `ContasPage` (TASK-128); remover `ListaContasSimplesPage.tsx` (substituida); ajustar link cruzado "Ver investimentos (ativos)" para continuar apontando a `/investimentos`.
+CRITERIO DE ACEITE:
+1. Input de saldo inicial formata como moeda (R$ 0,00) enquanto o usuario digita.
+2. `/contas` renderiza a nova pagina; `ListaContasSimplesPage.tsx` removida sem quebrar nenhuma outra rota.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/contas/components/FormNovaConta.tsx` (novo), `MyFinanceFrontEnd/src/features/contas/lib/mascaraMoeda.ts` (novo), `MyFinanceFrontEnd/src/app/routes.tsx`, `MyFinanceFrontEnd/src/features/investimentos/ListaContasSimplesPage.tsx` (remover)
+NAO FAZER: nao remover `features/investimentos/` inteira (Ativos continua ali); nao criar color-picker livre (paleta fixa, ver identidade-visual.md).
+RETORNO ESPERADO: rota `/contas` funcional com o novo fluxo completo.
+
+---
+
+## TASK-130 — Style review Bloco G (Contas)
+
+STATUS: PENDENTE
+AGENT: style
+DEPENDENCIAS: TASK-129
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md itens 1, 8, 10; clean-code.md; identidade-visual.md
+ESCOPO: revisao geral do bloco Contas (backend TASK-127 + front TASK-128/129), com atencao especial a nao ter quebrado o fluxo de conta de investimento que existia antes (agora dentro da pagina generica).
+CRITERIO DE ACEITE: veredito.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+
+---
+
+## TASK-131 — Front: multiplos cartoes de credito
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: nenhuma
+FLUXO: Implementacao
+CONTEXTO A LER: mockups `.claude/context/mockups/05 Cartao de Credito.dc.html`
+ESCOPO: **achado confirmado** — o backend ja suporta N contas `tipo=CARTAO` sem nenhuma restricao de unicidade (`ContaService.CriarContaAsync`/`ValidarCartao` nao limitam quantidade); o gap e 100% front — `useContaCartaoAtual.ts` pega so `data?.[0]` (primeiro cartao). Trocar `ContaCartaoPage.tsx` para listar todos os cartoes (card visual por cartao + card semi-transparente com "+" pra adicionar novo, seguindo o mockup 05); selecionar um cartao mostra saldo/faturas/compras daquele cartao especifico.
+CRITERIO DE ACEITE: usuario consegue cadastrar um 2o cartao e alternar entre eles sem perder acesso ao 1o.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/cartao/ContaCartaoPage.tsx`, `MyFinanceFrontEnd/src/features/cartao/hooks/useContaCartaoAtual.ts`, `MyFinanceFrontEnd/src/features/cartao/components/CartaoVisual.tsx`
+NAO FAZER: nenhuma mudanca de backend (ja suporta).
+RETORNO ESPERADO: multiplos cartoes navegaveis na UI.
+
+---
+
+## TASK-132 — Front: categoria funcional na compra do cartao
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: nenhuma
+FLUXO: Correcao
+CONTEXTO A LER: regra-de-negocio.md item 7; `Controllers/CategoriasController.cs` (endpoint ja existe), `features/categorias/components/CategoriaSelect.tsx` (componente pronto)
+ESCOPO: **achado confirmado** — o comentario em `LancarCompraForm.tsx` ("ainda nao ha endpoint de categorias no backend") esta DESATUALIZADO: `GET /api/categorias` existe e funciona (modulo Categorias concluido). Trocar o `<select disabled>` fixo por `CategoriaSelect` (tipo Despesa), removendo o hardcode `categoriaId: null` em `ContaCartaoPage.tsx`/`handleSubmitCompra`.
+CRITERIO DE ACEITE: compra lancada no cartao com categoria escolhida grava `categoriaId` real (nao mais sempre null).
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/cartao/components/LancarCompraForm.tsx`, `MyFinanceFrontEnd/src/features/cartao/ContaCartaoPage.tsx`
+NAO FAZER: nenhuma mudanca de backend (endpoint ja existe e funciona).
+RETORNO ESPERADO: compra com categoria funcional.
+
+---
+
+## TASK-133 — Front: parcelamento no formulario de compra do cartao
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: nenhuma
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 12 secao "Parcelamento"; `Controllers/CartaoComprasParceladasController.cs` (endpoint ja existe: `POST /api/contas/{contaId}/compras-parceladas`)
+ESCOPO: **achado confirmado** — DEMANDA-005 (parcelamento) esta CONCLUIDA e MERGEADA no backend (`ComprasParceladasService`, `CartaoComprasParceladasController`); o form do front (`LancarCompraForm.tsx`) so lanca compra a vista (`POST .../compras`), sem campo de parcelas. Adicionar campo "Numero de parcelas" (>=2 opcional); quando preenchido com valor >1, chamar `POST /api/contas/{contaId}/compras-parceladas` em vez de `POST .../compras`.
+CRITERIO DE ACEITE: compra com 1 parcela usa o endpoint atual; compra com N>=2 parcelas usa o endpoint de parceladas e mostra confirmacao do agrupamento ("Notebook 1/10" etc, se a resposta trouxer esse dado).
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/cartao/components/LancarCompraForm.tsx`, `MyFinanceFrontEnd/src/features/cartao/ContaCartaoPage.tsx`, `MyFinanceFrontEnd/src/features/cartao/api.ts`, `MyFinanceFrontEnd/src/features/cartao/types.ts`, `MyFinanceFrontEnd/src/features/cartao/hooks/useLancarCompra.ts`
+NAO FAZER: nenhuma mudanca de backend (ja existe); nao implementar estorno de parcelada (fora deste backlog).
+RETORNO ESPERADO: fluxo de compra parcelada funcional no front.
+
+---
+
+## TASK-134 — Front: remover relatorio de cartao morto, redirecionar link
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: nenhuma
+FLUXO: Correcao
+CONTEXTO A LER: regra-de-negocio.md item 12 ("Duas visoes") e item 14 ("Onde aparece" — "Relatorio por categoria: comparativo limite vs. realizado")
+ESCOPO: **achado confirmado** — "Ver relatorio por categoria" (em `ContaCartaoPage.tsx`) aponta pra `RelatorioCategoriaPage.tsx`, que chama `GET /api/relatorios/categorias` — endpoint que NAO EXISTE (confirmado: so existem `CategoriasController`/`DeParaCategoriasController`, nenhum `RelatoriosController`). E por isso que a tela trava em "Carregando relatorio..." (o proprio comentario do codigo ja documenta o gap, so nao foi conectado a solucao que ja existe): `ComparativoLimiteGastoPage.tsx` (rota `/limites-gasto`) JA FAZ o que a regra item 14 pede ("relatorio por categoria: comparativo limite vs. realizado") com backend funcional (`LimitesGastoController`). Remover `RelatorioCategoriaPage.tsx`, `hooks/useRelatorioCategoria.ts`, `lib/relatorioCategoria.ts`, `obterRelatorioCategoria` em `api.ts`, rota `/cartao/relatorio` em `routes.tsx`; trocar o link em `ContaCartaoPage.tsx` para apontar `/limites-gasto`.
+CRITERIO DE ACEITE:
+1. Nenhuma chamada a `/api/relatorios/categorias` sobra no codigo.
+2. "Ver relatorio por categoria" no cartao leva a `/limites-gasto` (ja funcional).
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/cartao/RelatorioCategoriaPage.tsx` (remover), `MyFinanceFrontEnd/src/features/cartao/hooks/useRelatorioCategoria.ts` (remover), `MyFinanceFrontEnd/src/features/cartao/lib/relatorioCategoria.ts` (remover), `MyFinanceFrontEnd/src/features/cartao/api.ts`, `MyFinanceFrontEnd/src/features/cartao/ContaCartaoPage.tsx`, `MyFinanceFrontEnd/src/app/routes.tsx`
+NAO FAZER: nao criar o endpoint `/api/relatorios/categorias` (a solucao e reusar `/limites-gasto`, nao duplicar).
+RETORNO ESPERADO: bug de loading infinito e contraste resolvido pela remocao da tela quebrada + redirecionamento.
+
+---
+
+## TASK-135 — Front: reconstruir ComparativoLimiteGastoPage (mockup 10)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-134
+FLUXO: Melhoria
+CONTEXTO A LER: mockups `.claude/context/mockups/10 Relatorio por Categoria.dc.html`; regra-de-negocio.md item 14
+ESCOPO: reconstruir `ComparativoLimiteGastoPage.tsx` (usuario confirmou que esta "totalmente diferente do sketch") seguindo o layout do mockup 10. Adicionar suporte a query param `?categoriaId=` (filtro client-side sobre a lista ja retornada por `useGastoVsLimiteTodasCategorias` — o endpoint ja traz todas as categorias com limite, nao precisa filtro no backend) para suportar o deep-link do TASK-144 (dashboard).
+CRITERIO DE ACEITE: layout alinhado ao mockup 10; `/limites-gasto?categoriaId=X` mostra a categoria X em destaque/filtrada.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/limite-gasto/ComparativoLimiteGastoPage.tsx`, `MyFinanceFrontEnd/src/features/limite-gasto/components/ItemComparativoLimite.tsx`
+NAO FAZER: nao alterar `LimitesGastoController`/backend (endpoint ja serve o dado necessario).
+RETORNO ESPERADO: tela reconstruida + filtro por query param.
+
+---
+
+## TASK-136 — Style review Bloco H (Cartao)
+
+STATUS: PENDENTE
+AGENT: style
+DEPENDENCIAS: TASK-131, TASK-132, TASK-133, TASK-135
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md itens 7, 12, 14; clean-code.md; identidade-visual.md
+ESCOPO: revisao geral do bloco Cartao (TASK-131 a 135).
+CRITERIO DE ACEITE: veredito.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+
+---
+
+## TASK-137 — Backend: Categoria ganha icone
+
+STATUS: PENDENTE
+AGENT: levi
+DEPENDENCIAS: nenhuma
+FLUXO: Implementacao
+CONTEXTO A LER: `Domain/Categoria.cs` (confirmado: sem campo icone hoje), `Infrastructure/Configurations/CategoriaConfiguration.cs`
+ESCOPO: adicionar `Categoria.Icone` (string nullable — nome de icone de catalogo fixo do front, mesma logica de `Conta.Icone` da TASK-127) + migration aditiva + DTOs (`CriarCategoriaRequest`, `EditarCategoriaRequest`, `CategoriaResponse`). Nao critico, sem TDD, testes basicos no mesmo PR.
+CRITERIO DE ACEITE: campo opcional, categorias existentes ficam `null` sem quebrar.
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Domain/Categoria.cs`, `MyFinances/MyFinances/Infrastructure/Configurations/CategoriaConfiguration.cs`, `MyFinances/MyFinances/DTOs/Categoria/*.cs`, `MyFinances/MyFinances/Migrations/**`, `MyFinances/MyFinances.Tests/**`
+NAO FAZER: nao tornar o campo obrigatorio.
+RETORNO ESPERADO: migration aditiva, contrato atualizado.
+
+---
+
+## TASK-138 — Front: seletor de icone em Categoria
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-137
+FLUXO: Implementacao
+CONTEXTO A LER: mockups `.claude/context/mockups/06 Categorias.dc.html`
+ESCOPO: adicionar seletor de icone (mesmo catalogo fixo da TASK-129) em `FormCategoria.tsx`; exibir o icone escolhido em `CategoriaItem.tsx` e em `CategoriaSelect.tsx`.
+CRITERIO DE ACEITE: icone visivel na listagem e no dropdown de selecao de categoria.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/categorias/FormCategoria.tsx`, `MyFinanceFrontEnd/src/features/categorias/components/CategoriaItem.tsx`, `MyFinanceFrontEnd/src/features/categorias/components/CategoriaSelect.tsx`, `MyFinanceFrontEnd/src/features/categorias/types.ts`
+NAO FAZER: nao duplicar catalogo de icones (reusar o mesmo definido na TASK-129, promover para `shared/lib` se ainda nao estiver la).
+RETORNO ESPERADO: icones funcionais em cadastro/listagem/select.
+
+---
+
+## TASK-139 — Front: investigar/corrigir botao "Editar" duplicado em Categoria [REVISAR]
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: nenhuma
+FLUXO: Correcao
+CONTEXTO A LER: `features/categorias/CategoriasPage.tsx`, `features/categorias/components/CategoriaItem.tsx`, `features/categorias/FormCategoria.tsx`
+ESCOPO: [REVISAR: killua revisou os 3 arquivos e NAO encontrou um botao "Editar" literalmente duplicado no DOM — `CategoriaItem.tsx` tem exatamente 1 botao "Editar". Candidato mais provavel: quando `CategoriasPage.tsx` abre o `FormCategoria` em modo edicao (acima da lista), o `CategoriaItem` da categoria sendo editada CONTINUA visivel na lista logo abaixo, com seu proprio botao "Editar" ainda clicavel — pode ser isso que o usuario percebeu como "duplicado" (2 pontos de entrada pra edicao da mesma categoria simultaneamente na tela, nao 2 botoes identicos). Confirmar com o usuario/reproduzir no browser antes de codar; se for esse o caso, a correcao e desabilitar ou ocultar o botao "Editar" do `CategoriaItem` correspondente enquanto o formulario dela estiver aberto.] Se a reproducao no browser revelar outra causa, ajustar o ESCOPO e reportar ao Kira antes de alterar codigo.
+CRITERIO DE ACEITE: apos a correcao, existe no maximo 1 ponto de entrada de edicao ativo por categoria visivel na tela.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/categorias/CategoriasPage.tsx`, `MyFinanceFrontEnd/src/features/categorias/components/CategoriaItem.tsx`
+NAO FAZER: nao alterar `FormCategoria.tsx` sem necessidade comprovada.
+RETORNO ESPERADO: causa raiz confirmada + correcao, OU relatorio ao Kira se a causa for outra.
+
+---
+
+## TASK-140 — Style review Bloco I (Categorias)
+
+STATUS: PENDENTE
+AGENT: style
+DEPENDENCIAS: TASK-138, TASK-139
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 7; clean-code.md
+ESCOPO: revisao geral do bloco Categorias (TASK-137 a 139).
+CRITERIO DE ACEITE: veredito.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+
+---
+
+## TASK-141 — Front: botoes de acao rapida no Dashboard [REVISAR "Pagar conta"]
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: nenhuma
+FLUXO: Implementacao
+CONTEXTO A LER: mockups `.claude/context/mockups/02 Dashboard.dc.html`
+ESCOPO: adicionar os 3 botoes de acao rapida do mockup (Novo Lancamento, Transferir, Pagar Conta) ao `DashboardPage.tsx`. "Novo Lancamento" e "Transferir" tem destino claro (navegar para `/lancamentos` ja com o segmented control certo pre-selecionado, via query param ou state de rota). [REVISAR: "Pagar Conta" e ambiguo — pode significar marcar um Lancamento PENDENTE existente como pago (fluxo hoje em `/lancamentos`, acao "Marcar como pago" por item) OU pagar fatura de cartao (`PagarFaturaModal` em `/cartao`). Regra de negocio nao define isso. Kira deve perguntar ao usuario qual fluxo o botao abre antes do dispatch desta task, ou hanzo abre um menu com as duas opcoes.]
+CRITERIO DE ACEITE: 3 botoes navegam para destino funcional real (nenhum fica so visual).
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/dashboard/DashboardPage.tsx`, `MyFinanceFrontEnd/src/features/dashboard/components/AcoesRapidas.tsx` (novo)
+NAO FAZER: nao inventar fluxo novo de "pagar conta" no backend — so navegar para o que ja existe.
+RETORNO ESPERADO: 3 acoes funcionais (ou 2 + decisao pendente documentada, se "Pagar Conta" nao for esclarecido a tempo).
+
+---
+
+## TASK-142 — Front: widget "ultimos lancamentos" no Dashboard (resolve bug de contraste no hover)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: nenhuma
+FLUXO: Implementacao
+CONTEXTO A LER: mockups `.claude/context/mockups/02 Dashboard.dc.html` (secao "Ultimos lancamentos"); `features/lancamentos/components/LancamentoItem.tsx` (padrao existente)
+ESCOPO: [ACHADO: `DashboardPage.tsx` hoje NAO renderiza nenhuma lista de lancamentos — so 3 cards (saldo projetado, grafico, limite). O bug de contraste no hover relatado ("valores ficam ilegiveis") nao reproduz em codigo estatico porque essa lista simplesmente nao existe ainda no Dashboard; nem `Card` (shared/ui/card.tsx) nem `LancamentoItem.tsx` tem alguma classe `hover:` hoje. O mockup 02 confirma que deveria existir um widget "Ultimos lancamentos" ali. Se o bug for reproduzivel HOJE em outro lugar (ex: `/lancamentos`), Kira deve apontar o arquivo exato antes do dispatch — nao encontrado por leitura estatica.] Criar o widget "Ultimos lancamentos" no Dashboard (reusar `LancamentoItem`/padrao visual), com a garantia explicita de que nenhum estado de hover usa a mesma cor pro texto e pro fundo (ver identidade-visual.md — nunca depender so de opacidade sem verificar contraste real).
+CRITERIO DE ACEITE:
+1. Widget mostra os N lancamentos mais recentes (fluxo de caixa) com valores legiveis em qualquer estado, inclusive hover.
+2. Nenhuma classe `hover:bg-*`/`hover:text-*` no componente usa a mesma cor pros dois.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/dashboard/components/UltimosLancamentos.tsx` (novo), `MyFinanceFrontEnd/src/features/dashboard/hooks/useUltimosLancamentos.ts` (novo, se precisar de query propria)
+NAO FAZER: nao alterar `LancamentoItem.tsx` de `/lancamentos` sem necessidade comprovada de bug la tambem.
+RETORNO ESPERADO: widget funcional + confirmacao de que a garantia de contraste foi checada.
+
+---
+
+## TASK-143 — Front: dashboard com widgets configuraveis
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-142
+FLUXO: Implementacao
+CONTEXTO A LER: `DashboardPage.tsx` (composicao atual: `CardSaldoProjetado`, `GraficoEntradasSaidas`, `LimiteGastoIndicador`)
+ESCOPO: sistema de widgets escolhiveis pelo usuario (modelo confirmado pelo usuario — decisao ja tomada, nao e omissao) incluindo, alem dos widgets ja existentes, grafico de investimentos (reusar `GraficoConsolidadoAtivos` da TASK-125) e um novo widget de "rendimentos" ([REVISAR: regra-de-negocio.md nao define "rendimento" como metrica — nao ha campo de rendimento/proventos no dominio (item 8: "Dividendos/proventos" esta EXPLICITAMENTE em v2, fora de escopo v1). Ate essa decisao ser tomada, o widget de "rendimentos" so pode mostrar `evolucao_percentual` agregada dos ativos (item 8.1, ja calculada), nao "rendimento" no sentido de proventos recebidos — confirmar com o usuario se e isso que ele quer dizer]). Preferencia de quais widgets exibir persistida (localStorage e suficiente na v1, sem endpoint de preferencia de usuario no backend).
+CRITERIO DE ACEITE:
+1. Usuario consegue ligar/desligar cada widget.
+2. Preferencia sobrevive a reload da pagina.
+3. `CardSaldoProjetado` (formula do item 9, regra critica ja aprovada) NAO tem sua semantica alterada — so pode ser ligado/desligado, nunca reinterpretado.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/dashboard/DashboardPage.tsx`, `MyFinanceFrontEnd/src/features/dashboard/components/SeletorWidgets.tsx` (novo), `MyFinanceFrontEnd/src/features/dashboard/lib/preferenciaWidgets.ts` (novo)
+NAO FAZER: nao criar endpoint de backend para preferencia de widget (localStorage resolve na v1); nao alterar a formula/logica de `CardSaldoProjetado`/`ProjecaoMesService` (regra critica ja fechada no item 9).
+RETORNO ESPERADO: dashboard configuravel funcional.
+
+---
+
+## TASK-144 — Front: clique em categoria do LimiteGastoIndicador navega filtrando
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-135
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 14
+ESCOPO: tornar cada linha de `LimiteGastoIndicador.tsx` (no Dashboard) clicavel, navegando para `/limites-gasto?categoriaId={id}` (filtro ja suportado pela TASK-135).
+CRITERIO DE ACEITE: clicar numa categoria no Dashboard abre `/limites-gasto` com aquela categoria ja filtrada/destacada.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/dashboard/components/LimiteGastoIndicador.tsx`
+NAO FAZER: nenhuma mudanca de backend.
+RETORNO ESPERADO: navegacao funcional com filtro aplicado.
+
+---
+
+## TASK-145 — Style review Bloco J (Dashboard)
+
+STATUS: PENDENTE
+AGENT: style
+DEPENDENCIAS: TASK-141, TASK-143, TASK-144
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md itens 9, 14; clean-code.md; identidade-visual.md
+ESCOPO: revisao geral do bloco Dashboard (TASK-141 a 144), com atencao especial a `CardSaldoProjetado` nao ter sido alterado na semantica.
+CRITERIO DE ACEITE: veredito.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+
+---
+
+## TASK-146 — Front: reconstruir LancamentosPage (mockup 04)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: nenhuma
+FLUXO: Melhoria
+CONTEXTO A LER: mockups `.claude/context/mockups/04 Lancamentos.dc.html`; `features/lancamentos/LancamentosPage.tsx`, `components/LancamentoItem.tsx` (codigo atual)
+ESCOPO: **achado confirmado** — layout atual e seletor de conta + cards planos + botao "Novo" abrindo formulario inline (modal-like); o mockup 04 pede: navegador de mes (seta esquerda/direita + "Julho 2026"), 3 cards de resumo (Entradas/Saidas/Saldo do mes), chips de filtro (Todos/Entradas/Saidas), lista AGRUPADA POR DATA ("Hoje, 5 de julho" / "Ontem..." / datas), item de lista com icone + categoria (nao so descricao), e um FAB (botao flutuante "+") no canto inferior direito em vez do botao "Novo" no topo. Reconstruir seguindo esse layout — REGRA DE NEGOCIO E BACKEND INTOCADOS (so front/layout), reusando os hooks/mutations ja existentes (`useFluxoCaixa`, `useMarcarComoPago`, `useRemoverLancamento`, `FormLancamento`, `FormTransferencia`).
+CRITERIO DE ACEITE:
+1. Lista agrupada por data, com filtro Todos/Entradas/Saidas.
+2. Navegacao de mes (nao mais so mes corrente fixo).
+3. Nenhuma mudanca de contrato de API ou de regra de negocio.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/lancamentos/LancamentosPage.tsx`, `MyFinanceFrontEnd/src/features/lancamentos/components/LancamentoItem.tsx`, `MyFinanceFrontEnd/src/features/lancamentos/lib/filtrarPeriodo.ts`, `MyFinanceFrontEnd/src/features/lancamentos/components/FiltroTipoLancamento.tsx` (novo), `MyFinanceFrontEnd/src/features/lancamentos/components/NavegadorMes.tsx` (novo)
+NAO FAZER: nao alterar `hooks/`, `api.ts`, `types.ts` (contrato de dados intocado); nao alterar `FormLancamento.tsx`/`FormTransferencia.tsx` (formularios ja aprovados, so o container/lista mudam de layout).
+RETORNO ESPERADO: tela reconstruida seguindo o mockup 04, sem regressao de funcionalidade.
+
+---
+
+## TASK-147 — Style review Bloco K (Lancamentos)
+
+STATUS: PENDENTE
+AGENT: style
+DEPENDENCIAS: TASK-146
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md itens 2, 3; clean-code.md; identidade-visual.md
+ESCOPO: revisao do bloco Lancamentos (TASK-146), garantindo que a regra de sinal (item 2, CRITICA) e a exclusao de transferencia (item 3) continuam intocadas na nova apresentacao.
+CRITERIO DE ACEITE: veredito.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+
+---
+
+## TASK-148 — Killua: decisao de paleta clara + mecanismo de alternancia
+
+STATUS: PENDENTE
+AGENT: killua
+DEPENDENCIAS: nenhuma
+FLUXO: Implementacao
+CONTEXTO A LER: identidade-visual.md INTEIRO
+ESCOPO: **achado confirmado** — `index.css` diz explicitamente "O app tem um unico tema (escuro); nao ha alternancia light/dark" (nao e gap incompleto, e ausencia total documentada). `identidade-visual.md` NAO define nenhum token de tema claro. Decidir a paleta clara (tokens equivalentes aos de `identidade-visual.md` "Cores — base (dark)") preservando os principios ja definidos (roxo = acao, verde = entrada, coral = saida, ambar = pendente — cores semanticas nao mudam entre temas, so as bases neutras) e o mecanismo de alternancia (classe `.light`/`.dark` no root, preferencia do SO como default + toggle manual persistido, mesmo padrao usado por bibliotecas Tailwind/shadcn). Entregar a paleta como texto pronto para o Kira aplicar em `identidade-visual.md` via skill `alterar-context` (secao nova "Cores — tema claro").
+CRITERIO DE ACEITE: paleta clara completa (bg-base, bg-surface, bg-surface-alt, border, texto x4 niveis) + decisao do mecanismo de toggle, documentados.
+ARQUIVOS PERMITIDOS: nenhum (killua nao escreve; entrega texto pro Kira aplicar via alterar-context)
+NAO FAZER: nao implementar CSS/componente (isso e TASK-149).
+RETORNO ESPERADO: secao pronta pra `identidade-visual.md` + decisao de mecanismo.
+
+---
+
+## TASK-149 — Front: implementar ThemeToggle + tokens claros
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-148
+FLUXO: Implementacao
+CONTEXTO A LER: identidade-visual.md (secao nova de tema claro, aplicada pelo Kira apos TASK-148)
+ESCOPO: implementar os tokens `.light` em `index.css`, componente `ThemeToggle` (visivel no `AppShell`, ex: rodape ao lado de "Sair"), persistencia da preferencia (localStorage) e deteccao de preferencia do SO como default inicial.
+CRITERIO DE ACEITE: alternar tema muda toda a paleta sem reload; preferencia sobrevive a reload.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/index.css`, `MyFinanceFrontEnd/src/app/AppShell.tsx`, `MyFinanceFrontEnd/src/shared/hooks/useTheme.ts` (novo)
+NAO FAZER: nao alterar tokens semanticos (positivo/negativo/alerta) — so as bases neutras mudam entre temas.
+RETORNO ESPERADO: toggle funcional.
+
+---
+
+## TASK-150 — Front: PWA (manifest + service worker + instalavel)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: nenhuma
+FLUXO: Implementacao
+CONTEXTO A LER: `MyFinanceFrontEnd/public/` (confirmado: so `favicon.svg`/`icons.svg`, sem manifest); `package.json` (confirmar se `vite-plugin-pwa` ja e dependencia — achado: nao esta instalado)
+ESCOPO: adicionar `vite-plugin-pwa` (ou manifest+service worker manual, a criterio do hanzo dado o setup Vite ja existente), `manifest.json` (nome, icones em pelo menos 192x192/512x512 gerados a partir do favicon/icons.svg existente, cor de tema = `--primary` de identidade-visual.md, `display: standalone`), registro do service worker (cache basico de shell, sem estrategia agressiva de cache de API — dado financeiro nao deve ficar stale offline sem indicacao clara).
+CRITERIO DE ACEITE: app instalavel (prompt de instalacao no Chrome/Edge), funciona standalone (sem barra de navegador) apos instalado.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/vite.config.ts`, `MyFinanceFrontEnd/public/manifest.json` (novo), `MyFinanceFrontEnd/public/icons/*` (novo), `MyFinanceFrontEnd/package.json`, `MyFinanceFrontEnd/src/app/main.tsx` (registro do SW, se manual)
+NAO FAZER: nao cachear respostas de API financeira de forma que mostre dado desatualizado sem aviso.
+RETORNO ESPERADO: PWA instalavel confirmada.
+
+---
+
+## TASK-151 — Front: bottom tab bar mobile (mockups)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: nenhuma
+FLUXO: Melhoria
+CONTEXTO A LER: mockups (padrao repetido em `02 Dashboard`, `03 Contas`, `05 Cartao de Credito`, etc — barra fixa no rodape mobile com 5 itens: Inicio, Lancamentos, Cartao, Contas, Mais)
+ESCOPO: **achado confirmado** — a navegacao mobile hoje (`AppShell.tsx`) e um drawer full-screen aberto por hamburguer no topo, com os 9 itens completos. O mockup usa uma BOTTOM TAB BAR fixa e sempre visivel com 5 itens (Inicio, Lancamentos, Cartao, Contas, "Mais" abrindo os 4 restantes: Investimentos, Contas fixas, Contas a receber, Categorias, Limites de gasto). Substituir o padrao mobile (< md) do `AppShell` pela bottom tab bar; o item "Mais" abre uma folha/drawer so com os itens restantes. Desktop (sidebar >= md) permanece inalterado.
+CRITERIO DE ACEITE: mobile mostra barra fixa no rodape com os 5 itens do mockup; "Mais" da acesso aos demais 5 destinos sem remover nenhuma rota existente.
+ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/app/AppShell.tsx`, `MyFinanceFrontEnd/src/app/components/BottomTabBar.tsx` (novo)
+NAO FAZER: nao remover nenhum item de navegacao (so reorganizar Inicio/Lancamentos/Cartao/Contas em destaque + "Mais" pro resto); nao alterar a sidebar desktop.
+RETORNO ESPERADO: bottom tab bar mobile funcional.
+
+---
+
+## TASK-152 — Style review Bloco L (Global/infra)
+
+STATUS: PENDENTE
+AGENT: style
+DEPENDENCIAS: TASK-149, TASK-150, TASK-151
+FLUXO: Implementacao
+CONTEXTO A LER: identidade-visual.md; clean-code.md
+ESCOPO: revisao geral do bloco Global/infra (tema, PWA, nav mobile).
+CRITERIO DE ACEITE: veredito.
+ARQUIVOS PERMITIDOS: nenhum
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
