@@ -1813,7 +1813,7 @@ RETORNO ESPERADO: diff + confirmacao manual de que /login e as rotas protegidas 
 
 ## TASK-089 — Remover header duplicado do Dashboard
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. Saudacao/logout removidos, imports orfaos limpos. Wrapper externo (mx-auto max-w-2xl px-4 py-8) tambem removido por duplicar o <main> do AppShell - so os 3 cards de dominio restam, intactos. Kira conferiu o arquivo e o build antes de aprovar)
 AGENT: hanzo
 FLUXO: Melhoria
 DEPENDENCIAS: TASK-088
@@ -2011,7 +2011,7 @@ RETORNO ESPERADO: os 3 arquivos.
 
 ## TASK-100 — Front: hooks de Categoria
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (build limpo. 5 hooks - useCategorias, useCriarCategoria, useEditarCategoria, useArquivarCategoria, useReativarCategoria - todos invalidando categoriasKeys.lista() (prefix match cobre qualquer filtro). Nao duplicou hooks de limite de gasto ja existentes. Kira conferiu os 5 arquivos e o build antes de aprovar)
 AGENT: hanzo
 FLUXO: Implementacao
 DEPENDENCIAS: TASK-099
