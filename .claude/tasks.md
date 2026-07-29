@@ -2677,7 +2677,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-141 — Front: botoes de acao rapida no Dashboard
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2689,12 +2689,13 @@ CRITERIO DE ACEITE:
 ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/dashboard/DashboardPage.tsx`, `MyFinanceFrontEnd/src/features/dashboard/components/AcoesRapidas.tsx` (novo)
 NAO FAZER: nao inventar fluxo novo de "pagar conta" no backend — so navegar para o que ja existe em `/cartao`.
 RETORNO ESPERADO: 3 acoes funcionais.
+GAP CONHECIDO: `AcoesRapidas.tsx` navega com `?novo=lancamento`/`?novo=transferencia`, mas `LancamentosPage.tsx` (fora de ARQUIVOS PERMITIDOS desta task) ainda nao le esse param — o segmented control chega FECHADO, nao pre-selecionado. Precisa de task futura tocando `LancamentosPage.tsx` pra ler o param e abrir o form certo.
 
 ---
 
 ## TASK-142 — Front: widget "ultimos lancamentos" no Dashboard (resolve bug de contraste no hover)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2706,6 +2707,7 @@ CRITERIO DE ACEITE:
 ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/dashboard/components/UltimosLancamentos.tsx` (novo), `MyFinanceFrontEnd/src/features/dashboard/hooks/useUltimosLancamentos.ts` (novo, se precisar de query propria)
 NAO FAZER: nao alterar `LancamentoItem.tsx` de `/lancamentos` sem necessidade comprovada de bug la tambem.
 RETORNO ESPERADO: widget funcional + confirmacao de que a garantia de contraste foi checada.
+NOTA DE EXECUCAO: garantia de contraste cumprida por design — o widget nao tem NENHUM estado `hover:` (itens nao sao clicaveis nesta leva), entao o bug relatado nao tem onde se repetir. Nao foi encontrado o bug reproduzivel em nenhum outro arquivo estatico (`LancamentoItem.tsx`/`Card` nao tinham classe hover alguma antes desta task). GAP vs mockup: o mockup 02 mostra um icone de categoria por linha (ex: casa, carrinho) — o widget implementado nao renderiza icone, so descricao/data/valor/status. Nao bloqueia o criterio de aceite, mas fica registrado pro `style` (TASK-145) avaliar se PRECISA CORRIGIR.
 
 ---
 
