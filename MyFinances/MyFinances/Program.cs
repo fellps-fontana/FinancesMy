@@ -47,6 +47,7 @@ builder.Services.AddScoped<ITransferenciaRepository, TransferenciaRepository>();
 builder.Services.AddScoped<IFaturaRepository, FaturaRepository>();
 builder.Services.AddScoped<IContaReceberRepository, ContaReceberRepository>();
 builder.Services.AddScoped<IAtivoRepository, AtivoRepository>();
+builder.Services.AddScoped<IRendimentoRepository, RendimentoRepository>();
 builder.Services.AddScoped<ICompraParceladaRepository, CompraParceladaRepository>();
 builder.Services.AddScoped<IContaFixaRepository, ContaFixaRepository>();
 builder.Services.AddScoped<ILimiteGastoRepository, LimiteGastoRepository>();
