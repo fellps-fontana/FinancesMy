@@ -8,10 +8,12 @@ namespace MyFinances.Services;
 public class AtivoService : IAtivoService
 {
     private readonly IAtivoRepository _ativoRepository;
+    private readonly IRendimentoService _rendimentoService;
 
-    public AtivoService(IAtivoRepository ativoRepository)
+    public AtivoService(IAtivoRepository ativoRepository, IRendimentoService rendimentoService)
     {
         _ativoRepository = ativoRepository;
+        _rendimentoService = rendimentoService;
     }
 
     public async Task<Ativo> CriarAtivo(string nome, TipoAtivo tipo, string instituicao, decimal valorInvestido, DateOnly dataCompra)
@@ -68,8 +70,13 @@ public class AtivoService : IAtivoService
             throw new AtivoNaoEncontradoException(id);
         }
 
+        var valorAtualAnterior = ativo.ValorAtual;
+
         ativo.ValorAtual = novoValorAtual;
         ativo.AtualizadoEm = DateTime.UtcNow;
+
+        await _rendimentoService.RegistrarValorizacaoAutomatica(
+            id, valorAtualAnterior, novoValorAtual, DateOnly.FromDateTime(DateTime.UtcNow));
 
         await _ativoRepository.Salvar();
     }

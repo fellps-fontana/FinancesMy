@@ -57,6 +57,9 @@ builder.Services.AddScoped<IContaService, ContaService>();
 builder.Services.AddScoped<IAtivoService, AtivoService>();
 builder.Services.AddScoped<IContaFixaService, ContaFixaService>();
 
+// Services - Rendimento
+builder.Services.AddScoped<IRendimentoService, RendimentoService>();
+
 // Services - Contas a Receber
 builder.Services.AddScoped<IContaReceberService, ContaReceberService>();
 
