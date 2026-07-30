@@ -69,17 +69,8 @@ public class AtivoService : IAtivoService
             throw new AtivoNaoEncontradoException(ativoId);
         }
 
-        var precoMedioAtual = ativo.ValorInvestido / ativo.Quantidade;
-        var novaQuantidade = ativo.Quantidade + quantidade;
-        var novoPrecoMedio = AtivoPrecoMedioCalculator.Calcular(
-            precoMedioAtual,
-            ativo.Quantidade,
-            precoUnitario,
-            quantidade
-        );
-
-        ativo.Quantidade = novaQuantidade;
-        ativo.ValorInvestido = Math.Round(novoPrecoMedio * novaQuantidade, 6);
+        ativo.Quantidade += quantidade;
+        ativo.ValorInvestido += precoUnitario * quantidade;
         ativo.AtualizadoEm = DateTime.UtcNow;
 
         var aporte = new AtivoAporte
