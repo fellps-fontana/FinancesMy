@@ -1,4 +1,5 @@
 using MyFinances.DTOs.ContaFixa;
+using MyFinances.Domain;
 using MyFinances.Exceptions;
 using MyFinances.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -18,12 +19,19 @@ public class ContaFixaController : ControllerBase
     [HttpPost("api/contas-fixas")]
     public async Task<ActionResult<ContaFixaResponse>> Criar(CriarContaFixaRequest request)
     {
+        var periodicidade = ConverterPeriodicidade(request.Periodicidade);
+        if (periodicidade == null && !string.IsNullOrEmpty(request.Periodicidade))
+        {
+            return BadRequest(new { erro = $"Periodicidade invalida: {request.Periodicidade}" });
+        }
+
         var (sucesso, contaFixa, erro) = await _contaFixaService.CriarAsync(
             request.ContaId,
             request.Descricao,
             request.Valor,
             request.DiaVencimento,
-            request.CategoriaId
+            request.CategoriaId,
+            periodicidade
         );
 
         if (!sucesso)
@@ -40,11 +48,18 @@ public class ContaFixaController : ControllerBase
     {
         try
         {
+            var periodicidade = ConverterPeriodicidade(request.Periodicidade);
+            if (periodicidade == null && !string.IsNullOrEmpty(request.Periodicidade))
+            {
+                return BadRequest(new { erro = $"Periodicidade invalida: {request.Periodicidade}" });
+            }
+
             var (sucesso, contaFixa, erro) = await _contaFixaService.EditarAsync(
                 id,
                 request.Valor,
                 request.DiaVencimento,
-                request.CategoriaId
+                request.CategoriaId,
+                periodicidade
             );
 
             if (!sucesso)
@@ -113,5 +128,22 @@ public class ContaFixaController : ControllerBase
 
         var response = ContaFixaResponse.FromContaFixa(contaFixa!);
         return Ok(response);
+    }
+
+    private static PeriodicidadeContaFixa? ConverterPeriodicidade(string? periodicidade)
+    {
+        if (string.IsNullOrEmpty(periodicidade))
+        {
+            return null;
+        }
+
+        try
+        {
+            return PeriodicidadeContaFixaExtensions.FromStorageValue(periodicidade.ToUpperInvariant());
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

@@ -27,4 +27,19 @@ public static class ContaFixaLancamentoFactory
             ContaFixaId = contaFixa.Id
         };
     }
+
+    public static DateOnly ProximaOcorrencia(DateOnly dataAtual, PeriodicidadeContaFixa periodicidade)
+    {
+        var proximaData = periodicidade switch
+        {
+            PeriodicidadeContaFixa.Mensal => dataAtual.AddMonths(1),
+            PeriodicidadeContaFixa.Anual => dataAtual.AddYears(1),
+            _ => throw new ArgumentOutOfRangeException(nameof(periodicidade))
+        };
+
+        var diasNoMes = DateTime.DaysInMonth(proximaData.Year, proximaData.Month);
+        var diaAjustado = Math.Min(proximaData.Day, diasNoMes);
+
+        return new DateOnly(proximaData.Year, proximaData.Month, diaAjustado);
+    }
 }

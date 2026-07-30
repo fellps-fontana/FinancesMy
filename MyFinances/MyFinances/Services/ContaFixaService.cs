@@ -21,7 +21,7 @@ public class ContaFixaService : IContaFixaService
     }
 
     public async Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> CriarAsync(
-        Guid contaId, string descricao, decimal valor, int diaVencimento, Guid? categoriaId)
+        Guid contaId, string descricao, decimal valor, int diaVencimento, Guid? categoriaId, PeriodicidadeContaFixa? periodicidade = null)
     {
         var validacao = ValidarDiaVencimentoEValor(diaVencimento, valor);
         if (!validacao.Valido)
@@ -43,6 +43,7 @@ public class ContaFixaService : IContaFixaService
             Valor = valor,
             DiaVencimento = diaVencimento,
             CategoriaId = categoriaId,
+            Periodicidade = periodicidade ?? PeriodicidadeContaFixa.Mensal,
             Ativa = true
         };
 
@@ -56,7 +57,7 @@ public class ContaFixaService : IContaFixaService
     }
 
     public async Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> EditarAsync(
-        Guid contaFixaId, decimal valor, int diaVencimento, Guid? categoriaId)
+        Guid contaFixaId, decimal valor, int diaVencimento, Guid? categoriaId, PeriodicidadeContaFixa? periodicidade = null)
     {
         var validacao = ValidarDiaVencimentoEValor(diaVencimento, valor);
         if (!validacao.Valido)
@@ -73,6 +74,10 @@ public class ContaFixaService : IContaFixaService
         contaFixa.Valor = valor;
         contaFixa.DiaVencimento = diaVencimento;
         contaFixa.CategoriaId = categoriaId;
+        if (periodicidade.HasValue)
+        {
+            contaFixa.Periodicidade = periodicidade.Value;
+        }
 
         await _contaFixaRepository.Atualizar(contaFixa);
 
@@ -168,11 +173,11 @@ public class ContaFixaService : IContaFixaService
 
         var lancamentosGerados = 0;
 
-        var meses = new[] { 0, 1 };
+        var proximaOcorrencia = ContaFixaLancamentoFactory.ProximaOcorrencia(dataReferencia, contaFixa.Periodicidade);
+        var ocorrencias = new[] { dataReferencia, proximaOcorrencia };
 
-        foreach (var mesOffset in meses)
+        foreach (var data in ocorrencias)
         {
-            var data = dataReferencia.AddMonths(mesOffset);
             var existeLancamento = await _contaFixaRepository.ExisteLancamentoGerado(contaFixa.Id, data.Year, data.Month);
 
             if (!existeLancamento)

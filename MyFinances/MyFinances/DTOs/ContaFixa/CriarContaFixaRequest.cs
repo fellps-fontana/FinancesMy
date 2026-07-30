@@ -11,4 +11,6 @@ public class CriarContaFixaRequest
     public int DiaVencimento { get; set; }
 
     public Guid? CategoriaId { get; set; }
+
+    public string? Periodicidade { get; set; }
 }
