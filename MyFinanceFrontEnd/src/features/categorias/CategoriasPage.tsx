@@ -72,6 +72,13 @@ export function CategoriasPage() {
   // renderiza uma subcategoria solta na raiz da lista.
   const categoriasTopLevel = (categorias ?? []).filter((categoria) => !categoria.parentId)
 
+  // Enquanto o FormCategoria estiver aberto em modo edicao (acima da lista),
+  // o CategoriaItem correspondente aa mesma categoria precisa saber disso
+  // para desabilitar seu proprio botao "Editar" - sem isso existiam 2 pontos
+  // de entrada simultaneos para editar a mesma categoria (o form aberto e o
+  // botao "Editar" da lista, ainda clicavel, abaixo dele).
+  const categoriaEmEdicaoId = formulario?.modo === "editar" ? formulario.categoria.id : null
+
   function handleTrocarTipo(novoTipo: TipoCategoria) {
     setTipoSelecionado(novoTipo)
     setFormulario(null)
@@ -156,6 +163,7 @@ export function CategoriasPage() {
               categoria={categoria}
               limitesPorCategoriaId={limitesPorCategoriaId}
               onEditar={handleEditar}
+              categoriaEmEdicaoId={categoriaEmEdicaoId}
             />
           ))}
         </div>

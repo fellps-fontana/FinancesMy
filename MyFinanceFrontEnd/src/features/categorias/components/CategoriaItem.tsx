@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { CampoLimiteGasto } from "@/features/categorias/components/CampoLimiteGasto"
 import { useArquivarCategoria } from "@/features/categorias/hooks/useArquivarCategoria"
 import { useReativarCategoria } from "@/features/categorias/hooks/useReativarCategoria"
+import { obterIconeCatalogo } from "@/shared/lib/catalogoIcones"
 import type { CategoriaResponse, TipoCategoria } from "@/features/categorias/types"
 import type { LimiteGastoResponse } from "@/features/limite-gasto/types"
 
@@ -30,6 +31,13 @@ type CategoriaItemProps = {
   categoria: CategoriaResponse
   limitesPorCategoriaId: Record<string, LimiteGastoResponse>
   onEditar: (categoria: CategoriaResponse) => void
+  // Id da categoria com o FormCategoria aberto em modo edicao (CategoriasPage),
+  // ou null se nenhum formulario de edicao esta aberto. Usado so para
+  // desabilitar o botao "Editar" deste mesmo item enquanto seu proprio form
+  // ja esta aberto acima da lista - evita 2 pontos de entrada simultaneos
+  // para a edicao da mesma categoria (form aberto + botao "Editar" ainda
+  // clicavel na lista).
+  categoriaEmEdicaoId: string | null
 }
 
 // Componente recursivo: renderiza a categoria e, logo abaixo, suas
@@ -44,9 +52,24 @@ type CategoriaItemProps = {
 //
 // Editar: este componente so dispara o gatilho via `onEditar`, sem importar
 // formulario nenhum - quem decide renderizar o FormCategoria (TASK-102, ja
-// existente e em uso via onEditar em CategoriasPage) e o componente pai.
-export function CategoriaItem({ categoria, limitesPorCategoriaId, onEditar }: CategoriaItemProps) {
+// existente e em uso via onEditar em CategoriasPage) e o componente pai. O
+// botao "Editar" fica desabilitado quando `categoria.id === categoriaEmEdicaoId`
+// (form ja aberto acima da lista para esta mesma categoria) - um unico ponto
+// de entrada ativo por categoria visivel na tela.
+export function CategoriaItem({
+  categoria,
+  limitesPorCategoriaId,
+  onEditar,
+  categoriaEmEdicaoId,
+}: CategoriaItemProps) {
   const [erro, setErro] = useState<string | null>(null)
+
+  const emEdicao = categoria.id === categoriaEmEdicaoId
+
+  // Icone escolhido no cadastro (FormCategoria.tsx), do catalogo fixo
+  // (shared/lib/catalogoIcones.ts). Sem icone salvo (ou id fora do catalogo)
+  // cai no icone padrao - obterIconeCatalogo nunca quebra o render.
+  const Icone = obterIconeCatalogo(categoria.icone)
 
   const { mutate: arquivar, isPending: arquivando } = useArquivarCategoria()
   const { mutate: reativar, isPending: reativando } = useReativarCategoria()
@@ -86,7 +109,12 @@ export function CategoriaItem({ categoria, limitesPorCategoriaId, onEditar }: Ca
       <Card size="sm">
         <CardContent className="flex flex-col gap-2">
           <div className="flex items-start justify-between gap-2">
-            <span className="text-[14px] font-medium text-text-primary">{categoria.nome}</span>
+            <div className="flex items-center gap-3">
+              <div className="flex size-[34px] shrink-0 items-center justify-center rounded-lg bg-accent-deep">
+                <Icone className="size-4 text-accent-soft" strokeWidth={1.6} aria-hidden="true" />
+              </div>
+              <span className="text-[14px] font-medium text-text-primary">{categoria.nome}</span>
+            </div>
 
             {categoria.arquivada && (
               <span
@@ -115,8 +143,14 @@ export function CategoriaItem({ categoria, limitesPorCategoriaId, onEditar }: Ca
           )}
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={() => onEditar(categoria)}>
-              Editar
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={emEdicao}
+              onClick={() => onEditar(categoria)}
+            >
+              {emEdicao ? "Editando..." : "Editar"}
             </Button>
 
             {categoria.arquivada ? (
@@ -152,6 +186,7 @@ export function CategoriaItem({ categoria, limitesPorCategoriaId, onEditar }: Ca
               categoria={subcategoria}
               limitesPorCategoriaId={limitesPorCategoriaId}
               onEditar={onEditar}
+              categoriaEmEdicaoId={categoriaEmEdicaoId}
             />
           ))}
         </div>

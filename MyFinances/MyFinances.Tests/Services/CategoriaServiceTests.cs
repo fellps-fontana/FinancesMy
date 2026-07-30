@@ -875,4 +875,104 @@ public class CategoriaServiceTests
     }
 
     #endregion
+
+    #region Campo Icone: criar com icone, sem icone, editar icone
+
+    [Fact]
+    public async Task Criar_ComIcone_Sucesso()
+    {
+        // Arrange
+        var nome = "Alimentacao";
+        var tipo = TipoCategoria.Despesa;
+        var icone = "fork-knife";
+
+        // Act
+        var resultado = await _service.Criar(nome, tipo, null, icone);
+
+        // Assert
+        Assert.NotEqual(Guid.Empty, resultado.Id);
+        Assert.Equal(nome, resultado.Nome);
+        Assert.Equal(tipo, resultado.Tipo);
+        Assert.Equal(icone, resultado.Icone);
+        _mockRepository.Verify(r => r.Adicionar(It.IsAny<Categoria>()), Times.Once);
+        _mockRepository.Verify(r => r.Salvar(), Times.Once);
+    }
+
+    [Fact]
+    public async Task Criar_SemIcone_IconeNulo()
+    {
+        // Arrange
+        var nome = "Transporte";
+        var tipo = TipoCategoria.Despesa;
+
+        // Act
+        var resultado = await _service.Criar(nome, tipo);
+
+        // Assert
+        Assert.NotEqual(Guid.Empty, resultado.Id);
+        Assert.Equal(nome, resultado.Nome);
+        Assert.Null(resultado.Icone);
+        _mockRepository.Verify(r => r.Adicionar(It.IsAny<Categoria>()), Times.Once);
+        _mockRepository.Verify(r => r.Salvar(), Times.Once);
+    }
+
+    [Fact]
+    public async Task Editar_AdicionandoIcone_Sucesso()
+    {
+        // Arrange
+        var categoriaId = Guid.NewGuid();
+        var categoria = new Categoria
+        {
+            Id = categoriaId,
+            Nome = "Alimentacao",
+            Tipo = TipoCategoria.Despesa,
+            ParentId = null,
+            Arquivada = false,
+            Icone = null,
+            Subcategorias = new List<Categoria>()
+        };
+
+        var novoIcone = "fork-knife";
+
+        _mockRepository
+            .Setup(r => r.ObterPorId(categoriaId))
+            .ReturnsAsync(categoria);
+
+        // Act
+        var resultado = await _service.Editar(categoriaId, "Alimentacao", null, novoIcone);
+
+        // Assert
+        Assert.Equal(novoIcone, resultado.Icone);
+        _mockRepository.Verify(r => r.Salvar(), Times.Once);
+    }
+
+    [Fact]
+    public async Task Editar_RemovendoIcone_Sucesso()
+    {
+        // Arrange
+        var categoriaId = Guid.NewGuid();
+        var categoria = new Categoria
+        {
+            Id = categoriaId,
+            Nome = "Alimentacao",
+            Tipo = TipoCategoria.Despesa,
+            ParentId = null,
+            Arquivada = false,
+            Icone = "fork-knife",
+            Subcategorias = new List<Categoria>()
+        };
+
+        _mockRepository
+            .Setup(r => r.ObterPorId(categoriaId))
+            .ReturnsAsync(categoria);
+
+        // Act
+        var resultado = await _service.Editar(categoriaId, "Alimentacao", null, null);
+
+        // Assert
+        Assert.Null(resultado.Icone);
+        _mockRepository.Verify(r => r.Salvar(), Times.Once);
+    }
+
+    #endregion
 }

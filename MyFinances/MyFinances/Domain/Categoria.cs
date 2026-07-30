@@ -16,5 +16,7 @@ public class Categoria
 
     public bool Arquivada { get; set; } = false;
 
+    public string? Icone { get; set; }
+
     public ICollection<Lancamento> Lancamentos { get; set; } = new List<Lancamento>();
 }
