@@ -5,7 +5,9 @@ namespace MyFinances.Services;
 
 public interface IAtivoService
 {
-    Task<Ativo> CriarAtivo(string nome, TipoAtivo tipo, string instituicao, decimal valorInvestido, DateOnly dataCompra);
+    Task<Ativo> CriarAtivo(string nome, TipoAtivo tipo, string instituicao, decimal quantidade, decimal precoUnitario, DateOnly dataCompra);
+    Task<AtivoAporte> RegistrarAporte(Guid ativoId, decimal quantidade, decimal precoUnitario, DateOnly data);
+    Task<IEnumerable<AtivoAporte>> ListarAportes(Guid ativoId);
     Task<IEnumerable<Ativo>> ListarAtivos();
     Task AtualizarValorAtual(Guid id, decimal novoValorAtual);
     Task DesativarAtivo(Guid id);

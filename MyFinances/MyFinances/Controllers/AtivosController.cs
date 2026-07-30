@@ -25,7 +25,8 @@ public class AtivosController : ControllerBase
                 request.Nome,
                 request.Tipo,
                 request.Instituicao,
-                request.ValorInvestido,
+                request.Quantidade,
+                request.PrecoUnitario,
                 request.DataCompra);
 
             var evolucaoPercentual = _ativoService.CalcularEvolucaoPercentual(

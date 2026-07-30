@@ -169,7 +169,8 @@ public class AtivosControllerTests
             Nome = "Tesouro Direto IPCA",
             Tipo = TipoAtivo.RendaFixa,
             Instituicao = "B3",
-            ValorInvestido = 1000m,
+            Quantidade = 1m,
+            PrecoUnitario = 1000m,
             DataCompra = new DateOnly(2024, 1, 15)
         };
 
@@ -212,7 +213,8 @@ public class AtivosControllerTests
             Nome = "ETF IBOV",
             Tipo = TipoAtivo.RendaVariavel,
             Instituicao = "XP",
-            ValorInvestido = 5000m,
+            Quantidade = 1m,
+            PrecoUnitario = 5000m,
             DataCompra = new DateOnly(2024, 2, 20)
         };
 
@@ -244,7 +246,8 @@ public class AtivosControllerTests
             Nome = "Tesouro",
             Tipo = TipoAtivo.RendaFixa,
             Instituicao = "B3",
-            ValorInvestido = -1000m,
+            Quantidade = 1m,
+            PrecoUnitario = -1000m,
             DataCompra = new DateOnly(2024, 1, 15)
         };
 
@@ -269,7 +272,8 @@ public class AtivosControllerTests
             Nome = "Tesouro",
             Tipo = TipoAtivo.RendaFixa,
             Instituicao = "B3",
-            ValorInvestido = 0m,
+            Quantidade = 1m,
+            PrecoUnitario = 0m,
             DataCompra = new DateOnly(2024, 1, 15)
         };
 
@@ -294,7 +298,8 @@ public class AtivosControllerTests
             Nome = string.Empty,
             Tipo = TipoAtivo.RendaFixa,
             Instituicao = "B3",
-            ValorInvestido = 1000m,
+            Quantidade = 1m,
+            PrecoUnitario = 1000m,
             DataCompra = new DateOnly(2024, 1, 15)
         };
 
@@ -319,7 +324,8 @@ public class AtivosControllerTests
             Nome = "   ",
             Tipo = TipoAtivo.RendaFixa,
             Instituicao = "B3",
-            ValorInvestido = 1000m,
+            Quantidade = 1m,
+            PrecoUnitario = 1000m,
             DataCompra = new DateOnly(2024, 1, 15)
         };
 
@@ -344,7 +350,8 @@ public class AtivosControllerTests
             Nome = "Tesouro Direto",
             Tipo = TipoAtivo.RendaFixa,
             Instituicao = string.Empty,
-            ValorInvestido = 1000m,
+            Quantidade = 1m,
+            PrecoUnitario = 1000m,
             DataCompra = new DateOnly(2024, 1, 15)
         };
 
@@ -369,7 +376,8 @@ public class AtivosControllerTests
             Nome = "Tesouro Direto",
             Tipo = TipoAtivo.RendaFixa,
             Instituicao = "  \t\n  ",
-            ValorInvestido = 1000m,
+            Quantidade = 1m,
+            PrecoUnitario = 1000m,
             DataCompra = new DateOnly(2024, 1, 15)
         };
 

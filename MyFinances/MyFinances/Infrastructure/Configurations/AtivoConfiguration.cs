@@ -32,6 +32,11 @@ public class AtivoConfiguration : IEntityTypeConfiguration<Ativo>
             .IsRequired()
             .HasMaxLength(255);
 
+        builder.Property(a => a.Quantidade)
+            .HasColumnName("quantidade")
+            .IsRequired()
+            .HasPrecision(18, 8);
+
         builder.Property(a => a.ValorInvestido)
             .HasColumnName("valor_investido")
             .IsRequired()
