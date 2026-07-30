@@ -20,6 +20,19 @@ export function filtrarLancamentosDoMes(
 }
 
 // ---------------------------------------------------------------------------
+// Classificacao (chips + resumo) - decide o que conta como entrada/saida real.
+// ---------------------------------------------------------------------------
+
+// So ENTRADA e SAIDA contam como movimento real (regra-de-negocio.md itens 2
+// CRITICA, 3 e 12). TRANSFERENCIA (inclui pagamento de fatura) e
+// COMPETENCIA_CARTAO (compra de cartao) NUNCA contam. Fonte da verdade e
+// `classificacao` (vem do backend via ClassificacaoLancamentoService) - nunca
+// reclassificado aqui.
+export function deveContarComoEntradaOuSaida(lancamento: LancamentoResponse): boolean {
+  return lancamento.classificacao === "ENTRADA" || lancamento.classificacao === "SAIDA"
+}
+
+// ---------------------------------------------------------------------------
 // Filtro por tipo (chip Todos/Entradas/Saidas do mockup "04 Lancamentos").
 // ---------------------------------------------------------------------------
 
@@ -28,6 +41,11 @@ export type FiltroTipoLancamento = "TODOS" | "ENTRADAS" | "SAIDAS"
 // Filtra SEMPRE por `tipo` (DEBIT/CREDIT), nunca pelo sinal cru de `valor`
 // (regra-de-negocio.md item 2, CRITICA). "Entradas" = CREDIT, "Saidas" =
 // DEBIT - mesmo mapeamento ja usado em LancamentoItem/FormLancamento.
+// "TODOS" mantem transferencia/pagamento de fatura na lista (nao esconde o
+// lancamento, so nao soma no resumo - ver deveContarComoEntradaOuSaida
+// acima); "ENTRADAS"/"SAIDAS" exigem TAMBEM ser movimento real (itens 2
+// CRITICA, 3 e 12), senao transferencia de mesma titularidade apareceria
+// misturada com receita/despesa de verdade no chip.
 export function filtrarPorTipo(
   lancamentos: LancamentoResponse[],
   filtro: FiltroTipoLancamento,
@@ -37,7 +55,9 @@ export function filtrarPorTipo(
   }
 
   const tipoAlvo: TipoLancamento = filtro === "ENTRADAS" ? "CREDIT" : "DEBIT"
-  return lancamentos.filter((lancamento) => lancamento.tipo === tipoAlvo)
+  return lancamentos.filter(
+    (lancamento) => deveContarComoEntradaOuSaida(lancamento) && lancamento.tipo === tipoAlvo,
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -51,13 +71,20 @@ export type ResumoLancamentos = {
 }
 
 // Soma por `tipo` (regra-de-negocio.md item 2, CRITICA) - nunca por sinal de
-// `valor`. Funcao pura e testavel: nenhum calculo de dominio mora no
-// componente (clean-code.md, "Organizacao (React)"), so aqui.
+// `valor`. Antes de somar, exige deveContarComoEntradaOuSaida: transferencia
+// entre contas e pagamento de fatura de cartao (classificacao TRANSFERENCIA,
+// itens 3 e 12) nao sao gasto nem receita, ficam de fora do resumo. Funcao
+// pura e testavel: nenhum calculo de dominio mora no componente
+// (clean-code.md, "Organizacao (React)"), so aqui.
 export function calcularResumoLancamentos(lancamentos: LancamentoResponse[]): ResumoLancamentos {
   let totalEntradas = 0
   let totalSaidas = 0
 
   for (const lancamento of lancamentos) {
+    if (!deveContarComoEntradaOuSaida(lancamento)) {
+      continue
+    }
+
     if (lancamento.tipo === "CREDIT") {
       totalEntradas += lancamento.valor
     } else {
