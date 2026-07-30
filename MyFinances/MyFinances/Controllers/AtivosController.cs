@@ -33,7 +33,9 @@ public class AtivosController : ControllerBase
                 ativo.ValorInvestido,
                 ativo.ValorAtual);
 
-            var response = AtivoResponse.FromAtivo(ativo, evolucaoPercentual);
+            var precoMedio = ativo.Quantidade > 0 ? ativo.ValorInvestido / ativo.Quantidade : 0;
+
+            var response = AtivoResponse.FromAtivo(ativo, evolucaoPercentual, precoMedio);
 
             return Created($"/api/ativos/{response.Id}", response);
         }
@@ -52,9 +54,12 @@ public class AtivosController : ControllerBase
     {
         var ativos = await _ativoService.ListarAtivos();
 
-        var responses = ativos.Select(ativo => AtivoResponse.FromAtivo(
-            ativo,
-            _ativoService.CalcularEvolucaoPercentual(ativo.ValorInvestido, ativo.ValorAtual)));
+        var responses = ativos.Select(ativo =>
+        {
+            var evolucaoPercentual = _ativoService.CalcularEvolucaoPercentual(ativo.ValorInvestido, ativo.ValorAtual);
+            var precoMedio = ativo.Quantidade > 0 ? ativo.ValorInvestido / ativo.Quantidade : 0;
+            return AtivoResponse.FromAtivo(ativo, evolucaoPercentual, precoMedio);
+        });
 
         return Ok(responses);
     }
@@ -96,5 +101,32 @@ public class AtivosController : ControllerBase
     {
         var resumo = await _ativoService.ObterResumo();
         return Ok(resumo);
+    }
+
+    [HttpPost("{id}/aportes")]
+    public async Task<ActionResult<AtivoAporteResponse>> RegistrarAporte(Guid id, RegistrarAporteRequest request)
+    {
+        try
+        {
+            var aporte = await _ativoService.RegistrarAporte(id, request.Quantidade, request.PrecoUnitario, request.Data);
+            var response = AtivoAporteResponse.FromAporte(aporte);
+            return Created($"/api/ativos/{id}/aportes/{response.Id}", response);
+        }
+        catch (AtivoNaoEncontradoException)
+        {
+            return NotFound();
+        }
+        catch (ValorInvalidoException)
+        {
+            return BadRequest();
+        }
+    }
+
+    [HttpGet("{id}/aportes")]
+    public async Task<ActionResult<IEnumerable<AtivoAporteResponse>>> ListarAportes(Guid id)
+    {
+        var aportes = await _ativoService.ListarAportes(id);
+        var responses = aportes.Select(AtivoAporteResponse.FromAporte);
+        return Ok(responses);
     }
 }
