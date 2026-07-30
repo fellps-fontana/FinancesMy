@@ -2276,7 +2276,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-115 — [REGRA CRITICA] Esqueleto: AtivoAporte + preco medio ponderado
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: killua
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2293,7 +2293,7 @@ RETORNO ESPERADO: esqueleto compilavel + plano de migracao de dados.
 
 ## TASK-116 — [REGRA CRITICA] RED: testes de preco medio ponderado
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-115
 FLUXO: Implementacao (rodada RED)
@@ -2308,7 +2308,7 @@ RETORNO ESPERADO: RED confirmado.
 
 ## TASK-117 — [REGRA CRITICA] GREEN: implementar aporte + migracao de dados
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 DEPENDENCIAS: TASK-116
 FLUXO: Implementacao
@@ -2325,7 +2325,7 @@ RETORNO ESPERADO: implementacao completa, GREEN, migration com dado preservado.
 
 ## TASK-118 — Confirmar GREEN aporte (mike)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-117
 FLUXO: Implementacao (rodada GREEN)
@@ -2340,7 +2340,7 @@ RETORNO ESPERADO: confirmacao GREEN ou relatorio estruturado.
 
 ## TASK-119 — Style: revisao preco medio + migracao de dados
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-118
 FLUXO: Implementacao
