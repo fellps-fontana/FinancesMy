@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { ArrowDownRight, ArrowUpRight } from "lucide-react"
 import { ApiError } from "@/shared/api/client"
 import { cn } from "@/shared/lib/utils"
 import { Card, CardContent } from "@/shared/ui/card"
@@ -6,6 +7,7 @@ import { Button } from "@/shared/ui/button"
 import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
 import { formatarData } from "@/features/cartao/lib/formatarData"
+import { useCategorias } from "@/features/categorias/hooks/useCategorias"
 import { useMarcarComoPago } from "@/features/lancamentos/hooks/useMarcarComoPago"
 import { useRemoverLancamento } from "@/features/lancamentos/hooks/useRemoverLancamento"
 import type {
@@ -13,19 +15,24 @@ import type {
   StatusLancamento,
   TipoLancamento,
 } from "@/features/lancamentos/types"
+import type { CategoriaResponse, TipoCategoria } from "@/features/categorias/types"
 
 // Sinal SEMPRE derivado de `tipo`, nunca do sinal cru de `valor`
 // (regra-de-negocio.md item 2, CRITICA: "usar SEMPRE o campo tipo... Nunca
-// somar valor cru"). O prefixo +/- e o mapeamento de cor abaixo sao so
-// apresentacao em cima de `tipo` ja resolvido pelo backend - nenhum calculo
-// de dominio novo mora aqui, so a tabela label/cor/sinal (mesmo idioma ja
-// usado em CONFIG_POR_STATUS de ContaFixaItem/ContaReceberItem/
-// StatusFaturaBadge).
-type ConfigTipo = { label: string; className: string; corValor: string; sinal: string }
+// somar valor cru"). O icone do avatar tambem segue esse mesmo campo - mesmo
+// espirito de ICONE_POR_TIPO em AtivoCard.tsx (identidade-visual.md, "Icone
+// de status/categoria... significado de dominio, nao enfeite"): seta pra
+// cima = entrada, seta pra baixo = saida. `tipoCategoria` alimenta
+// useCategorias (Despesa/Receita, regra-de-negocio.md item 7) so pra
+// resolver o NOME da categoria do lancamento - o backend nao expoe um icone
+// por categoria, entao nao inventamos um (decoracao sem base em dado real
+// violaria identidade-visual.md "cor/icone carrega significado, nao e
+// enfeite").
+type ConfigTipo = { corValor: string; sinal: string; tipoCategoria: TipoCategoria; icone: typeof ArrowUpRight }
 
 const CONFIG_POR_TIPO: Record<TipoLancamento, ConfigTipo> = {
-  DEBIT: { label: "Saida", className: "bg-negativo/15 text-negativo", corValor: "text-negativo", sinal: "-" },
-  CREDIT: { label: "Entrada", className: "bg-positivo/15 text-positivo", corValor: "text-positivo", sinal: "+" },
+  DEBIT: { corValor: "text-negativo", sinal: "-", tipoCategoria: "Despesa", icone: ArrowDownRight },
+  CREDIT: { corValor: "text-positivo", sinal: "+", tipoCategoria: "Receita", icone: ArrowUpRight },
 }
 
 // Status (regra-de-negocio.md item 5): PENDENTE -> PAGO e o unico caminho
@@ -44,6 +51,34 @@ const CONFIG_POR_STATUS: Record<StatusLancamento, { label: string; className: st
   PAGO: { label: "Pago", className: "bg-positivo/15 text-positivo" },
 }
 
+// Resolve o NOME da categoria (achatando categoria + subcategoria direta,
+// mesmo universo ja percorrido por CategoriaSelect.tsx/achatarCategorias) so
+// pra exibicao no item da lista (mockup "04 Lancamentos": nome da categoria
+// abaixo da descricao). Nao e calculo de dominio - e um lookup id -> nome
+// sobre uma lista ja carregada; `categorias` chega filtrada por tipo
+// (Despesa/Receita) direto do backend via useCategorias(tipo).
+function encontrarNomeCategoria(
+  categorias: CategoriaResponse[] | undefined,
+  categoriaId: string | null,
+): string | undefined {
+  if (!categorias || !categoriaId) {
+    return undefined
+  }
+
+  for (const categoria of categorias) {
+    if (categoria.id === categoriaId) {
+      return categoria.nome
+    }
+
+    const subcategoria = categoria.subcategorias.find((item) => item.id === categoriaId)
+    if (subcategoria) {
+      return subcategoria.nome
+    }
+  }
+
+  return undefined
+}
+
 type LancamentoItemProps = {
   lancamento: LancamentoResponse
   onEditar: (lancamento: LancamentoResponse) => void
@@ -54,8 +89,17 @@ type LancamentoItemProps = {
 // porque sao acoes pontuais de item de lista, mesmo padrao de
 // ContaFixaItem/ContaReceberItem - "Editar" nao importa FormLancamento
 // diretamente (evita acoplar o item ao formulario), so dispara `onEditar`
-// pro componente pai decidir onde/como renderizar o form (fora do escopo
-// desta task, ver TASK-095).
+// pro componente pai decidir onde/como renderizar o form.
+//
+// Layout redesenhado conforme mockup "04 Lancamentos.dc.html": avatar de
+// icone (accent-deep/accent-soft, mesmo padrao de AtivoCard.tsx) + descricao
+// + categoria numa linha, valor colorido + badge de status na outra ponta.
+// O badge redundante "Entrada/Saida" do layout anterior foi removido - o
+// sinal (+/-) e a cor do valor ja comunicam a mesma informacao (regra-de-
+// negocio.md item 2) de forma mais compacta, igual ao mockup. Acoes (marcar
+// como pago/editar/remover) continuam TODAS presentes, so reagrupadas numa
+// faixa inferior separada por borda - nenhuma funcionalidade foi removida,
+// so reorganizada visualmente.
 export function LancamentoItem({ lancamento, onEditar }: LancamentoItemProps) {
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -65,6 +109,10 @@ export function LancamentoItem({ lancamento, onEditar }: LancamentoItemProps) {
 
   const tipoConfig = CONFIG_POR_TIPO[lancamento.tipo]
   const statusConfig = CONFIG_POR_STATUS[lancamento.status]
+  const IconeTipo = tipoConfig.icone
+
+  const { data: categorias } = useCategorias(tipoConfig.tipoCategoria)
+  const nomeCategoria = encontrarNomeCategoria(categorias, lancamento.categoriaId)
 
   function handleMarcarComoPago() {
     marcarComoPago(
@@ -106,49 +154,47 @@ export function LancamentoItem({ lancamento, onEditar }: LancamentoItemProps) {
 
   return (
     <Card size="sm">
-      <CardContent className="flex flex-col gap-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-col gap-1">
-            <span className="text-[19px] font-medium text-text-primary">
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex size-[34px] shrink-0 items-center justify-center rounded-lg bg-accent-deep">
+            <IconeTipo className="size-4 text-accent-soft" strokeWidth={1.6} aria-hidden="true" />
+          </div>
+
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-[14px] text-text-body">
               {lancamento.descricao ?? "Sem descricao"}
             </span>
             <div className="flex flex-wrap items-center gap-1.5">
-              <span
-                className={cn(
-                  "inline-flex items-center rounded-[5px] px-2 py-0.5 text-[12px] font-medium",
-                  tipoConfig.className,
-                )}
-              >
-                {tipoConfig.label}
+              <span className="truncate text-[12px] text-text-faint">
+                {nomeCategoria ?? "Sem categoria"}
               </span>
               {/* Simbolo de origem manual (regra-de-negocio.md item 1: "Todo
                   LANCAMENTO tem a flag manual, exibida como simbolo no UI").
-                  So aparece quando manual === true - lancamento nao-manual
-                  (Open Finance, fora de escopo v1) fica sem esse indicador. */}
+                  So aparece quando manual === true. */}
               {lancamento.manual && (
-                <span className="inline-flex items-center rounded-[5px] bg-muted px-2 py-0.5 text-[12px] font-medium text-text-muted">
+                <span className="inline-flex items-center rounded-[5px] bg-muted px-1.5 py-0.5 text-[11px] font-medium text-text-muted">
                   Manual
                 </span>
               )}
             </div>
           </div>
 
-          <span
-            className={cn(
-              "inline-flex shrink-0 items-center rounded-[5px] px-2 py-0.5 text-[12px] font-medium",
-              statusConfig.className,
-            )}
-          >
-            {statusConfig.label}
-          </span>
+          <div className="flex shrink-0 flex-col items-end gap-1 text-right">
+            <span className={cn("text-[14px] font-medium", tipoConfig.corValor)}>
+              {tipoConfig.sinal} {formatarMoeda(lancamento.valor)}
+            </span>
+            <span
+              className={cn(
+                "inline-flex items-center rounded-[5px] px-2 py-0.5 text-[11px] font-medium",
+                statusConfig.className,
+              )}
+            >
+              {statusConfig.label}
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between text-[13px] text-text-muted">
-          <span className={cn("text-[19px] font-medium", tipoConfig.corValor)}>
-            {tipoConfig.sinal} {formatarMoeda(lancamento.valor)}
-          </span>
-          <span>{formatarData(lancamento.data)}</span>
-        </div>
+        <span className="text-[12px] text-text-faint">{formatarData(lancamento.data)}</span>
 
         {erro && (
           <Alert variant="destructive">
@@ -156,7 +202,7 @@ export function LancamentoItem({ lancamento, onEditar }: LancamentoItemProps) {
           </Alert>
         )}
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-2.5">
           {confirmandoRemocao ? (
             <>
               <span className="mr-auto text-[12px] text-alerta">Remover este lancamento?</span>
