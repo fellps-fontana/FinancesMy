@@ -2355,7 +2355,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-120 — Controller/DTOs de aporte (registrar + historico)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 DEPENDENCIAS: TASK-119
 FLUXO: Implementacao
@@ -2370,7 +2370,7 @@ RETORNO ESPERADO: contrato de API dos 3 endpoints.
 
 ## TASK-121 — Testes HTTP de aporte
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-120
 FLUXO: Implementacao
@@ -2384,7 +2384,7 @@ RETORNO ESPERADO: testes passando ou relatorio de bug.
 
 ## TASK-122 — Front: camada de dados de aporte
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-120
 FLUXO: Implementacao
