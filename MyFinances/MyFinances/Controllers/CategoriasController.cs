@@ -22,7 +22,7 @@ public class CategoriasController : ControllerBase
     {
         try
         {
-            var categoria = await _categoriaService.Criar(request.Nome, request.Tipo, request.ParentId);
+            var categoria = await _categoriaService.Criar(request.Nome, request.Tipo, request.ParentId, request.Icone);
             var response = CategoriaResponse.FromCategoria(categoria);
             return Created($"/api/categorias/{response.Id}", response);
         }
@@ -52,7 +52,7 @@ public class CategoriasController : ControllerBase
     {
         try
         {
-            var categoria = await _categoriaService.Editar(id, request.Nome, request.ParentId);
+            var categoria = await _categoriaService.Editar(id, request.Nome, request.ParentId, request.Icone);
             var response = CategoriaResponse.FromCategoria(categoria);
             return Ok(response);
         }

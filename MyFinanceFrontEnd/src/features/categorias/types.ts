@@ -12,6 +12,10 @@
 // fica fora do escopo desta camada de dados.
 export type TipoCategoria = "Despesa" | "Receita"
 
+// `icone` (adicionado na TASK-137, backend): id de um icone do catalogo fixo
+// (shared/lib/catalogoIcones.ts), nao uma URL/upload livre. Opcional -
+// categoria existente sem icone escolhido fica `undefined`, sem quebra
+// (mesmo espirito de campo aditivo do resto do dominio, ex: `parentId`).
 export type CategoriaResponse = {
   id: string
   nome: string
@@ -19,12 +23,14 @@ export type CategoriaResponse = {
   parentId?: string
   subcategorias: CategoriaResponse[]
   arquivada: boolean
+  icone?: string
 }
 
 export type CriarCategoriaRequest = {
   nome: string
   tipo: TipoCategoria
   parentId?: string
+  icone?: string
 }
 
 // Tipo e imutavel apos a criacao da categoria (regra-de-negocio.md item 7)
@@ -33,4 +39,5 @@ export type CriarCategoriaRequest = {
 export type EditarCategoriaRequest = {
   nome: string
   parentId?: string
+  icone?: string
 }

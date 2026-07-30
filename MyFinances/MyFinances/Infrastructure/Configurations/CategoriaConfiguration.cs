@@ -35,6 +35,10 @@ public class CategoriaConfiguration : IEntityTypeConfiguration<Categoria>
             .IsRequired()
             .HasDefaultValue(false);
 
+        builder.Property(c => c.Icone)
+            .HasColumnName("icone")
+            .HasMaxLength(100);
+
         builder.HasOne(c => c.Parent)
             .WithMany(c => c.Subcategorias)
             .HasForeignKey(c => c.ParentId)

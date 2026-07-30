@@ -2617,7 +2617,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-137 — Backend: Categoria ganha icone
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2632,7 +2632,7 @@ RETORNO ESPERADO: migration aditiva, contrato atualizado.
 
 ## TASK-138 — Front: seletor de icone em Categoria
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-137
 FLUXO: Implementacao
@@ -2647,7 +2647,7 @@ RETORNO ESPERADO: icones funcionais em cadastro/listagem/select.
 
 ## TASK-139 — Front: investigar/corrigir botao "Editar" duplicado em Categoria [REVISAR]
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Correcao
@@ -2662,7 +2662,7 @@ RETORNO ESPERADO: causa raiz confirmada + correcao, OU relatorio ao Kira se a ca
 
 ## TASK-140 — Style review Bloco I (Categorias)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-138, TASK-139
 FLUXO: Implementacao
