@@ -2792,7 +2792,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-148 — Killua: decisao de paleta clara + mecanismo de alternancia
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: killua
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2807,7 +2807,7 @@ RETORNO ESPERADO: secao pronta pra `identidade-visual.md` + decisao de mecanismo
 
 ## TASK-149 — Front: implementar ThemeToggle + tokens claros
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-148
 FLUXO: Implementacao
@@ -2822,7 +2822,7 @@ RETORNO ESPERADO: toggle funcional.
 
 ## TASK-150 — Front: PWA (manifest + service worker + instalavel)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2837,7 +2837,7 @@ RETORNO ESPERADO: PWA instalavel confirmada.
 
 ## TASK-151 — Front: bottom tab bar mobile (mockups)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Melhoria
@@ -2852,7 +2852,7 @@ RETORNO ESPERADO: bottom tab bar mobile funcional.
 
 ## TASK-152 — Style review Bloco L (Global/infra)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-149, TASK-150, TASK-151
 FLUXO: Implementacao
