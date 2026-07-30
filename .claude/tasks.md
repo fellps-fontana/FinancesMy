@@ -2761,7 +2761,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-146 — Front: reconstruir LancamentosPage (mockup 04)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Melhoria
@@ -2779,7 +2779,7 @@ RETORNO ESPERADO: tela reconstruida seguindo o mockup 04, sem regressao de funci
 
 ## TASK-147 — Style review Bloco K (Lancamentos)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-146
 FLUXO: Implementacao
