@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/shared/ui/card"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Alert, AlertDescription } from "@/shared/ui/alert"
+import { FormRegistrarAporte } from "@/features/investimentos/components/FormRegistrarAporte"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
 import { formatarVariacaoPercentual } from "@/features/investimentos/lib/formatarVariacaoPercentual"
 import { cn } from "@/shared/lib/utils"
@@ -39,6 +40,9 @@ type AtivoCardProps = {
   onSolicitarDesativar: () => void
   onConfirmarDesativar: () => void
   onCancelarDesativar: () => void
+  mostrandoAporte: boolean
+  onAbrirAporte: () => void
+  onFecharAporte: () => void
 }
 
 // Componente de apresentacao (burro): uma linha da lista de ativos do mockup
@@ -64,6 +68,9 @@ export function AtivoCard({
   onSolicitarDesativar,
   onConfirmarDesativar,
   onCancelarDesativar,
+  mostrandoAporte,
+  onAbrirAporte,
+  onFecharAporte,
 }: AtivoCardProps) {
   const Icone = ICONE_POR_TIPO[ativo.tipo]
   const evolucaoPositiva = ativo.evolucaoPercentual >= 0
@@ -82,7 +89,7 @@ export function AtivoCard({
             </div>
           </div>
 
-          {!editandoValor && (
+          {!editandoValor && !mostrandoAporte && (
             <div className="flex flex-col items-end">
               <span className="text-sm font-medium text-text-primary">
                 {formatarMoeda(ativo.valorAtual)}
@@ -162,8 +169,13 @@ export function AtivoCard({
               </Button>
             </div>
           </form>
+        ) : mostrandoAporte ? (
+          <FormRegistrarAporte ativo={ativo} onFechar={onFecharAporte} />
         ) : (
           <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={onAbrirAporte}>
+              Novo aporte
+            </Button>
             <Button type="button" variant="ghost" size="sm" onClick={onIniciarEdicaoValor}>
               Editar valor atual
             </Button>
