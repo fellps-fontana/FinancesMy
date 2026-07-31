@@ -2525,7 +2525,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-131 — Front: multiplos cartoes de credito
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2540,7 +2540,7 @@ RETORNO ESPERADO: multiplos cartoes navegaveis na UI.
 
 ## TASK-132 — Front: categoria funcional na compra do cartao
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Correcao
@@ -2555,7 +2555,7 @@ RETORNO ESPERADO: compra com categoria funcional.
 
 ## TASK-133 — Front: parcelamento no formulario de compra do cartao
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2570,7 +2570,7 @@ RETORNO ESPERADO: fluxo de compra parcelada funcional no front.
 
 ## TASK-134 — Front: remover relatorio de cartao morto, redirecionar link
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Correcao
@@ -2587,7 +2587,7 @@ RETORNO ESPERADO: bug de loading infinito e contraste resolvido pela remocao da 
 
 ## TASK-135 — Front: reconstruir ComparativoLimiteGastoPage (mockup 10)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-134
 FLUXO: Melhoria
@@ -2602,7 +2602,7 @@ RETORNO ESPERADO: tela reconstruida + filtro por query param.
 
 ## TASK-136 — Style review Bloco H (Cartao)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-131, TASK-132, TASK-133, TASK-135
 FLUXO: Implementacao
