@@ -5,10 +5,10 @@ namespace MyFinances.Services;
 public interface IContaFixaService
 {
     Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> CriarAsync(
-        Guid contaId, string descricao, decimal valor, int diaVencimento, Guid? categoriaId, PeriodicidadeContaFixa? periodicidade = null);
+        Guid contaId, string descricao, decimal valor, int diaVencimento, Guid? categoriaId, string? periodicidade = null);
 
     Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> EditarAsync(
-        Guid contaFixaId, decimal valor, int diaVencimento, Guid? categoriaId, PeriodicidadeContaFixa? periodicidade = null);
+        Guid contaFixaId, decimal valor, int diaVencimento, Guid? categoriaId, string? periodicidade = null);
 
     Task<(bool Sucesso, string? Erro)> DesativarAsync(Guid contaFixaId);
 

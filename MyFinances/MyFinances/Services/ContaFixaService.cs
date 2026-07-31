@@ -21,12 +21,24 @@ public class ContaFixaService : IContaFixaService
     }
 
     public async Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> CriarAsync(
-        Guid contaId, string descricao, decimal valor, int diaVencimento, Guid? categoriaId, PeriodicidadeContaFixa? periodicidade = null)
+        Guid contaId, string descricao, decimal valor, int diaVencimento, Guid? categoriaId, string? periodicidade = null)
     {
         var validacao = ValidarDiaVencimentoEValor(diaVencimento, valor);
         if (!validacao.Valido)
         {
             return (false, null, validacao.Erro);
+        }
+
+        PeriodicidadeContaFixa periodicidadeEnum = PeriodicidadeContaFixa.Mensal;
+        if (!string.IsNullOrEmpty(periodicidade))
+        {
+            var periodicidadeConvertida = ConverterPeriodicidade(periodicidade);
+            if (periodicidadeConvertida == null)
+            {
+                return (false, null, $"Periodicidade invalida: {periodicidade}");
+            }
+
+            periodicidadeEnum = periodicidadeConvertida.Value;
         }
 
         var conta = await _contaRepository.ObterPorId(contaId);
@@ -43,7 +55,7 @@ public class ContaFixaService : IContaFixaService
             Valor = valor,
             DiaVencimento = diaVencimento,
             CategoriaId = categoriaId,
-            Periodicidade = periodicidade ?? PeriodicidadeContaFixa.Mensal,
+            Periodicidade = periodicidadeEnum,
             Ativa = true
         };
 
@@ -57,12 +69,24 @@ public class ContaFixaService : IContaFixaService
     }
 
     public async Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> EditarAsync(
-        Guid contaFixaId, decimal valor, int diaVencimento, Guid? categoriaId, PeriodicidadeContaFixa? periodicidade = null)
+        Guid contaFixaId, decimal valor, int diaVencimento, Guid? categoriaId, string? periodicidade = null)
     {
         var validacao = ValidarDiaVencimentoEValor(diaVencimento, valor);
         if (!validacao.Valido)
         {
             return (false, null, validacao.Erro);
+        }
+
+        PeriodicidadeContaFixa? periodicidadeEnum = null;
+        if (!string.IsNullOrEmpty(periodicidade))
+        {
+            var periodicidadeConvertida = ConverterPeriodicidade(periodicidade);
+            if (periodicidadeConvertida == null)
+            {
+                return (false, null, $"Periodicidade invalida: {periodicidade}");
+            }
+
+            periodicidadeEnum = periodicidadeConvertida.Value;
         }
 
         var contaFixa = await _contaFixaRepository.ObterPorId(contaFixaId);
@@ -74,9 +98,9 @@ public class ContaFixaService : IContaFixaService
         contaFixa.Valor = valor;
         contaFixa.DiaVencimento = diaVencimento;
         contaFixa.CategoriaId = categoriaId;
-        if (periodicidade.HasValue)
+        if (periodicidadeEnum.HasValue)
         {
-            contaFixa.Periodicidade = periodicidade.Value;
+            contaFixa.Periodicidade = periodicidadeEnum.Value;
         }
 
         await _contaFixaRepository.Atualizar(contaFixa);
@@ -206,5 +230,22 @@ public class ContaFixaService : IContaFixaService
         }
 
         return (true, null);
+    }
+
+    private static PeriodicidadeContaFixa? ConverterPeriodicidade(string? periodicidade)
+    {
+        if (string.IsNullOrEmpty(periodicidade))
+        {
+            return null;
+        }
+
+        try
+        {
+            return PeriodicidadeContaFixaExtensions.FromStorageValue(periodicidade.ToUpperInvariant());
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
