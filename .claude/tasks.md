@@ -2214,7 +2214,7 @@ RETORNO ESPERADO: confirmacao GREEN ou relatorio estruturado.
 
 ## TASK-111 — Style: revisao periodicidade + DTOs
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-110
 FLUXO: Implementacao
