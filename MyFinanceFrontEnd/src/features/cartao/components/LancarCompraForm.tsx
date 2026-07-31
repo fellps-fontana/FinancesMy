@@ -1,5 +1,6 @@
 import type { FormEvent } from "react"
 import { X } from "lucide-react"
+import { CategoriaSelect } from "@/features/categorias/components/CategoriaSelect"
 import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -9,11 +10,15 @@ type LancarCompraFormProps = {
   descricao: string
   valor: string
   data: string
+  categoriaId: string
+  numeroParcelas: string
   isSubmitting: boolean
   errorMessage: string | null
   onDescricaoChange: (value: string) => void
   onValorChange: (value: string) => void
   onDataChange: (value: string) => void
+  onCategoriaIdChange: (value: string) => void
+  onNumeroParcelasChange: (value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onFechar: () => void
 }
@@ -25,21 +30,31 @@ type LancarCompraFormProps = {
  * so o estado transiente dos campos; a mutation, o estado de envio e o erro
  * vem do container (ContaCartaoPage) - mesmo padrao de PagarFaturaModal.
  *
- * GAP CONHECIDO: o backend nao expoe endpoint de listagem de categorias do
- * usuario (regra de negocio item 7). O campo Categoria fica desabilitado,
- * com nota explicita, e toda compra lancada por aqui sai sem categoria
- * (`categoriaId: null`) ate essa integracao existir - nenhuma categoria fake
- * inventada aqui.
+ * Categoria (regra de negocio item 7) usa o mesmo CategoriaSelect do modulo
+ * categorias, tipo DESPESA - compra de cartao e sempre gasto (item 12).
+ * Selecionar categoria e opcional: nao selecionar mantem `categoriaId: null`
+ * no request (container decide isso, este componente so repassa o valor
+ * transiente do select).
+ *
+ * Numero de parcelas (regra de negocio item 12, subsecao "Parcelamento") e
+ * opcional: em branco ou 1 lanca compra a vista (mesmo fluxo de sempre);
+ * >= 2 faz o container chamar o endpoint de compras-parceladas. O calculo do
+ * valor de cada parcela e responsabilidade do backend - este form so coleta
+ * a quantidade.
  */
 export function LancarCompraForm({
   descricao,
   valor,
   data,
+  categoriaId,
+  numeroParcelas,
   isSubmitting,
   errorMessage,
   onDescricaoChange,
   onValorChange,
   onDataChange,
+  onCategoriaIdChange,
+  onNumeroParcelasChange,
   onSubmit,
   onFechar,
 }: LancarCompraFormProps) {
@@ -116,18 +131,25 @@ export function LancarCompraForm({
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="categoriaCompra">Categoria</Label>
-          <select
-            id="categoriaCompra"
-            disabled
-            defaultValue=""
-            className="h-8 w-full rounded-lg border border-input bg-input/30 px-2.5 text-sm text-text-muted disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <option value="">Sem categorias cadastradas</option>
-          </select>
-          <span className="text-[12px] text-text-faint">
-            Ainda nao ha endpoint de categorias no backend. A compra sera lancada sem categoria
-            ate essa integracao existir.
-          </span>
+          <CategoriaSelect
+            tipo="Despesa"
+            value={categoriaId || undefined}
+            onChange={onCategoriaIdChange}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="numeroParcelasCompra">Numero de parcelas (opcional)</Label>
+          <Input
+            id="numeroParcelasCompra"
+            type="number"
+            step="1"
+            min="2"
+            inputMode="numeric"
+            placeholder="Deixe em branco para compra a vista"
+            value={numeroParcelas}
+            onChange={(event) => onNumeroParcelasChange(event.target.value)}
+          />
         </div>
 
         <Button type="submit" disabled={isSubmitting}>

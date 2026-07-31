@@ -1,13 +1,14 @@
 import { apiClient } from "@/shared/api/client"
 import type {
+  CompraParceladaResponse,
   CompraResponse,
   ContaResponse,
+  CriarCompraParceladaRequest,
   CriarCompraRequest,
   CriarContaCartaoRequest,
   FaturaResponse,
   PagamentoFaturaResponse,
   PagarFaturaRequest,
-  RelatorioCategoriaResponse,
   SaldoCartaoResponse,
 } from "@/features/cartao/types"
 
@@ -45,6 +46,18 @@ export function criarCompra(contaId: string, request: CriarCompraRequest): Promi
   return apiClient.post<CompraResponse>(`/api/contas/${contaId}/compras`, request)
 }
 
+// POST /api/contas/{contaId}/compras-parceladas
+// (CartaoComprasParceladasController.CriarCompraParcelada) - lanca uma
+// compra parcelada na conta CARTAO (regra de negocio item 12, subsecao
+// "Parcelamento"): gera N Lancamentos, um por parcela, cada um em regime de
+// COMPETENCIA como uma compra a vista comum.
+export function criarCompraParcelada(
+  contaId: string,
+  request: CriarCompraParceladaRequest,
+): Promise<CompraParceladaResponse> {
+  return apiClient.post<CompraParceladaResponse>(`/api/contas/${contaId}/compras-parceladas`, request)
+}
+
 // GET /api/contas/{contaId}/faturas (FaturasController.ListarFaturas) - lista
 // as faturas da conta CARTAO. O backend nao ordena (FaturaRepository.ListarPorConta
 // so filtra por contaId) - ver hooks/useFaturas.ts para a ordenacao aplicada no front.
@@ -65,17 +78,4 @@ export function pagarFatura(
     `/api/contas/${contaId}/faturas/${faturaId}/pagamentos`,
     request,
   )
-}
-
-// GAP CONHECIDO: nao ha, hoje, nenhum controller/service de relatorio no
-// backend (MyFinances/Controllers so tem AuthController, CartaoComprasController,
-// ContasController e FaturasController - confirmado por busca no projeto).
-// Esta funcao chama o contrato que a tela de relatorio por categoria precisa
-// (regra de negocio item 12, visao categorica/competencia); ate o backend
-// implementar o endpoint, toda chamada aqui resulta em erro e a tela mostra
-// o estado correspondente (ver RelatorioCategoriaPage.tsx) - nenhum dado
-// mockado.
-export function obterRelatorioCategoria(mes: string, contaId?: string): Promise<RelatorioCategoriaResponse> {
-  const query = contaId ? `?mes=${mes}&contaId=${contaId}` : `?mes=${mes}`
-  return apiClient.get<RelatorioCategoriaResponse>(`/api/relatorios/categorias${query}`)
 }
