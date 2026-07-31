@@ -2398,7 +2398,7 @@ RETORNO ESPERADO: hooks tipados, sem `any`, com invalidacao de cache cruzada (at
 
 ## TASK-123 — Front: cadastro vira primeiro aporte + novo formulario de aporte
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-122
 FLUXO: Implementacao
@@ -2415,7 +2415,7 @@ RETORNO ESPERADO: fluxo de cadastro+aporte funcional.
 
 ## TASK-124 — Front: grafico por ativo individual
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-122
 FLUXO: Implementacao
@@ -2429,7 +2429,7 @@ RETORNO ESPERADO: componente de grafico consumindo dado real do historico.
 
 ## TASK-125 — Front: grafico consolidado de todos os ativos
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-122
 FLUXO: Implementacao
