@@ -907,7 +907,7 @@ public class ContaFixaControllerTests
         var resultado = JsonSerializer.Deserialize<ContaFixaResponse>(responseBody, ContaFixaControllerTestsFixture.JsonOptions);
 
         Assert.NotNull(resultado);
-        Assert.Equal(PeriodicidadeContaFixa.Anual, resultado.Periodicidade);
+        Assert.Equal("ANUAL", resultado.Periodicidade);
 
         var contaFixaDb = await _fixture.GetContaFixaByIdAsync(resultado.Id);
         Assert.NotNull(contaFixaDb);
@@ -994,7 +994,7 @@ public class ContaFixaControllerTests
         var bodyResponse = await responseCriar.Content.ReadAsStringAsync();
         var contaFixaCriada = JsonSerializer.Deserialize<ContaFixaResponse>(bodyResponse, ContaFixaControllerTestsFixture.JsonOptions);
         Assert.NotNull(contaFixaCriada);
-        Assert.Equal(PeriodicidadeContaFixa.Mensal, contaFixaCriada.Periodicidade);
+        Assert.Equal("MENSAL", contaFixaCriada.Periodicidade);
 
         var editarRequest = new EditarContaFixaRequest
         {
@@ -1015,7 +1015,7 @@ public class ContaFixaControllerTests
         var contaFixaEditada = JsonSerializer.Deserialize<ContaFixaResponse>(bodyEditarResponse, ContaFixaControllerTestsFixture.JsonOptions);
 
         Assert.NotNull(contaFixaEditada);
-        Assert.Equal(PeriodicidadeContaFixa.Anual, contaFixaEditada.Periodicidade);
+        Assert.Equal("ANUAL", contaFixaEditada.Periodicidade);
 
         var contaFixaDb = await _fixture.GetContaFixaByIdAsync(contaFixaCriada.Id);
         Assert.NotNull(contaFixaDb);

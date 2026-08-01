@@ -17,7 +17,7 @@ public class ContaFixaResponse
 
     public int DiaVencimento { get; set; }
 
-    public PeriodicidadeContaFixa Periodicidade { get; set; }
+    public string Periodicidade { get; set; } = string.Empty;
 
     public bool Ativa { get; set; }
 
@@ -31,7 +31,7 @@ public class ContaFixaResponse
             Descricao = contaFixa.Descricao,
             Valor = contaFixa.Valor,
             DiaVencimento = contaFixa.DiaVencimento,
-            Periodicidade = contaFixa.Periodicidade,
+            Periodicidade = contaFixa.Periodicidade.ToStorageValue(),
             Ativa = contaFixa.Ativa
         };
     }
