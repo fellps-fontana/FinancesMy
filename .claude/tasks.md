@@ -2443,7 +2443,7 @@ RETORNO ESPERADO: grafico consolidado integrado a pagina.
 
 ## TASK-126 — Style review Bloco F (Investimentos)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-123, TASK-124, TASK-125, TASK-121
 FLUXO: Implementacao
