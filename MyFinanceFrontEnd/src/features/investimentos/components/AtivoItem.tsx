@@ -29,6 +29,7 @@ export function AtivoItem({ ativo }: AtivoItemProps) {
   const [erroDesativar, setErroDesativar] = useState<string | null>(null)
 
   const [mostrandoAporte, setMostrandoAporte] = useState(false)
+  const [mostrandoHistorico, setMostrandoHistorico] = useState(false)
 
   function iniciarEdicaoValor() {
     setNovoValorAtual(String(ativo.valorAtual))
@@ -115,6 +116,8 @@ export function AtivoItem({ ativo }: AtivoItemProps) {
       mostrandoAporte={mostrandoAporte}
       onAbrirAporte={() => setMostrandoAporte(true)}
       onFecharAporte={() => setMostrandoAporte(false)}
+      mostrandoHistorico={mostrandoHistorico}
+      onAlternarHistorico={() => setMostrandoHistorico((atual) => !atual)}
     />
   )
 }
