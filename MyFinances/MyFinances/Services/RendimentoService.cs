@@ -1,4 +1,5 @@
 using MyFinances.Domain;
+using MyFinances.Exceptions;
 using MyFinances.Repositories;
 
 namespace MyFinances.Services;
@@ -14,23 +15,79 @@ public class RendimentoService : IRendimentoService
         _ativoRepository = ativoRepository;
     }
 
-    public Task<Rendimento> RegistrarDividendo(Guid ativoId, decimal valor, DateOnly data)
+    public async Task<Rendimento> RegistrarDividendo(Guid ativoId, decimal valor, DateOnly data)
     {
-        throw new NotImplementedException();
+        if (valor <= 0)
+        {
+            throw new ValorInvalidoException("valor", valor);
+        }
+
+        var ativo = await _ativoRepository.ObterPorId(ativoId);
+        if (ativo == null)
+        {
+            throw new AtivoNaoEncontradoException(ativoId);
+        }
+
+        if (!ativo.Ativa)
+        {
+            throw new AtivoInativoException(ativoId);
+        }
+
+        var rendimento = new Rendimento
+        {
+            Id = Guid.NewGuid(),
+            AtivoId = ativoId,
+            Tipo = TipoRendimento.Dividendo,
+            Origem = OrigemRendimento.Manual,
+            Valor = valor,
+            Data = data,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await _rendimentoRepository.Adicionar(rendimento);
+        await _rendimentoRepository.Salvar();
+
+        return rendimento;
     }
 
-    public Task RegistrarValorizacaoAutomatica(Guid ativoId, decimal valorAtualAnterior, decimal valorAtualNovo, DateOnly data)
+    public async Task RegistrarValorizacaoAutomatica(Guid ativoId, decimal valorAtualAnterior, decimal valorAtualNovo, DateOnly data)
     {
-        throw new NotImplementedException();
+        var delta = RendimentoValorizacaoCalculator.Calcular(valorAtualAnterior, valorAtualNovo);
+
+        if (delta == null)
+            return;
+
+        var rendimento = new Rendimento
+        {
+            Id = Guid.NewGuid(),
+            AtivoId = ativoId,
+            Tipo = TipoRendimento.Valorizacao,
+            Origem = OrigemRendimento.Automatico,
+            Valor = delta.Value,
+            Data = data,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await _rendimentoRepository.Adicionar(rendimento);
     }
 
-    public Task<IEnumerable<Rendimento>> ObterHistorico(Guid ativoId)
+    public async Task<IEnumerable<Rendimento>> ObterHistorico(Guid ativoId)
     {
-        throw new NotImplementedException();
+        return await _rendimentoRepository.ListarPorAtivo(ativoId);
     }
 
-    public Task<RendimentosResumo> ObterResumoGeral()
+    public async Task<RendimentosResumo> ObterResumoGeral()
     {
-        throw new NotImplementedException();
+        var rendimentos = (await _rendimentoRepository.ListarTodos()).ToList();
+
+        var totalDividendos = rendimentos
+            .Where(r => r.Tipo == TipoRendimento.Dividendo)
+            .Sum(r => r.Valor);
+
+        var totalValorizacao = rendimentos
+            .Where(r => r.Tipo == TipoRendimento.Valorizacao)
+            .Sum(r => r.Valor);
+
+        return new RendimentosResumo(totalDividendos, totalValorizacao, rendimentos);
     }
 }
