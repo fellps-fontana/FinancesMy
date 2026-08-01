@@ -13,4 +13,5 @@ public interface IAtivoService
     Task DesativarAtivo(Guid id);
     Task<AtivosResumoResponse> ObterResumo();
     decimal CalcularEvolucaoPercentual(decimal valorInvestido, decimal valorAtual);
+    decimal CalcularPrecoMedio(decimal valorInvestido, decimal quantidade);
 }

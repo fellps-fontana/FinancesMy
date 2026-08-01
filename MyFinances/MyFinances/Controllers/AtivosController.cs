@@ -33,7 +33,7 @@ public class AtivosController : ControllerBase
                 ativo.ValorInvestido,
                 ativo.ValorAtual);
 
-            var precoMedio = ativo.Quantidade > 0 ? ativo.ValorInvestido / ativo.Quantidade : 0;
+            var precoMedio = _ativoService.CalcularPrecoMedio(ativo.ValorInvestido, ativo.Quantidade);
 
             var response = AtivoResponse.FromAtivo(ativo, evolucaoPercentual, precoMedio);
 
@@ -57,7 +57,7 @@ public class AtivosController : ControllerBase
         var responses = ativos.Select(ativo =>
         {
             var evolucaoPercentual = _ativoService.CalcularEvolucaoPercentual(ativo.ValorInvestido, ativo.ValorAtual);
-            var precoMedio = ativo.Quantidade > 0 ? ativo.ValorInvestido / ativo.Quantidade : 0;
+            var precoMedio = _ativoService.CalcularPrecoMedio(ativo.ValorInvestido, ativo.Quantidade);
             return AtivoResponse.FromAtivo(ativo, evolucaoPercentual, precoMedio);
         });
 

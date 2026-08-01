@@ -193,4 +193,14 @@ public class AtivoService : IAtivoService
 
         return ((valorAtual - valorInvestido) / valorInvestido) * 100;
     }
+
+    public decimal CalcularPrecoMedio(decimal valorInvestido, decimal quantidade)
+    {
+        if (quantidade == 0)
+        {
+            return 0m;
+        }
+
+        return valorInvestido / quantidade;
+    }
 }

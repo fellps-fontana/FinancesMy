@@ -320,6 +320,67 @@ public class AtivoServiceTests
 
     #endregion
 
+    #region Regra 4.1: Calculo de preco medio (regra-de-negocio.md item 8.1)
+
+    [Fact]
+    public void CalcularPrecoMedio_ComValoresValidos_RetornaDivisaoCorreta()
+    {
+        // Arrange
+        var valorInvestido = 1000m;
+        var quantidade = 10m;
+
+        // Act
+        var precoMedio = _service.CalcularPrecoMedio(valorInvestido, quantidade);
+
+        // Assert
+        Assert.Equal(100m, precoMedio); // 1000 / 10 = 100
+    }
+
+    [Fact]
+    public void CalcularPrecoMedio_ComQuantidadeZero_RetornaZero()
+    {
+        // Arrange
+        var valorInvestido = 1000m;
+        var quantidade = 0m;
+
+        // Act
+        var precoMedio = _service.CalcularPrecoMedio(valorInvestido, quantidade);
+
+        // Assert
+        Assert.Equal(0m, precoMedio);
+    }
+
+    [Fact]
+    public void CalcularPrecoMedio_ComValoresDecimais_RetornaValorPreciso()
+    {
+        // Arrange
+        var valorInvestido = 255m; // 25.5 * 10
+        var quantidade = 25.5m;
+
+        // Act
+        var precoMedio = _service.CalcularPrecoMedio(valorInvestido, quantidade);
+
+        // Assert
+        Assert.Equal(10m, precoMedio); // 255 / 25.5 = 10
+    }
+
+    [Fact]
+    public void CalcularPrecoMedio_ComValoresQueBuscamDivisaoComResto_RetornaDivisaoExata()
+    {
+        // Arrange
+        var valorInvestido = 451.875m;
+        var quantidade = 38m;
+
+        // Act
+        var precoMedio = _service.CalcularPrecoMedio(valorInvestido, quantidade);
+
+        // Assert
+        var esperado = 451.875m / 38m; // Aproximadamente 11.89...
+        Assert.Equal(esperado, precoMedio);
+    }
+
+    #endregion
+
     #region Regra 5: Atualizacao manual de valor_atual
 
     [Fact]
