@@ -694,4 +694,136 @@ public class ContasControllerTests
     }
 
     #endregion
+
+    #region POST /api/contas - Criar conta com Subtipo, Icone e Cor
+
+    [Fact]
+    public async Task CriarConta_ComSubtipoIconeCor_RetornaExpostoNoResponse()
+    {
+        // Arrange
+        var request = new CriarContaRequest
+        {
+            Nome = "Nubank Corrente",
+            Tipo = "Banco",
+            Subtipo = "Corrente",
+            Icone = "home",
+            Cor = "#7C3AED",
+            SaldoManual = 5000m
+        };
+
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PostAsync("/api/contas", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var contaResponse = JsonSerializer.Deserialize<ContaResponse>(responseBody, ContasControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(contaResponse);
+        Assert.Equal("Nubank Corrente", contaResponse.Nome);
+        Assert.Equal("Corrente", contaResponse.Subtipo?.ToString());
+        Assert.Equal("home", contaResponse.Icone);
+        Assert.Equal("#7C3AED", contaResponse.Cor);
+    }
+
+    [Fact]
+    public async Task CriarConta_SemSubtipoIconeCor_FicamNull()
+    {
+        // Arrange
+        var request = new CriarContaRequest
+        {
+            Nome = "Investimentos Simples",
+            Tipo = "Investimento",
+            SaldoManual = 1000m
+        };
+
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PostAsync("/api/contas", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var contaResponse = JsonSerializer.Deserialize<ContaResponse>(responseBody, ContasControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(contaResponse);
+        Assert.Null(contaResponse.Subtipo);
+        Assert.Null(contaResponse.Icone);
+        Assert.Null(contaResponse.Cor);
+    }
+
+    [Fact]
+    public async Task CriarConta_TipoInvestimentoComSubtipo_SubtipoIgnoradoNaResposta()
+    {
+        // Arrange
+        var request = new CriarContaRequest
+        {
+            Nome = "Investimento com Subtipo Ignorado",
+            Tipo = "Investimento",
+            Subtipo = "Corrente",
+            SaldoManual = 5000m
+        };
+
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PostAsync("/api/contas", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var contaResponse = JsonSerializer.Deserialize<ContaResponse>(responseBody, ContasControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(contaResponse);
+        Assert.Equal("Investimento com Subtipo Ignorado", contaResponse.Nome);
+        Assert.Null(contaResponse.Subtipo);
+    }
+
+    [Fact]
+    public async Task ListarContas_ExibindoCor_AparecemNoResponse()
+    {
+        await _fixture.ClearAsync();
+        // Arrange
+        var conta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Poupanca",
+            Tipo = TipoConta.Banco,
+            Subtipo = SubtipoConta.Poupanca,
+            Icone = "credit-card",
+            Cor = "#FF6B6B",
+            Origem = OrigemConta.Manual,
+            SaldoManual = 2500m,
+            Ativa = true
+        };
+
+        await _fixture.AddContaAsync(conta);
+
+        // Act
+        var response = await _fixture.Client.GetAsync("/api/contas?tipo=banco");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var contas = JsonSerializer.Deserialize<List<ContaResponse>>(responseBody, ContasControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(contas);
+        Assert.Single(contas);
+        Assert.Equal("Poupanca", contas[0].Nome);
+        Assert.Equal("Poupanca", contas[0].Subtipo?.ToString());
+        Assert.Equal("#FF6B6B", contas[0].Cor);
+        Assert.Equal("credit-card", contas[0].Icone);
+    }
+
+    #endregion
 }
