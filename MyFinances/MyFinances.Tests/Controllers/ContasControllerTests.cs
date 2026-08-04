@@ -825,5 +825,35 @@ public class ContasControllerTests
         Assert.Equal("credit-card", contas[0].Icone);
     }
 
+    [Fact]
+    public async Task CriarConta_TipoBancoComSubtipoInvalido_Retorna400()
+    {
+        // Arrange
+        var request = new CriarContaRequest
+        {
+            Nome = "Banco com Subtipo Invalido",
+            Tipo = "Banco",
+            Subtipo = "SubtipoDesconhecido",
+            SaldoManual = 5000m
+        };
+
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PostAsync("/api/contas", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var errorResponse = JsonSerializer.Deserialize<Dictionary<string, string>>(responseBody, ContasControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(errorResponse);
+        Assert.True(errorResponse.ContainsKey("erro"));
+        Assert.Contains("Subtipo", errorResponse["erro"]);
+        Assert.Contains("nao e valido", errorResponse["erro"]);
+    }
+
     #endregion
 }

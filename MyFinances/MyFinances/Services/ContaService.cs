@@ -48,6 +48,10 @@ public class ContaService : IContaService
         if (tipo.Value == TipoConta.Banco)
         {
             subtipo = ConverterSubtipoConta(request.Subtipo);
+            if (request.Subtipo != null && subtipo == null)
+            {
+                return (false, null, $"Subtipo '{request.Subtipo}' nao e valido");
+            }
         }
 
         var conta = new Conta
