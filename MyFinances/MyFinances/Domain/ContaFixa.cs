@@ -14,6 +14,8 @@ public class ContaFixa
 
     public int DiaVencimento { get; set; }
 
+    public PeriodicidadeContaFixa Periodicidade { get; set; } = PeriodicidadeContaFixa.Mensal;
+
     public bool Ativa { get; set; } = true;
 
     // Relacionamentos
