@@ -2276,7 +2276,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-115 — [REGRA CRITICA] Esqueleto: AtivoAporte + preco medio ponderado
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: killua
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2293,7 +2293,7 @@ RETORNO ESPERADO: esqueleto compilavel + plano de migracao de dados.
 
 ## TASK-116 — [REGRA CRITICA] RED: testes de preco medio ponderado
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-115
 FLUXO: Implementacao (rodada RED)
@@ -2308,7 +2308,7 @@ RETORNO ESPERADO: RED confirmado.
 
 ## TASK-117 — [REGRA CRITICA] GREEN: implementar aporte + migracao de dados
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 DEPENDENCIAS: TASK-116
 FLUXO: Implementacao
@@ -2325,7 +2325,7 @@ RETORNO ESPERADO: implementacao completa, GREEN, migration com dado preservado.
 
 ## TASK-118 — Confirmar GREEN aporte (mike)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-117
 FLUXO: Implementacao (rodada GREEN)
@@ -2340,7 +2340,7 @@ RETORNO ESPERADO: confirmacao GREEN ou relatorio estruturado.
 
 ## TASK-119 — Style: revisao preco medio + migracao de dados
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-118
 FLUXO: Implementacao
@@ -2355,7 +2355,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-120 — Controller/DTOs de aporte (registrar + historico)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 DEPENDENCIAS: TASK-119
 FLUXO: Implementacao
@@ -2370,7 +2370,7 @@ RETORNO ESPERADO: contrato de API dos 3 endpoints.
 
 ## TASK-121 — Testes HTTP de aporte
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-120
 FLUXO: Implementacao
@@ -2384,7 +2384,7 @@ RETORNO ESPERADO: testes passando ou relatorio de bug.
 
 ## TASK-122 — Front: camada de dados de aporte
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-120
 FLUXO: Implementacao
@@ -2398,7 +2398,7 @@ RETORNO ESPERADO: hooks tipados, sem `any`, com invalidacao de cache cruzada (at
 
 ## TASK-123 — Front: cadastro vira primeiro aporte + novo formulario de aporte
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-122
 FLUXO: Implementacao
@@ -2415,7 +2415,7 @@ RETORNO ESPERADO: fluxo de cadastro+aporte funcional.
 
 ## TASK-124 — Front: grafico por ativo individual
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-122
 FLUXO: Implementacao
@@ -2429,7 +2429,7 @@ RETORNO ESPERADO: componente de grafico consumindo dado real do historico.
 
 ## TASK-125 — Front: grafico consolidado de todos os ativos
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-122
 FLUXO: Implementacao
@@ -2443,7 +2443,7 @@ RETORNO ESPERADO: grafico consolidado integrado a pagina.
 
 ## TASK-126 — Style review Bloco F (Investimentos)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-123, TASK-124, TASK-125, TASK-121
 FLUXO: Implementacao

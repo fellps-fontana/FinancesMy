@@ -13,9 +13,13 @@ public class AtivoResponse
 
     public string Instituicao { get; set; } = string.Empty;
 
+    public decimal Quantidade { get; set; }
+
     public decimal ValorInvestido { get; set; }
 
     public decimal ValorAtual { get; set; }
+
+    public decimal PrecoMedio { get; set; }
 
     public decimal EvolucaoPercentual { get; set; }
 
@@ -23,9 +27,9 @@ public class AtivoResponse
 
     public bool Ativa { get; set; }
 
-    // EvolucaoPercentual chega ja calculada do Service - regra de negocio
-    // (item 8.1 de regra-de-negocio.md) nao mora em DTO.
-    public static AtivoResponse FromAtivo(AtivoDomain ativo, decimal evolucaoPercentual)
+    // EvolucaoPercentual e PrecoMedio chegam ja calculados do controller
+    // (regra-de-negocio.md item 8.1) - regra de negocio nao mora em DTO
+    public static AtivoResponse FromAtivo(AtivoDomain ativo, decimal evolucaoPercentual, decimal precoMedio)
     {
         return new AtivoResponse
         {
@@ -33,8 +37,10 @@ public class AtivoResponse
             Nome = ativo.Nome,
             Tipo = ativo.Tipo,
             Instituicao = ativo.Instituicao,
+            Quantidade = ativo.Quantidade,
             ValorInvestido = ativo.ValorInvestido,
             ValorAtual = ativo.ValorAtual,
+            PrecoMedio = precoMedio,
             EvolucaoPercentual = evolucaoPercentual,
             DataCompra = ativo.DataCompra,
             Ativa = ativo.Ativa

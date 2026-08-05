@@ -1,5 +1,6 @@
 import { apiClient } from "@/shared/api/client"
 import type {
+  AtivoAporteResponse,
   AtivoResponse,
   AtivosResumoResponse,
   AtualizarSaldoRequest,
@@ -7,6 +8,7 @@ import type {
   ContaResponse,
   CriarAtivoRequest,
   CriarContaInvestimentoRequest,
+  RegistrarAporteRequest,
   TotalInvestidoResponse,
 } from "@/features/investimentos/types"
 
@@ -32,6 +34,17 @@ export function desativarAtivo(id: string): Promise<void> {
 
 export function buscarResumoAtivos(): Promise<AtivosResumoResponse> {
   return apiClient.get<AtivosResumoResponse>("/api/ativos/resumo")
+}
+
+export function registrarAporte(
+  ativoId: string,
+  request: RegistrarAporteRequest,
+): Promise<AtivoAporteResponse> {
+  return apiClient.post<AtivoAporteResponse>(`/api/ativos/${ativoId}/aportes`, request)
+}
+
+export function listarAportes(ativoId: string): Promise<AtivoAporteResponse[]> {
+  return apiClient.get<AtivoAporteResponse[]>(`/api/ativos/${ativoId}/aportes`)
 }
 
 // --- Conta de investimento simples (cofrinho/XP) - item 8/10, modulo
