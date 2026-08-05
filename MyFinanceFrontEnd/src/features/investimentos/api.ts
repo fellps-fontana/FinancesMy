@@ -7,6 +7,9 @@ import type {
   ContaResponse,
   CriarAtivoRequest,
   CriarContaInvestimentoRequest,
+  RegistrarDividendoRequest,
+  RendimentoResponse,
+  RendimentosResumoResponse,
   TotalInvestidoResponse,
 } from "@/features/investimentos/types"
 
@@ -32,6 +35,21 @@ export function desativarAtivo(id: string): Promise<void> {
 
 export function buscarResumoAtivos(): Promise<AtivosResumoResponse> {
   return apiClient.get<AtivosResumoResponse>("/api/ativos/resumo")
+}
+
+export function registrarDividendo(
+  ativoId: string,
+  request: RegistrarDividendoRequest,
+): Promise<RendimentoResponse> {
+  return apiClient.post<RendimentoResponse>(`/api/ativos/${ativoId}/rendimentos`, request)
+}
+
+export function listarRendimentosDoAtivo(ativoId: string): Promise<RendimentoResponse[]> {
+  return apiClient.get<RendimentoResponse[]>(`/api/ativos/${ativoId}/rendimentos`)
+}
+
+export function buscarRendimentosResumo(): Promise<RendimentosResumoResponse> {
+  return apiClient.get<RendimentosResumoResponse>("/api/ativos/rendimentos-resumo")
 }
 
 // --- Conta de investimento simples (cofrinho/XP) - item 8/10, modulo
