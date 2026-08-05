@@ -1,4 +1,5 @@
 using MyFinances.DTOs.Ativo;
+using MyFinances.DTOs.Rendimento;
 using MyFinances.Exceptions;
 using MyFinances.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -10,10 +11,12 @@ namespace MyFinances.Controllers;
 public class AtivosController : ControllerBase
 {
     private readonly IAtivoService _ativoService;
+    private readonly IRendimentoService _rendimentoService;
 
-    public AtivosController(IAtivoService ativoService)
+    public AtivosController(IAtivoService ativoService, IRendimentoService rendimentoService)
     {
         _ativoService = ativoService;
+        _rendimentoService = rendimentoService;
     }
 
     [HttpPost]
@@ -95,5 +98,51 @@ public class AtivosController : ControllerBase
     {
         var resumo = await _ativoService.ObterResumo();
         return Ok(resumo);
+    }
+
+    [HttpPost("{id}/rendimentos")]
+    public async Task<ActionResult<RendimentoResponse>> RegistrarDividendo(Guid id, RegistrarDividendoRequest request)
+    {
+        try
+        {
+            var rendimento = await _rendimentoService.RegistrarDividendo(id, request.Valor, request.Data);
+            var response = RendimentoResponse.FromRendimento(rendimento);
+            return Created($"/api/ativos/{id}/rendimentos/{response.Id}", response);
+        }
+        catch (AtivoNaoEncontradoException)
+        {
+            return NotFound();
+        }
+        catch (AtivoInativoException)
+        {
+            return NotFound();
+        }
+        catch (ValorInvalidoException)
+        {
+            return BadRequest();
+        }
+    }
+
+    [HttpGet("{id}/rendimentos")]
+    public async Task<ActionResult<IEnumerable<RendimentoResponse>>> ObterHistoricoRendimentos(Guid id)
+    {
+        var rendimentos = await _rendimentoService.ObterHistorico(id);
+        var responses = rendimentos.Select(r => RendimentoResponse.FromRendimento(r));
+        return Ok(responses);
+    }
+
+    [HttpGet("rendimentos-resumo")]
+    public async Task<ActionResult<RendimentosResumoResponse>> ObterResumoRendimentos()
+    {
+        var resumo = await _rendimentoService.ObterResumoGeral();
+
+        var response = new RendimentosResumoResponse
+        {
+            TotalDividendos = resumo.TotalDividendos,
+            TotalValorizacao = resumo.TotalValorizacao,
+            Historico = resumo.Historico.Select(r => RendimentoResponse.FromRendimento(r))
+        };
+
+        return Ok(response);
     }
 }
