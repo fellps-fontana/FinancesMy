@@ -10,7 +10,9 @@ public class CriarAtivoRequest
 
     public required string Instituicao { get; set; }
 
-    public decimal ValorInvestido { get; set; }
+    public decimal Quantidade { get; set; }
+
+    public decimal PrecoUnitario { get; set; }
 
     public DateOnly DataCompra { get; set; }
 }

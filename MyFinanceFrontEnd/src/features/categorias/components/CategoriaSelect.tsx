@@ -1,5 +1,6 @@
 import { useCategorias } from "@/features/categorias/hooks/useCategorias"
 import { cn } from "@/shared/lib/utils"
+import { obterIconeCatalogo } from "@/shared/lib/catalogoIcones"
 import type { CategoriaResponse, TipoCategoria } from "@/features/categorias/types"
 
 type CategoriaSelectProps = {
@@ -11,6 +12,7 @@ type CategoriaSelectProps = {
 type CategoriaOpcao = {
   id: string
   label: string
+  icone?: string
 }
 
 // Indentacao textual da subcategoria (regra-de-negocio.md item 7): usa
@@ -43,7 +45,7 @@ function achatarCategorias(categorias: CategoriaResponse[]): CategoriaOpcao[] {
     }
 
     if (!categoria.arquivada) {
-      opcoes.push({ id: categoria.id, label: categoria.nome })
+      opcoes.push({ id: categoria.id, label: categoria.nome, icone: categoria.icone })
     }
 
     for (const subcategoria of categoria.subcategorias) {
@@ -51,6 +53,7 @@ function achatarCategorias(categorias: CategoriaResponse[]): CategoriaOpcao[] {
         opcoes.push({
           id: subcategoria.id,
           label: `${INDENTACAO_SUBCATEGORIA}${categoria.nome} > ${subcategoria.nome}`,
+          icone: subcategoria.icone,
         })
       }
     }
@@ -74,28 +77,40 @@ export function CategoriaSelect({ tipo, value, onChange }: CategoriaSelectProps)
 
   const opcoes = achatarCategorias(categorias ?? [])
 
+  // <option> nativa nao renderiza SVG/icone (limitacao do elemento, nao do
+  // design) - por isso o icone da categoria selecionada aparece como preview
+  // ao lado do dropdown, no mesmo quadrado 34px usado em CategoriaItem, em
+  // vez de um icone por linha dentro da lista nativa.
+  const opcaoSelecionada = opcoes.find((opcao) => opcao.id === value)
+  const Icone = obterIconeCatalogo(opcaoSelecionada?.icone)
+
   return (
-    <select
-      aria-label="Categoria"
-      value={value ?? ""}
-      disabled={isLoading}
-      onChange={(event) => onChange(event.target.value)}
-      className={cn(
-        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
-      )}
-    >
-      <option value="" disabled>
-        {isLoading
-          ? "Carregando categorias..."
-          : isError
-            ? "Nao foi possivel carregar as categorias"
-            : "Selecione uma categoria"}
-      </option>
-      {opcoes.map((opcao) => (
-        <option key={opcao.id} value={opcao.id}>
-          {opcao.label}
+    <div className="flex items-center gap-2">
+      <div className="flex size-[34px] shrink-0 items-center justify-center rounded-lg bg-accent-deep">
+        <Icone className="size-4 text-accent-soft" strokeWidth={1.6} aria-hidden="true" />
+      </div>
+      <select
+        aria-label="Categoria"
+        value={value ?? ""}
+        disabled={isLoading}
+        onChange={(event) => onChange(event.target.value)}
+        className={cn(
+          "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
+        )}
+      >
+        <option value="" disabled>
+          {isLoading
+            ? "Carregando categorias..."
+            : isError
+              ? "Nao foi possivel carregar as categorias"
+              : "Selecione uma categoria"}
         </option>
-      ))}
-    </select>
+        {opcoes.map((opcao) => (
+          <option key={opcao.id} value={opcao.id}>
+            {opcao.label}
+          </option>
+        ))}
+      </select>
+    </div>
   )
 }

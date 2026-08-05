@@ -59,6 +59,11 @@ namespace MyFinances.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("nome");
 
+                    b.Property<decimal>("Quantidade")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("numeric(18,8)")
+                        .HasColumnName("quantidade");
+
                     b.Property<string>("Tipo")
                         .IsRequired()
                         .HasColumnType("text")
@@ -79,6 +84,42 @@ namespace MyFinances.Migrations
                     b.ToTable("ativo", (string)null);
                 });
 
+            modelBuilder.Entity("MyFinances.Domain.AtivoAporte", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AtivoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ativo_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<DateOnly>("Data")
+                        .HasColumnType("date")
+                        .HasColumnName("data");
+
+                    b.Property<decimal>("PrecoUnitario")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("preco_unitario");
+
+                    b.Property<decimal>("Quantidade")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("numeric(18,8)")
+                        .HasColumnName("quantidade");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AtivoId");
+
+                    b.ToTable("ativo_aporte", (string)null);
+                });
+
             modelBuilder.Entity("MyFinances.Domain.Categoria", b =>
                 {
                     b.Property<Guid>("Id")
@@ -91,6 +132,11 @@ namespace MyFinances.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("arquivada");
+
+                    b.Property<string>("Icone")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("icone");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -627,6 +673,15 @@ namespace MyFinances.Migrations
                         .IsUnique();
 
                     b.ToTable("usuario", (string)null);
+                });
+
+            modelBuilder.Entity("MyFinances.Domain.AtivoAporte", b =>
+                {
+                    b.HasOne("MyFinances.Domain.Ativo", null)
+                        .WithMany()
+                        .HasForeignKey("AtivoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("MyFinances.Domain.Categoria", b =>

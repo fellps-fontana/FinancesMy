@@ -17,6 +17,8 @@ public class MyFinancesDbContext : DbContext
 
     public DbSet<Ativo> Ativos { get; set; }
 
+    public DbSet<AtivoAporte> AtivoAportes { get; set; }
+
     public DbSet<Categoria> Categorias { get; set; }
 
     public DbSet<DeParaCategoria> DeParaCategorias { get; set; }
@@ -44,6 +46,7 @@ public class MyFinancesDbContext : DbContext
         modelBuilder.ApplyConfiguration(new UsuarioConfiguration());
         modelBuilder.ApplyConfiguration(new ContaConfiguration());
         modelBuilder.ApplyConfiguration(new AtivoConfiguration());
+        modelBuilder.ApplyConfiguration(new AtivoAporteConfiguration());
         modelBuilder.ApplyConfiguration(new CategoriaConfiguration());
         modelBuilder.ApplyConfiguration(new DeParaCategoriaConfiguration());
         modelBuilder.ApplyConfiguration(new LancamentoConfiguration());

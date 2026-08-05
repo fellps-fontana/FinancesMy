@@ -2276,7 +2276,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-115 — [REGRA CRITICA] Esqueleto: AtivoAporte + preco medio ponderado
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: killua
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2293,7 +2293,7 @@ RETORNO ESPERADO: esqueleto compilavel + plano de migracao de dados.
 
 ## TASK-116 — [REGRA CRITICA] RED: testes de preco medio ponderado
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-115
 FLUXO: Implementacao (rodada RED)
@@ -2308,7 +2308,7 @@ RETORNO ESPERADO: RED confirmado.
 
 ## TASK-117 — [REGRA CRITICA] GREEN: implementar aporte + migracao de dados
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 DEPENDENCIAS: TASK-116
 FLUXO: Implementacao
@@ -2325,7 +2325,7 @@ RETORNO ESPERADO: implementacao completa, GREEN, migration com dado preservado.
 
 ## TASK-118 — Confirmar GREEN aporte (mike)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-117
 FLUXO: Implementacao (rodada GREEN)
@@ -2340,7 +2340,7 @@ RETORNO ESPERADO: confirmacao GREEN ou relatorio estruturado.
 
 ## TASK-119 — Style: revisao preco medio + migracao de dados
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-118
 FLUXO: Implementacao
@@ -2355,7 +2355,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-120 — Controller/DTOs de aporte (registrar + historico)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 DEPENDENCIAS: TASK-119
 FLUXO: Implementacao
@@ -2370,7 +2370,7 @@ RETORNO ESPERADO: contrato de API dos 3 endpoints.
 
 ## TASK-121 — Testes HTTP de aporte
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-120
 FLUXO: Implementacao
@@ -2384,7 +2384,7 @@ RETORNO ESPERADO: testes passando ou relatorio de bug.
 
 ## TASK-122 — Front: camada de dados de aporte
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-120
 FLUXO: Implementacao
@@ -2398,7 +2398,7 @@ RETORNO ESPERADO: hooks tipados, sem `any`, com invalidacao de cache cruzada (at
 
 ## TASK-123 — Front: cadastro vira primeiro aporte + novo formulario de aporte
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-122
 FLUXO: Implementacao
@@ -2415,7 +2415,7 @@ RETORNO ESPERADO: fluxo de cadastro+aporte funcional.
 
 ## TASK-124 — Front: grafico por ativo individual
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-122
 FLUXO: Implementacao
@@ -2429,7 +2429,7 @@ RETORNO ESPERADO: componente de grafico consumindo dado real do historico.
 
 ## TASK-125 — Front: grafico consolidado de todos os ativos
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-122
 FLUXO: Implementacao
@@ -2443,7 +2443,7 @@ RETORNO ESPERADO: grafico consolidado integrado a pagina.
 
 ## TASK-126 — Style review Bloco F (Investimentos)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-123, TASK-124, TASK-125, TASK-121
 FLUXO: Implementacao
@@ -2525,7 +2525,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-131 — Front: multiplos cartoes de credito
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2540,7 +2540,7 @@ RETORNO ESPERADO: multiplos cartoes navegaveis na UI.
 
 ## TASK-132 — Front: categoria funcional na compra do cartao
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Correcao
@@ -2555,7 +2555,7 @@ RETORNO ESPERADO: compra com categoria funcional.
 
 ## TASK-133 — Front: parcelamento no formulario de compra do cartao
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2570,7 +2570,7 @@ RETORNO ESPERADO: fluxo de compra parcelada funcional no front.
 
 ## TASK-134 — Front: remover relatorio de cartao morto, redirecionar link
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Correcao
@@ -2587,7 +2587,7 @@ RETORNO ESPERADO: bug de loading infinito e contraste resolvido pela remocao da 
 
 ## TASK-135 — Front: reconstruir ComparativoLimiteGastoPage (mockup 10)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-134
 FLUXO: Melhoria
@@ -2602,7 +2602,7 @@ RETORNO ESPERADO: tela reconstruida + filtro por query param.
 
 ## TASK-136 — Style review Bloco H (Cartao)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-131, TASK-132, TASK-133, TASK-135
 FLUXO: Implementacao
@@ -2617,7 +2617,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-137 — Backend: Categoria ganha icone
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2632,7 +2632,7 @@ RETORNO ESPERADO: migration aditiva, contrato atualizado.
 
 ## TASK-138 — Front: seletor de icone em Categoria
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-137
 FLUXO: Implementacao
@@ -2647,7 +2647,7 @@ RETORNO ESPERADO: icones funcionais em cadastro/listagem/select.
 
 ## TASK-139 — Front: investigar/corrigir botao "Editar" duplicado em Categoria [REVISAR]
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Correcao
@@ -2662,7 +2662,7 @@ RETORNO ESPERADO: causa raiz confirmada + correcao, OU relatorio ao Kira se a ca
 
 ## TASK-140 — Style review Bloco I (Categorias)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-138, TASK-139
 FLUXO: Implementacao
@@ -2677,7 +2677,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-141 — Front: botoes de acao rapida no Dashboard
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2689,12 +2689,13 @@ CRITERIO DE ACEITE:
 ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/dashboard/DashboardPage.tsx`, `MyFinanceFrontEnd/src/features/dashboard/components/AcoesRapidas.tsx` (novo)
 NAO FAZER: nao inventar fluxo novo de "pagar conta" no backend — so navegar para o que ja existe em `/cartao`.
 RETORNO ESPERADO: 3 acoes funcionais.
+GAP CONHECIDO: `AcoesRapidas.tsx` navega com `?novo=lancamento`/`?novo=transferencia`, mas `LancamentosPage.tsx` (fora de ARQUIVOS PERMITIDOS desta task) ainda nao le esse param — o segmented control chega FECHADO, nao pre-selecionado. Precisa de task futura tocando `LancamentosPage.tsx` pra ler o param e abrir o form certo.
 
 ---
 
 ## TASK-142 — Front: widget "ultimos lancamentos" no Dashboard (resolve bug de contraste no hover)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2706,6 +2707,7 @@ CRITERIO DE ACEITE:
 ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/dashboard/components/UltimosLancamentos.tsx` (novo), `MyFinanceFrontEnd/src/features/dashboard/hooks/useUltimosLancamentos.ts` (novo, se precisar de query propria)
 NAO FAZER: nao alterar `LancamentoItem.tsx` de `/lancamentos` sem necessidade comprovada de bug la tambem.
 RETORNO ESPERADO: widget funcional + confirmacao de que a garantia de contraste foi checada.
+NOTA DE EXECUCAO: garantia de contraste cumprida por design — o widget nao tem NENHUM estado `hover:` (itens nao sao clicaveis nesta leva), entao o bug relatado nao tem onde se repetir. Nao foi encontrado o bug reproduzivel em nenhum outro arquivo estatico (`LancamentoItem.tsx`/`Card` nao tinham classe hover alguma antes desta task). GAP vs mockup: o mockup 02 mostra um icone de categoria por linha (ex: casa, carrinho) — o widget implementado nao renderiza icone, so descricao/data/valor/status. Nao bloqueia o criterio de aceite, mas fica registrado pro `style` (TASK-145) avaliar se PRECISA CORRIGIR.
 
 ---
 
@@ -2759,7 +2761,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-146 — Front: reconstruir LancamentosPage (mockup 04)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Melhoria
@@ -2777,7 +2779,7 @@ RETORNO ESPERADO: tela reconstruida seguindo o mockup 04, sem regressao de funci
 
 ## TASK-147 — Style review Bloco K (Lancamentos)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-146
 FLUXO: Implementacao
@@ -2792,7 +2794,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-148 — Killua: decisao de paleta clara + mecanismo de alternancia
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: killua
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2807,7 +2809,7 @@ RETORNO ESPERADO: secao pronta pra `identidade-visual.md` + decisao de mecanismo
 
 ## TASK-149 — Front: implementar ThemeToggle + tokens claros
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-148
 FLUXO: Implementacao
@@ -2822,7 +2824,7 @@ RETORNO ESPERADO: toggle funcional.
 
 ## TASK-150 — Front: PWA (manifest + service worker + instalavel)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2837,7 +2839,7 @@ RETORNO ESPERADO: PWA instalavel confirmada.
 
 ## TASK-151 — Front: bottom tab bar mobile (mockups)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: nenhuma
 FLUXO: Melhoria
@@ -2852,7 +2854,7 @@ RETORNO ESPERADO: bottom tab bar mobile funcional.
 
 ## TASK-152 — Style review Bloco L (Global/infra)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-149, TASK-150, TASK-151
 FLUXO: Implementacao

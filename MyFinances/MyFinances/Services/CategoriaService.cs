@@ -13,7 +13,7 @@ public class CategoriaService : ICategoriaService
         _categoriaRepository = categoriaRepository;
     }
 
-    public async Task<Categoria> Criar(string nome, TipoCategoria tipo, Guid? parentId = null)
+    public async Task<Categoria> Criar(string nome, TipoCategoria tipo, Guid? parentId = null, string? icone = null)
     {
         if (parentId.HasValue)
         {
@@ -26,7 +26,8 @@ public class CategoriaService : ICategoriaService
             Nome = nome,
             Tipo = tipo,
             ParentId = parentId,
-            Arquivada = false
+            Arquivada = false,
+            Icone = icone
         };
 
         await _categoriaRepository.Adicionar(categoria);
@@ -40,7 +41,7 @@ public class CategoriaService : ICategoriaService
         return await _categoriaRepository.Listar(tipo, arquivada, parentId);
     }
 
-    public async Task<Categoria> Editar(Guid id, string nome, Guid? parentId)
+    public async Task<Categoria> Editar(Guid id, string nome, Guid? parentId, string? icone = null)
     {
         var categoria = await ObterCategoriaOuFalhar(id);
 
@@ -61,6 +62,7 @@ public class CategoriaService : ICategoriaService
 
         categoria.Nome = nome;
         categoria.ParentId = parentId;
+        categoria.Icone = icone;
 
         await _categoriaRepository.Salvar();
 

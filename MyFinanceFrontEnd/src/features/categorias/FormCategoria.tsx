@@ -12,6 +12,7 @@ import {
   filtrarOpcoesDeCategoriaPai,
   validarCategoria,
 } from "@/features/categorias/lib/validarCategoria"
+import { CATALOGO_ICONES } from "@/shared/lib/catalogoIcones"
 import type { CategoriaResponse, TipoCategoria } from "@/features/categorias/types"
 
 type FormCategoriaProps = {
@@ -33,6 +34,11 @@ export function FormCategoria({ categoriaParaEditar, onSalvar }: FormCategoriaPr
   const [nome, setNome] = useState(categoriaParaEditar?.nome ?? "")
   const [tipo, setTipo] = useState<TipoCategoria>(categoriaParaEditar?.tipo ?? TIPO_PADRAO)
   const [parentId, setParentId] = useState(categoriaParaEditar?.parentId ?? "")
+  // Id de um icone do catalogo fixo (shared/lib/catalogoIcones.ts, mesmo
+  // catalogo pensado para reuso em Conta - TASK-129). Opcional: categoria
+  // sem icone escolhido fica `undefined`, sem quebra (backend ja trata como
+  // nullable, ver types.ts).
+  const [icone, setIcone] = useState<string | undefined>(categoriaParaEditar?.icone)
   const [erroFormulario, setErroFormulario] = useState<string | null>(null)
 
   const { mutate: criarCategoria, isPending: criando } = useCriarCategoria()
@@ -63,6 +69,7 @@ export function FormCategoria({ categoriaParaEditar, onSalvar }: FormCategoriaPr
     setNome(categoriaParaEditar?.nome ?? "")
     setTipo(categoriaParaEditar?.tipo ?? TIPO_PADRAO)
     setParentId(categoriaParaEditar?.parentId ?? "")
+    setIcone(categoriaParaEditar?.icone)
     setErroFormulario(null)
   }
 
@@ -93,6 +100,7 @@ export function FormCategoria({ categoriaParaEditar, onSalvar }: FormCategoriaPr
           request: {
             nome: nome.trim(),
             parentId: parentId || undefined,
+            icone,
           },
         },
         {
@@ -118,6 +126,7 @@ export function FormCategoria({ categoriaParaEditar, onSalvar }: FormCategoriaPr
         nome: nome.trim(),
         tipo,
         parentId: parentId || undefined,
+        icone,
       },
       {
         onSuccess: () => {
@@ -187,6 +196,41 @@ export function FormCategoria({ categoriaParaEditar, onSalvar }: FormCategoriaPr
           value={nome}
           onChange={(event) => setNome(event.target.value)}
         />
+      </div>
+
+      {/* Seletor de icone (mockup "06 Categorias.dc.html", secao "Modal nova
+          categoria"): grade de quadrados 40px, catalogo FIXO (shared/lib/
+          catalogoIcones.ts) - sem upload/URL livre, mesmo espirito da
+          paleta fixa de cor (identidade-visual.md). Opcional: clicar no
+          icone ja selecionado desmarca (categoria pode ficar sem icone). */}
+      <div className="flex flex-col gap-1.5">
+        <Label>Icone (opcional)</Label>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Icone da categoria">
+          {CATALOGO_ICONES.map(({ id, label, Icon }) => {
+            const selecionado = icone === id
+            return (
+              <button
+                key={id}
+                type="button"
+                title={label}
+                aria-label={label}
+                aria-pressed={selecionado}
+                disabled={isSubmitting}
+                onClick={() => setIcone(selecionado ? undefined : id)}
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors disabled:pointer-events-none disabled:opacity-50",
+                  selecionado ? "bg-primary" : "bg-muted hover:bg-muted/70",
+                )}
+              >
+                <Icon
+                  className={cn("size-[18px]", selecionado ? "text-background" : "text-muted-foreground")}
+                  strokeWidth={1.8}
+                  aria-hidden="true"
+                />
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5">

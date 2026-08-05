@@ -64,13 +64,27 @@ Endpoint real ficou diferente do desenho original de killua: em vez de um
   (sempre escopada a uma conta específica, não cross-conta)
 - `POST /api/transferencias` (`TransferenciasController`) — criar transferência
 
+## Frontend (Bloco K, 2026-07-30)
+
+Tela `LancamentosPage` reconstruída seguindo o mockup `04 Lancamentos.dc.html`
+(TASK-146/147): navegador de mês, cards de resumo (Entradas/Saídas/Saldo),
+chips de filtro (Todos/Entradas/Saidas), lista agrupada por data, FAB.
+
+O style review da entrega encontrou um CRÍTICO: o resumo do mês e os chips
+somavam por `Tipo` cru, sem excluir transferência/pagamento de fatura (item 3,
+via item 2 CRITICA) — o `LancamentoResponseDto` não expunha nenhum dado de
+classificação pro front distinguir isso. Corrigido em ciclo TDD completo:
+`LancamentoResponseDto` ganhou o campo `Classificacao` (serialização do
+`ClassificacaoLancamentoService` já existente, sem duplicar a regra), e o
+front passou a excluir `TRANSFERENCIA`/`COMPETENCIA_CARTAO` do cálculo
+(`deveContarComoEntradaOuSaida` em `lib/filtrarPeriodo.ts`) — a lista
+"Todos" continua exibindo a transferência normalmente, só não soma no resumo.
+
 ## Lacunas conhecidas
 
 - Fluxo de caixa não tem visão cross-conta via API (o `contaId` é sempre
   obrigatório na rota) — se um dashboard geral precisar agregar todas as
   contas, isso ainda não existe.
-- Nenhuma UI de frontend foi construída para este módulo nesta leva — é
-  puramente backend (Service/Controller/DTO).
 
 ## O que cada agent entregou
 
@@ -94,6 +108,19 @@ com as 12 tasks — TASK-039 a TASK-050 — como `APROVADO`):
   ativa em `MarcarComoPagoAsync`/`EditarAsync`, status HTTP inconsistentes
   entre controllers, e duplicação de lógica entre `TransferenciaService` e
   `PagamentoFaturaService` (resolvida com `TransferenciaLancamentoHelper`).
+
+**Bloco K, 2026-07-30 (PR #48)** — via Kira, fila `tasks.md` TASK-146/147:
+
+- **hanzo**: reconstruiu `LancamentosPage`/`LancamentoItem` seguindo o
+  mockup 04 e implementou, depois, `deveContarComoEntradaOuSaida` no front.
+- **style**: rodada 1 achou o CRÍTICO da exclusão de transferência (ver
+  seção Frontend acima); rodada 2 aprovou após o ciclo TDD.
+- **killua**: desenhou o contrato do campo `Classificacao` no DTO (enum
+  string vs. boolean — optou por enum pra não perder informação já
+  calculada pelo `ClassificacaoLancamentoService`).
+- **mike**: 9 testes RED/GREEN em `LancamentoResponseDtoTests.cs` cobrindo
+  os 4 valores de `ClassificacaoLancamento` e o caso de transferência/fatura.
+- **levi**: implementou `ClassificacaoLancamentoExtensions.ToStorageValue`.
 
 ## Notas operacionais
 

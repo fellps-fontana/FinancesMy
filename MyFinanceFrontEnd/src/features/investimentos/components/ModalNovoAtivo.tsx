@@ -10,14 +10,16 @@ type ModalNovoAtivoProps = {
   nome: string
   tipo: TipoAtivo
   instituicao: string
-  valorInvestido: string
+  quantidade: string
+  precoUnitario: string
   dataCompra: string
   isSubmitting: boolean
   errorMessage: string | null
   onNomeChange: (value: string) => void
   onTipoChange: (value: TipoAtivo) => void
   onInstituicaoChange: (value: string) => void
-  onValorInvestidoChange: (value: string) => void
+  onQuantidadeChange: (value: string) => void
+  onPrecoUnitarioChange: (value: string) => void
   onDataCompraChange: (value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onFechar: () => void
@@ -30,18 +32,25 @@ type ModalNovoAtivoProps = {
 // variavel (unicos dois valores de TipoAtivo, regra-de-negocio.md item 8) em
 // vez de <select>, seguindo o mockup. Mesmo padrao visual de overlay do
 // PagarFaturaModal (features/cartao) - fundo fixo com dialog centralizado.
+// Campos "Quantidade" + "Preco unitario" no lugar de um unico "Valor
+// investido": cadastrar um ativo E registrar o primeiro aporte dele
+// (regra-de-negocio.md item 8.1) - valor_investido = quantidade *
+// preco_unitario, calculado no back (Services/AtivoService.CriarAtivo),
+// nunca digitado direto.
 export function ModalNovoAtivo({
   nome,
   tipo,
   instituicao,
-  valorInvestido,
+  quantidade,
+  precoUnitario,
   dataCompra,
   isSubmitting,
   errorMessage,
   onNomeChange,
   onTipoChange,
   onInstituicaoChange,
-  onValorInvestidoChange,
+  onQuantidadeChange,
+  onPrecoUnitarioChange,
   onDataCompraChange,
   onSubmit,
   onFechar,
@@ -117,29 +126,43 @@ export function ModalNovoAtivo({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="valorInvestidoNovoAtivo">Valor investido</Label>
+            <Label htmlFor="quantidadeNovoAtivo">Quantidade</Label>
             <Input
-              id="valorInvestidoNovoAtivo"
+              id="quantidadeNovoAtivo"
+              type="number"
+              step="0.000001"
+              min="0.000001"
+              inputMode="decimal"
+              required
+              value={quantidade}
+              onChange={(event) => onQuantidadeChange(event.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="precoUnitarioNovoAtivo">Preco unitario</Label>
+            <Input
+              id="precoUnitarioNovoAtivo"
               type="number"
               step="0.01"
               min="0.01"
               inputMode="decimal"
               required
-              value={valorInvestido}
-              onChange={(event) => onValorInvestidoChange(event.target.value)}
+              value={precoUnitario}
+              onChange={(event) => onPrecoUnitarioChange(event.target.value)}
             />
           </div>
+        </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="dataCompraNovoAtivo">Data da compra</Label>
-            <Input
-              id="dataCompraNovoAtivo"
-              type="date"
-              required
-              value={dataCompra}
-              onChange={(event) => onDataCompraChange(event.target.value)}
-            />
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="dataCompraNovoAtivo">Data da compra</Label>
+          <Input
+            id="dataCompraNovoAtivo"
+            type="date"
+            required
+            value={dataCompra}
+            onChange={(event) => onDataCompraChange(event.target.value)}
+          />
         </div>
 
         <div className="flex flex-col gap-1.5">

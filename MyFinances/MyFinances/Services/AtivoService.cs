@@ -9,29 +9,24 @@ public class AtivoService : IAtivoService
 {
     private readonly IAtivoRepository _ativoRepository;
     private readonly IRendimentoService _rendimentoService;
+    private readonly IAtivoAporteRepository _ativoAporteRepository;
 
-    public AtivoService(IAtivoRepository ativoRepository, IRendimentoService rendimentoService)
+    public AtivoService(IAtivoRepository ativoRepository, IRendimentoService rendimentoService, IAtivoAporteRepository ativoAporteRepository)
     {
         _ativoRepository = ativoRepository;
         _rendimentoService = rendimentoService;
+        _ativoAporteRepository = ativoAporteRepository;
     }
 
-    public async Task<Ativo> CriarAtivo(string nome, TipoAtivo tipo, string instituicao, decimal valorInvestido, DateOnly dataCompra)
+    public async Task<Ativo> CriarAtivo(string nome, TipoAtivo tipo, string instituicao, decimal quantidade, decimal precoUnitario, DateOnly dataCompra)
     {
-        if (string.IsNullOrWhiteSpace(nome))
-        {
-            throw new CampoObrigatorioException(nameof(nome));
-        }
+        ValidarCampoObrigatorio(nome, "nome");
+        ValidarCampoObrigatorio(instituicao, "instituicao");
+        ValidarValor(quantidade, "quantidade");
+        ValidarValor(precoUnitario, "preco_unitario");
 
-        if (string.IsNullOrWhiteSpace(instituicao))
-        {
-            throw new CampoObrigatorioException(nameof(instituicao));
-        }
-
-        if (valorInvestido <= 0)
-        {
-            throw new ValorInvalidoException("valor_investido", valorInvestido);
-        }
+        var valorInvestido = quantidade * precoUnitario;
+        var agora = DateTime.UtcNow;
 
         var ativo = new Ativo
         {
@@ -39,17 +34,83 @@ public class AtivoService : IAtivoService
             Nome = nome,
             Tipo = tipo,
             Instituicao = instituicao,
+            Quantidade = quantidade,
             ValorInvestido = valorInvestido,
             ValorAtual = valorInvestido,
             DataCompra = dataCompra,
             Ativa = true,
-            CriadoEm = DateTime.UtcNow
+            CriadoEm = agora
+        };
+
+        var aporte = new AtivoAporte
+        {
+            Id = Guid.NewGuid(),
+            AtivoId = ativo.Id,
+            Data = dataCompra,
+            Quantidade = quantidade,
+            PrecoUnitario = precoUnitario,
+            CriadoEm = agora
         };
 
         await _ativoRepository.Adicionar(ativo);
+        await _ativoAporteRepository.Adicionar(aporte);
         await _ativoRepository.Salvar();
+        await _ativoAporteRepository.Salvar();
 
         return ativo;
+    }
+
+    public async Task<AtivoAporte> RegistrarAporte(Guid ativoId, decimal quantidade, decimal precoUnitario, DateOnly data)
+    {
+        ValidarValor(quantidade, "quantidade");
+        ValidarValor(precoUnitario, "preco_unitario");
+
+        var ativo = await _ativoRepository.ObterPorId(ativoId);
+        if (ativo == null || !ativo.Ativa)
+        {
+            throw new AtivoNaoEncontradoException(ativoId);
+        }
+
+        ativo.Quantidade += quantidade;
+        ativo.ValorInvestido += precoUnitario * quantidade;
+        ativo.AtualizadoEm = DateTime.UtcNow;
+
+        var aporte = new AtivoAporte
+        {
+            Id = Guid.NewGuid(),
+            AtivoId = ativoId,
+            Data = data,
+            Quantidade = quantidade,
+            PrecoUnitario = precoUnitario,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await _ativoAporteRepository.Adicionar(aporte);
+        await _ativoRepository.Salvar();
+        await _ativoAporteRepository.Salvar();
+
+        return aporte;
+    }
+
+    public async Task<IEnumerable<AtivoAporte>> ListarAportes(Guid ativoId)
+    {
+        return await _ativoAporteRepository.ListarPorAtivo(ativoId);
+    }
+
+    private static void ValidarCampoObrigatorio(string valor, string nomeCampo)
+    {
+        if (string.IsNullOrWhiteSpace(valor))
+        {
+            throw new CampoObrigatorioException(nomeCampo);
+        }
+    }
+
+    private static void ValidarValor(decimal valor, string nomeCampo)
+    {
+        if (valor <= 0)
+        {
+            throw new ValorInvalidoException(nomeCampo, valor);
+        }
     }
 
     public async Task<IEnumerable<Ativo>> ListarAtivos()
@@ -138,5 +199,15 @@ public class AtivoService : IAtivoService
         }
 
         return ((valorAtual - valorInvestido) / valorInvestido) * 100;
+    }
+
+    public decimal CalcularPrecoMedio(decimal valorInvestido, decimal quantidade)
+    {
+        if (quantidade == 0)
+        {
+            return 0m;
+        }
+
+        return valorInvestido / quantidade;
     }
 }

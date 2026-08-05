@@ -40,6 +40,9 @@ export function AtivoItem({ ativo }: AtivoItemProps) {
   const [dataDividendo, setDataDividendo] = useState("")
   const [erroDividendo, setErroDividendo] = useState<string | null>(null)
 
+  const [mostrandoAporte, setMostrandoAporte] = useState(false)
+  const [mostrandoHistorico, setMostrandoHistorico] = useState(false)
+
   function iniciarEdicaoValor() {
     setNovoValorAtual(String(ativo.valorAtual))
     setErroValor(null)
@@ -164,6 +167,11 @@ export function AtivoItem({ ativo }: AtivoItemProps) {
         onConfirmarDesativar={confirmarDesativar}
         onCancelarDesativar={cancelarDesativar}
         onSolicitarRegistrarDividendo={abrirFormDividendo}
+        mostrandoAporte={mostrandoAporte}
+        onAbrirAporte={() => setMostrandoAporte(true)}
+        onFecharAporte={() => setMostrandoAporte(false)}
+        mostrandoHistorico={mostrandoHistorico}
+        onAlternarHistorico={() => setMostrandoHistorico((atual) => !atual)}
       />
 
       {formDividendoAberto && (

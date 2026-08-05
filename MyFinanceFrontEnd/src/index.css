@@ -5,7 +5,10 @@
 /*
  * Tokens de identidade-visual.md. Nao adicionar cor crua fora daqui —
  * todo componente consome estas variaveis via classe utilitaria do Tailwind.
- * O app tem um unico tema (escuro); nao ha alternancia light/dark.
+ * Dois temas: claro (":root", base) e escuro (".dark", sobrescreve). A
+ * classe e aplicada em <html> por um script inline em index.html, ANTES do
+ * primeiro paint (ver identidade-visual.md, "Mecanismo de alternancia") e
+ * mantida em sincronia pelo hook useTheme (shared/hooks/useTheme.ts).
  */
 @theme inline {
   --font-sans: "Inter Variable", sans-serif;
@@ -60,11 +63,71 @@
   --radius-xl: calc(var(--radius) * 1.6);
 }
 
-:root,
+:root {
+  color-scheme: light;
+
+  /* bases (tema claro — identidade-visual.md "Cores — tema claro") */
+  --background: #f5f3fa;
+  --foreground: #16141c;
+  --card: #ffffff;
+  --card-foreground: #16141c;
+  --popover: #ffffff;
+  --popover-foreground: #16141c;
+
+  /* acao/destaque (roxo) — identico em ambos os temas, cor de dominio
+     nao muda com o tema (identidade-visual.md, "Mecanismo de alternancia") */
+  --primary: #7f77dd;
+  --primary-foreground: #f2f0f7;
+  --accent: #eae6f3;
+  --accent-foreground: #322f3d;
+  --accent-deep: #26215c;
+  --accent-soft: #afa9ec;
+
+  /* superficies e neutros */
+  --secondary: #eae6f3;
+  --secondary-foreground: #322f3d;
+  --muted: #eae6f3;
+  --muted-foreground: #6b6775;
+
+  /* escala de texto — 4 niveis (identidade-visual.md, tema claro).
+     primary = titulos/valores principais; body = texto comum;
+     muted = labels/secundario; faint = metadados/hints. */
+  --text-primary: var(--foreground);
+  --text-body: #322f3d;
+  --text-muted: var(--muted-foreground);
+  --text-faint: #8a8696;
+
+  /* semantica de dominio — mesmo hex em ambos os temas (decisao de dominio,
+     nao de tema; ver identidade-visual.md) */
+  --positivo: #5dcaa5;
+  --negativo: #e0807a;
+  --alerta: #ba7517;
+  --destructive: #e0807a;
+
+  /* bordas e foco */
+  --border: #dad4e8;
+  --input: #dad4e8;
+  --ring: #7f77dd;
+
+  /* base de raio 8px -> sm 6.4px, md 8px, lg 10.4px (botao/input, "elementos
+     menores 8-10px"), xl 12.8px (card, piso da faixa "cards 12-16px") */
+  --radius: 0.5rem;
+
+  /* sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #16141c;
+  --sidebar-primary: #7f77dd;
+  --sidebar-primary-foreground: #f2f0f7;
+  --sidebar-accent: #eae6f3;
+  --sidebar-accent-foreground: #322f3d;
+  --sidebar-border: #dad4e8;
+  --sidebar-ring: #7f77dd;
+}
+
 .dark {
   color-scheme: dark;
 
-  /* bases */
+  /* bases (tema escuro — identidade-visual.md "Cores — base (dark)") */
   --background: #0e0d13;
   --foreground: #f2f0f7;
   --card: #17151f;
@@ -86,7 +149,7 @@
   --muted: #221f2d;
   --muted-foreground: #8b8794;
 
-  /* escala de texto — 4 niveis (identidade-visual.md).
+  /* escala de texto — 4 niveis (identidade-visual.md, tema escuro).
      primary = titulos/valores principais; body = texto comum;
      muted = labels/secundario; faint = metadados/hints. */
   --text-primary: var(--foreground);
@@ -94,7 +157,7 @@
   --text-muted: var(--muted-foreground);
   --text-faint: #6f6b7a;
 
-  /* semantica de dominio */
+  /* semantica de dominio — mesmo hex em ambos os temas */
   --positivo: #5dcaa5;
   --negativo: #e0807a;
   --alerta: #ba7517;
@@ -105,11 +168,7 @@
   --input: #2a2636;
   --ring: #7f77dd;
 
-  /* base de raio 8px -> sm 6.4px, md 8px, lg 10.4px (botao/input, "elementos
-     menores 8-10px"), xl 12.8px (card, piso da faixa "cards 12-16px") */
-  --radius: 0.5rem;
-
-  /* sidebar (nao usado nesta etapa, mantido consistente com o tema) */
+  /* sidebar */
   --sidebar: #17151f;
   --sidebar-foreground: #f2f0f7;
   --sidebar-primary: #7f77dd;

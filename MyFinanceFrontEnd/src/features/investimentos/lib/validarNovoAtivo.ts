@@ -1,14 +1,17 @@
 import { validarValorPositivo } from "@/features/investimentos/lib/validarValorPositivo"
 
-// Validacao pura do formulario "Novo ativo" (regra-de-negocio.md item 8: nome,
-// tipo, instituicao, valor investido e data da compra sao os campos do
-// cadastro). Testavel isoladamente do componente - ver clean-code.md
-// "Organizacao (React)". O tipo (RendaFixa/RendaVariavel) nao precisa de
-// validacao aqui: o formulario so permite os dois valores validos via toggle.
+// Validacao pura do formulario "Novo ativo" (regra-de-negocio.md item 8.1:
+// cadastrar um Ativo E, na pratica, registrar o primeiro aporte dele - o
+// formulario pede nome, tipo, instituicao, quantidade, preco unitario e data
+// da compra, nunca valor investido direto). Testavel isoladamente do
+// componente - ver clean-code.md "Organizacao (React)". O tipo
+// (RendaFixa/RendaVariavel) nao precisa de validacao aqui: o formulario so
+// permite os dois valores validos via toggle.
 export function validarNovoAtivo(
   nome: string,
   instituicao: string,
-  valorInvestido: string,
+  quantidade: string,
+  precoUnitario: string,
   dataCompra: string,
 ): string | null {
   if (nome.trim().length === 0) {
@@ -19,9 +22,14 @@ export function validarNovoAtivo(
     return "Informe a instituicao."
   }
 
-  const erroValor = validarValorPositivo(valorInvestido, "Informe o valor investido.")
-  if (erroValor) {
-    return erroValor
+  const erroQuantidade = validarValorPositivo(quantidade, "Informe a quantidade.")
+  if (erroQuantidade) {
+    return erroQuantidade
+  }
+
+  const erroPrecoUnitario = validarValorPositivo(precoUnitario, "Informe o preco unitario.")
+  if (erroPrecoUnitario) {
+    return erroPrecoUnitario
   }
 
   if (dataCompra.trim().length === 0) {
