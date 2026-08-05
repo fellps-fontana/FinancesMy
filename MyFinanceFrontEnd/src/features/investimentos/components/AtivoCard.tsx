@@ -39,6 +39,7 @@ type AtivoCardProps = {
   onSolicitarDesativar: () => void
   onConfirmarDesativar: () => void
   onCancelarDesativar: () => void
+  onSolicitarRegistrarDividendo: () => void
 }
 
 // Componente de apresentacao (burro): uma linha da lista de ativos do mockup
@@ -64,6 +65,7 @@ export function AtivoCard({
   onSolicitarDesativar,
   onConfirmarDesativar,
   onCancelarDesativar,
+  onSolicitarRegistrarDividendo,
 }: AtivoCardProps) {
   const Icone = ICONE_POR_TIPO[ativo.tipo]
   const evolucaoPositiva = ativo.evolucaoPercentual >= 0
@@ -163,7 +165,10 @@ export function AtivoCard({
             </div>
           </form>
         ) : (
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={onSolicitarRegistrarDividendo}>
+              Registrar dividendo
+            </Button>
             <Button type="button" variant="ghost" size="sm" onClick={onIniciarEdicaoValor}>
               Editar valor atual
             </Button>
