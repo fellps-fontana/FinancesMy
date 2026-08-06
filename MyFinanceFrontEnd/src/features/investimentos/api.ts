@@ -46,10 +46,6 @@ export function registrarDividendo(
   return apiClient.post<RendimentoResponse>(`/api/ativos/${ativoId}/rendimentos`, request)
 }
 
-export function listarRendimentosDoAtivo(ativoId: string): Promise<RendimentoResponse[]> {
-  return apiClient.get<RendimentoResponse[]>(`/api/ativos/${ativoId}/rendimentos`)
-}
-
 export function buscarRendimentosResumo(): Promise<RendimentosResumoResponse> {
   return apiClient.get<RendimentosResumoResponse>("/api/ativos/rendimentos-resumo")
 }
