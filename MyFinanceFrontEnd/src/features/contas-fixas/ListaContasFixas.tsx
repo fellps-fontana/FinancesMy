@@ -39,10 +39,18 @@ function construirMapaNomeCategoria(categorias: CategoriaResponse[]): Record<str
 // nome - resolvido aqui via useCategorias("Despesa") (conta fixa e sempre
 // DEBIT, regra-de-negocio.md item 6, entao so categoria tipo Despesa e
 // relevante) e repassado pronto para ContaFixaItem, que so exibe (sem fazer
-// fetch nem lookup - permanece componente de apresentacao). Sem filtro de
-// `arquivada`: uma ContaFixa antiga pode apontar para uma categoria ja
-// arquivada (regra-de-negocio.md item 7 - arquivar nao apaga o vinculo
-// existente), e o nome precisa continuar resolvivel mesmo assim.
+// fetch nem lookup - permanece componente de apresentacao).
+//
+// Correcao de achado do style (revisao Bloco E / TASK-114): omitir o
+// parametro `arquivada` NAO traz categorias arquivadas - CategoriaRepository.
+// Listar (backend), quando `arquivada` nao e informado, aplica
+// `query.Where(c => !c.Arquivada)` por default (so retorna as NAO
+// arquivadas). Uma ContaFixa antiga pode apontar para uma categoria
+// ja arquivada (regra-de-negocio.md item 7 - "arquivar nao apaga o vinculo
+// existente") e o nome precisa continuar resolvivel mesmo assim - por isso
+// duas chamadas, arquivada=false e arquivada=true (o backend so aceita um
+// booleano por vez, nunca "os dois estados"), com os resultados mesclados
+// no mesmo mapa antes de repassar para ContaFixaItem.
 //
 // Criacao: FormContaFixa (sem `contaFixaParaEditar`) e embutido aqui atras de
 // um toggle - o formulario ja e o mesmo usado pra edicao (ver ContaFixaItem),
@@ -50,12 +58,23 @@ function construirMapaNomeCategoria(categorias: CategoriaResponse[]): Record<str
 // novo sozinha via invalidacao de cache no proprio hook useCriarContaFixa.
 export function ListaContasFixas() {
   const { data: contasFixas, isLoading, error } = useContasFixas()
-  const { data: categorias, error: erroCategorias } = useCategorias("Despesa")
+  const { data: categoriasNaoArquivadas, error: erroCategoriasNaoArquivadas } = useCategorias(
+    "Despesa",
+    false,
+  )
+  const { data: categoriasArquivadas, error: erroCategoriasArquivadas } = useCategorias(
+    "Despesa",
+    true,
+  )
   const [criandoContaFixa, setCriandoContaFixa] = useState(false)
 
   const mapaNomeCategoria = useMemo(
-    () => construirMapaNomeCategoria(categorias ?? []),
-    [categorias],
+    () =>
+      construirMapaNomeCategoria([
+        ...(categoriasNaoArquivadas ?? []),
+        ...(categoriasArquivadas ?? []),
+      ]),
+    [categoriasNaoArquivadas, categoriasArquivadas],
   )
 
   // Log com contexto antes de exibir a mensagem generica ao usuario - ver
@@ -64,12 +83,21 @@ export function ListaContasFixas() {
   if (error) {
     console.error("Falha ao carregar contas fixas", error)
   }
-  // Falha ao carregar categorias nao bloqueia a lista de contas fixas (o
-  // essencial da tela) - so degrada a categoria de cada item para "sem
-  // categoria visivel" (mapa vazio via useMemo acima), por isso so loga,
-  // sem Alert dedicado.
-  if (erroCategorias) {
-    console.error("Falha ao carregar categorias para resolver nome na lista", erroCategorias)
+  // Falha ao carregar categorias (qualquer uma das duas chamadas) nao
+  // bloqueia a lista de contas fixas (o essencial da tela) - so degrada a
+  // categoria dos itens afetados para "sem categoria visivel" (mapa fica
+  // incompleto via useMemo acima), por isso so loga, sem Alert dedicado.
+  if (erroCategoriasNaoArquivadas) {
+    console.error(
+      "Falha ao carregar categorias nao arquivadas para resolver nome na lista",
+      erroCategoriasNaoArquivadas,
+    )
+  }
+  if (erroCategoriasArquivadas) {
+    console.error(
+      "Falha ao carregar categorias arquivadas para resolver nome na lista",
+      erroCategoriasArquivadas,
+    )
   }
 
   return (
