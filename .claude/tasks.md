@@ -2229,7 +2229,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-112 — Front: FormContaFixa ganha periodicidade + categoria
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-111
 FLUXO: Implementacao
@@ -2246,7 +2246,7 @@ RETORNO ESPERADO: formulario funcional com os 2 campos novos.
 
 ## TASK-113 — Front: reconstruir ListaContasFixas/ContaFixaItem (mockup 09)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-112
 FLUXO: Melhoria
