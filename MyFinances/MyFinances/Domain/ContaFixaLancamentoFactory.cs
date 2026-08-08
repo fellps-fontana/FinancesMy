@@ -30,10 +30,19 @@ public static class ContaFixaLancamentoFactory
 
     // Regra critica (regra-de-negocio.md item 6, revisao 2026-07-27): unidade
     // de tempo somada entre uma ocorrencia e a proxima depende da
-    // periodicidade -- Mensal soma 1 mes, Anual soma 1 ano. Logica real
-    // entra na TASK-109.
+    // periodicidade -- Mensal soma 1 mes, Anual soma 1 ano.
     public static DateOnly ProximaOcorrencia(DateOnly dataAtual, PeriodicidadeContaFixa periodicidade)
     {
-        throw new NotImplementedException();
+        var proximaData = periodicidade switch
+        {
+            PeriodicidadeContaFixa.Mensal => dataAtual.AddMonths(1),
+            PeriodicidadeContaFixa.Anual => dataAtual.AddYears(1),
+            _ => throw new ArgumentOutOfRangeException(nameof(periodicidade))
+        };
+
+        var diasNoMes = DateTime.DaysInMonth(proximaData.Year, proximaData.Month);
+        var diaAjustado = Math.Min(proximaData.Day, diasNoMes);
+
+        return new DateOnly(proximaData.Year, proximaData.Month, diaAjustado);
     }
 }

@@ -5,6 +5,7 @@ import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { cn } from "@/shared/lib/utils"
+import { CategoriaSelect } from "@/features/categorias/components/CategoriaSelect"
 import { useCriarContaFixa } from "@/features/contas-fixas/hooks/useCriarContaFixa"
 import { useEditarContaFixa } from "@/features/contas-fixas/hooks/useEditarContaFixa"
 // Nao existe hook de "listar contas" generico em features/contas/ (feature
@@ -29,7 +30,7 @@ import {
   validarCriarContaFixa,
   validarEditarContaFixa,
 } from "@/features/contas-fixas/lib/validarContaFixa"
-import type { ContaFixaResponse } from "@/features/contas-fixas/types"
+import type { ContaFixaResponse, PeriodicidadeContaFixa } from "@/features/contas-fixas/types"
 
 type FormContaFixaProps = {
   // Presenca de `contaFixaParaEditar` define o modo do formulario: ausente ->
@@ -42,15 +43,16 @@ type FormContaFixaProps = {
   onSalvar?: () => void
 }
 
-// Categoria (categoriaId) fica fora do formulario: mesma decisao ja tomada
-// na TASK-063 (FormRegistrarContaReceber/ContaFixaItem) de omitir o campo
-// ate existir um componente de categoria pronto no projeto (feature
-// categorias/ ainda e so placeholder). Em modo edicao, o categoriaId ja
-// existente da ContaFixa e reenviado tal como veio (nunca zerado por
-// omissao) - ver ContaFixaService.EditarContaFixa no backend, que faz
-// `contaFixa.CategoriaId = categoriaId` (substituicao total, nao merge). Se
-// o submit em edicao omitisse o campo, uma ContaFixa com categoria ja
-// vinculada perderia essa categoria so por editar valor/dia_vencimento.
+// Categoria (categoriaId, regra-de-negocio.md item 6: "categoria vinculada",
+// FK opcional) e periodicidade (item 6, revisao 2026-07-27: MENSAL/ANUAL)
+// agora sao campos editaveis do formulario, em ambos os modos - a omissao
+// anterior de categoria (TASK-063) valia so enquanto CategoriaSelect nao
+// existia no projeto. Em modo edicao, os dois estados nascem do valor ja
+// existente na ContaFixa e sao SEMPRE reenviados no payload (nunca omitidos)
+// - ver ContaFixaService.EditarContaFixa no backend, que faz substituicao
+// total (`contaFixa.CategoriaId = categoriaId`), nao merge; se o submit
+// omitisse o campo, uma ContaFixa com categoria/periodicidade ja definida
+// perderia esse valor so por editar valor/dia_vencimento.
 export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaProps) {
   const modoEdicao = contaFixaParaEditar !== undefined
 
@@ -60,6 +62,15 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaPr
   )
   const [diaVencimento, setDiaVencimento] = useState(
     contaFixaParaEditar ? String(contaFixaParaEditar.diaVencimento) : "",
+  )
+  // "MENSAL" e o padrao da regra de negocio (item 6) - mesmo valor usado
+  // quando o backend nao recebe periodicidade num registro criado antes
+  // desta feature.
+  const [periodicidade, setPeriodicidade] = useState<PeriodicidadeContaFixa>(
+    contaFixaParaEditar?.periodicidade ?? "MENSAL",
+  )
+  const [categoriaId, setCategoriaId] = useState<string | undefined>(
+    contaFixaParaEditar?.categoriaId ?? undefined,
   )
   const [contaId, setContaId] = useState("")
   const [erroFormulario, setErroFormulario] = useState<string | null>(null)
@@ -83,6 +94,8 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaPr
     setDescricao(contaFixaParaEditar?.descricao ?? "")
     setValor(contaFixaParaEditar ? String(contaFixaParaEditar.valor) : "")
     setDiaVencimento(contaFixaParaEditar ? String(contaFixaParaEditar.diaVencimento) : "")
+    setPeriodicidade(contaFixaParaEditar?.periodicidade ?? "MENSAL")
+    setCategoriaId(contaFixaParaEditar?.categoriaId ?? undefined)
     setContaId("")
     setErroFormulario(null)
   }
@@ -103,7 +116,8 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaPr
           request: {
             valor: converterValorParaNumero(valor),
             diaVencimento: converterDiaVencimentoParaNumero(diaVencimento),
-            categoriaId: contaFixaParaEditar.categoriaId ?? undefined,
+            categoriaId,
+            periodicidade,
           },
         },
         {
@@ -136,6 +150,8 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaPr
         descricao: descricao.trim(),
         valor: converterValorParaNumero(valor),
         diaVencimento: converterDiaVencimentoParaNumero(diaVencimento),
+        categoriaId,
+        periodicidade,
       },
       {
         onSuccess: () => {
@@ -179,6 +195,34 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaPr
         />
       </div>
 
+      {/* Periodicidade (regra-de-negocio.md item 6, revisao 2026-07-27):
+          editavel em ambos os modos (criar e editar), mesmo segmented control
+          ja usado em FormRegistrarContaReceber.tsx (dois Button com variant
+          condicional - nao ha Tabs/Toggle pronto no projeto). */}
+      <div className="flex flex-col gap-1.5">
+        <Label>Periodicidade</Label>
+        <div className="flex gap-2" role="group" aria-label="Periodicidade da conta fixa">
+          <Button
+            type="button"
+            variant={periodicidade === "MENSAL" ? "default" : "outline"}
+            onClick={() => setPeriodicidade("MENSAL")}
+            disabled={isSubmitting}
+            className="flex-1"
+          >
+            Mensal
+          </Button>
+          <Button
+            type="button"
+            variant={periodicidade === "ANUAL" ? "default" : "outline"}
+            onClick={() => setPeriodicidade("ANUAL")}
+            disabled={isSubmitting}
+            className="flex-1"
+          >
+            Anual
+          </Button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="valorContaFixa">Valor</Label>
@@ -210,6 +254,15 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaPr
             onChange={(event) => setDiaVencimento(event.target.value)}
           />
         </div>
+      </div>
+
+      {/* Categoria (regra-de-negocio.md item 6: "categoria vinculada", FK
+          opcional) - sempre tipo Despesa, porque conta fixa e sempre DEBIT
+          (item 6: "nao existe conta fixa de recebimento"). Editavel em ambos
+          os modos, igual periodicidade. */}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="categoriaContaFixa">Categoria</Label>
+        <CategoriaSelect tipo="Despesa" value={categoriaId} onChange={setCategoriaId} />
       </div>
 
       {/* Conta de origem so aparece no modo criar - EditarContaFixaRequest

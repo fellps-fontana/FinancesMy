@@ -2150,7 +2150,7 @@ existente no arquivo).
 
 ## TASK-107 — [REGRA CRITICA] Esqueleto: PeriodicidadeContaFixa + geracao por ocorrencia
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: killua
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2167,7 +2167,7 @@ RETORNO ESPERADO: esqueleto compilavel + migration planejada.
 
 ## TASK-108 — [REGRA CRITICA] RED: testes de periodicidade
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-107
 FLUXO: Implementacao (rodada RED)
@@ -2182,7 +2182,7 @@ RETORNO ESPERADO: RED confirmado, casos listados.
 
 ## TASK-109 — [REGRA CRITICA] GREEN: implementar periodicidade + migration
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 DEPENDENCIAS: TASK-108
 FLUXO: Implementacao
@@ -2199,7 +2199,7 @@ RETORNO ESPERADO: implementacao completa, testes GREEN, migration pronta.
 
 ## TASK-110 — Confirmar GREEN periodicidade (mike)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-109
 FLUXO: Implementacao (rodada GREEN)
@@ -2214,7 +2214,7 @@ RETORNO ESPERADO: confirmacao GREEN ou relatorio estruturado.
 
 ## TASK-111 — Style: revisao periodicidade + DTOs
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-110
 FLUXO: Implementacao
@@ -2229,7 +2229,7 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-112 — Front: FormContaFixa ganha periodicidade + categoria
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-111
 FLUXO: Implementacao
@@ -2246,7 +2246,7 @@ RETORNO ESPERADO: formulario funcional com os 2 campos novos.
 
 ## TASK-113 — Front: reconstruir ListaContasFixas/ContaFixaItem (mockup 09)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-112
 FLUXO: Melhoria
@@ -2261,7 +2261,7 @@ RETORNO ESPERADO: telas reconstruidas.
 
 ## TASK-114 — Style review Bloco E (Conta Fixa)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-113
 FLUXO: Implementacao

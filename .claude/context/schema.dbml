@@ -89,6 +89,7 @@ Table conta_fixa {
   descricao varchar [not null]
   valor decimal [not null]
   dia_vencimento int [not null, note: '1-31']
+  periodicidade varchar [not null, default: 'MENSAL', note: 'MENSAL | ANUAL']
   ativa boolean [not null, default: true]
 }
 
