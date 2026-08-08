@@ -25,4 +25,7 @@ public class Ativo
     public DateTime CriadoEm { get; set; }
 
     public DateTime? AtualizadoEm { get; set; }
+
+    // Navegacao
+    public ICollection<Rendimento> Rendimentos { get; set; } = [];
 }

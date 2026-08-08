@@ -9,6 +9,9 @@ import type {
   CriarAtivoRequest,
   CriarContaInvestimentoRequest,
   RegistrarAporteRequest,
+  RegistrarDividendoRequest,
+  RendimentoResponse,
+  RendimentosResumoResponse,
   TotalInvestidoResponse,
 } from "@/features/investimentos/types"
 
@@ -34,6 +37,17 @@ export function desativarAtivo(id: string): Promise<void> {
 
 export function buscarResumoAtivos(): Promise<AtivosResumoResponse> {
   return apiClient.get<AtivosResumoResponse>("/api/ativos/resumo")
+}
+
+export function registrarDividendo(
+  ativoId: string,
+  request: RegistrarDividendoRequest,
+): Promise<RendimentoResponse> {
+  return apiClient.post<RendimentoResponse>(`/api/ativos/${ativoId}/rendimentos`, request)
+}
+
+export function buscarRendimentosResumo(): Promise<RendimentosResumoResponse> {
+  return apiClient.get<RendimentosResumoResponse>("/api/ativos/rendimentos-resumo")
 }
 
 export function registrarAporte(

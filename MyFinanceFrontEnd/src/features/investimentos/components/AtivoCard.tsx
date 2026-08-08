@@ -41,6 +41,7 @@ type AtivoCardProps = {
   onSolicitarDesativar: () => void
   onConfirmarDesativar: () => void
   onCancelarDesativar: () => void
+  onSolicitarRegistrarDividendo: () => void
   mostrandoAporte: boolean
   onAbrirAporte: () => void
   onFecharAporte: () => void
@@ -71,6 +72,7 @@ export function AtivoCard({
   onSolicitarDesativar,
   onConfirmarDesativar,
   onCancelarDesativar,
+  onSolicitarRegistrarDividendo,
   mostrandoAporte,
   onAbrirAporte,
   onFecharAporte,
@@ -184,6 +186,9 @@ export function AtivoCard({
               </Button>
               <Button type="button" variant="ghost" size="sm" onClick={onAbrirAporte}>
                 Novo aporte
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={onSolicitarRegistrarDividendo}>
+                Registrar dividendo
               </Button>
               <Button type="button" variant="ghost" size="sm" onClick={onIniciarEdicaoValor}>
                 Editar valor atual

@@ -4,20 +4,23 @@ using MyFinances.Exceptions;
 using MyFinances.Repositories;
 using MyFinances.Services;
 using Xunit;
+using MyFinances.Tests.Helpers;
 
 namespace MyFinances.Tests.Services;
 
 public class AtivoServiceTests
 {
     private readonly Mock<IAtivoRepository> _mockAtivoRepository;
+    private readonly Mock<IRendimentoService> _mockRendimentoService;
     private readonly Mock<IAtivoAporteRepository> _mockAporteRepository;
     private readonly AtivoService _service;
 
     public AtivoServiceTests()
     {
         _mockAtivoRepository = new Mock<IAtivoRepository>();
+        _mockRendimentoService = new Mock<IRendimentoService>();
         _mockAporteRepository = new Mock<IAtivoAporteRepository>();
-        _service = new AtivoService(_mockAtivoRepository.Object, _mockAporteRepository.Object);
+        _service = new AtivoService(_mockAtivoRepository.Object, _mockRendimentoService.Object, _mockAporteRepository.Object);
     }
 
     #region Regra 1: Criacao de ativo - nasce com valor_atual == valor_investido
@@ -1195,6 +1198,209 @@ public class AtivoServiceTests
 
         Assert.Equal(ativoId, excecao.AtivoId);
         _mockAporteRepository.Verify(r => r.Salvar(), Times.Never);
+    }
+
+    #endregion
+
+    #region Regra 16: Integracao com RendimentoService - AtualizarValorAtual gera Rendimento automaticamente
+
+    [Fact]
+    public async Task AtualizarValorAtual_ComDeltaPositivo_GeraUmRendimentoValorizacaoComDeltaCorreto()
+    {
+        // Arrange - Fake repositories para integracao real
+        var fakeRendimentoRepository = new FakeRendimentoRepository();
+        var rendimentoService = new RendimentoService(fakeRendimentoRepository, _mockAtivoRepository.Object);
+        var fakeAtivoRepository = new FakeAtivoRepository();
+        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>());
+
+        var ativoId = Guid.NewGuid();
+        var ativoExistente = new Ativo
+        {
+            Id = ativoId,
+            Nome = "Tesouro",
+            Tipo = TipoAtivo.RendaFixa,
+            Instituicao = "B3",
+            ValorInvestido = 1000m,
+            ValorAtual = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15),
+            Ativa = true
+        };
+        await fakeAtivoRepository.Adicionar(ativoExistente);
+        await fakeAtivoRepository.Salvar();
+
+        var novoValorAtual = 1200m;
+        var deltaEsperado = 200m;
+
+        // Act
+        await ativoService.AtualizarValorAtual(ativoId, novoValorAtual);
+
+        // Assert
+        var rendimentos = await fakeRendimentoRepository.ListarPorAtivo(ativoId);
+        Assert.Single(rendimentos);
+
+        var rendimento = rendimentos.First();
+        Assert.Equal(ativoId, rendimento.AtivoId);
+        Assert.Equal(TipoRendimento.Valorizacao, rendimento.Tipo);
+        Assert.Equal(OrigemRendimento.Automatico, rendimento.Origem);
+        Assert.Equal(deltaEsperado, rendimento.Valor);
+        Assert.Equal(DateOnly.FromDateTime(DateTime.UtcNow), rendimento.Data);
+    }
+
+    [Fact]
+    public async Task AtualizarValorAtual_ComDeltaNegativo_GeraRendimentoValorizacaoNegativo()
+    {
+        // Arrange
+        var fakeRendimentoRepository = new FakeRendimentoRepository();
+        var rendimentoService = new RendimentoService(fakeRendimentoRepository, _mockAtivoRepository.Object);
+        var fakeAtivoRepository = new FakeAtivoRepository();
+        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>());
+
+        var ativoId = Guid.NewGuid();
+        var ativoExistente = new Ativo
+        {
+            Id = ativoId,
+            Nome = "ETF",
+            Tipo = TipoAtivo.RendaVariavel,
+            Instituicao = "XP",
+            ValorInvestido = 5000m,
+            ValorAtual = 5000m,
+            DataCompra = new DateOnly(2024, 2, 20),
+            Ativa = true
+        };
+        await fakeAtivoRepository.Adicionar(ativoExistente);
+        await fakeAtivoRepository.Salvar();
+
+        var novoValorAtual = 4800m;
+        var deltaEsperado = -200m;
+
+        // Act
+        await ativoService.AtualizarValorAtual(ativoId, novoValorAtual);
+
+        // Assert
+        var rendimentos = await fakeRendimentoRepository.ListarPorAtivo(ativoId);
+        Assert.Single(rendimentos);
+
+        var rendimento = rendimentos.First();
+        Assert.Equal(deltaEsperado, rendimento.Valor);
+        Assert.Equal(OrigemRendimento.Automatico, rendimento.Origem);
+    }
+
+    [Fact]
+    public async Task AtualizarValorAtual_ComMesmoValor_NaoCriaRendimento()
+    {
+        // Arrange
+        var fakeRendimentoRepository = new FakeRendimentoRepository();
+        var rendimentoService = new RendimentoService(fakeRendimentoRepository, _mockAtivoRepository.Object);
+        var fakeAtivoRepository = new FakeAtivoRepository();
+        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>());
+
+        var ativoId = Guid.NewGuid();
+        var ativoExistente = new Ativo
+        {
+            Id = ativoId,
+            Nome = "LCI",
+            Tipo = TipoAtivo.RendaFixa,
+            Instituicao = "Banco",
+            ValorInvestido = 2000m,
+            ValorAtual = 2000m,
+            DataCompra = new DateOnly(2024, 3, 10),
+            Ativa = true
+        };
+        await fakeAtivoRepository.Adicionar(ativoExistente);
+        await fakeAtivoRepository.Salvar();
+
+        // Act
+        await ativoService.AtualizarValorAtual(ativoId, 2000m);
+
+        // Assert
+        var rendimentos = await fakeRendimentoRepository.ListarPorAtivo(ativoId);
+        Assert.Empty(rendimentos);
+    }
+
+    [Fact]
+    public async Task AtualizarValorAtual_DuasVezesComMesmoValor_NaoGeraRendimentoNaSegundaVez()
+    {
+        // Arrange
+        var fakeRendimentoRepository = new FakeRendimentoRepository();
+        var rendimentoService = new RendimentoService(fakeRendimentoRepository, _mockAtivoRepository.Object);
+        var fakeAtivoRepository = new FakeAtivoRepository();
+        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>());
+
+        var ativoId = Guid.NewGuid();
+        var ativoExistente = new Ativo
+        {
+            Id = ativoId,
+            Nome = "Fundo",
+            Tipo = TipoAtivo.RendaVariavel,
+            Instituicao = "Itau",
+            ValorInvestido = 3000m,
+            ValorAtual = 3000m,
+            DataCompra = new DateOnly(2024, 4, 5),
+            Ativa = true
+        };
+        await fakeAtivoRepository.Adicionar(ativoExistente);
+        await fakeAtivoRepository.Salvar();
+
+        var novoValor1 = 3500m;
+        var novoValor2 = 3500m;
+
+        // Act
+        await ativoService.AtualizarValorAtual(ativoId, novoValor1);
+        await ativoService.AtualizarValorAtual(ativoId, novoValor2);
+
+        // Assert
+        var rendimentos = await fakeRendimentoRepository.ListarPorAtivo(ativoId);
+        Assert.Single(rendimentos); // Apenas a primeira atualizacao gera rendimento
+
+        var rendimento = rendimentos.First();
+        Assert.Equal(500m, rendimento.Valor); // 3500 - 3000
+    }
+
+    [Fact]
+    public async Task AtualizarValorAtual_DuasVezesComValoresDiferentes_GeraDoiseRegistrosDistintos()
+    {
+        // Arrange
+        var fakeRendimentoRepository = new FakeRendimentoRepository();
+        var rendimentoService = new RendimentoService(fakeRendimentoRepository, _mockAtivoRepository.Object);
+        var fakeAtivoRepository = new FakeAtivoRepository();
+        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>());
+
+        var ativoId = Guid.NewGuid();
+        var ativoExistente = new Ativo
+        {
+            Id = ativoId,
+            Nome = "Tesouro Prefixado",
+            Tipo = TipoAtivo.RendaFixa,
+            Instituicao = "B3",
+            ValorInvestido = 10000m,
+            ValorAtual = 10000m,
+            DataCompra = new DateOnly(2024, 1, 1),
+            Ativa = true
+        };
+        await fakeAtivoRepository.Adicionar(ativoExistente);
+        await fakeAtivoRepository.Salvar();
+
+        var novoValor1 = 10500m;
+        var novoValor2 = 11000m;
+
+        // Act
+        await ativoService.AtualizarValorAtual(ativoId, novoValor1);
+        await ativoService.AtualizarValorAtual(ativoId, novoValor2);
+
+        // Assert
+        var rendimentos = await fakeRendimentoRepository.ListarPorAtivo(ativoId);
+        Assert.Equal(2, rendimentos.Count());
+
+        // Verificar primeiro rendimento
+        var primeiro = rendimentos.OrderBy(r => r.Data).First();
+        Assert.Equal(500m, primeiro.Valor); // 10500 - 10000
+
+        // Verificar segundo rendimento
+        var segundo = rendimentos.OrderBy(r => r.Data).Last();
+        Assert.Equal(500m, segundo.Valor); // 11000 - 10500
+
+        // Verificar que estao ordenados por Data
+        Assert.True(primeiro.Data <= segundo.Data);
     }
 
     #endregion

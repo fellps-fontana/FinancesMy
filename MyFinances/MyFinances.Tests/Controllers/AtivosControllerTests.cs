@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MyFinances.Data;
 using MyFinances.DTOs;
 using MyFinances.DTOs.Ativo;
+using MyFinances.DTOs.Rendimento;
 using MyFinances.Domain;
 using Xunit;
 
@@ -137,6 +138,14 @@ public class AtivosControllerTestsFixture : IAsyncLifetime
         using var scope = _factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<MyFinancesDbContext>();
         dbContext.Ativos.RemoveRange(await dbContext.Ativos.ToListAsync());
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task ClearRendimentosAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<MyFinancesDbContext>();
+        dbContext.Rendimentos.RemoveRange(await dbContext.Rendimentos.ToListAsync());
         await dbContext.SaveChangesAsync();
     }
 }
@@ -1361,6 +1370,394 @@ public class AtivosControllerTests
         // Verifica JSON
         Assert.Contains("\"quantidade\":", listarBody, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("\"precoMedio\":", listarBody, StringComparison.OrdinalIgnoreCase);
+    }
+
+    #endregion
+
+    #region POST /api/ativos/{id}/rendimentos - Registrar dividendo
+
+    [Fact]
+    public async Task RegistrarDividendo_ComSucesso_Retorna201ComDadosCorretos()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+
+        var ativo = new Ativo
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Tesouro Direto",
+            Tipo = TipoAtivo.RendaFixa,
+            Instituicao = "B3",
+            ValorInvestido = 1000m,
+            ValorAtual = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15),
+            Ativa = true,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await _fixture.AddAtivoAsync(ativo);
+
+        var request = new RegistrarDividendoRequest
+        {
+            Valor = 50.50m,
+            Data = new DateOnly(2026, 8, 5)
+        };
+
+        var json = JsonSerializer.Serialize(request, AtivosControllerTestsFixture.JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PostAsync($"/api/ativos/{ativo.Id}/rendimentos", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.NotNull(response.Headers.Location);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var rendimentoResponse = JsonSerializer.Deserialize<RendimentoResponse>(responseBody, AtivosControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(rendimentoResponse);
+        Assert.NotEqual(Guid.Empty, rendimentoResponse.Id);
+        Assert.Equal(ativo.Id, rendimentoResponse.AtivoId);
+        Assert.Equal(50.50m, rendimentoResponse.Valor);
+        Assert.Equal(new DateOnly(2026, 8, 5), rendimentoResponse.Data);
+        Assert.Equal("DIVIDENDO", rendimentoResponse.Tipo);
+        Assert.Equal("MANUAL", rendimentoResponse.Origem);
+    }
+
+    [Fact]
+    public async Task RegistrarDividendo_ComValorMenorOuIgualAZero_Retorna400()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+
+        var ativo = new Ativo
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Tesouro Direto",
+            Tipo = TipoAtivo.RendaFixa,
+            Instituicao = "B3",
+            ValorInvestido = 1000m,
+            ValorAtual = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15),
+            Ativa = true,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await _fixture.AddAtivoAsync(ativo);
+
+        var requestZero = new RegistrarDividendoRequest
+        {
+            Valor = 0m,
+            Data = new DateOnly(2026, 8, 5)
+        };
+
+        var json = JsonSerializer.Serialize(requestZero, AtivosControllerTestsFixture.JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PostAsync($"/api/ativos/{ativo.Id}/rendimentos", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        // Test with negative value as well
+        var requestNegative = new RegistrarDividendoRequest
+        {
+            Valor = -100m,
+            Data = new DateOnly(2026, 8, 5)
+        };
+
+        json = JsonSerializer.Serialize(requestNegative, AtivosControllerTestsFixture.JsonOptions);
+        content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        response = await _fixture.Client.PostAsync($"/api/ativos/{ativo.Id}/rendimentos", content);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RegistrarDividendo_ComAtivoInexistente_Retorna404()
+    {
+        // Arrange
+        var ativoIdInexistente = Guid.NewGuid();
+
+        var request = new RegistrarDividendoRequest
+        {
+            Valor = 50m,
+            Data = new DateOnly(2026, 8, 5)
+        };
+
+        var json = JsonSerializer.Serialize(request, AtivosControllerTestsFixture.JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PostAsync($"/api/ativos/{ativoIdInexistente}/rendimentos", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RegistrarDividendo_ComAtivoDesativado_Retorna404()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+
+        var ativo = new Ativo
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Tesouro Desativado",
+            Tipo = TipoAtivo.RendaFixa,
+            Instituicao = "B3",
+            ValorInvestido = 1000m,
+            ValorAtual = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15),
+            Ativa = false,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await _fixture.AddAtivoAsync(ativo);
+
+        var request = new RegistrarDividendoRequest
+        {
+            Valor = 50m,
+            Data = new DateOnly(2026, 8, 5)
+        };
+
+        var json = JsonSerializer.Serialize(request, AtivosControllerTestsFixture.JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PostAsync($"/api/ativos/{ativo.Id}/rendimentos", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    #endregion
+
+    #region GET /api/ativos/{id}/rendimentos - Obter historico de rendimentos
+
+    [Fact]
+    public async Task ObterHistoricoRendimentos_ComDividendoEValorizacao_RetornaAmbosordenadosPorData()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+
+        var ativo = new Ativo
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Tesouro Direto",
+            Tipo = TipoAtivo.RendaFixa,
+            Instituicao = "B3",
+            ValorInvestido = 1000m,
+            ValorAtual = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15),
+            Ativa = true,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await _fixture.AddAtivoAsync(ativo);
+
+        // Registrar dividendo no dia 2026-08-01
+        var dividendoRequest = new RegistrarDividendoRequest
+        {
+            Valor = 50m,
+            Data = new DateOnly(2026, 8, 1)
+        };
+
+        var json = JsonSerializer.Serialize(dividendoRequest, AtivosControllerTestsFixture.JsonOptions);
+        var dividendoContent = new StringContent(json, Encoding.UTF8, "application/json");
+        await _fixture.Client.PostAsync($"/api/ativos/{ativo.Id}/rendimentos", dividendoContent);
+
+        // Atualizar valor_atual para disparar valorizacao automatica no dia 2026-08-05
+        var valorAtualRequest = new AtualizarValorAtualRequest
+        {
+            NovoValorAtual = 1100m
+        };
+
+        json = JsonSerializer.Serialize(valorAtualRequest, AtivosControllerTestsFixture.JsonOptions);
+        var valorAtualContent = new StringContent(json, Encoding.UTF8, "application/json");
+        await _fixture.Client.PatchAsync($"/api/ativos/{ativo.Id}/valor-atual", valorAtualContent);
+
+        // Act
+        var response = await _fixture.Client.GetAsync($"/api/ativos/{ativo.Id}/rendimentos");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var rendimentos = JsonSerializer.Deserialize<List<RendimentoResponse>>(responseBody, AtivosControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(rendimentos);
+        Assert.Equal(2, rendimentos.Count);
+
+        // Primeiro elemento deve ser o dividendo (2026-08-01)
+        Assert.Equal("DIVIDENDO", rendimentos[0].Tipo);
+        Assert.Equal("MANUAL", rendimentos[0].Origem);
+        Assert.Equal(50m, rendimentos[0].Valor);
+        Assert.Equal(new DateOnly(2026, 8, 1), rendimentos[0].Data);
+
+        // Segundo elemento deve ser a valorizacao (2026-08-05, data de hoje no teste)
+        Assert.Equal("VALORIZACAO", rendimentos[1].Tipo);
+        Assert.Equal("AUTOMATICO", rendimentos[1].Origem);
+        Assert.Equal(100m, rendimentos[1].Valor); // 1100 - 1000
+    }
+
+    #endregion
+
+    #region PATCH /api/ativos/{id}/valor-atual + GET /api/ativos/{id}/rendimentos - Gatilho de valorizacao automatica
+
+    [Fact]
+    public async Task AtualizarValorAtual_CriaRendimentoValorizacao_ComOrigemAutomatica()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+
+        var ativo = new Ativo
+        {
+            Id = Guid.NewGuid(),
+            Nome = "ETF IBOV",
+            Tipo = TipoAtivo.RendaVariavel,
+            Instituicao = "XP",
+            ValorInvestido = 5000m,
+            ValorAtual = 5000m,
+            DataCompra = new DateOnly(2024, 2, 20),
+            Ativa = true,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await _fixture.AddAtivoAsync(ativo);
+
+        var request = new AtualizarValorAtualRequest
+        {
+            NovoValorAtual = 5500m
+        };
+
+        var json = JsonSerializer.Serialize(request, AtivosControllerTestsFixture.JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var patchResponse = await _fixture.Client.PatchAsync($"/api/ativos/{ativo.Id}/valor-atual", content);
+        Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
+
+        var getResponse = await _fixture.Client.GetAsync($"/api/ativos/{ativo.Id}/rendimentos");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+
+        var responseBody = await getResponse.Content.ReadAsStringAsync();
+        var rendimentos = JsonSerializer.Deserialize<List<RendimentoResponse>>(responseBody, AtivosControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(rendimentos);
+        Assert.Single(rendimentos);
+
+        var valorizacao = rendimentos[0];
+        Assert.Equal("VALORIZACAO", valorizacao.Tipo);
+        Assert.Equal("AUTOMATICO", valorizacao.Origem);
+        Assert.Equal(500m, valorizacao.Valor); // 5500 - 5000 = 500
+        Assert.Equal(ativo.Id, valorizacao.AtivoId);
+    }
+
+    #endregion
+
+    #region GET /api/ativos/rendimentos-resumo - Resumo agregado de rendimentos
+
+    [Fact]
+    public async Task ObterResumoRendimentos_ComMultiplosAtivos_SomaTotalsDividendosEValorizacao()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+        await _fixture.ClearRendimentosAsync();
+
+        var ativo1 = new Ativo
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Tesouro 1",
+            Tipo = TipoAtivo.RendaFixa,
+            Instituicao = "B3",
+            ValorInvestido = 1000m,
+            ValorAtual = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15),
+            Ativa = true,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        var ativo2 = new Ativo
+        {
+            Id = Guid.NewGuid(),
+            Nome = "ETF IBOV",
+            Tipo = TipoAtivo.RendaVariavel,
+            Instituicao = "XP",
+            ValorInvestido = 5000m,
+            ValorAtual = 5000m,
+            DataCompra = new DateOnly(2024, 2, 20),
+            Ativa = true,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await _fixture.AddAtivoAsync(ativo1);
+        await _fixture.AddAtivoAsync(ativo2);
+
+        // Registrar dividendo no ativo1: 50
+        var dividendoRequest1 = new RegistrarDividendoRequest
+        {
+            Valor = 50m,
+            Data = new DateOnly(2026, 8, 1)
+        };
+
+        var json = JsonSerializer.Serialize(dividendoRequest1, AtivosControllerTestsFixture.JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var dividendoResponse1 = await _fixture.Client.PostAsync($"/api/ativos/{ativo1.Id}/rendimentos", content);
+        Assert.Equal(HttpStatusCode.Created, dividendoResponse1.StatusCode);
+
+        // Registrar dividendo no ativo2: 100
+        var dividendoRequest2 = new RegistrarDividendoRequest
+        {
+            Valor = 100m,
+            Data = new DateOnly(2026, 8, 1)
+        };
+
+        json = JsonSerializer.Serialize(dividendoRequest2, AtivosControllerTestsFixture.JsonOptions);
+        content = new StringContent(json, Encoding.UTF8, "application/json");
+        var dividendoResponse2 = await _fixture.Client.PostAsync($"/api/ativos/{ativo2.Id}/rendimentos", content);
+        Assert.Equal(HttpStatusCode.Created, dividendoResponse2.StatusCode);
+
+        // Atualizar valor_atual do ativo1: 1000 -> 1100 (valorizacao de 100)
+        var valorAtualRequest1 = new AtualizarValorAtualRequest
+        {
+            NovoValorAtual = 1100m
+        };
+
+        json = JsonSerializer.Serialize(valorAtualRequest1, AtivosControllerTestsFixture.JsonOptions);
+        content = new StringContent(json, Encoding.UTF8, "application/json");
+        var patchResponse1 = await _fixture.Client.PatchAsync($"/api/ativos/{ativo1.Id}/valor-atual", content);
+        Assert.Equal(HttpStatusCode.OK, patchResponse1.StatusCode);
+
+        // Atualizar valor_atual do ativo2: 5000 -> 5500 (valorizacao de 500)
+        var valorAtualRequest2 = new AtualizarValorAtualRequest
+        {
+            NovoValorAtual = 5500m
+        };
+
+        json = JsonSerializer.Serialize(valorAtualRequest2, AtivosControllerTestsFixture.JsonOptions);
+        content = new StringContent(json, Encoding.UTF8, "application/json");
+        var patchResponse2 = await _fixture.Client.PatchAsync($"/api/ativos/{ativo2.Id}/valor-atual", content);
+        Assert.Equal(HttpStatusCode.OK, patchResponse2.StatusCode);
+
+        // Act
+        var response = await _fixture.Client.GetAsync("/api/ativos/rendimentos-resumo");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var resumo = JsonSerializer.Deserialize<RendimentosResumoResponse>(responseBody, AtivosControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(resumo);
+        Assert.Equal(150m, resumo.TotalDividendos); // 50 + 100
+        Assert.Equal(600m, resumo.TotalValorizacao); // 100 + 500
+        Assert.Equal(4, resumo.Historico.Count()); // 2 dividendos + 2 valorizacoes
     }
 
     #endregion

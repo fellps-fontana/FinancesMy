@@ -116,3 +116,30 @@ export type CriarContaInvestimentoRequest = {
 export type AtualizarSaldoRequest = {
   novoSaldo: number
 }
+
+// --- Rendimento (regra-de-negocio.md item 8/TASK-160) - dividendo (registro
+// manual do usuario) e valorizacao (calculada pelo backend a partir da
+// evolucao de valorAtual do Ativo). Nomes de campo iguais a
+// DTOs/Rendimento/RendimentoResponse.cs.
+export type TipoRendimento = "DIVIDENDO" | "VALORIZACAO"
+export type OrigemRendimento = "MANUAL" | "AUTOMATICO"
+
+export type RendimentoResponse = {
+  id: string
+  ativoId: string
+  tipo: TipoRendimento
+  origem: OrigemRendimento
+  valor: number
+  data: string
+}
+
+export type RegistrarDividendoRequest = {
+  valor: number
+  data: string
+}
+
+export type RendimentosResumoResponse = {
+  totalDividendos: number
+  totalValorizacao: number
+  historico: RendimentoResponse[]
+}

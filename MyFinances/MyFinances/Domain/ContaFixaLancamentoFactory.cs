@@ -28,6 +28,9 @@ public static class ContaFixaLancamentoFactory
         };
     }
 
+    // Regra critica (regra-de-negocio.md item 6, revisao 2026-07-27): unidade
+    // de tempo somada entre uma ocorrencia e a proxima depende da
+    // periodicidade -- Mensal soma 1 mes, Anual soma 1 ano.
     public static DateOnly ProximaOcorrencia(DateOnly dataAtual, PeriodicidadeContaFixa periodicidade)
     {
         var proximaData = periodicidade switch

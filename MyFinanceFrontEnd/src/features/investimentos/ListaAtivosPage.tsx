@@ -5,6 +5,7 @@ import { useResumoAtivos } from "@/features/investimentos/hooks/useResumoAtivos"
 import { useCriarAtivo } from "@/features/investimentos/hooks/useCriarAtivo"
 import { ResumoAtivosCards } from "@/features/investimentos/components/ResumoAtivosCards"
 import { GraficoConsolidadoAtivos } from "@/features/investimentos/components/GraficoConsolidadoAtivos"
+import { GraficoRendimentosPorTipo } from "@/features/investimentos/components/GraficoRendimentosPorTipo"
 import { FiltroTipoAtivo } from "@/features/investimentos/components/FiltroTipoAtivo"
 import { AtivoItem } from "@/features/investimentos/components/AtivoItem"
 import { ModalNovoAtivo } from "@/features/investimentos/components/ModalNovoAtivo"
@@ -129,6 +130,8 @@ export function ListaAtivosPage() {
           <ResumoAtivosCards resumo={resumo} carregando={carregandoResumo} />
 
           <GraficoConsolidadoAtivos resumo={resumo} carregando={carregandoResumo} />
+
+          <GraficoRendimentosPorTipo />
 
           <FiltroTipoAtivo filtro={filtro} onFiltroChange={setFiltro} />
 

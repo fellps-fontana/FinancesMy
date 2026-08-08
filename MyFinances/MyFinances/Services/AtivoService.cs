@@ -8,11 +8,13 @@ namespace MyFinances.Services;
 public class AtivoService : IAtivoService
 {
     private readonly IAtivoRepository _ativoRepository;
+    private readonly IRendimentoService _rendimentoService;
     private readonly IAtivoAporteRepository _ativoAporteRepository;
 
-    public AtivoService(IAtivoRepository ativoRepository, IAtivoAporteRepository ativoAporteRepository)
+    public AtivoService(IAtivoRepository ativoRepository, IRendimentoService rendimentoService, IAtivoAporteRepository ativoAporteRepository)
     {
         _ativoRepository = ativoRepository;
+        _rendimentoService = rendimentoService;
         _ativoAporteRepository = ativoAporteRepository;
     }
 
@@ -129,8 +131,13 @@ public class AtivoService : IAtivoService
             throw new AtivoNaoEncontradoException(id);
         }
 
+        var valorAtualAnterior = ativo.ValorAtual;
+
         ativo.ValorAtual = novoValorAtual;
         ativo.AtualizadoEm = DateTime.UtcNow;
+
+        await _rendimentoService.RegistrarValorizacaoAutomatica(
+            id, valorAtualAnterior, novoValorAtual, DateOnly.FromDateTime(DateTime.UtcNow));
 
         await _ativoRepository.Salvar();
     }
