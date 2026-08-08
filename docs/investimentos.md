@@ -1,7 +1,9 @@
 # Modulo de Investimentos
 
 **Status: reescrito em 2026-07-15 (Ativo standalone); estendido em 2026-08-01
-com aporte + preco medio ponderado (bloco F, TASK-115 a 126).**
+com aporte + preco medio ponderado (bloco F, TASK-115 a 126); estendido em
+2026-08-08 com rendimentos — dividendo manual + valorizacao automatica
+(bloco M, TASK-153 a 165).**
 
 ## Visao geral
 
@@ -50,6 +52,39 @@ completo. Resumo:
 - Conta de investimento simples (`saldo_manual`) e Ativo sao independentes —
   nao ha calculo cruzado entre os dois.
 
+### Rendimentos (bloco M, item 8.4)
+
+- **Valorizacao automatica**: toda vez que `valor_atual` de um Ativo e
+  atualizado (`AtivoService.AtualizarValorAtual`), o sistema calcula
+  `delta = valor_atual_novo - valor_atual_anterior`
+  (`RendimentoValorizacaoCalculator.Calcular`, funcao pura). Delta `!= 0` gera
+  um `Rendimento(tipo=VALORIZACAO, origem=AUTOMATICO, valor=delta)`. Delta
+  `== 0` e NO-OP explicito — nenhum registro. Delta negativo (desvalorizacao)
+  e um rendimento negativo valido, sem piso em zero.
+- **Commit atomico**: `RendimentoService.RegistrarValorizacaoAutomatica` so
+  adiciona a entidade ao `DbContext` (sem `SaveChanges` proprio) — quem
+  comita e `AtivoService.AtualizarValorAtual`, no mesmo `SaveChangesAsync`
+  que persiste a mudanca do `Ativo`. Como `IAtivoRepository` e
+  `IRendimentoRepository` sao `AddScoped` compartilhando a mesma instancia de
+  `MyFinancesDbContext`, a atualizacao do ativo e o registro do rendimento
+  caem no mesmo `SaveChangesAsync` — sem estado parcial se algo falhar no
+  meio.
+- **Dividendo manual**: cadastro explicito do usuario (`RegistrarDividendo`,
+  valor + data). Tipo (`DIVIDENDO`) e origem (`MANUAL`) sao decididos
+  exclusivamente pelo backend — o request HTTP nao aceita esses campos.
+  Valida `valor > 0` (`ValorInvalidoException`) e ativo existente/ativo
+  (`AtivoNaoEncontradoException`/`AtivoInativoException`, esta ultima nova
+  neste bloco).
+- **Isolamento total**: Rendimento nunca entra em `saldo_projetado` nem em
+  saldo de `Conta` — nao ha nenhum acoplamento com `ProjecaoMesService`,
+  `ContaService`, `FluxoCaixaService` ou `LimiteGastoService`. E um dado
+  puramente informativo sobre a evolucao do Ativo.
+- **Gatilho (a)/aporte permanece NO-OP** — `AtivoService.RegistrarAporte`
+  (bloco F) nao chama nada de `IRendimentoService`. Aporte e rendimento sao
+  caminhos deliberadamente separados nesta entrega; ligar aporte a
+  rendimento (ex: aporte gerando algum tipo de evento) depende de decisao de
+  produto futura, nao decidida ate aqui.
+
 ## Modelo de dados
 
 - `conta`: inalterado para o caso simples — `tipo=INVESTIMENTO`,
@@ -69,6 +104,13 @@ completo. Resumo:
 - Removidos: `movimentacao_ativo` (historico de compra/venda do modelo por
   ticker nao existe mais — nao confundir com `ativo_aporte`, que e o
   historico do modelo standalone atual).
+- `rendimento` (novo, bloco M): `id`, `ativo_id` (FK, sem `OnDelete`
+  especial — `Ativo` nunca sofre hard-delete), `tipo` (`DIVIDENDO`|
+  `VALORIZACAO`), `origem` (`MANUAL`|`AUTOMATICO`), `valor`
+  (`numeric(18,2)`, aceita negativo para valorizacao), `data`, `criado_em`.
+  Enums seguem o mesmo padrao de `TipoAtivo.cs` (storage value maiusculo
+  snake, `ToStorageValue`/`FromStorageValue`). Migration
+  `20260727215314_AddRendimento`, aditiva.
 
 ## Backend
 
@@ -104,6 +146,16 @@ completo. Resumo:
   `ContaNaoEhInvestimentoException`).
 - 500 testes (202 pre-existentes + ~298 do bloco F: preco medio, aporte,
   HTTP de aporte, migracao de dados).
+- Bloco M (rendimentos): `IRendimentoRepository`/`RendimentoRepository`
+  (`Adicionar`, `ListarPorAtivo` ordenado por Data, `ListarTodos` para o
+  resumo agregado, `Salvar`). `RendimentoService` (`RegistrarDividendo`,
+  `RegistrarValorizacaoAutomatica`, `ObterHistorico`, `ObterResumoGeral`).
+  3 endpoints novos em `AtivosController`: `POST/GET /{id}/rendimentos`,
+  `GET /rendimentos-resumo` (agregado de todos os ativos, para o widget do
+  dashboard). Nova excecao `AtivoInativoException`. 55 testes novos
+  (20 unitarios de valorizacao/TDD + 7 HTTP de dividendo/historico/resumo,
+  mais os que vieram junto do merge do bloco F) — suite completa do backend
+  em 557 apos os dois merges deste bloco.
 
 ## Frontend
 
@@ -129,6 +181,21 @@ completo. Resumo:
   - Sem sparkline nem "% no mes" no resumo de `valor_atual` — nao ha tabela
     de historico desses valores na v1 (ver "Pendencias em aberto"; diferente
     do historico de aportes, que existe desde este bloco).
+- Bloco M (rendimentos): botao "Registrar dividendo" na mesma linha de
+  acoes do `AtivoCard` (ao lado de "Editar valor atual"/"Desativar"), abre
+  `FormRegistrarDividendo` (modal, mesmo padrao visual de
+  `ModalNovoAtivo`) com valor+data e validacao client-side
+  (`lib/validarDividendo.ts`, valor > 0). Sucesso invalida cache do
+  historico do ativo e do resumo agregado (`useRegistrarDividendo`). Novo
+  `GraficoRendimentosPorTipo` (Recharts, barras empilhadas por mes:
+  dividendo vs valorizacao) na tela `/investimentos`, logo apos
+  `GraficoConsolidadoAtivos` — consome `useRendimentosResumo` (agregado de
+  todos os ativos); agrupamento por mes isolado em `lib/agruparRendimentosPorMes.ts`
+  (funcao pura, testavel). O hook `useHistoricoRendimentos` (rendimento
+  por-ativo) foi criado na camada de dados mas removido apos o style
+  review por falta de consumidor — o `GET /{id}/rendimentos` continua
+  existindo e testado no backend, disponivel para uma futura tela de
+  detalhe de ativo.
 - Removido (rework de 2026-07-15): `GraficoCotacaoAtivo` (Recharts),
   `FormRegistrarCompraAtivo`, `FormRegistrarVendaAtivo`, `ListaAtivos`
   (antiga), hooks/lib do fluxo de compra/venda/cotacao do modelo por ticker.
@@ -185,6 +252,34 @@ completo. Resumo:
   (`/investimentos`), nao numa rota dedicada `/ativos/:id`. Se o produto
   quiser uma pagina de detalhe completa no futuro, isso e trabalho novo, nao
   coberto por este bloco.
+
+## Sintese do que cada agent entregou (bloco M, rendimentos — 2026-07-27/08-08)
+
+- **killua** (TASK-155): esqueleto de `RendimentoValorizacaoCalculator` e
+  `IRendimentoService`/`RendimentoService`, e a assinatura de integracao de
+  `AtivoService.AtualizarValorAtual` recebendo `IRendimentoService`. Sinalizou
+  por conta propria a falta de `AtivoInativoException` no dominio (exigida
+  pela regra 8.4 para `RegistrarDividendo`, mas nao pedida explicitamente no
+  escopo) e ja desenhou o arquivo.
+- **mike**: RED com 20 testes (TASK-156: calculator + integracao real via
+  `AtivoService`, sem mock do calculator) e 7 testes HTTP (TASK-161:
+  dividendo CRUD, historico combinado, valorizacao automatica end-to-end via
+  PATCH, resumo agregado multi-ativo). Confirmou GREEN 2 vezes (TASK-158 e
+  apos TASK-157).
+- **levi**: GREEN da TASK-157 (calculator, `RegistrarValorizacaoAutomatica`/
+  `ObterHistorico`/`ObterResumoGeral`, `RegistrarDividendo`) e TASK-160
+  (3 endpoints + DTOs). Sem rodada de correcao de style em nenhuma das duas.
+- **style**: aprovou de primeira tanto a regra critica (TASK-159 — formula,
+  atomicidade do commit, validacao de dividendo, isolamento de saldo) quanto
+  a revisao final do bloco (TASK-165), com uma unica ressalva nao-bloqueante
+  (hook `useHistoricoRendimentos` orfao). Confirmou build/teste real antes de
+  cada veredito, incluindo verificar tracking do EF (`FindAsync` vs
+  `AsNoTracking`) pra provar a atomicidade do commit, nao so ler o codigo.
+- **hanzo**: TASK-162 (camada de dados), TASK-163 (formulario de dividendo,
+  integrado ao `AtivoCard`/`AtivoItem`), TASK-164 (grafico de rendimentos por
+  tipo, bloqueada ate o merge do bloco F trazer TASK-124/125). Entregas
+  tecnicas corretas nas tres; TASK-163 nao teve validacao visual em browser
+  real (sem Postgres local no ambiente desta sessao).
 
 ## Sintese do que cada agent entregou (bloco F, aporte/preco medio — 2026-07-31/08-01)
 
@@ -244,6 +339,46 @@ completo. Resumo:
   `tipo`, que quebraria "Nova conta" independente desta mudanca).
 
 ## Notas operacionais
+
+### Bloco M (rendimentos, 2026-07-27/08-08)
+
+- **TASK-164/165 bloquearam num modulo alheio no meio da execucao.**
+  TASK-164 dependia de TASK-124/125, que por sua vez dependiam de todo o
+  bloco F (TASK-115-123, regra critica de aporte/preco medio), ainda nao
+  rodado quando o bloco M comecou. Kira identificou a cadeia de dependencia
+  completa antes de despachar qualquer coisa e devolveu a decisao ao
+  usuario (nao tentou absorver o bloco F inteiro na sessao isolada do bloco
+  M) — o usuario confirmou que o bloco F ja tinha sido concluido e
+  mergeado (PR #54) em paralelo, em outra worktree.
+- **Dois merges de `origin/main` no meio da sessao.** Como `main` avancou
+  duas vezes durante a execucao (PR #54 - bloco F, depois PR #55 -
+  TASK-107-111 conta-fixa/periodicidade — worktrees compartilham as refs
+  remotas do mesmo `.git`, entao um `git fetch` em qualquer worktree
+  atualiza todas), o branch do bloco M precisou de dois merges sequenciais
+  antes de abrir o PR, resolvendo no total 9 arquivos em conflito (backend:
+  `AtivoService.cs`, `Program.cs`, `AtivosController.cs`,
+  `AtivoServiceTests.cs`, `AtivosControllerTests.cs`,
+  `ContaFixaLancamentoFactory.cs`; front: `api.ts`, `AtivoCard.tsx`,
+  `AtivoItem.tsx`) sem perder logica de nenhum lado. `git merge`/`git
+  rebase` estao no `deny` de `.claude/settings.json` deste projeto — o
+  usuario rodou os dois comandos de merge manualmente a pedido de Kira
+  (via prefixo `!`), que resolveu os conflitos e validou build/teste antes
+  de commitar.
+- **Migration duplicada detectada e removida antes do PR.** O branch
+  carregava um commit antigo e orfao (`e1ace17`, esqueleto isolado da
+  TASK-107, anterior ao fluxo oficial que virou o PR #55) com uma migration
+  (`AddPeriodicidadeContaFixa`) que adicionava a MESMA coluna que a
+  migration oficial ja mergeada (`AddPeriodicidadeToContaFixa`). `dotnet
+  build`/`dotnet test` nao pegam esse tipo de erro (InMemory DB nao executa
+  SQL de migration), so `dotnet ef migrations list` expos as duas
+  entradas — aplicadas em sequencia contra um banco real, a segunda
+  falharia por coluna ja existente. Kira notou o `diff --stat` estranho
+  (arquivos de teste de `ContaFixa` aparecendo como deletados) antes de
+  investigar a fundo e achar a causa raiz.
+- **Analise pos-merge (Secao 7.4) confirmou merge limpo.** O diff que foi
+  de fato pra `main` no PR #56 bateu exatamente (mesma contagem de arquivos
+  e linhas) com o que Kira tinha no branch antes de abrir o PR — sem
+  sobrescrita nem achado a reportar.
 
 - Havia um merge conflitante entre o commit local de padronizacao de pastas
   (`Domain/` consolidado) e o PR #23 (mesmo refactor, feito em paralelo por
