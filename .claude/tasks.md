@@ -2888,7 +2888,7 @@ critica (mesma classe de Service) e coberto por teste HTTP de integracao.
 
 ## TASK-153 — Enum TipoRendimento/OrigemRendimento + Entidade Rendimento + Configuration + migration
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2900,12 +2900,15 @@ CRITERIO DE ACEITE:
 ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Domain/Rendimento.cs` (novo), `MyFinances/MyFinances/Domain/TipoRendimento.cs` (novo), `MyFinances/MyFinances/Domain/OrigemRendimento.cs` (novo), `MyFinances/MyFinances/Domain/Ativo.cs`, `MyFinances/MyFinances/Infrastructure/Configurations/RendimentoConfiguration.cs` (novo), `MyFinances/MyFinances/Data/MyFinancesDbContext.cs`, `MyFinances/MyFinances/Migrations/**`
 NAO FAZER: nao criar Repository/Service ainda (TASK-154/155); nao adicionar CHECK de banco para "valor > 0 se DIVIDENDO" — validacao e do Service.
 RETORNO ESPERADO: migration aplicavel; build limpo.
+HISTORICO: levi criou enums/entidade/Configuration/migration seguindo TipoAtivo.cs.
+Build limpo, migration 20260727215314_AddRendimento aplicada. Commit 0373ab4
+(apos merge do Bloco F).
 
 ---
 
 ## TASK-154 — Repository de Rendimento
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 DEPENDENCIAS: TASK-153
 FLUXO: Implementacao
@@ -2915,12 +2918,15 @@ CRITERIO DE ACEITE: build limpo; metodos nomeados por intencao.
 ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Repositories/IRendimentoRepository.cs` (novo), `MyFinances/MyFinances/Repositories/RendimentoRepository.cs` (novo), `MyFinances/MyFinances/Program.cs`
 NAO FAZER: nao implementar nenhum calculo aqui (isso e Service/Calculator, TASK-155).
 RETORNO ESPERADO: repository testavel.
+HISTORICO: levi criou IRendimentoRepository/RendimentoRepository + DI. 1a tentativa
+falhou por limite de sessao antes de escrever arquivo (sem impacto); retry concluiu
+limpo. Commit 833f7c3.
 
 ---
 
 ## TASK-155 — [REGRA CRITICA] Esqueleto: RendimentoService + RendimentoValorizacaoCalculator
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: killua
 DEPENDENCIAS: TASK-154
 FLUXO: Implementacao
@@ -2932,12 +2938,17 @@ CRITERIO DE ACEITE:
 ARQUIVOS PERMITIDOS: nenhum (killua nao escreve arquivo — Kira cria a partir do esqueleto)
 NAO FAZER: nao implementar a formula real (TASK-157); nao implementar nenhum caminho do gatilho (a)/aporte — esse gatilho e NO-OP explicito ate confirmacao do usuario (ver regra-de-negocio.md item 8.4).
 RETORNO ESPERADO: esqueleto compilavel + confirmacao de que `AtivoService` ja tem o ponto de integracao definido.
+HISTORICO: killua desenhou o esqueleto (RendimentoValorizacaoCalculator,
+IRendimentoService/RendimentoService, integracao em AtivoService.AtualizarValorAtual
+recebendo IRendimentoService); Kira criou os arquivos. Projeto principal compilou
+limpo; projeto de testes quebrou temporariamente (esperado, corrigido no RED
+da TASK-156). Commit 659cf37.
 
 ---
 
 ## TASK-156 — [REGRA CRITICA] RED: testes de valorizacao automatica
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-155
 FLUXO: Implementacao (rodada RED)
@@ -2947,12 +2958,17 @@ CRITERIO DE ACEITE: testes compilam e falham por `NotImplementedException`, nunc
 ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Domain/RendimentoValorizacaoCalculatorTests.cs` (novo), `MyFinances/MyFinances.Tests/Services/RendimentoServiceTests.cs` (novo), `MyFinances/MyFinances.Tests/Services/AtivoServiceTests.cs`
 NAO FAZER: nao implementar logica real; nao testar o gatilho (a)/aporte (NO-OP, fora de escopo ate confirmacao do usuario).
 RETORNO ESPERADO: RED confirmado.
+HISTORICO: mike escreveu 20 testes (RendimentoValorizacaoCalculatorTests,
+RendimentoServiceTests, integracao em AtivoServiceTests). 2 tentativas cairam por
+limite de sessao no meio da escrita (retomadas do ponto onde pararam, sem retrabalho
+duplicado). RED confirmado: 20/20 falhando por NotImplementedException, 0 erro de
+compilacao. Commit 51a5d43.
 
 ---
 
 ## TASK-157 — [REGRA CRITICA] GREEN: implementar RendimentoService (valorizacao automatica + dividendo manual)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 DEPENDENCIAS: TASK-156
 FLUXO: Implementacao
@@ -2964,12 +2980,16 @@ CRITERIO DE ACEITE:
 ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Domain/RendimentoValorizacaoCalculator.cs`, `MyFinances/MyFinances/Services/RendimentoService.cs`, `MyFinances/MyFinances/Services/IRendimentoService.cs`, `MyFinances/MyFinances/Services/AtivoService.cs`, `MyFinances/MyFinances/Services/IAtivoService.cs` (so se a assinatura do construtor precisar ajuste real), `MyFinances/MyFinances/Program.cs`
 NAO FAZER: nao alterar `MyFinances.Tests/**`; nao implementar nenhum caminho do gatilho (a)/aporte.
 RETORNO ESPERADO: implementacao completa, GREEN.
+HISTORICO: levi implementou Calculator.Calcular (delta=novo-anterior, null se zero),
+RegisterValorizacaoAutomatica/ObterHistorico/ObterResumoGeral e RegistrarDividendo
+(valor>0, ativo existente/ativo, AtivoInativoException). 20/20 testes da TASK-156
+GREEN, 476/476 suite completa sem regressao. Commit f072a8b.
 
 ---
 
 ## TASK-158 — Confirmar GREEN valorizacao (mike)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-157
 FLUXO: Implementacao (rodada GREEN)
@@ -2979,12 +2999,14 @@ CRITERIO DE ACEITE: 100% GREEN ou relatorio de bug.
 ARQUIVOS PERMITIDOS: nenhum
 NAO FAZER: nao reescrever teste.
 RETORNO ESPERADO: confirmacao GREEN ou relatorio estruturado.
+HISTORICO: mike confirmou GREEN — 20/20 filtro Rendimento, 476/476 suite completa.
+Sem regressao.
 
 ---
 
 ## TASK-159 — Style: revisao RendimentoService (regra critica + dividendo)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-158
 FLUXO: Implementacao
@@ -2994,12 +3016,16 @@ CRITERIO DE ACEITE: veredito (APROVADO ou tarefa de correcao no esquema padrao).
 ARQUIVOS PERMITIDOS: nenhum
 NAO FAZER: nao editar codigo.
 RETORNO ESPERADO: veredito + achados.
+HISTORICO: style APROVADO sem ressalvas. Confirmou formula/NO-OP em delta zero,
+atomicidade da integracao com AtivoService (mesmo DbContext scoped), validacao de
+RegistrarDividendo, isolamento total de Rendimento vs saldo/Conta, e gatilho (a)
+NO-OP.
 
 ---
 
 ## TASK-160 — Controller/DTOs de Rendimento (dividendo + historico + resumo)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: levi
 DEPENDENCIAS: TASK-159
 FLUXO: Implementacao
@@ -3011,12 +3037,15 @@ CRITERIO DE ACEITE:
 ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Controllers/AtivosController.cs`, `MyFinances/MyFinances/DTOs/Rendimento/*.cs` (novo)
 NAO FAZER: nao colocar regra de negocio no controller.
 RETORNO ESPERADO: contrato de API dos 3 endpoints.
+HISTORICO: levi implementou os 3 endpoints (POST/GET /{id}/rendimentos, GET
+/rendimentos-resumo) + DTOs RegistrarDividendoRequest/RendimentoResponse/
+RendimentosResumoResponse. AtivoInativoException->404. Build limpo. Commit 21aeeff.
 
 ---
 
 ## TASK-161 — Testes HTTP dos endpoints de Rendimento (cobre dividendo CRUD)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: mike
 DEPENDENCIAS: TASK-160
 FLUXO: Implementacao
@@ -3025,12 +3054,16 @@ ESCOPO: testes HTTP cobrindo: registrar dividendo (201, valor/data corretos, ori
 ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Controllers/AtivosControllerTests.cs`
 NAO FAZER: nao alterar controller/service sem reportar.
 RETORNO ESPERADO: testes passando ou relatorio de bug.
+HISTORICO: mike escreveu 7 testes HTTP cobrindo dividendo (sucesso/valor invalido/
+ativo inexistente/desativado), historico combinado, valorizacao automatica end-to-end
+via PATCH, e resumo agregado multi-ativo. 25/25 GREEN, 483/483 suite completa.
+Commit 55633a3.
 
 ---
 
 ## TASK-162 — Front: camada de dados (types/api/hooks) de Rendimento
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-160
 FLUXO: Implementacao
@@ -3040,12 +3073,16 @@ CRITERIO DE ACEITE: hooks tipados, sem `any`, invalidacao de cache cruzada apos 
 ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/types.ts`, `MyFinanceFrontEnd/src/features/investimentos/api.ts`, `MyFinanceFrontEnd/src/features/investimentos/query-keys.ts`, `MyFinanceFrontEnd/src/features/investimentos/hooks/useRegistrarDividendo.ts` (novo), `MyFinanceFrontEnd/src/features/investimentos/hooks/useHistoricoRendimentos.ts` (novo), `MyFinanceFrontEnd/src/features/investimentos/hooks/useRendimentosResumo.ts` (novo)
 NAO FAZER: nao renderizar UI aqui.
 RETORNO ESPERADO: hooks tipados prontos para consumo.
+HISTORICO: hanzo criou types/api/query-keys + useRegistrarDividendo/
+useHistoricoRendimentos/useRendimentosResumo. Build/typecheck limpo. Commit
+15d570a. useHistoricoRendimentos removido depois na TASK-165 (achado de codigo
+orfao, sem consumidor).
 
 ---
 
 ## TASK-163 — Front: formulario de cadastro de dividendo vinculado ao ativo
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-162
 FLUXO: Implementacao
@@ -3055,12 +3092,17 @@ CRITERIO DE ACEITE: dividendo registrado aparece no historico do ativo apos suce
 ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/components/FormRegistrarDividendo.tsx` (novo), `MyFinanceFrontEnd/src/features/investimentos/lib/validarDividendo.ts` (novo), `MyFinanceFrontEnd/src/features/investimentos/components/AtivoItem.tsx`, `MyFinanceFrontEnd/src/features/investimentos/components/AtivoCard.tsx`
 NAO FAZER: nao expor campo `tipo`/`origem` no form (sempre DIVIDENDO/MANUAL, decidido no backend).
 RETORNO ESPERADO: formulario funcional integrado a tela de ativo.
+HISTORICO: hanzo criou FormRegistrarDividendo.tsx + validarDividendo.ts, integrado
+como acao "Registrar dividendo" em AtivoCard/AtivoItem (modal, mesmo padrao de
+ModalNovoAtivo). Build/typecheck limpo. Commit 82610b0. Nao houve validacao visual
+em browser real (sem Postgres local no ambiente); cobertura vem do build + testes
+HTTP que exercitam o mesmo contrato.
 
 ---
 
 ## TASK-164 — Front: grafico de rendimento por tipo (dividendo vs valorizacao)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-162, TASK-124, TASK-125
 FLUXO: Implementacao
@@ -3072,12 +3114,20 @@ CRITERIO DE ACEITE:
 ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/investimentos/components/GraficoRendimentosPorTipo.tsx` (novo), `MyFinanceFrontEnd/src/features/investimentos/lib/agruparRendimentosPorMes.ts` (novo), `MyFinanceFrontEnd/src/features/investimentos/ListaAtivosPage.tsx`
 NAO FAZER: nao inventar serie de cotacao; nao misturar `TipoAtivo` com `TipoRendimento` no mesmo grafico.
 RETORNO ESPERADO: componente de grafico consumindo dado real, integrado a pagina de Investimentos.
+HISTORICO: bloqueada ate TASK-124/125 (Bloco F) fecharem; PR #54 do Bloco F mergeado
+em main enquanto esta sessao rodava. Kira fez merge de origin/main no worktree
+(8 arquivos com conflito: AtivoService.cs, Program.cs, AtivosController.cs,
+AtivoServiceTests.cs, AtivosControllerTests.cs, api.ts, AtivoCard.tsx, AtivoItem.tsx
+— resolvidos preservando logica de rendimento E aporte, 541/541 testes apos merge).
+Com 124/125 ja concluidas pelo merge, hanzo criou GraficoRendimentosPorTipo.tsx +
+agruparRendimentosPorMes.ts (barras empilhadas, sem misturar TipoAtivo/TipoRendimento).
+Build limpo. Commit f75ca2f.
 
 ---
 
 ## TASK-165 — Style review Bloco M (Rendimentos)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-160, TASK-161, TASK-163, TASK-164
 FLUXO: Implementacao
@@ -3087,3 +3137,9 @@ CRITERIO DE ACEITE: veredito (APROVADO ou tarefa de correcao no esquema padrao).
 ARQUIVOS PERMITIDOS: nenhum
 NAO FAZER: nao editar codigo.
 RETORNO ESPERADO: veredito + achados.
+HISTORICO: style APROVADO com ressalva nao-bloqueante (hook
+useHistoricoRendimentos.ts orfao, sem consumidor). Confirmou build/541 testes
+verdes/front OK, ordem correta em AtualizarValorAtual pos-merge, gatilho (a)/aporte
+sem tocar Rendimento, POST /rendimentos sem campo tipo/origem exposto, isolamento
+de saldo, e grafico sem misturar taxonomias. Kira removeu o hook orfao inline
+(commit 08ba273) e fechou o bloco.
