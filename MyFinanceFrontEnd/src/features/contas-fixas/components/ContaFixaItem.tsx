@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Repeat } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
 import { ApiError } from "@/shared/api/client"
 import { Card, CardContent } from "@/shared/ui/card"
@@ -7,7 +8,7 @@ import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
 import { useDesativarContaFixa } from "@/features/contas-fixas/hooks/useDesativarContaFixa"
 import { useReativarContaFixa } from "@/features/contas-fixas/hooks/useReativarContaFixa"
-import type { ContaFixaResponse } from "@/features/contas-fixas/types"
+import type { ContaFixaResponse, PeriodicidadeContaFixa } from "@/features/contas-fixas/types"
 
 type StatusContaFixa = "ATIVA" | "INATIVA"
 
@@ -25,23 +26,35 @@ const CONFIG_POR_STATUS: Record<StatusContaFixa, { label: string; className: str
   INATIVA: { label: "Inativa", className: "bg-muted text-text-muted" },
 }
 
+// Periodicidade (regra-de-negocio.md item 6, revisao 2026-07-27) e
+// informativa, nao um estado com conotacao positiva/negativa como
+// pago/pendente - por isso o badge fica neutro (bg-muted + text-muted),
+// mesmo par ja usado para o simbolo "Manual" em LancamentoItem.
+const LABEL_POR_PERIODICIDADE: Record<PeriodicidadeContaFixa, string> = {
+  MENSAL: "Mensal",
+  ANUAL: "Anual",
+}
+
 type ContaFixaItemProps = {
   contaFixa: ContaFixaResponse
+  // Nome resolvido pelo container (ListaContasFixas) a partir de
+  // categoriaId - ver comentario la para o motivo do lookup viver no
+  // container. null quando a ContaFixa nao tem categoria vinculada (FK
+  // opcional, regra-de-negocio.md item 6) - a categoria some da UI nesse
+  // caso, sem "dado cru" nem texto placeholder.
+  categoriaNome: string | null
 }
 
 // Componente de apresentacao (burro): so exibe o que ja vem pronto do
-// backend (descricao, valor, diaVencimento, ativa). Nenhum calculo de
-// regra de negocio mora aqui - formatarMoeda e a unica funcao aplicada, e e
+// backend (descricao, valor, diaVencimento, periodicidade, ativa) mais o
+// nome de categoria ja resolvido via prop. Nenhum calculo de regra de
+// negocio mora aqui - formatarMoeda e a unica funcao aplicada, e e
 // puramente de apresentacao (locale), nao regra de dominio - ver
-// clean-code.md "Organizacao (React)".
-//
-// Categoria: categoriaId ainda nao tem lookup de nome no front (feature
-// categorias/ e so um placeholder, sem tela/hook/tipo implementado ate
-// agora). Exibir o id cru violaria "nunca dado cru na tela" (identidade-
-// visual.md), entao a categoria fica omitida nesta tela ate existir um
-// componente de categoria pronto para resolver o nome (decisao documentada
-// na TASK-063).
-export function ContaFixaItem({ contaFixa }: ContaFixaItemProps) {
+// clean-code.md "Organizacao (React)". Layout segue o mockup "09 Conta
+// Fixa.dc.html" (icone quadrado 34px + bloco descricao/periodicidade/
+// categoria + valor em destaque), adaptado ao par de acoes ja existente
+// (desativar com confirmacao inline / reativar).
+export function ContaFixaItem({ contaFixa, categoriaNome }: ContaFixaItemProps) {
   const status: StatusContaFixa = contaFixa.ativa ? "ATIVA" : "INATIVA"
   const statusConfig = CONFIG_POR_STATUS[status]
 
@@ -92,13 +105,46 @@ export function ContaFixaItem({ contaFixa }: ContaFixaItemProps) {
 
   return (
     <Card size="sm">
-      <CardContent className="flex flex-col gap-2">
-        <div className="flex items-start justify-between gap-2">
-          <span className="text-[19px] font-medium text-text-primary">{contaFixa.descricao}</span>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {/* Icone de recorrencia (identidade-visual.md: "quadrado
+                arredondado 34px com icone Tabler dentro"). Um unico icone
+                para todas as contas fixas - a variacao por descricao do
+                mockup (casa, tv, halteres...) nao tem lastro em nenhum
+                campo de dominio (ContaFixa nao tem "tipo"/icone
+                cadastravel), so criaria decoracao sem significado
+                (identidade-visual.md "Principios"). A cor do quadrado
+                reflete `ativa`, que e dado real. */}
+            <div
+              className={cn(
+                "flex size-[34px] shrink-0 items-center justify-center rounded-[10px]",
+                contaFixa.ativa ? "bg-accent-deep" : "bg-muted",
+              )}
+            >
+              <Repeat
+                className={cn("size-4", contaFixa.ativa ? "text-accent-soft" : "text-text-muted")}
+                strokeWidth={1.6}
+                aria-hidden="true"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <span className="text-[19px] font-medium text-text-primary">{contaFixa.descricao}</span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex items-center rounded-[5px] bg-muted px-2 py-0.5 text-[12px] font-medium text-text-muted">
+                  {LABEL_POR_PERIODICIDADE[contaFixa.periodicidade]}
+                </span>
+                {categoriaNome && (
+                  <span className="text-[12px] text-text-muted">{categoriaNome}</span>
+                )}
+              </div>
+            </div>
+          </div>
 
           <span
             className={cn(
-              "inline-flex items-center rounded-[5px] px-2 py-0.5 text-[12px] font-medium",
+              "inline-flex shrink-0 items-center rounded-[5px] px-2 py-0.5 text-[12px] font-medium",
               statusConfig.className,
             )}
           >
@@ -107,8 +153,8 @@ export function ContaFixaItem({ contaFixa }: ContaFixaItemProps) {
         </div>
 
         <div className="flex items-center justify-between text-[13px] text-text-muted">
-          <span>
-            Valor <span className="font-medium text-text-body">{formatarMoeda(contaFixa.valor)}</span>
+          <span className="text-[19px] font-medium text-text-primary">
+            {formatarMoeda(contaFixa.valor)}
           </span>
           <span>Vence todo dia {contaFixa.diaVencimento}</span>
         </div>

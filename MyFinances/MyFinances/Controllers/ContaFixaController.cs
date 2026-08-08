@@ -23,7 +23,8 @@ public class ContaFixaController : ControllerBase
             request.Descricao,
             request.Valor,
             request.DiaVencimento,
-            request.CategoriaId
+            request.CategoriaId,
+            request.Periodicidade
         );
 
         if (!sucesso)
@@ -44,7 +45,8 @@ public class ContaFixaController : ControllerBase
                 id,
                 request.Valor,
                 request.DiaVencimento,
-                request.CategoriaId
+                request.CategoriaId,
+                request.Periodicidade
             );
 
             if (!sucesso)

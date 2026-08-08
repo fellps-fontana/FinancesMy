@@ -186,4 +186,157 @@ public class ContaFixaLancamentoFactoryTests
     }
 
     #endregion
+
+    #region Regra 5 (m): ProximaOcorrencia com Mensal soma 1 mes
+
+    [Fact]
+    public void ProximaOcorrencia_Mensal_SomaPrimeiroAoUltimoDia()
+    {
+        // Arrange
+        var dataAtual = new DateOnly(2026, 7, 15);
+        var periodicidade = PeriodicidadeContaFixa.Mensal;
+
+        // Act
+        var proximaData = ContaFixaLancamentoFactory.ProximaOcorrencia(dataAtual, periodicidade);
+
+        // Assert - deve ser agosto (proximo mes), mesmo dia (15)
+        Assert.Equal(15, proximaData.Day);
+        Assert.Equal(8, proximaData.Month);
+        Assert.Equal(2026, proximaData.Year);
+    }
+
+    [Fact]
+    public void ProximaOcorrencia_Mensal_MesDozeParaJaneiro()
+    {
+        // Arrange - dezembro vai pra janeiro do proximo ano
+        var dataAtual = new DateOnly(2026, 12, 20);
+        var periodicidade = PeriodicidadeContaFixa.Mensal;
+
+        // Act
+        var proximaData = ContaFixaLancamentoFactory.ProximaOcorrencia(dataAtual, periodicidade);
+
+        // Assert - deve ser janeiro de 2027, dia 20
+        Assert.Equal(20, proximaData.Day);
+        Assert.Equal(1, proximaData.Month);
+        Assert.Equal(2027, proximaData.Year);
+    }
+
+    [Fact]
+    public void ProximaOcorrencia_Mensal_Dia31AbrirParaDia30()
+    {
+        // Arrange - março (31 dias) -> abril (30 dias)
+        var dataAtual = new DateOnly(2026, 3, 31);
+        var periodicidade = PeriodicidadeContaFixa.Mensal;
+
+        // Act
+        var proximaData = ContaFixaLancamentoFactory.ProximaOcorrencia(dataAtual, periodicidade);
+
+        // Assert - abril tem 30 dias, deve clampar pra 30
+        Assert.Equal(30, proximaData.Day);
+        Assert.Equal(4, proximaData.Month);
+        Assert.Equal(2026, proximaData.Year);
+    }
+
+    [Fact]
+    public void ProximaOcorrencia_Mensal_Dia31JaneiroParaFevereiro()
+    {
+        // Arrange - janeiro (31 dias) para fevereiro (28/29 dias)
+        var dataAtual = new DateOnly(2026, 1, 31);
+        var periodicidade = PeriodicidadeContaFixa.Mensal;
+
+        // Act
+        var proximaData = ContaFixaLancamentoFactory.ProximaOcorrencia(dataAtual, periodicidade);
+
+        // Assert - fevereiro 2026 tem 28 dias, deve clampar pra 28
+        Assert.Equal(28, proximaData.Day);
+        Assert.Equal(2, proximaData.Month);
+        Assert.Equal(2026, proximaData.Year);
+    }
+
+    [Fact]
+    public void ProximaOcorrencia_Mensal_Dia31JaneiroPAriFevereiroAnoBissexto()
+    {
+        // Arrange - janeiro 2024 para fevereiro 2024 (bissexto, 29 dias)
+        var dataAtual = new DateOnly(2024, 1, 31);
+        var periodicidade = PeriodicidadeContaFixa.Mensal;
+
+        // Act
+        var proximaData = ContaFixaLancamentoFactory.ProximaOcorrencia(dataAtual, periodicidade);
+
+        // Assert - fevereiro 2024 eh bissexto (29 dias), deve clampar pra 29
+        Assert.Equal(29, proximaData.Day);
+        Assert.Equal(2, proximaData.Month);
+        Assert.Equal(2024, proximaData.Year);
+    }
+
+    #endregion
+
+    #region Regra 6 (n): ProximaOcorrencia com Anual soma 1 ano
+
+    [Fact]
+    public void ProximaOcorrencia_Anual_SomaUmAno()
+    {
+        // Arrange
+        var dataAtual = new DateOnly(2026, 7, 15);
+        var periodicidade = PeriodicidadeContaFixa.Anual;
+
+        // Act
+        var proximaData = ContaFixaLancamentoFactory.ProximaOcorrencia(dataAtual, periodicidade);
+
+        // Assert - deve ser 2027, mesmo mes e dia
+        Assert.Equal(15, proximaData.Day);
+        Assert.Equal(7, proximaData.Month);
+        Assert.Equal(2027, proximaData.Year);
+    }
+
+    [Fact]
+    public void ProximaOcorrencia_Anual_Dia31FevereiroAnoBissextoParaAnoComum()
+    {
+        // Arrange - 29 fevereiro 2024 (bissexto) para 2025 (nao bissexto)
+        // Ao somar 1 ano, febr 2025 tem 28 dias, deve clampar
+        var dataAtual = new DateOnly(2024, 2, 29);
+        var periodicidade = PeriodicidadeContaFixa.Anual;
+
+        // Act
+        var proximaData = ContaFixaLancamentoFactory.ProximaOcorrencia(dataAtual, periodicidade);
+
+        // Assert - fevereiro 2025 nao eh bissexto, deve clampar pra 28
+        Assert.Equal(28, proximaData.Day);
+        Assert.Equal(2, proximaData.Month);
+        Assert.Equal(2025, proximaData.Year);
+    }
+
+    [Fact]
+    public void ProximaOcorrencia_Anual_Dia31AbrirAnoBissexto()
+    {
+        // Arrange - janeiro 2023 dia 31 para 2024 (que eh bissexto, mas fevereiro mesmo assim teria 29)
+        var dataAtual = new DateOnly(2023, 1, 31);
+        var periodicidade = PeriodicidadeContaFixa.Anual;
+
+        // Act
+        var proximaData = ContaFixaLancamentoFactory.ProximaOcorrencia(dataAtual, periodicidade);
+
+        // Assert - ainda janeiro, apenas o ano avanca
+        Assert.Equal(31, proximaData.Day);
+        Assert.Equal(1, proximaData.Month);
+        Assert.Equal(2024, proximaData.Year);
+    }
+
+    [Fact]
+    public void ProximaOcorrencia_Anual_MesmesDiaEMes()
+    {
+        // Arrange - verificar que so o ano muda
+        var dataAtual = new DateOnly(2025, 11, 22);
+        var periodicidade = PeriodicidadeContaFixa.Anual;
+
+        // Act
+        var proximaData = ContaFixaLancamentoFactory.ProximaOcorrencia(dataAtual, periodicidade);
+
+        // Assert
+        Assert.Equal(22, proximaData.Day);
+        Assert.Equal(11, proximaData.Month);
+        Assert.Equal(2026, proximaData.Year);
+    }
+
+    #endregion
 }
