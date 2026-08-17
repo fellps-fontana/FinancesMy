@@ -2713,7 +2713,7 @@ NOTA DE EXECUCAO: garantia de contraste cumprida por design — o widget nao tem
 
 ## TASK-143 — Front: dashboard com widgets configuraveis
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-142, TASK-164
 FLUXO: Implementacao
@@ -2726,12 +2726,13 @@ CRITERIO DE ACEITE:
 ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/dashboard/DashboardPage.tsx`, `MyFinanceFrontEnd/src/features/dashboard/components/SeletorWidgets.tsx` (novo), `MyFinanceFrontEnd/src/features/dashboard/lib/preferenciaWidgets.ts` (novo)
 NAO FAZER: nao criar endpoint de backend para preferencia de widget; nao alterar a formula/logica de `CardSaldoProjetado`/`ProjecaoMesService`; nao misturar rendimento com "cotacao"/proventos externos (item 8.4 e explicito: dividendo e so manual).
 RETORNO ESPERADO: dashboard configuravel funcional, incluindo widget de rendimentos.
+HISTORICO: SeletorWidgets.tsx + lib/preferenciaWidgets.ts (localStorage) criados; DashboardPage.tsx passou a envolver cada widget (incl. CardSaldoProjetado, GraficoConsolidadoAtivos, GraficoRendimentosPorTipo) num toggle condicional. CardSaldoProjetado confirmado intocado na logica pelo style (rodada 1 e 2). tsc --noEmit e lint limpos.
 
 ---
 
 ## TASK-144 — Front: clique em categoria do LimiteGastoIndicador navega filtrando
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-135
 FLUXO: Implementacao
@@ -2741,12 +2742,13 @@ CRITERIO DE ACEITE: clicar numa categoria no Dashboard abre `/limites-gasto` com
 ARQUIVOS PERMITIDOS: `MyFinanceFrontEnd/src/features/dashboard/components/LimiteGastoIndicador.tsx`
 NAO FAZER: nenhuma mudanca de backend.
 RETORNO ESPERADO: navegacao funcional com filtro aplicado.
+HISTORICO: LimiteGastoIndicador.tsx: linha de categoria virou Link para /limites-gasto?categoriaId={id}, consumido por ComparativoLimiteGastoPage.tsx ja existente. Rodou em paralelo com TASK-143 (arquivos disjuntos).
 
 ---
 
 ## TASK-145 — Style review Bloco J (Dashboard)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: style
 DEPENDENCIAS: TASK-141, TASK-143, TASK-144
 FLUXO: Implementacao
@@ -2756,6 +2758,7 @@ CRITERIO DE ACEITE: veredito.
 ARQUIVOS PERMITIDOS: nenhum
 NAO FAZER: nao editar codigo.
 RETORNO ESPERADO: veredito + achados.
+HISTORICO: Rodada 1 reprovou por queryKey magica em useUltimosLancamentos.ts (nao usava dashboardKeys centralizado, ao contrario de useProjecaoMes.ts na mesma feature). Redespachado a hanzo: adicionou dashboardKeys.ultimosLancamentos(quantidade) em query-keys.ts. Rodada 2 confirmou a correcao pontual sem reabrir o restante (CardSaldoProjetado intocado, item 14 navegacao funcional, item 8.4 rendimentos sem fonte externa, persistencia so localStorage). APROVADO. Bloco J (TASK-141 a 145) fechado.
 
 ---
 

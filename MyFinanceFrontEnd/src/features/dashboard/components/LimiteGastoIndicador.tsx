@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import { Card, CardContent } from "@/shared/ui/card"
 import { cn } from "@/shared/lib/utils"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
@@ -105,25 +106,38 @@ function LinhaLimiteGasto({ item }: LinhaLimiteGastoProps) {
   const larguraBarra = Math.min(item.percentualUtilizado, 1) * 100
 
   return (
-    <li className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm text-text-body">{item.categoriaNome}</span>
-        <span className={cn("text-[12px] font-medium", config.texto)}>{config.label}</span>
-      </div>
+    <li>
+      {/* Link real (nao onClick + navigate), mesmo padrao ja usado em
+          dashboard/components/AcoesRapidas.tsx - preserva comportamento
+          nativo de link (nova aba, foco por teclado). Destino ja suportado
+          por ComparativoLimiteGastoPage.tsx via `?categoriaId=` (filtro
+          client-side sobre a mesma lista que o endpoint ja retorna). */}
+      <Link
+        to={`/limites-gasto?categoriaId=${item.categoriaId}`}
+        className={cn(
+          "-mx-1 flex flex-col gap-1.5 rounded-lg px-1 py-0.5 transition-colors",
+          "hover:bg-bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        )}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm text-text-body">{item.categoriaNome}</span>
+          <span className={cn("text-[12px] font-medium", config.texto)}>{config.label}</span>
+        </div>
 
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-accent">
-        <div
-          className={cn("h-full rounded-full", config.barra)}
-          style={{ width: `${larguraBarra}%` }}
-        />
-      </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-accent">
+          <div
+            className={cn("h-full rounded-full", config.barra)}
+            style={{ width: `${larguraBarra}%` }}
+          />
+        </div>
 
-      <div className="flex items-center justify-between text-[12px] text-text-faint">
-        <span>
-          {formatarMoeda(item.gastoRealizado)} de {formatarMoeda(item.valorLimite)}
-        </span>
-        <span>{formatadorPercentual.format(item.percentualUtilizado)}</span>
-      </div>
+        <div className="flex items-center justify-between text-[12px] text-text-faint">
+          <span>
+            {formatarMoeda(item.gastoRealizado)} de {formatarMoeda(item.valorLimite)}
+          </span>
+          <span>{formatadorPercentual.format(item.percentualUtilizado)}</span>
+        </div>
+      </Link>
     </li>
   )
 }

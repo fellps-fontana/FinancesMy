@@ -4,4 +4,6 @@ export const dashboardKeys = {
   all: ["dashboard"] as const,
   projecaoMes: (ano: number, mes: number) =>
     [...dashboardKeys.all, "projecaoMes", ano, mes] as const,
+  ultimosLancamentos: (quantidade: number) =>
+    [...dashboardKeys.all, "ultimosLancamentos", quantidade] as const,
 }
