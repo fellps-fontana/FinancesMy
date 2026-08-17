@@ -18,6 +18,7 @@ import { LancamentoItem } from "@/features/lancamentos/components/LancamentoItem
 import { TransferenciaFluxoCaixaItem } from "@/features/lancamentos/components/TransferenciaFluxoCaixaItem"
 import { FormLancamento } from "@/features/lancamentos/components/FormLancamento"
 import { FormTransferencia } from "@/features/lancamentos/components/FormTransferencia"
+import { Modal } from "@/shared/ui/Modal"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
 import type { LancamentoResponse } from "@/features/lancamentos/types"
 
@@ -158,55 +159,59 @@ export function LancamentosPage() {
 
       <FiltroTipoLancamento valor={filtroTipo} onChange={setFiltroTipo} />
 
+      {/* Modal compartilhado (shared/ui/Modal.tsx) - mesmo shell de
+          overlay/dialog ja usado em CategoriasPage.tsx. Title reflete o tipo
+          selecionado no toggle (mockup nao cobre o caso Transferencia, mas
+          "Nova transferencia" segue a mesma linguagem de "Novo lancamento"). */}
       {formulario?.modo === "criar" && (
-        <div className="flex flex-col gap-3">
-          {/* Segmented control Lancamento/Transferencia - mesmo padrao ja
-              usado no toggle Recebivel/Emprestimo de
-              FormRegistrarContaReceber.tsx (dois Button com variant
-              condicional, sem componente de tabs novo). FormLancamento tem
-              seu proprio select de conta (banco/investimento); FormTransferencia
-              tem seus proprios selects de origem/destino - nenhum dos dois
-              depende de uma "conta em foco" desta pagina. */}
-          <div className="flex gap-2" role="group" aria-label="Tipo de novo registro">
-            <Button
-              type="button"
-              variant={formulario.tipo === "LANCAMENTO" ? "default" : "outline"}
-              onClick={() => handleTrocarTipoNovo("LANCAMENTO")}
-              className="flex-1"
-            >
-              Lancamento
-            </Button>
-            <Button
-              type="button"
-              variant={formulario.tipo === "TRANSFERENCIA" ? "default" : "outline"}
-              onClick={() => handleTrocarTipoNovo("TRANSFERENCIA")}
-              className="flex-1"
-            >
-              Transferencia
-            </Button>
-          </div>
+        <Modal
+          open
+          onClose={handleFecharFormulario}
+          title={formulario.tipo === "TRANSFERENCIA" ? "Nova transferencia" : "Novo lancamento"}
+        >
+          <div className="flex flex-col gap-3">
+            {/* Segmented control Lancamento/Transferencia - mesmo padrao ja
+                usado no toggle Recebivel/Emprestimo de
+                FormRegistrarContaReceber.tsx (dois Button com variant
+                condicional, sem componente de tabs novo). FormLancamento tem
+                seu proprio select de conta (banco/investimento); FormTransferencia
+                tem seus proprios selects de origem/destino - nenhum dos dois
+                depende de uma "conta em foco" desta pagina. */}
+            <div className="flex gap-2" role="group" aria-label="Tipo de novo registro">
+              <Button
+                type="button"
+                variant={formulario.tipo === "LANCAMENTO" ? "default" : "outline"}
+                onClick={() => handleTrocarTipoNovo("LANCAMENTO")}
+                className="flex-1"
+              >
+                Lancamento
+              </Button>
+              <Button
+                type="button"
+                variant={formulario.tipo === "TRANSFERENCIA" ? "default" : "outline"}
+                onClick={() => handleTrocarTipoNovo("TRANSFERENCIA")}
+                className="flex-1"
+              >
+                Transferencia
+              </Button>
+            </div>
 
-          {formulario.tipo === "LANCAMENTO" ? (
-            <FormLancamento onSalvar={handleFecharFormulario} />
-          ) : (
-            <FormTransferencia onSalvar={handleFecharFormulario} />
-          )}
-        </div>
+            {formulario.tipo === "LANCAMENTO" ? (
+              <FormLancamento onSalvar={handleFecharFormulario} />
+            ) : (
+              <FormTransferencia onSalvar={handleFecharFormulario} />
+            )}
+          </div>
+        </Modal>
       )}
 
       {formulario?.modo === "editar" && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[13px] text-text-muted">Editando lancamento</span>
-            <Button type="button" variant="ghost" size="sm" onClick={handleFecharFormulario}>
-              Cancelar
-            </Button>
-          </div>
+        <Modal open onClose={handleFecharFormulario} title="Editar lancamento">
           <FormLancamento
             lancamentoParaEditar={formulario.lancamento}
             onSalvar={handleFecharFormulario}
           />
-        </div>
+        </Modal>
       )}
 
       {erroItens ? (

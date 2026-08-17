@@ -4,6 +4,7 @@ import { ContaReceberItem } from "@/features/contas-receber/components/ContaRece
 import { FormRegistrarContaReceber } from "@/features/contas-receber/FormRegistrarContaReceber"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
+import { Modal } from "@/shared/ui/Modal"
 
 // Container: le o estado de servidor (React Query, via useContasReceber) e
 // decide qual estado exibir (carregando/erro/vazio/lista). Renderizacao pura
@@ -33,23 +34,18 @@ export function ListaContasReceber() {
           <h1 className="text-[19px] font-medium text-text-primary">Contas a Receber</h1>
           <p className="text-sm text-text-muted">Recebiveis e emprestimos aguardando recebimento.</p>
         </div>
-        {!mostrarFormulario && (
-          <Button type="button" onClick={() => setMostrarFormulario(true)}>
-            Nova conta a receber
-          </Button>
-        )}
+        <Button type="button" onClick={() => setMostrarFormulario(true)}>
+          Nova conta a receber
+        </Button>
       </header>
 
-      {mostrarFormulario && (
-        <div className="flex flex-col gap-2">
-          <FormRegistrarContaReceber />
-          <div className="flex justify-end">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setMostrarFormulario(false)}>
-              Fechar
-            </Button>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={mostrarFormulario}
+        onClose={() => setMostrarFormulario(false)}
+        title="Nova conta a receber"
+      >
+        <FormRegistrarContaReceber />
+      </Modal>
 
       {error ? (
         <Alert variant="destructive">

@@ -5,6 +5,7 @@ import { FormContaFixa } from "@/features/contas-fixas/FormContaFixa"
 import { useCategorias } from "@/features/categorias/hooks/useCategorias"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
+import { Modal } from "@/shared/ui/Modal"
 import type { CategoriaResponse } from "@/features/categorias/types"
 
 // Achata categoria + subcategorias (regra-de-negocio.md item 7) num mapa
@@ -52,10 +53,11 @@ function construirMapaNomeCategoria(categorias: CategoriaResponse[]): Record<str
 // booleano por vez, nunca "os dois estados"), com os resultados mesclados
 // no mesmo mapa antes de repassar para ContaFixaItem.
 //
-// Criacao: FormContaFixa (sem `contaFixaParaEditar`) e embutido aqui atras de
-// um toggle - o formulario ja e o mesmo usado pra edicao (ver ContaFixaItem),
-// so que em modo criar. onSalvar fecha o toggle - a lista ja reflete o item
-// novo sozinha via invalidacao de cache no proprio hook useCriarContaFixa.
+// Criacao: FormContaFixa (sem `contaFixaParaEditar`) e exibido dentro do
+// Modal compartilhado (shared/ui/Modal.tsx) atras de um toggle - o
+// formulario ja e o mesmo usado pra edicao (ver ContaFixaItem), so que em
+// modo criar. onSalvar fecha o modal - a lista ja reflete o item novo
+// sozinha via invalidacao de cache no proprio hook useCriarContaFixa.
 export function ListaContasFixas() {
   const { data: contasFixas, isLoading, error } = useContasFixas()
   const { data: categoriasNaoArquivadas, error: erroCategoriasNaoArquivadas } = useCategorias(
@@ -112,7 +114,13 @@ export function ListaContasFixas() {
         </Button>
       </header>
 
-      {criandoContaFixa && <FormContaFixa onSalvar={() => setCriandoContaFixa(false)} />}
+      <Modal
+        open={criandoContaFixa}
+        onClose={() => setCriandoContaFixa(false)}
+        title="Nova conta fixa"
+      >
+        <FormContaFixa onSalvar={() => setCriandoContaFixa(false)} />
+      </Modal>
 
       {error ? (
         <Alert variant="destructive">

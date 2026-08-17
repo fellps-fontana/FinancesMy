@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Card, CardContent } from "@/shared/ui/card"
 import { Button } from "@/shared/ui/button"
+import { Modal } from "@/shared/ui/Modal"
 import { cn } from "@/shared/lib/utils"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
 import { formatarData } from "@/features/cartao/lib/formatarData"
@@ -111,26 +112,33 @@ export function ContaReceberItem({ contaReceber }: ContaReceberItemProps) {
           </span>
         )}
 
-        {saldoPendenteEmAberto &&
-          (registrandoRecebimento ? (
-            <FormRegistrarRecebimento
-              contaReceberId={contaReceber.id}
-              onRegistrado={() => setRegistrandoRecebimento(false)}
-              onCancelar={() => setRegistrandoRecebimento(false)}
-            />
-          ) : (
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setRegistrandoRecebimento(true)}
-              >
-                Registrar recebimento
-              </Button>
-            </div>
-          ))}
+        {saldoPendenteEmAberto && (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setRegistrandoRecebimento(true)}
+            >
+              Registrar recebimento
+            </Button>
+          </div>
+        )}
       </CardContent>
+
+      <Modal
+        open={registrandoRecebimento}
+        onClose={() => setRegistrandoRecebimento(false)}
+        title="Registrar recebimento"
+      >
+        <FormRegistrarRecebimento
+          contaReceberId={contaReceber.id}
+          valorTotal={contaReceber.valorTotal}
+          saldoPendente={contaReceber.saldoPendente}
+          onRegistrado={() => setRegistrandoRecebimento(false)}
+          onCancelar={() => setRegistrandoRecebimento(false)}
+        />
+      </Modal>
     </Card>
   )
 }
