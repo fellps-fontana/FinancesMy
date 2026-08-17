@@ -7,17 +7,10 @@ namespace MyFinances.Domain;
 // de FaturaCicloService.CriarDataValida).
 public static class ContaFixaLancamentoFactory
 {
-    // Ajusta dia de vencimento para o ultimo dia do mes se o dia informado
-    // exceder o numero de dias do mes (ex: 31 em abril vira 30).
-    public static int AjustarDiaParaUltimoDiaDoMesSeNecessario(int diaVencimento, int ano, int mes)
-    {
-        var diasNoMes = DateTime.DaysInMonth(ano, mes);
-        return Math.Min(diaVencimento, diasNoMes);
-    }
-
     public static Lancamento CriarLancamentoPendente(ContaFixa contaFixa, int ano, int mes)
     {
-        var diaAjustado = AjustarDiaParaUltimoDiaDoMesSeNecessario(contaFixa.DiaVencimento, ano, mes);
+        var diasNoMes = DateTime.DaysInMonth(ano, mes);
+        var diaAjustado = Math.Min(contaFixa.DiaVencimento, diasNoMes);
         var data = new DateOnly(ano, mes, diaAjustado);
 
         return new Lancamento
@@ -35,15 +28,10 @@ public static class ContaFixaLancamentoFactory
         };
     }
 
-    // Regra critica (regra-de-negocio.md item 6): calcula a proxima ocorrencia
-    // da periodicidade configurada. MENSAL soma 1 mes; ANUAL soma 1 ano.
-    // Recalcula o dia respeitando o diaVencimento original da ContaFixa:
-    // se diaVencimento = 31 e dataAtual = 30/04 (clampado de abril), a proxima
-    // ocorrencia sera 31/05 (maio tem 31 dias), nao 30/05.
-    public static DateOnly ProximaOcorrencia(
-        DateOnly dataAtual,
-        PeriodicidadeContaFixa periodicidade,
-        int diaVencimentoOriginal)
+    // Regra critica (regra-de-negocio.md item 6, revisao 2026-07-27): unidade
+    // de tempo somada entre uma ocorrencia e a proxima depende da
+    // periodicidade -- Mensal soma 1 mes, Anual soma 1 ano.
+    public static DateOnly ProximaOcorrencia(DateOnly dataAtual, PeriodicidadeContaFixa periodicidade)
     {
         var proximaData = periodicidade switch
         {
@@ -52,8 +40,8 @@ public static class ContaFixaLancamentoFactory
             _ => throw new ArgumentOutOfRangeException(nameof(periodicidade))
         };
 
-        var diaAjustado = AjustarDiaParaUltimoDiaDoMesSeNecessario(
-            diaVencimentoOriginal, proximaData.Year, proximaData.Month);
+        var diasNoMes = DateTime.DaysInMonth(proximaData.Year, proximaData.Month);
+        var diaAjustado = Math.Min(proximaData.Day, diasNoMes);
 
         return new DateOnly(proximaData.Year, proximaData.Month, diaAjustado);
     }

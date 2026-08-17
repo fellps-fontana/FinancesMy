@@ -10,6 +10,10 @@ public class Ativo
 
     public string Instituicao { get; set; } = string.Empty;
 
+    // Total de unidades/cotas em carteira, soma de todos os aportes
+    // (regra-de-negocio.md item 8.1). Incrementado a cada RegistrarAporte.
+    public decimal Quantidade { get; set; }
+
     public decimal ValorInvestido { get; set; }
 
     public decimal ValorAtual { get; set; }
@@ -21,4 +25,7 @@ public class Ativo
     public DateTime CriadoEm { get; set; }
 
     public DateTime? AtualizadoEm { get; set; }
+
+    // Navegacao
+    public ICollection<Rendimento> Rendimentos { get; set; } = [];
 }

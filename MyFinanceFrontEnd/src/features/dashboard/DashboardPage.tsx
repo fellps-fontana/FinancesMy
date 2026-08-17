@@ -1,6 +1,8 @@
+import { AcoesRapidas } from "@/features/dashboard/components/AcoesRapidas"
 import { CardSaldoProjetado } from "@/features/dashboard/components/CardSaldoProjetado"
 import { GraficoEntradasSaidas } from "@/features/dashboard/components/GraficoEntradasSaidas"
 import { LimiteGastoIndicador } from "@/features/dashboard/components/LimiteGastoIndicador"
+import { UltimosLancamentos } from "@/features/dashboard/components/UltimosLancamentos"
 
 const hoje = new Date()
 const anoAtual = hoje.getFullYear()
@@ -26,13 +28,19 @@ const mesAtual = hoje.getMonth() + 1
  * pagina. GraficoEntradasSaidas usa o mesmo useProjecaoMes de
  * CardSaldoProjetado (mesmo periodo), so agrupando os 4 termos em 2 barras
  * para comparacao visual.
+ *
+ * AcoesRapidas (mockup "02 Dashboard.dc.html") fica logo abaixo do saldo,
+ * mesma ordem do mockup: saldo -> acoes rapidas -> resumo do mes. Tambem
+ * puramente navegacional, sem estado proprio (ver componente).
  */
 export function DashboardPage() {
   return (
     <div className="flex flex-col gap-4">
       <CardSaldoProjetado ano={anoAtual} mes={mesAtual} />
+      <AcoesRapidas />
       <GraficoEntradasSaidas ano={anoAtual} mes={mesAtual} />
       <LimiteGastoIndicador ano={anoAtual} mes={mesAtual} />
+      <UltimosLancamentos />
     </div>
   )
 }

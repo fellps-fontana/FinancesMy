@@ -17,6 +17,8 @@ public class CategoriaResponse
 
     public bool Arquivada { get; set; }
 
+    public string? Icone { get; set; }
+
     public static CategoriaResponse FromCategoria(CategoriaDomain categoria)
     {
         return new()
@@ -28,7 +30,8 @@ public class CategoriaResponse
             Subcategorias = categoria.Subcategorias
                 .Select(FromCategoria)
                 .ToList(),
-            Arquivada = categoria.Arquivada
+            Arquivada = categoria.Arquivada,
+            Icone = categoria.Icone
         };
     }
 }

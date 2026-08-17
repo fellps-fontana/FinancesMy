@@ -34,6 +34,14 @@ public class ContaFixaConfiguration : IEntityTypeConfiguration<ContaFixa>
             .HasColumnName("dia_vencimento")
             .IsRequired();
 
+        builder.Property(cf => cf.Periodicidade)
+            .HasColumnName("periodicidade")
+            .IsRequired()
+            .HasDefaultValue(PeriodicidadeContaFixa.Mensal)
+            .HasConversion(
+                v => v.ToStorageValue(),
+                v => PeriodicidadeContaFixaExtensions.FromStorageValue(v));
+
         builder.Property(cf => cf.Ativa)
             .HasColumnName("ativa")
             .IsRequired()

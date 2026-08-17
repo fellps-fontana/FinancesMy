@@ -9,4 +9,6 @@ public class CriarCategoriaRequest
     public TipoCategoria Tipo { get; set; }
 
     public Guid? ParentId { get; set; }
+
+    public string? Icone { get; set; }
 }

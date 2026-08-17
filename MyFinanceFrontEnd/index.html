@@ -1,10 +1,28 @@
 <!doctype html>
-<html lang="pt-BR" class="dark">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MyFinances</title>
+    <script>
+      // Aplica a classe de tema ANTES do primeiro paint (nao em useEffect,
+      // que roda depois do paint e causaria flash de tema errado). Mesma
+      // ordem de prioridade do hook useTheme (shared/hooks/useTheme.ts):
+      // escolha manual em localStorage > preferencia do SO via matchMedia.
+      // Ver identidade-visual.md, "Mecanismo de alternancia".
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme")
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+          var isDark = stored === "dark" || ((stored === "system" || !stored) && prefersDark)
+          document.documentElement.classList.toggle("dark", isDark)
+        } catch (e) {
+          // localStorage indisponivel (modo privado restrito etc): cai pro
+          // tema claro default do :root, sem quebrar o carregamento
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

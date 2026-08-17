@@ -60,6 +60,9 @@ export type CriarCompraRequest = {
 // Resposta crua da entidade Lancamento (Models/Lancamento.cs) - o backend
 // devolve a entidade diretamente (Created/Ok), sem DTO dedicado. Tipamos so
 // os campos que a UI consome.
+// compraParceladaId/parcelaNumero (DTOs/CompraResponse.cs) so vem
+// preenchidos quando o lancamento e uma parcela (regra de negocio item 12,
+// subsecao "Parcelamento") - null/undefined numa compra a vista.
 export type CompraResponse = {
   id: string
   contaId: string
@@ -70,6 +73,36 @@ export type CompraResponse = {
   data: string
   status: StatusLancamento
   faturaId: string | null
+  compraParceladaId: string | null
+  parcelaNumero: number | null
+}
+
+// POST /api/contas/{contaId}/compras-parceladas (DTOs/CriarCompraParceladaRequest.cs).
+// Regra de negocio item 12, subsecao "Parcelamento": uma compra parcelada
+// gera N Lancamentos (um por parcela), cada um vinculado a fatura do MES DE
+// VENCIMENTO da propria parcela - o valor de cada parcela e calculado no
+// backend (valorTotal / quantidadeParcelas, resto na ultima parcela); o
+// front nunca divide o valor.
+export type CriarCompraParceladaRequest = {
+  descricao: string
+  valorTotal: number
+  quantidadeParcelas: number
+  categoriaId: string | null
+  dataCompra: string // yyyy-MM-dd (DateOnly do backend)
+}
+
+// DTOs/CompraParceladaResponse.cs - metadados de agrupamento da compra
+// parcelada. `parcelas` e SO para exibicao (ex: "Notebook Dell 3/10") -
+// fatura, projecao (item 9) e relatorio por categoria continuam somando
+// cada parcela individualmente, sem ler este agrupamento.
+export type CompraParceladaResponse = {
+  id: string
+  contaId: string
+  descricao: string
+  valorTotal: number
+  quantidadeParcelas: number
+  dataCompra: string
+  parcelas: CompraResponse[]
 }
 
 // DTOs/FaturaResponse.cs - valores ja calculados por FaturaSaldoCalculator no
@@ -108,20 +141,4 @@ export type PagamentoFaturaResponse = {
   contaDestinoId: string
   faturaId: string | null
   descricao: string | null
-}
-
-// GAP conhecido (ver api.ts/obterRelatorioCategoria): nao existe
-// controller/service de relatorio no backend hoje - busca por "relatorio" no
-// projeto inteiro nao retorna nenhum arquivo. Tipo escrito contra o contrato
-// que a tela precisa (regra de negocio item 12, visao categorica/competencia).
-export type RelatorioCategoriaItem = {
-  categoriaId: string | null
-  nomeCategoria: string | null
-  total: number
-}
-
-export type RelatorioCategoriaResponse = {
-  itens: RelatorioCategoriaItem[]
-  mes: number
-  ano: number
 }

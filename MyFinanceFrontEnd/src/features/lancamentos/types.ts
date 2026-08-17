@@ -11,6 +11,15 @@ export type TipoLancamento = "DEBIT" | "CREDIT"
 // como opcao ainda.
 export type StatusLancamento = "PENDENTE" | "SUGERIDO" | "PAGO"
 
+// Espelha ClassificacaoLancamento (Domain/ClassificacaoLancamento.cs) via
+// LancamentoResponseDto.Classificacao. TRANSFERENCIA cobre tanto
+// transferencia entre contas quanto pagamento de fatura de cartao (item 12:
+// pagamento de fatura e transferencia conta corrente -> cartao). Fonte da
+// verdade para o que soma no resumo do mes / filtro de chip
+// (regra-de-negocio.md itens 2 CRITICA, 3 e 12) - nunca usar `tipo` isolado
+// nem o sinal de `valor` pra essa decisao.
+export type ClassificacaoLancamento = "ENTRADA" | "SAIDA" | "TRANSFERENCIA" | "COMPETENCIA_CARTAO"
+
 export type LancamentoResponse = {
   id: string
   contaId: string
@@ -18,6 +27,7 @@ export type LancamentoResponse = {
   descricao: string | null
   valor: number
   tipo: TipoLancamento
+  classificacao: ClassificacaoLancamento
   data: string
   status: StatusLancamento
   manual: boolean

@@ -866,4 +866,218 @@ public class ContaFixaControllerTests
     }
 
     #endregion
+
+    #region POST /api/contas-fixas - Periodicidade
+
+    [Fact]
+    public async Task Criar_ComPeriodicidadeAnual_Retorna201ePersistirAnual()
+    {
+        await _fixture.ClearAsync();
+
+        var contaConta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Conta Corrente Teste",
+            Tipo = TipoConta.Banco,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 10000m,
+            Ativa = true
+        };
+
+        await _fixture.AddContaAsync(contaConta);
+
+        var request = new CriarContaFixaRequest
+        {
+            ContaId = contaConta.Id,
+            Descricao = "Seguro Anual",
+            Valor = 500m,
+            DiaVencimento = 15,
+            CategoriaId = null,
+            Periodicidade = "ANUAL"
+        };
+
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await _fixture.Client.PostAsync("/api/contas-fixas", content);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var resultado = JsonSerializer.Deserialize<ContaFixaResponse>(responseBody, ContaFixaControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(resultado);
+        Assert.Equal("ANUAL", resultado.Periodicidade);
+
+        var contaFixaDb = await _fixture.GetContaFixaByIdAsync(resultado.Id);
+        Assert.NotNull(contaFixaDb);
+        Assert.Equal(PeriodicidadeContaFixa.Anual, contaFixaDb.Periodicidade);
+    }
+
+    [Fact]
+    public async Task Criar_ComPeriodicidadeInvalida_Retorna400()
+    {
+        await _fixture.ClearAsync();
+
+        var contaConta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Conta Corrente Teste",
+            Tipo = TipoConta.Banco,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 10000m,
+            Ativa = true
+        };
+
+        await _fixture.AddContaAsync(contaConta);
+
+        var request = new CriarContaFixaRequest
+        {
+            ContaId = contaConta.Id,
+            Descricao = "Teste",
+            Valor = 100m,
+            DiaVencimento = 15,
+            CategoriaId = null,
+            Periodicidade = "SEMANAL"
+        };
+
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await _fixture.Client.PostAsync("/api/contas-fixas", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var resultado = JsonSerializer.Deserialize<JsonElement>(responseBody, ContaFixaControllerTestsFixture.JsonOptions);
+        Assert.True(resultado.TryGetProperty("erro", out var erro));
+        Assert.Contains("invalida", erro.GetString() ?? "", StringComparison.OrdinalIgnoreCase);
+    }
+
+    #endregion
+
+    #region PUT /api/contas-fixas/{id} - Periodicidade
+
+    [Fact]
+    public async Task Editar_ComPeriodicidadeAnual_Retorna200ePersistirAnual()
+    {
+        await _fixture.ClearAsync();
+
+        var contaConta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Conta Corrente Teste",
+            Tipo = TipoConta.Banco,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 10000m,
+            Ativa = true
+        };
+
+        await _fixture.AddContaAsync(contaConta);
+
+        var criarRequest = new CriarContaFixaRequest
+        {
+            ContaId = contaConta.Id,
+            Descricao = "Seguro",
+            Valor = 500m,
+            DiaVencimento = 15,
+            CategoriaId = null,
+            Periodicidade = "MENSAL"
+        };
+
+        var json1 = JsonSerializer.Serialize(criarRequest);
+        var content1 = new StringContent(json1, Encoding.UTF8, "application/json");
+
+        var responseCriar = await _fixture.Client.PostAsync("/api/contas-fixas", content1);
+        Assert.Equal(HttpStatusCode.Created, responseCriar.StatusCode);
+
+        var bodyResponse = await responseCriar.Content.ReadAsStringAsync();
+        var contaFixaCriada = JsonSerializer.Deserialize<ContaFixaResponse>(bodyResponse, ContaFixaControllerTestsFixture.JsonOptions);
+        Assert.NotNull(contaFixaCriada);
+        Assert.Equal("MENSAL", contaFixaCriada.Periodicidade);
+
+        var editarRequest = new EditarContaFixaRequest
+        {
+            Valor = 600m,
+            DiaVencimento = 15,
+            CategoriaId = null,
+            Periodicidade = "ANUAL"
+        };
+
+        var json2 = JsonSerializer.Serialize(editarRequest);
+        var content2 = new StringContent(json2, Encoding.UTF8, "application/json");
+
+        var responseEditar = await _fixture.Client.PutAsync($"/api/contas-fixas/{contaFixaCriada.Id}", content2);
+
+        Assert.Equal(HttpStatusCode.OK, responseEditar.StatusCode);
+
+        var bodyEditarResponse = await responseEditar.Content.ReadAsStringAsync();
+        var contaFixaEditada = JsonSerializer.Deserialize<ContaFixaResponse>(bodyEditarResponse, ContaFixaControllerTestsFixture.JsonOptions);
+
+        Assert.NotNull(contaFixaEditada);
+        Assert.Equal("ANUAL", contaFixaEditada.Periodicidade);
+
+        var contaFixaDb = await _fixture.GetContaFixaByIdAsync(contaFixaCriada.Id);
+        Assert.NotNull(contaFixaDb);
+        Assert.Equal(PeriodicidadeContaFixa.Anual, contaFixaDb.Periodicidade);
+    }
+
+    [Fact]
+    public async Task Editar_ComPeriodicidadeInvalida_Retorna400()
+    {
+        await _fixture.ClearAsync();
+
+        var contaConta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Conta Corrente Teste",
+            Tipo = TipoConta.Banco,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 10000m,
+            Ativa = true
+        };
+
+        await _fixture.AddContaAsync(contaConta);
+
+        var criarRequest = new CriarContaFixaRequest
+        {
+            ContaId = contaConta.Id,
+            Descricao = "Teste",
+            Valor = 100m,
+            DiaVencimento = 15,
+            CategoriaId = null
+        };
+
+        var json1 = JsonSerializer.Serialize(criarRequest);
+        var content1 = new StringContent(json1, Encoding.UTF8, "application/json");
+
+        var responseCriar = await _fixture.Client.PostAsync("/api/contas-fixas", content1);
+        Assert.Equal(HttpStatusCode.Created, responseCriar.StatusCode);
+
+        var bodyResponse = await responseCriar.Content.ReadAsStringAsync();
+        var contaFixaCriada = JsonSerializer.Deserialize<ContaFixaResponse>(bodyResponse, ContaFixaControllerTestsFixture.JsonOptions);
+        Assert.NotNull(contaFixaCriada);
+
+        var editarRequest = new EditarContaFixaRequest
+        {
+            Valor = 100m,
+            DiaVencimento = 15,
+            CategoriaId = null,
+            Periodicidade = "QUINZENAL"
+        };
+
+        var json2 = JsonSerializer.Serialize(editarRequest);
+        var content2 = new StringContent(json2, Encoding.UTF8, "application/json");
+
+        var responseEditar = await _fixture.Client.PutAsync($"/api/contas-fixas/{contaFixaCriada.Id}", content2);
+
+        Assert.Equal(HttpStatusCode.BadRequest, responseEditar.StatusCode);
+
+        var bodyEditarResponse = await responseEditar.Content.ReadAsStringAsync();
+        var resultado = JsonSerializer.Deserialize<JsonElement>(bodyEditarResponse, ContaFixaControllerTestsFixture.JsonOptions);
+        Assert.True(resultado.TryGetProperty("erro", out var erro));
+        Assert.Contains("invalida", erro.GetString() ?? "", StringComparison.OrdinalIgnoreCase);
+    }
+
+    #endregion
 }

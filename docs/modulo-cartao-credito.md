@@ -57,16 +57,22 @@ Endpoints do cartão: `POST/PUT /api/cartao/compras`, `POST /api/faturas/{id}/pa
 erro: retorno funcional em tupla `(bool Sucesso, T?, string? Erro)` — decisão
 explícita, diverge do padrão de exception do resto do app.
 
-Telas em `MyFinanceFrontEnd/src/features/cartao/`: conta+saldo, lançar
-compra, faturas (com pagamento parcial/antecipado explícito na UX), relatório
-por categoria.
+Telas em `MyFinanceFrontEnd/src/features/cartao/`: `ContaCartaoPage` (conta+
+saldo, agora lista **N cartões** navegáveis — o backend nunca teve restrição
+de unicidade, o gap era só a UI pegar `data?.[0]`), lançar compra (com
+categoria real via `CategoriaSelect` e parcelamento opcional, ver
+`docs/modulo-parcelamento-cartao.md`), faturas (pagamento parcial/antecipado
+explícito na UX).
+
+**Bloco H (TASK-131 a 136, follow-up front-only)** fechou as lacunas abaixo:
+categoria funcional na compra, parcelamento no formulário, múltiplos cartões,
+e removeu a tela morta de relatório por categoria em favor de reusar
+`/limites-gasto` (ver `docs/limite-gasto.md`) — sem duplicar endpoint.
 
 ## Lacunas conhecidas
 
 - Sem `GET` de compras/lançamentos por fatura (telas mostram "não disponível
   nesta versão").
-- Sem endpoint de relatório por categoria nem de categorias do usuário —
-  telas do frontend já refletem esse estado em vez de simular dado.
 - Cobertura de teste do ciclo de fatura contra índice único real (SQLite)
   existe; contra Postgres real, não foi possível validar neste ambiente
   (sem Docker/Postgres disponível no sandbox).
@@ -93,6 +99,13 @@ por categoria.
 - **mike**: 17 testes novos (cálculo de saldo respeitando sinal, pagamento
   parcial/antecipado, ciclo de fatura com SQLite validando o índice único
   parcial que o `style` apontou como não coberto).
+
+**Bloco H (PR #52, follow-up front-only, sem TDD por não tocar regra
+crítica)**: `hanzo` fechou múltiplos cartões, categoria funcional e
+parcelamento no formulário de compra, e removeu `RelatorioCategoriaPage.tsx`
+(chamava endpoint que nunca existiu) redirecionando para `/limites-gasto`.
+`style` aprovou em 2 rodadas — 1ª apontou validação de parcelas fora de
+`lib/` e tipos órfãos em `types.ts`, ambos corrigidos.
 
 ## Notas operacionais
 

@@ -8,6 +8,9 @@ export const investimentosKeys = {
   all: ["investimentos"] as const,
   ativos: () => [...investimentosKeys.all, "ativos"] as const,
   resumoAtivos: () => [...investimentosKeys.all, "resumoAtivos"] as const,
+  aportes: (ativoId: string) => [...investimentosKeys.all, "aportes", ativoId] as const,
   contas: () => [...investimentosKeys.all, "contas"] as const,
   total: () => [...investimentosKeys.all, "total"] as const,
+  rendimentos: (ativoId: string) => [...investimentosKeys.all, "rendimentos", ativoId] as const,
+  rendimentosResumo: () => [...investimentosKeys.all, "rendimentosResumo"] as const,
 }

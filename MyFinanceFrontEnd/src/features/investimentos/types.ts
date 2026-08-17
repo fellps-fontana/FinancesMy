@@ -15,29 +15,57 @@ export type TipoAtivoStorage = "RENDA_FIXA" | "RENDA_VARIAVEL"
 
 // Ativo (regra-de-negocio.md item 8): registro STANDALONE, sem vinculo com
 // Conta. valorAtual e evolucaoPercentual sao 100% manuais (item 8.1) - sem
-// nenhuma API de cotacao, em nenhuma fase da v1.
+// nenhuma API de cotacao, em nenhuma fase da v1. quantidade e precoMedio
+// vem calculados pelo backend a partir do historico de aportes (item 8.1,
+// media ponderada recalculada a cada aporte - ver AtivoResponse.FromAtivo
+// em DTOs/Ativo/AtivoResponse.cs).
 export type AtivoResponse = {
   id: string
   nome: string
   tipo: TipoAtivo
   instituicao: string
+  quantidade: number
   valorInvestido: number
   valorAtual: number
+  precoMedio: number
   evolucaoPercentual: number
   dataCompra: string
   ativa: boolean
 }
 
+// Cadastrar um Ativo E, na pratica, registrar o primeiro aporte dele
+// (regra-de-negocio.md item 8.1) - por isso o request pede quantidade +
+// precoUnitario, nunca valorInvestido direto (campo removido do contrato).
 export type CriarAtivoRequest = {
   nome: string
   tipo: TipoAtivo
   instituicao: string
-  valorInvestido: number
+  quantidade: number
+  precoUnitario: number
   dataCompra: string
 }
 
 export type AtualizarValorAtualRequest = {
   novoValorAtual: number
+}
+
+// Aporte individual e registro historico IMUTAVEL (regra-de-negocio.md item
+// 8.1) - sem edicao nem exclusao apos criado. Nomes de campo iguais a
+// DTOs/Ativo/RegistrarAporteRequest.cs e DTOs/Ativo/AtivoAporteResponse.cs.
+export type RegistrarAporteRequest = {
+  quantidade: number
+  precoUnitario: number
+  data: string
+}
+
+export type AtivoAporteResponse = {
+  id: string
+  ativoId: string
+  data: string
+  quantidade: number
+  precoUnitario: number
+  valorTotal: number
+  criadoEm: string
 }
 
 // evolucaoPercentual e percentualDaCarteira ja chegam multiplicados por 100
@@ -72,4 +100,31 @@ export type ContaResponse = {
   saldo: number
   saldoManual: number | null
   ativa: boolean
+}
+
+// --- Rendimento (regra-de-negocio.md item 8/TASK-160) - dividendo (registro
+// manual do usuario) e valorizacao (calculada pelo backend a partir da
+// evolucao de valorAtual do Ativo). Nomes de campo iguais a
+// DTOs/Rendimento/RendimentoResponse.cs.
+export type TipoRendimento = "DIVIDENDO" | "VALORIZACAO"
+export type OrigemRendimento = "MANUAL" | "AUTOMATICO"
+
+export type RendimentoResponse = {
+  id: string
+  ativoId: string
+  tipo: TipoRendimento
+  origem: OrigemRendimento
+  valor: number
+  data: string
+}
+
+export type RegistrarDividendoRequest = {
+  valor: number
+  data: string
+}
+
+export type RendimentosResumoResponse = {
+  totalDividendos: number
+  totalValorizacao: number
+  historico: RendimentoResponse[]
 }

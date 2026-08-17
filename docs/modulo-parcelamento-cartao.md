@@ -77,8 +77,18 @@ compra parcelada".
   depois de criada): fora de escopo, regra omissa, sem demanda aberta ainda.
 - **Teto de `quantidade_parcelas`**: não há limite superior — `Service` só
   valida `>= 2`. Se precisar de um teto (12x, 24x), é decisão de produto.
-- **Front (hanzo)**: não entrou nesta leva — formulário de criação e exibição
-  agrupada "3/10" ficam pra rodada própria.
+- **Estorno de parcelada pelo front**: a ação já existe no backend (seção
+  acima), mas o formulário de compra (Bloco H, TASK-133) só cobre a criação;
+  estornar continua sem tela própria.
+
+## Frontend (Bloco H, TASK-133, PR #52)
+
+Campo opcional "número de parcelas" em `LancarCompraForm.tsx`: em branco
+lança à vista (`POST .../compras`, fluxo original); `>= 2` chama
+`POST /api/contas/{contaId}/compras-parceladas` e mostra confirmação do
+agrupamento ("Descrição N/M lançada", montada a partir da resposta já
+calculada pelo backend — nenhum split de valor no cliente). Revisado por
+`style` sem achado nesta parte.
 
 ## O que cada agent entregou
 

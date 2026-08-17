@@ -29,10 +29,16 @@ public class ContaFixaService : IContaFixaService
             return (false, null, validacao.Erro);
         }
 
-        var periodicidadeEnum = ConverterPeriodicidade(periodicidade);
-        if (periodicidade != null && periodicidadeEnum == null)
+        PeriodicidadeContaFixa periodicidadeEnum = PeriodicidadeContaFixa.Mensal;
+        if (!string.IsNullOrEmpty(periodicidade))
         {
-            return (false, null, $"Periodicidade '{periodicidade}' nao e valida");
+            var periodicidadeConvertida = ConverterPeriodicidade(periodicidade);
+            if (periodicidadeConvertida == null)
+            {
+                return (false, null, $"Periodicidade invalida: {periodicidade}");
+            }
+
+            periodicidadeEnum = periodicidadeConvertida.Value;
         }
 
         var conta = await _contaRepository.ObterPorId(contaId);
@@ -49,7 +55,7 @@ public class ContaFixaService : IContaFixaService
             Valor = valor,
             DiaVencimento = diaVencimento,
             CategoriaId = categoriaId,
-            Periodicidade = periodicidadeEnum ?? PeriodicidadeContaFixa.Mensal,
+            Periodicidade = periodicidadeEnum,
             Ativa = true
         };
 
@@ -71,10 +77,16 @@ public class ContaFixaService : IContaFixaService
             return (false, null, validacao.Erro);
         }
 
-        var periodicidadeEnum = ConverterPeriodicidade(periodicidade);
-        if (periodicidade != null && periodicidadeEnum == null)
+        PeriodicidadeContaFixa? periodicidadeEnum = null;
+        if (!string.IsNullOrEmpty(periodicidade))
         {
-            return (false, null, $"Periodicidade '{periodicidade}' nao e valida");
+            var periodicidadeConvertida = ConverterPeriodicidade(periodicidade);
+            if (periodicidadeConvertida == null)
+            {
+                return (false, null, $"Periodicidade invalida: {periodicidade}");
+            }
+
+            periodicidadeEnum = periodicidadeConvertida.Value;
         }
 
         var contaFixa = await _contaFixaRepository.ObterPorId(contaFixaId);
@@ -102,8 +114,8 @@ public class ContaFixaService : IContaFixaService
             lancamento.Valor = valor;
             lancamento.CategoriaId = categoriaId;
 
-            var diaAjustado = ContaFixaLancamentoFactory.AjustarDiaParaUltimoDiaDoMesSeNecessario(
-                diaVencimento, lancamento.Data.Year, lancamento.Data.Month);
+            var diasNoMes = DateTime.DaysInMonth(lancamento.Data.Year, lancamento.Data.Month);
+            var diaAjustado = Math.Min(diaVencimento, diasNoMes);
             lancamento.Data = new DateOnly(lancamento.Data.Year, lancamento.Data.Month, diaAjustado);
 
             await _lancamentoRepository.Atualizar(lancamento);
@@ -185,13 +197,8 @@ public class ContaFixaService : IContaFixaService
 
         var lancamentosGerados = 0;
 
-        var diaAjustado = ContaFixaLancamentoFactory.AjustarDiaParaUltimoDiaDoMesSeNecessario(
-            contaFixa.DiaVencimento, dataReferencia.Year, dataReferencia.Month);
-        var dataOcorrenciaAtual = new DateOnly(dataReferencia.Year, dataReferencia.Month, diaAjustado);
-        var dataProximaOcorrencia = ContaFixaLancamentoFactory.ProximaOcorrencia(
-            dataOcorrenciaAtual, contaFixa.Periodicidade, contaFixa.DiaVencimento);
-
-        var ocorrencias = new[] { dataOcorrenciaAtual, dataProximaOcorrencia };
+        var proximaOcorrencia = ContaFixaLancamentoFactory.ProximaOcorrencia(dataReferencia, contaFixa.Periodicidade);
+        var ocorrencias = new[] { dataReferencia, proximaOcorrencia };
 
         foreach (var data in ocorrencias)
         {
@@ -227,7 +234,7 @@ public class ContaFixaService : IContaFixaService
 
     private static PeriodicidadeContaFixa? ConverterPeriodicidade(string? periodicidade)
     {
-        if (string.IsNullOrWhiteSpace(periodicidade))
+        if (string.IsNullOrEmpty(periodicidade))
         {
             return null;
         }

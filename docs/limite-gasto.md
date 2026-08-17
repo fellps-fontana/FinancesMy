@@ -72,13 +72,21 @@ CampoLimiteGasto.tsx`. Rota nova `/limites-gasto`.
   (`LimiteGastoIndicador`, `AvisoLimiteGasto`, `CampoLimiteGasto`) foram
   entregues standalone, prontos para embutir quando essas páginas forem
   arquitetadas — não fazem parte desta entrega.
-- **Já existe outra tela "Relatório por categoria"** em
-  `features/cartao/RelatorioCategoriaPage.tsx`, escopada só a compras de
-  cartão (item 12) e com um gap pré-existente (chama endpoint que não existe
-  no backend). O comparativo deste módulo (`ComparativoLimiteGastoPage`,
-  rota `/limites-gasto`) é deliberadamente uma tela **separada** — soma todo
-  `Debit` da categoria, não só cartão — para não empilhar decisão de
-  unificação em cima de um gap que já existia antes.
+- **`RelatorioCategoriaPage.tsx` (removida, Bloco H/TASK-134)**: existia uma
+  segunda tela "Relatório por categoria" em `features/cartao/`, escopada só a
+  compras de cartão (item 12), que chamava um endpoint
+  (`/api/relatorios/categorias`) que nunca existiu no backend — travava em
+  loading infinito. Em vez de implementar esse endpoint, o link "Ver
+  relatório por categoria" do cartão passou a apontar para `/limites-gasto`
+  (este módulo), que já cobre o que a regra item 14 pede. `style` validou
+  essa unificação (não é uma soma equivalente — `/limites-gasto` soma todo
+  `Debit` da categoria, não só cartão — mas é o relatório por categoria que
+  o item 14 pede).
+  `ComparativoLimiteGastoPage.tsx` também foi reconstruída nessa leva:
+  suporte a `?categoriaId=` (filtro client-side) para deep-link futuro do
+  dashboard, e layout adaptado do mockup 10 — lista+barra em vez de
+  pizza, porque aqui não há "um total dividido entre categorias" (cada
+  categoria tem orçamento independente).
 - Threshold de "perto do limite" (80%, usado no dashboard e no aviso de
   lançamento) é decisão de UX isolada em cada componente consumidor, não
   contrato de API — `percentualUtilizado`/`estourado` vêm crus do backend.

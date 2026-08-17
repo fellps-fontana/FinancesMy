@@ -4,6 +4,8 @@ import { useAtivos } from "@/features/investimentos/hooks/useAtivos"
 import { useResumoAtivos } from "@/features/investimentos/hooks/useResumoAtivos"
 import { useCriarAtivo } from "@/features/investimentos/hooks/useCriarAtivo"
 import { ResumoAtivosCards } from "@/features/investimentos/components/ResumoAtivosCards"
+import { GraficoConsolidadoAtivos } from "@/features/investimentos/components/GraficoConsolidadoAtivos"
+import { GraficoRendimentosPorTipo } from "@/features/investimentos/components/GraficoRendimentosPorTipo"
 import { FiltroTipoAtivo } from "@/features/investimentos/components/FiltroTipoAtivo"
 import { AtivoItem } from "@/features/investimentos/components/AtivoItem"
 import { ModalNovoAtivo } from "@/features/investimentos/components/ModalNovoAtivo"
@@ -35,7 +37,8 @@ export function ListaAtivosPage() {
   const [nome, setNome] = useState("")
   const [tipo, setTipo] = useState<TipoAtivo>("RendaFixa")
   const [instituicao, setInstituicao] = useState("")
-  const [valorInvestido, setValorInvestido] = useState("")
+  const [quantidade, setQuantidade] = useState("")
+  const [precoUnitario, setPrecoUnitario] = useState("")
   const [dataCompra, setDataCompra] = useState(dataDeHoje)
   const [erroFormulario, setErroFormulario] = useState<string | null>(null)
 
@@ -55,7 +58,8 @@ export function ListaAtivosPage() {
     setNome("")
     setTipo("RendaFixa")
     setInstituicao("")
-    setValorInvestido("")
+    setQuantidade("")
+    setPrecoUnitario("")
     setDataCompra(dataDeHoje())
     setErroFormulario(null)
     setModalAberto(true)
@@ -69,7 +73,7 @@ export function ListaAtivosPage() {
   function handleSubmitNovoAtivo(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    const erroValidacao = validarNovoAtivo(nome, instituicao, valorInvestido, dataCompra)
+    const erroValidacao = validarNovoAtivo(nome, instituicao, quantidade, precoUnitario, dataCompra)
     if (erroValidacao) {
       setErroFormulario(erroValidacao)
       return
@@ -80,7 +84,8 @@ export function ListaAtivosPage() {
         nome: nome.trim(),
         tipo,
         instituicao: instituicao.trim(),
-        valorInvestido: converterValorParaNumero(valorInvestido),
+        quantidade: converterValorParaNumero(quantidade),
+        precoUnitario: converterValorParaNumero(precoUnitario),
         dataCompra,
       },
       {
@@ -124,6 +129,10 @@ export function ListaAtivosPage() {
         <>
           <ResumoAtivosCards resumo={resumo} carregando={carregandoResumo} />
 
+          <GraficoConsolidadoAtivos resumo={resumo} carregando={carregandoResumo} />
+
+          <GraficoRendimentosPorTipo />
+
           <FiltroTipoAtivo filtro={filtro} onFiltroChange={setFiltro} />
 
           {carregandoAtivos ? (
@@ -149,14 +158,16 @@ export function ListaAtivosPage() {
           nome={nome}
           tipo={tipo}
           instituicao={instituicao}
-          valorInvestido={valorInvestido}
+          quantidade={quantidade}
+          precoUnitario={precoUnitario}
           dataCompra={dataCompra}
           isSubmitting={criandoAtivo}
           errorMessage={erroFormulario}
           onNomeChange={setNome}
           onTipoChange={setTipo}
           onInstituicaoChange={setInstituicao}
-          onValorInvestidoChange={setValorInvestido}
+          onQuantidadeChange={setQuantidade}
+          onPrecoUnitarioChange={setPrecoUnitario}
           onDataCompraChange={setDataCompra}
           onSubmit={handleSubmitNovoAtivo}
           onFechar={fecharModal}
