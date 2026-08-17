@@ -58,6 +58,18 @@ badge de status/tipo, formulário de criar (toggle Recebível/Empréstimo) e aç
 inline de registrar recebimento — mesmo padrão container/apresentação já
 usado em `features/investimentos/`.
 
+### Feedback pós-entrega (2026-08-17)
+
+Usuário reportou duas coisas em Empréstimo: botão "Registrar recebimento"
+pouco visível, e "não deixa registrar mais de uma vez". Investigação (Kira,
+leitura de `ContaReceberItem.tsx`) confirmou que a segunda não é bug — o
+recebimento incremental (item 13) já funcionava, o botão continua habilitado
+enquanto `Status != RECEBIDO`. A causa real era só o primeiro ponto: o botão
+usava `variant="ghost"` (sem fundo/borda em repouso, único CTA da tela sem
+destaque), lido como "sumiu" pelo usuário. Trocado para `variant="outline"`,
+sem competir com o CTA primário "Nova conta a receber" (`variant="default"`).
+Mudança puramente visual, sem alteração de lógica. PR #62.
+
 ## Lacunas conhecidas
 
 - ~~Sem endpoint de projeção/dashboard completo~~ — resolvido no módulo
