@@ -57,7 +57,10 @@ const mesAtual = hoje.getMonth() + 1
  * lib/preferenciaWidgets.ts). CardSaldoProjetado continua o MESMO
  * componente/formula da regra-de-negocio.md item 9 (CRITICA) em qualquer
  * estado do switch -- o toggle so decide SE ele e montado na arvore, nunca
- * reinterpreta ou recalcula o que ele mostra.
+ * reinterpreta ou recalcula o que ele mostra. `SeletorWidgets` fica no FIM
+ * da pagina (depois de todos os widgets), colapsado por padrao -- e
+ * configuracao, nao conteudo, entao nao deve competir com o dado real pelo
+ * topo da tela (ver SeletorWidgets.tsx para o comportamento de expandir).
  */
 export function DashboardPage() {
   const [preferencia, setPreferencia] = useState<PreferenciaWidgets>(lerPreferenciaWidgets)
@@ -73,8 +76,6 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <SeletorWidgets preferencia={preferencia} onAlternarWidget={alternarWidget} />
-
       {preferencia["saldo-projetado"] && <CardSaldoProjetado ano={anoAtual} mes={mesAtual} />}
       {preferencia["acoes-rapidas"] && <AcoesRapidas />}
       {preferencia["grafico-entradas-saidas"] && (
@@ -86,6 +87,8 @@ export function DashboardPage() {
       )}
       {preferencia["rendimentos"] && <GraficoRendimentosPorTipo />}
       {preferencia["ultimos-lancamentos"] && <UltimosLancamentos />}
+
+      <SeletorWidgets preferencia={preferencia} onAlternarWidget={alternarWidget} />
     </div>
   )
 }
