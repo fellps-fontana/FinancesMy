@@ -33,6 +33,20 @@ public class ContaConfiguration : IEntityTypeConfiguration<Conta>
                 v => v.HasValue ? v.Value.ToStorageValue() : null,
                 v => v == null ? null : TipoContaExtensions.FromStorageValue(v));
 
+        builder.Property(c => c.Subtipo)
+            .HasColumnName("subtipo")
+            .HasConversion(
+                v => v.HasValue ? v.Value.ToStorageValue() : null,
+                v => v == null ? null : SubtipoContaExtensions.FromStorageValue(v));
+
+        builder.Property(c => c.Icone)
+            .HasColumnName("icone")
+            .HasMaxLength(100);
+
+        builder.Property(c => c.Cor)
+            .HasColumnName("cor")
+            .HasMaxLength(7);
+
         builder.Property(c => c.PierreAccountId)
             .HasColumnName("pierre_account_id")
             .HasMaxLength(500);

@@ -2458,7 +2458,8 @@ RETORNO ESPERADO: veredito + achados.
 
 ## TASK-127 — Backend: Conta ganha subtipo, icone e cor
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
+HISTORICO: SubtipoConta (enum Corrente/Poupanca/DinheiroFisico), Icone e Cor adicionados a Conta, DTOs (CriarContaRequest/ContaResponse), ContaConfiguration (mapeamento EF) e migration aditiva AddSubtipoIconeCorToConta (colunas nullable). Validado com dotnet build limpo e dotnet test --filter FullyQualifiedName~Contas: 45/45 verdes.
 AGENT: levi
 DEPENDENCIAS: nenhuma
 FLUXO: Implementacao
@@ -2476,7 +2477,8 @@ RETORNO ESPERADO: migration aditiva, contrato atualizado.
 
 ## TASK-128 — Front: nova pagina generica de Contas (mockup 03)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
+HISTORICO: criada features/contas/ (ContasPage.tsx, types.ts, api.ts, query-keys.ts, hooks/useContas.ts, components/{ContaItem,ContaIcone,ContaBadgeOrigem,PatrimonioTotalResumo}.tsx, lib/{calcularPatrimonioTotal,obterIconeConta,obterLabelOrigemConta,obterSubtituloConta}.ts). Lista contas Banco+Investimento combinando GET /api/contas?tipo=banco e ?tipo=investimento, patrimonio total somado, icone/cor exibidos. npx tsc --noEmit limpo.
 AGENT: hanzo
 DEPENDENCIAS: TASK-127
 FLUXO: Implementacao
@@ -2493,7 +2495,8 @@ RETORNO ESPERADO: pagina nova funcional, ainda nao roteada (TASK-129 troca a rot
 
 ## TASK-129 — Front: modal nova conta (icone, subtipo, mascara de moeda, cor) + troca de rota
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
+HISTORICO: FormNovaConta.tsx (mascara de moeda, seletor de icone Lucide, paleta de cor fixa) + mascaraMoeda.ts; rota /contas trocada em routes.tsx para ContasPage; ListaContasSimplesPage.tsx removida. Correcao inline do Kira: link cruzado "Ver investimentos (ativos)" nao tinha sido preservado na nova pagina — adicionado. Style (TASK-130, 1a rodada) achou 3 problemas alem do escopo original: contradicao de saldo negativo entre front (bloqueava) e back (aceita e testa negativo) — regra-de-negocio.md item 10 era omisso, usuario decidiu permitir negativo em toda conta manual; import cruzado features/contas -> features/investimentos/lib (formatarMoeda); catalogo de icone duplicado entre obterIconeConta.ts e FormNovaConta.tsx. Corrigido pelo mesmo executor (hanzo): shared/lib/{formatarMoeda,validarSaldo}.ts como fonte unica (investimentos/lib passam a reexportar), validarNovaConta.ts removido (dead code, unico consumidor era ListaContasSimplesPage.tsx ja removida), CATALOGO_ICONES derivado de ICONE_POR_NOME. 2a rodada do style: APROVADO. regra-de-negocio.md item 10/10.1 atualizada (killua/alterar-context) documentando saldo negativo permitido e subtipo so aplicavel a Banco.
 AGENT: hanzo
 DEPENDENCIAS: TASK-128
 FLUXO: Implementacao
@@ -2510,7 +2513,8 @@ RETORNO ESPERADO: rota `/contas` funcional com o novo fluxo completo.
 
 ## TASK-130 — Style review Bloco G (Contas)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
+HISTORICO: 1a rodada — PRECISA CORRIGIR: 3 achados (contradicao saldo negativo front/back, import cruzado features/contas->features/investimentos, catalogo de icone duplicado) — ver HISTORICO da TASK-129 para a correcao aplicada. 2a rodada, apos correcao: APROVADO. Confirmado pelo style com execucao propria: npx tsc --noEmit limpo, dotnet test --filter FullyQualifiedName~Contas 45/45. Achado remanescente nao bloqueante: texto do item 10.1 da regra-de-negocio.md dizia "rejeitado" quando o comportamento real e testado e "ignorado silenciosamente" (subtipo em conta nao-Banco) — corrigido pelo Kira direto no doc.
 AGENT: style
 DEPENDENCIAS: TASK-129
 FLUXO: Implementacao

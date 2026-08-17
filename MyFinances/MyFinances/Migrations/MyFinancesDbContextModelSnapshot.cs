@@ -17,7 +17,7 @@ namespace MyFinances.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -158,6 +158,11 @@ namespace MyFinances.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("ativa");
 
+                    b.Property<string>("Cor")
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)")
+                        .HasColumnName("cor");
+
                     b.Property<int?>("DiaFechamento")
                         .HasColumnType("integer")
                         .HasColumnName("dia_fechamento");
@@ -165,6 +170,11 @@ namespace MyFinances.Migrations
                     b.Property<int?>("DiaVencimento")
                         .HasColumnType("integer")
                         .HasColumnName("dia_vencimento");
+
+                    b.Property<string>("Icone")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("icone");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -186,6 +196,10 @@ namespace MyFinances.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("saldo_manual");
+
+                    b.Property<string>("Subtipo")
+                        .HasColumnType("text")
+                        .HasColumnName("subtipo");
 
                     b.Property<string>("Tipo")
                         .HasColumnType("text")

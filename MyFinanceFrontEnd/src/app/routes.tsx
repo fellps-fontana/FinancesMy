@@ -3,7 +3,7 @@ import { LoginPage } from "@/features/auth/LoginPage"
 import { DashboardPage } from "@/features/dashboard/DashboardPage"
 import { AuthenticatedLayout } from "@/app/AuthenticatedLayout"
 import { ListaAtivosPage } from "@/features/investimentos/ListaAtivosPage"
-import { ListaContasSimplesPage } from "@/features/investimentos/ListaContasSimplesPage"
+import { ContasPage } from "@/features/contas/ContasPage"
 import { ContaCartaoPage } from "@/features/cartao/ContaCartaoPage"
 import { RelatorioCategoriaPage } from "@/features/cartao/RelatorioCategoriaPage"
 import { ComparativoLimiteGastoPage } from "@/features/limite-gasto/ComparativoLimiteGastoPage"
@@ -19,7 +19,7 @@ export function AppRoutes() {
       <Route element={<AuthenticatedLayout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/investimentos" element={<ListaAtivosPage />} />
-        <Route path="/contas" element={<ListaContasSimplesPage />} />
+        <Route path="/contas" element={<ContasPage />} />
         <Route path="/cartao" element={<ContaCartaoPage />} />
         <Route path="/cartao/relatorio" element={<RelatorioCategoriaPage />} />
         <Route path="/limites-gasto" element={<ComparativoLimiteGastoPage />} />

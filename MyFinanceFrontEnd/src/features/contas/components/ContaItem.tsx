@@ -1,23 +1,23 @@
 import { useState, type FormEvent } from "react"
-import { useAtualizarSaldoConta } from "@/features/investimentos/hooks/useAtualizarSaldoConta"
-import { useDesativarConta } from "@/features/investimentos/hooks/useDesativarConta"
-import { ContaInvestimentoCard } from "@/features/investimentos/components/ContaInvestimentoCard"
-import { validarSaldo, converterSaldoParaNumero } from "@/features/investimentos/lib/validarSaldo"
+import { useAtualizarSaldoConta } from "@/features/contas/hooks/useAtualizarSaldoConta"
+import { useDesativarConta } from "@/features/contas/hooks/useDesativarConta"
+import { validarSaldo, converterSaldoParaNumero } from "@/features/contas/lib/validarSaldo"
+import { ContaCard } from "@/features/contas/components/ContaCard"
 import { ApiError } from "@/shared/api/client"
-import type { ContaResponse } from "@/features/investimentos/types"
+import type { ContaResponse } from "@/features/contas/types"
 
-type ContaInvestimentoItemProps = {
+type ContaItemProps = {
   conta: ContaResponse
 }
 
-// Container do item de lista: guarda o estado de UI (edicao de saldo,
-// confirmacao de desativacao) e aciona as mutations ja existentes
+// Container do item de lista: guarda o estado de UI (edicao de saldo_manual,
+// confirmacao de desativacao) e aciona as mutations
 // (useAtualizarSaldoConta/useDesativarConta). A apresentacao pura fica em
-// ContaInvestimentoCard - ver clean-code.md "Organizacao (React)". Ativo e
-// modulo standalone (regra-de-negocio.md item 8): desativar uma conta de
-// investimento simples nunca depende de ativo nenhum, entao nao ha bloqueio
-// nem confirmacao condicional aqui.
-export function ContaInvestimentoItem({ conta }: ContaInvestimentoItemProps) {
+// ContaCard - clean-code.md "Organizacao (React)": componente de
+// apresentacao separado da logica de estado. Mesma divisao ja usada por
+// AtivoItem/AtivoCard e, antes da migracao para esta feature generica, por
+// ContaInvestimentoItem/ContaInvestimentoCard.
+export function ContaItem({ conta }: ContaItemProps) {
   const { mutate: atualizarSaldo, isPending: salvandoSaldo } = useAtualizarSaldoConta()
   const { mutate: desativarConta, isPending: desativando } = useDesativarConta()
 
@@ -56,7 +56,7 @@ export function ContaInvestimentoItem({ conta }: ContaInvestimentoItemProps) {
           setErroSaldo(null)
         },
         onError: (error) => {
-          console.error("Falha ao atualizar saldo da conta de investimento", error)
+          console.error("Falha ao atualizar saldo da conta", error)
           setErroSaldo(
             error instanceof ApiError ? error.message : "Nao foi possivel salvar o saldo. Tente novamente.",
           )
@@ -80,9 +80,8 @@ export function ContaInvestimentoItem({ conta }: ContaInvestimentoItemProps) {
       onError: (error) => {
         // Em sucesso a conta some da lista pela invalidacao de cache. Em
         // erro so registramos o contexto e mantemos a confirmacao aberta com
-        // a mensagem, sem travar a UI (o usuario pode tentar de novo ou
-        // cancelar) - ver clean-code.md "Tratamento de erro".
-        console.error("Falha ao desativar conta de investimento", error)
+        // a mensagem, sem travar a UI - ver clean-code.md "Tratamento de erro".
+        console.error("Falha ao desativar conta", error)
         setErroDesativar(
           error instanceof ApiError ? error.message : "Nao foi possivel desativar a conta. Tente novamente.",
         )
@@ -91,7 +90,7 @@ export function ContaInvestimentoItem({ conta }: ContaInvestimentoItemProps) {
   }
 
   return (
-    <ContaInvestimentoCard
+    <ContaCard
       conta={conta}
       editandoSaldo={editandoSaldo}
       novoSaldo={novoSaldo}

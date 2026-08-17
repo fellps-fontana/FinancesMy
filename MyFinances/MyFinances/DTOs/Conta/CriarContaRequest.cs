@@ -6,6 +6,12 @@ public class CriarContaRequest
 
     public required string Tipo { get; set; }
 
+    public string? Subtipo { get; set; }
+
+    public string? Icone { get; set; }
+
+    public string? Cor { get; set; }
+
     public decimal? SaldoManual { get; set; }
 
     public int? DiaFechamento { get; set; }

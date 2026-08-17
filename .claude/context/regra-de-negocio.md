@@ -356,10 +356,29 @@ isso somar o saldo pendente, e nao o valor_total, evita dupla contagem.
   (respeitando a regra de sinal). Nao armazenar saldo fixo — evita
   desatualizacao.
 - **Conta manual (incluindo investimento simples, item 8):** saldo e o campo
-  `saldo_manual`, definido pelo usuario.
+  `saldo_manual`, definido pelo usuario. **Pode ser negativo — DECISAO
+  CONFIRMADA COM O USUARIO.** Vale para TODAS as contas manuais (banco:
+  corrente/poupanca/dinheiro fisico; e investimento simples): nao ha piso em
+  zero nem validacao de saldo minimo — `saldo_manual` reflete exatamente o
+  que o usuario informar, inclusive divida/saldo devedor.
 - **Ativo (item 8):** standalone, NAO participa do saldo de nenhuma Conta. O
   total do modulo de investimentos soma `ativo.valor_atual` separadamente
   (ver tela "Investimentos").
+
+### 10.1 Subtipo de conta (so aplicavel a Tipo = Banco)
+
+`Conta.Subtipo` (enum: `Corrente` | `Poupanca` | `DinheiroFisico`) e os
+campos `Conta.Icone`/`Conta.Cor` foram adicionados ao schema (TASK-127) para
+dar identidade visual as contas bancarias.
+
+**Regra:** `Subtipo` so e valido/aplicavel quando `Conta.Tipo = Banco`. Para
+os demais tipos de conta (INVESTIMENTO, CARTAO) o campo fica `null` —
+informar um subtipo numa conta que nao e Banco e IGNORADO silenciosamente
+(nao rejeita a request; a criacao/edicao segue normalmente com `Subtipo =
+null`). Ja implementado em `ContaService.CriarContaAsync` (validacao) e
+refletido no mockup `03 Contas.dc.html`; este item so
+formaliza na fonte da verdade o que ja estava em codigo/mockup e nunca
+tinha sido escrito aqui.
 
 ---
 
