@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { listarContasBanco } from "@/features/cartao/api"
+import { dashboardKeys } from "@/features/dashboard/query-keys"
 import { listarFluxoCaixa } from "@/features/lancamentos/api"
 import type { LancamentoResponse } from "@/features/lancamentos/types"
 
@@ -31,7 +32,7 @@ const QUANTIDADE_PADRAO = 5
 // que pagou, entao somar a conta CARTAO tambem duplicaria a linha.
 export function useUltimosLancamentos(quantidade: number = QUANTIDADE_PADRAO) {
   return useQuery({
-    queryKey: ["dashboard", "ultimosLancamentos", quantidade],
+    queryKey: dashboardKeys.ultimosLancamentos(quantidade),
     queryFn: async (): Promise<LancamentoResponse[]> => {
       const contasBanco = await listarContasBanco()
       const fluxosPorConta = await Promise.all(
