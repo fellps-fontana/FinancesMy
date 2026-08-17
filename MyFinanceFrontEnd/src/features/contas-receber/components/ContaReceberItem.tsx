@@ -122,7 +122,7 @@ export function ContaReceberItem({ contaReceber }: ContaReceberItemProps) {
             <div className="flex justify-end">
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={() => setRegistrandoRecebimento(true)}
               >

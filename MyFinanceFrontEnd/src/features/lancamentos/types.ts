@@ -79,3 +79,45 @@ export type CriarTransferenciaRequest = {
   data: string
   descricao?: string
 }
+
+// Espelha o item de transferencia devolvido por GET /api/lancamentos/fluxo-caixa
+// (endpoint agregado, ver FluxoCaixaItem abaixo) - forma resumida da
+// Transferencia (Models/Transferencia.cs), sem os campos administrativos que
+// TransferenciaResponse ja cobre para o fluxo de criacao. `contaDestinoId`
+// null = emprestimo de perna unica (regra-de-negocio.md item 13: "destino e
+// uma pessoa fora do sistema"). `ehPagamentoFatura` distingue a transferencia
+// comum (item 3) do pagamento de fatura de cartao (item 12) - ambos chegam
+// pela mesma estrutura de duas pernas, a flag e o que direciona a UI a
+// mostrar "Pagamento de fatura" em vez de "Conta A -> Conta B".
+export type TransferenciaFluxoCaixa = {
+  id: string
+  data: string
+  valor: number
+  contaOrigemId: string
+  contaDestinoId: string | null
+  ehPagamentoFatura: boolean
+  descricao: string | null
+}
+
+// Espelha o item de uniao devolvido por GET /api/lancamentos/fluxo-caixa
+// (LancamentosController, endpoint agregado que substitui o antigo
+// fluxo-caixa por conta) - cada linha do fluxo de caixa e OU um Lancamento
+// avulso OU uma Transferencia (uma unica linha logica por transferencia,
+// regra-de-negocio.md item 3: "no fluxo de caixa a transferencia aparece
+// como uma unica linha logica"). `data` fica duplicado no nivel superior
+// (igual ao campo interno) so pra permitir filtrar/agrupar por periodo
+// (lib/filtrarPeriodo.ts) sem precisar checar `tipoItem` antes.
+export type FluxoCaixaItem =
+  | { tipoItem: "LANCAMENTO"; data: string; lancamento: LancamentoResponse; transferencia: null }
+  | { tipoItem: "TRANSFERENCIA"; data: string; lancamento: null; transferencia: TransferenciaFluxoCaixa }
+
+// Forma minima de Conta usada so para resolver id -> nome na exibicao de
+// transferencia (components/TransferenciaFluxoCaixaItem.tsx). Deliberadamente
+// mais enxuto que ContaResponse (features/contas/types.ts ou
+// features/cartao/types.ts) - este arquivo nao precisa de tipo/origem/saldo,
+// so do necessario pro lookup visual, evitando acoplar a um contrato de Conta
+// de outra feature.
+export type ContaParaExibicao = {
+  id: string
+  nome: string
+}

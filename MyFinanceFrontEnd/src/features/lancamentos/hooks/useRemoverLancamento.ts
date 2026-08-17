@@ -7,16 +7,16 @@ type RemoverLancamentoVariables = {
   lancamentoId: string
 }
 
-// Remover um lancamento muda o fluxo de caixa daquela conta - invalida so a
-// query da conta afetada.
+// Remover um lancamento muda o fluxo de caixa - invalida por prefixo
+// (lancamentosKeys.all), mesmo raciocinio de useCriarLancamento.ts.
 export function useRemoverLancamento() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ contaId, lancamentoId }: RemoverLancamentoVariables) =>
       removerLancamento(contaId, lancamentoId),
-    onSuccess: (_data, { contaId }) => {
-      queryClient.invalidateQueries({ queryKey: lancamentosKeys.fluxoCaixa(contaId) })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lancamentosKeys.all })
     },
   })
 }

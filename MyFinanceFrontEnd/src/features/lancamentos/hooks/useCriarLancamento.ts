@@ -8,16 +8,18 @@ type CriarLancamentoVariables = {
   request: CriarLancamentoRequest
 }
 
-// Criar um lancamento muda o fluxo de caixa daquela conta - invalida so a
-// query da conta afetada.
+// Criar um lancamento muda o fluxo de caixa - invalida por prefixo
+// (lancamentosKeys.all) em vez de so a chave por conta: cobre num so lugar a
+// visao agregada (fluxoCaixaTodasContas, consumida por LancamentosPage.tsx) e
+// a chave legada por conta (useFluxoCaixa, ainda usada pelo dashboard).
 export function useCriarLancamento() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ contaId, request }: CriarLancamentoVariables) =>
       criarLancamento(contaId, request),
-    onSuccess: (_data, { contaId }) => {
-      queryClient.invalidateQueries({ queryKey: lancamentosKeys.fluxoCaixa(contaId) })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lancamentosKeys.all })
     },
   })
 }

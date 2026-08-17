@@ -16,6 +16,8 @@ public class TransferenciaResponse
 
     public string? Descricao { get; set; }
 
+    public bool EhPagamentoFatura { get; set; }
+
     public static TransferenciaResponse FromTransferencia(Transferencia transferencia)
     {
         return new()
@@ -25,7 +27,8 @@ public class TransferenciaResponse
             Valor = transferencia.Valor,
             ContaOrigemId = transferencia.ContaOrigemId,
             ContaDestinoId = transferencia.ContaDestinoId,
-            Descricao = transferencia.Descricao
+            Descricao = transferencia.Descricao,
+            EhPagamentoFatura = transferencia.FaturaId.HasValue
         };
     }
 }
