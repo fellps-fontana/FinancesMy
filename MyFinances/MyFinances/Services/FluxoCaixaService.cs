@@ -34,7 +34,7 @@ public class FluxoCaixaService : IFluxoCaixaService
         {
             itens.Add(new FluxoCaixaItemDto
             {
-                TipoItem = "LANCAMENTO",
+                TipoItem = TipoItemFluxoCaixa.Lancamento.ToStorageValue(),
                 Data = lancamento.Data,
                 Lancamento = LancamentoResponseDto.FromLancamento(lancamento),
                 Transferencia = null
@@ -45,7 +45,7 @@ public class FluxoCaixaService : IFluxoCaixaService
         {
             itens.Add(new FluxoCaixaItemDto
             {
-                TipoItem = "TRANSFERENCIA",
+                TipoItem = TipoItemFluxoCaixa.Transferencia.ToStorageValue(),
                 Data = transferencia.Data,
                 Lancamento = null,
                 Transferencia = TransferenciaResponse.FromTransferencia(transferencia)
