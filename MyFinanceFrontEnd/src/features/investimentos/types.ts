@@ -87,7 +87,11 @@ export type AtivosResumoResponse = {
 // regra-de-negocio.md item 8 ("Conta de investimento - saldo simples") e
 // item 10. Modulo separado de Ativo, sem nenhuma relacao entre os dois.
 // `saldo` vem sempre populado pelo backend (ContaResponse.FromConta);
-// `saldoManual` e o campo editavel pelo usuario.
+// `saldoManual` e o campo editavel pelo usuario. Listagem, edicao de saldo e
+// desativacao de conta migraram para features/contas/ (TASK-127/130,
+// correcao pos-review) - este tipo continua aqui SO porque
+// features/contas-receber/hooks/useContasParaSelecao.ts ainda importa dele
+// para popular o seletor de conta de origem/recebimento.
 export type ContaResponse = {
   id: string
   nome: string
@@ -96,25 +100,6 @@ export type ContaResponse = {
   saldo: number
   saldoManual: number | null
   ativa: boolean
-}
-
-export type TotalInvestidoResponse = {
-  totalInvestido: number
-}
-
-// Nomes de campo iguais a CriarContaRequest (DTOs/Conta/CriarContaRequest.cs):
-// Tipo e obrigatorio no back (model binding falha com 400 sem ele - nao ha
-// endpoint dedicado so para conta de investimento). "INVESTIMENTO" e o unico
-// tipo que este formulario cria (ver TipoConta.ToStorageValue/FromStorageValue,
-// case-insensitive no back).
-export type CriarContaInvestimentoRequest = {
-  nome: string
-  tipo: "INVESTIMENTO"
-  saldoManual: number
-}
-
-export type AtualizarSaldoRequest = {
-  novoSaldo: number
 }
 
 // --- Rendimento (regra-de-negocio.md item 8/TASK-160) - dividendo (registro

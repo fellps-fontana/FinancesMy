@@ -112,7 +112,7 @@ export function ListaAtivosPage() {
             voce.
           </p>
           <Link className="text-sm text-primary underline-offset-4 hover:underline" to="/contas">
-            Ver contas simples (cofrinho, XP)
+            Ver contas
           </Link>
         </div>
         <Button type="button" onClick={abrirModal}>

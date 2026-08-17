@@ -10,6 +10,12 @@ public class Conta
 
     public TipoConta? Tipo { get; set; }
 
+    public SubtipoConta? Subtipo { get; set; }
+
+    public string? Icone { get; set; }
+
+    public string? Cor { get; set; }
+
     public string? PierreAccountId { get; set; }
 
     public decimal? SaldoManual { get; set; }

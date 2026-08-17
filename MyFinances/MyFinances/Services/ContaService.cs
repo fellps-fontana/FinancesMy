@@ -44,12 +44,25 @@ public class ContaService : IContaService
             return (false, null, "Saldo inicial e obrigatorio para contas de investimento");
         }
 
+        SubtipoConta? subtipo = null;
+        if (tipo.Value == TipoConta.Banco)
+        {
+            subtipo = ConverterSubtipoConta(request.Subtipo);
+            if (request.Subtipo != null && subtipo == null)
+            {
+                return (false, null, $"Subtipo '{request.Subtipo}' nao e valido");
+            }
+        }
+
         var conta = new Conta
         {
             Id = Guid.NewGuid(),
             Nome = request.Nome,
             Origem = OrigemConta.Manual,
             Tipo = tipo.Value,
+            Subtipo = subtipo,
+            Icone = request.Icone,
+            Cor = request.Cor,
             SaldoManual = request.SaldoManual,
             DiaFechamento = request.DiaFechamento,
             DiaVencimento = request.DiaVencimento,
@@ -135,6 +148,23 @@ public class ContaService : IContaService
         try
         {
             return TipoContaExtensions.FromStorageValue(tipo.ToUpperInvariant());
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static SubtipoConta? ConverterSubtipoConta(string? subtipo)
+    {
+        if (string.IsNullOrWhiteSpace(subtipo))
+        {
+            return null;
+        }
+
+        try
+        {
+            return SubtipoContaExtensions.FromStorageValue(subtipo.ToUpperInvariant());
         }
         catch
         {

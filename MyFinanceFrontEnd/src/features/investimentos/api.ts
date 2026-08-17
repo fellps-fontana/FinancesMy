@@ -3,16 +3,12 @@ import type {
   AtivoAporteResponse,
   AtivoResponse,
   AtivosResumoResponse,
-  AtualizarSaldoRequest,
   AtualizarValorAtualRequest,
-  ContaResponse,
   CriarAtivoRequest,
-  CriarContaInvestimentoRequest,
   RegistrarAporteRequest,
   RegistrarDividendoRequest,
   RendimentoResponse,
   RendimentosResumoResponse,
-  TotalInvestidoResponse,
 } from "@/features/investimentos/types"
 
 // --- Ativo (regra-de-negocio.md item 8) - standalone, sem vinculo com Conta.
@@ -39,6 +35,10 @@ export function buscarResumoAtivos(): Promise<AtivosResumoResponse> {
   return apiClient.get<AtivosResumoResponse>("/api/ativos/resumo")
 }
 
+// Conta de investimento simples (cofrinho/XP, item 8/10) foi migrada para a
+// feature `contas/` (TASK-127/130) - listagem, edicao de saldo_manual e
+// desativacao agora vivem em features/contas/api.ts, junto de Conta tipo
+// Banco. Nao duplicar aqui (correcao pos-review, TASK-130).
 export function registrarDividendo(
   ativoId: string,
   request: RegistrarDividendoRequest,
@@ -59,28 +59,4 @@ export function registrarAporte(
 
 export function listarAportes(ativoId: string): Promise<AtivoAporteResponse[]> {
   return apiClient.get<AtivoAporteResponse[]>(`/api/ativos/${ativoId}/aportes`)
-}
-
-// --- Conta de investimento simples (cofrinho/XP) - item 8/10, modulo
-// separado de Ativo. Endpoints inalterados em relacao ao modulo anterior.
-export function listarContasInvestimento(): Promise<ContaResponse[]> {
-  return apiClient.get<ContaResponse[]>("/api/contas?tipo=investimento")
-}
-
-export function criarContaInvestimento(
-  request: CriarContaInvestimentoRequest,
-): Promise<ContaResponse> {
-  return apiClient.post<ContaResponse>("/api/contas", request)
-}
-
-export function atualizarSaldoConta(id: string, request: AtualizarSaldoRequest): Promise<void> {
-  return apiClient.patch<void>(`/api/contas/${id}/saldo`, request)
-}
-
-export function desativarConta(id: string): Promise<void> {
-  return apiClient.patch<void>(`/api/contas/${id}/desativar`)
-}
-
-export function buscarTotalInvestido(): Promise<TotalInvestidoResponse> {
-  return apiClient.get<TotalInvestidoResponse>("/api/contas/investimentos/total")
 }

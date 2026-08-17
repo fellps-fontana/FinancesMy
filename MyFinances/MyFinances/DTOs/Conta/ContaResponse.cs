@@ -11,6 +11,12 @@ public class ContaResponse
 
     public TipoConta Tipo { get; set; }
 
+    public SubtipoConta? Subtipo { get; set; }
+
+    public string? Icone { get; set; }
+
+    public string? Cor { get; set; }
+
     public OrigemConta Origem { get; set; }
 
     public decimal Saldo { get; set; }
@@ -37,6 +43,9 @@ public class ContaResponse
             Id = conta.Id,
             Nome = conta.Nome,
             Tipo = conta.Tipo.Value,
+            Subtipo = conta.Subtipo,
+            Icone = conta.Icone,
+            Cor = conta.Cor,
             Origem = conta.Origem,
             Saldo = conta.SaldoManual ?? 0m,
             SaldoManual = conta.SaldoManual,
