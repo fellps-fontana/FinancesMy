@@ -10,6 +10,13 @@ import { CategoriaSelect } from "@/features/categorias/components/CategoriaSelec
 import { AvisoLimiteGasto } from "@/features/lancamentos/components/AvisoLimiteGasto"
 import { useCriarLancamento } from "@/features/lancamentos/hooks/useCriarLancamento"
 import { useEditarLancamento } from "@/features/lancamentos/hooks/useEditarLancamento"
+// Nao ha hook de "listar contas" combinado dentro de features/lancamentos
+// (mesma situacao ja registrada em FormTransferencia.tsx/FormContaFixa.tsx).
+// useContasParaSelecao ja resolve exatamente "contas MANUAL disponiveis para
+// lancamento avulso, excluindo cartao" (regra-de-negocio.md item 12: compra
+// de cartao tem fluxo proprio, nunca e lancamento avulso) - reaproveitado
+// aqui em vez de duplicar a chamada combinada.
+import { useContasParaSelecao } from "@/features/contas-receber/hooks/useContasParaSelecao"
 import {
   converterValorParaNumero,
   validarValor,
@@ -37,7 +44,20 @@ const LABEL_POR_TIPO: Record<TipoLancamento, string> = {
   CREDIT: "Receita",
 }
 
-function validarFormulario(descricao: string, valor: string, data: string): string | null {
+// Classe compartilhada pelos dois <select> nativos do form (conta e status) -
+// mesmo estilo ja usado no select de conta que existia em LancamentosPage.tsx
+// antes da selecao migrar para dentro deste formulario.
+const CLASSE_SELECT =
+  "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30"
+
+// `contaId` so e validado de fato no modo criar (edicao sempre tem
+// `contaIdEfetivo` populado por `lancamentoParaEditar.contaId` - a checagem
+// aqui nunca dispara nesse caso, ver comentario de FormLancamentoProps).
+function validarFormulario(contaId: string, descricao: string, valor: string, data: string): string | null {
+  if (contaId.trim().length === 0) {
+    return "Selecione uma conta."
+  }
+
   if (descricao.trim().length === 0) {
     return "Informe uma descricao."
   }
@@ -66,22 +86,34 @@ function extrairAnoMes(data: string): { ano: number; mes: number } {
 }
 
 type FormLancamentoProps = {
-  // Endpoint de lancamento vive sob /api/contas/{contaId}/lancamentos - nao
-  // ha campo de "conta" neste form (escopo da task nao lista selecao de
-  // conta), entao a conta ja em contexto na tela que hospeda o form (a
-  // pagina roteada, TASK-095) precisa ser passada aqui. Em modo edicao o
-  // contaId real vem de `lancamentoParaEditar.contaId` (o lancamento ja
-  // sabe a que conta pertence); a prop serve so pro modo criar.
-  contaId: string
   lancamentoParaEditar?: LancamentoResponse
   onSalvar?: () => void
 }
 
 // Mesmo padrao de FormContaFixa: presenca de `lancamentoParaEditar` decide
-// criar (useCriarLancamento) vs editar (useEditarLancamento).
-export function FormLancamento({ contaId, lancamentoParaEditar, onSalvar }: FormLancamentoProps) {
+// criar (useCriarLancamento) vs editar (useEditarLancamento). Selecao de
+// conta migrou de LancamentosPage.tsx para dentro deste form (a pagina agora
+// e uma visao agregada de todas as contas, sem "conta em foco" - ver
+// LancamentosPage.tsx): campo `contaId` interno, so aparece no modo CRIAR.
+// Em modo edicao NAO ha campo de troca de conta - `contaIdEfetivo` usa
+// `lancamentoParaEditar.contaId` direto (o lancamento ja sabe a que conta
+// pertence; regra-de-negocio.md nao define "mover lancamento de conta",
+// entao nao inventamos essa transicao).
+export function FormLancamento({ lancamentoParaEditar, onSalvar }: FormLancamentoProps) {
   const modoEdicao = lancamentoParaEditar !== undefined
+
+  const [contaId, setContaId] = useState("")
   const contaIdEfetivo = lancamentoParaEditar?.contaId ?? contaId
+
+  // Lancamento avulso nunca e numa conta CARTAO (compra de cartao tem fluxo
+  // proprio, regra-de-negocio.md item 12) - useContasParaSelecao ja exclui
+  // cartao (banco + investimento). So precisa buscar no modo criar; em modo
+  // edicao nao ha select de conta pra popular.
+  const {
+    data: contas,
+    isLoading: carregandoContas,
+    error: erroContas,
+  } = useContasParaSelecao({ enabled: !modoEdicao })
 
   const [descricao, setDescricao] = useState(lancamentoParaEditar?.descricao ?? "")
   const [valor, setValor] = useState(
@@ -105,6 +137,7 @@ export function FormLancamento({ contaId, lancamentoParaEditar, onSalvar }: Form
   const { ano, mes } = extrairAnoMes(data)
 
   function restaurarValoresIniciais() {
+    setContaId("")
     setDescricao(lancamentoParaEditar?.descricao ?? "")
     setValor(lancamentoParaEditar ? String(lancamentoParaEditar.valor) : "")
     setTipo(lancamentoParaEditar?.tipo ?? "DEBIT")
@@ -127,7 +160,7 @@ export function FormLancamento({ contaId, lancamentoParaEditar, onSalvar }: Form
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    const erroValidacao = validarFormulario(descricao, valor, data)
+    const erroValidacao = validarFormulario(contaIdEfetivo, descricao, valor, data)
     if (erroValidacao) {
       setErroFormulario(erroValidacao)
       return
@@ -203,6 +236,38 @@ export function FormLancamento({ contaId, lancamentoParaEditar, onSalvar }: Form
         <Alert variant="destructive">
           <AlertDescription>{erroFormulario}</AlertDescription>
         </Alert>
+      )}
+
+      {/* Selecao de conta so no modo CRIAR (regra-de-negocio.md nao define
+          "mover lancamento de conta" - ver comentario de FormLancamentoProps
+          acima). Conta MANUAL banco/investimento, sem cartao (item 12). */}
+      {!modoEdicao && (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="contaLancamento">Conta</Label>
+          <select
+            id="contaLancamento"
+            name="contaId"
+            required
+            disabled={carregandoContas || isSubmitting}
+            value={contaId}
+            onChange={(event) => setContaId(event.target.value)}
+            className={cn(CLASSE_SELECT)}
+          >
+            <option value="" disabled>
+              {carregandoContas ? "Carregando contas..." : "Selecione uma conta"}
+            </option>
+            {contas?.map((conta) => (
+              <option key={conta.id} value={conta.id}>
+                {conta.nome}
+              </option>
+            ))}
+          </select>
+          {erroContas && (
+            <span className="text-[12px] text-alerta">
+              Nao foi possivel carregar as contas. Tente novamente.
+            </span>
+          )}
+        </div>
       )}
 
       <div className="flex flex-col gap-1.5">
@@ -281,9 +346,7 @@ export function FormLancamento({ contaId, lancamentoParaEditar, onSalvar }: Form
           required
           value={status}
           onChange={(event) => setStatus(event.target.value as StatusFormLancamento)}
-          className={cn(
-            "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
-          )}
+          className={cn(CLASSE_SELECT)}
         >
           {STATUS_OPCOES.map((opcao) => (
             <option key={opcao.value} value={opcao.value}>

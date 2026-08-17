@@ -10,12 +10,16 @@ namespace MyFinances.Tests.Services;
 public class FluxoCaixaServiceTests
 {
     private readonly Mock<ILancamentoRepository> _lancamentoRepositoryMock;
+    private readonly Mock<ITransferenciaRepository> _transferenciaRepositoryMock;
     private readonly FluxoCaixaService _service;
 
     public FluxoCaixaServiceTests()
     {
         _lancamentoRepositoryMock = new Mock<ILancamentoRepository>();
-        _service = new FluxoCaixaService(_lancamentoRepositoryMock.Object);
+        _transferenciaRepositoryMock = new Mock<ITransferenciaRepository>();
+        _transferenciaRepositoryMock.Setup(r => r.ListarTodas())
+            .ReturnsAsync(new List<Transferencia>());
+        _service = new FluxoCaixaService(_lancamentoRepositoryMock.Object, _transferenciaRepositoryMock.Object);
     }
 
     [Fact]
@@ -1071,5 +1075,265 @@ public class FluxoCaixaServiceTests
         // Assert
         Assert.Equal(0m, resultado);
         _lancamentoRepositoryMock.Verify(r => r.ListarParaFluxoCaixaDoMes(ano, mes), Times.Once);
+    }
+
+    // Testes para ListarFluxoCaixaTodasContas (REGRA CRITICA: exclui pernas de transferencia, mostra apenas agregada)
+
+    [Fact]
+    public async Task ListarFluxoCaixaTodasContas_LancamentoAvulsoSemTransferenciaAparece()
+    {
+        // Arrange - lançamento sem TransferenciaId
+        var lancamentoAvulso = new Lancamento
+        {
+            Id = Guid.NewGuid(),
+            ContaId = Guid.NewGuid(),
+            Descricao = "Salario",
+            Valor = 5000m,
+            Tipo = TipoLancamento.Credit,
+            Data = new DateOnly(2025, 2, 5),
+            Status = StatusLancamento.Pago,
+            Manual = true,
+            Oculto = false,
+            TransferenciaId = null,
+            FaturaId = null
+        };
+
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixa(null))
+            .ReturnsAsync(new List<Lancamento> { lancamentoAvulso });
+
+        // Act
+        var resultado = await _service.ListarFluxoCaixaTodasContas();
+
+        // Assert
+        var listaResultado = resultado.ToList();
+        Assert.Single(listaResultado);
+        Assert.Equal(TipoItemFluxoCaixa.Lancamento.ToStorageValue(), listaResultado[0].TipoItem);
+        Assert.Equal("Salario", listaResultado[0].Lancamento?.Descricao);
+        Assert.Null(listaResultado[0].Transferencia);
+    }
+
+    [Fact]
+    public async Task ListarFluxoCaixaTodasContas_TransferenciaComunExcluiPernaseLancamentoUnicaComAggregada()
+    {
+        // Arrange - transferência comum com 2 pernas
+        // Nota: ListarParaFluxoCaixa(null) do repositório real FILTRA automaticamente
+        // lançamentos com TransferenciaId setado, então o mock NÃO deve retorná-los
+        var transferId = Guid.NewGuid();
+        var contaOrigemId = Guid.NewGuid();
+        var contaDestinoId = Guid.NewGuid();
+
+        var transferencia = new Transferencia
+        {
+            Id = transferId,
+            Data = new DateOnly(2025, 2, 10),
+            Valor = 1000m,
+            ContaOrigemId = contaOrigemId,
+            ContaDestinoId = contaDestinoId,
+            FaturaId = null,
+            ContaReceberId = null,
+            Descricao = "Transferencia"
+        };
+
+        // Mock retorna lista VAZIA de lançamentos (as pernas foram filtradas pelo repositório)
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixa(null))
+            .ReturnsAsync(new List<Lancamento>());
+
+        _transferenciaRepositoryMock.Setup(r => r.ListarTodas())
+            .ReturnsAsync(new List<Transferencia> { transferencia });
+
+        // Act
+        var resultado = await _service.ListarFluxoCaixaTodasContas();
+
+        // Assert
+        var listaResultado = resultado.ToList();
+        Assert.Single(listaResultado); // Apenas 1 item (a transferência agregada)
+        Assert.Equal(TipoItemFluxoCaixa.Transferencia.ToStorageValue(), listaResultado[0].TipoItem);
+        Assert.Null(listaResultado[0].Lancamento);
+        Assert.NotNull(listaResultado[0].Transferencia);
+        Assert.Equal(1000m, listaResultado[0].Transferencia?.Valor);
+    }
+
+    [Fact]
+    public async Task ListarFluxoCaixaTodasContas_PagamentoFaturaVemComEhPagamentoFaturaTrue()
+    {
+        // Arrange - transferência de pagamento de fatura (tem FaturaId)
+        // ListarParaFluxoCaixa(null) do repositório filtra automaticamente as pernas
+        var transferId = Guid.NewGuid();
+        var faturaId = Guid.NewGuid();
+        var contaOrigemId = Guid.NewGuid();
+        var contaCartaoId = Guid.NewGuid();
+
+        var transferencia = new Transferencia
+        {
+            Id = transferId,
+            Data = new DateOnly(2025, 2, 15),
+            Valor = 2000m,
+            ContaOrigemId = contaOrigemId,
+            ContaDestinoId = contaCartaoId,
+            FaturaId = faturaId, // Indica que eh pagamento de fatura
+            ContaReceberId = null,
+            Descricao = "Pagamento de fatura"
+        };
+
+        // Mock retorna lista VAZIA (as pernas foram filtradas pelo repositório)
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixa(null))
+            .ReturnsAsync(new List<Lancamento>());
+
+        _transferenciaRepositoryMock.Setup(r => r.ListarTodas())
+            .ReturnsAsync(new List<Transferencia> { transferencia });
+
+        // Act
+        var resultado = await _service.ListarFluxoCaixaTodasContas();
+
+        // Assert
+        var listaResultado = resultado.ToList();
+        Assert.Single(listaResultado);
+        Assert.Equal(TipoItemFluxoCaixa.Transferencia.ToStorageValue(), listaResultado[0].TipoItem);
+        Assert.True(listaResultado[0].Transferencia?.EhPagamentoFatura);
+    }
+
+    [Fact]
+    public async Task ListarFluxoCaixaTodasContas_TransferenciaComunVemComEhPagamentoFaturaFalse()
+    {
+        // Arrange - transferência comum sem FaturaId
+        // ListarParaFluxoCaixa(null) do repositório filtra automaticamente as pernas
+        var transferId = Guid.NewGuid();
+        var contaOrigemId = Guid.NewGuid();
+        var contaDestinoId = Guid.NewGuid();
+
+        var transferencia = new Transferencia
+        {
+            Id = transferId,
+            Data = new DateOnly(2025, 2, 12),
+            Valor = 500m,
+            ContaOrigemId = contaOrigemId,
+            ContaDestinoId = contaDestinoId,
+            FaturaId = null,
+            ContaReceberId = null,
+            Descricao = "Transferencia entre contas"
+        };
+
+        // Mock retorna lista VAZIA (as pernas foram filtradas pelo repositório)
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixa(null))
+            .ReturnsAsync(new List<Lancamento>());
+
+        _transferenciaRepositoryMock.Setup(r => r.ListarTodas())
+            .ReturnsAsync(new List<Transferencia> { transferencia });
+
+        // Act
+        var resultado = await _service.ListarFluxoCaixaTodasContas();
+
+        // Assert
+        var listaResultado = resultado.ToList();
+        Assert.Single(listaResultado);
+        Assert.Equal(TipoItemFluxoCaixa.Transferencia.ToStorageValue(), listaResultado[0].TipoItem);
+        Assert.False(listaResultado[0].Transferencia?.EhPagamentoFatura);
+    }
+
+    [Fact]
+    public async Task ListarFluxoCaixaTodasContas_EmprestimoComPernaunicaEContaDestinoNull()
+    {
+        // Arrange - empréstimo (perna única com ContaDestinoId = null, ContaReceberId setado)
+        // ListarParaFluxoCaixa(null) do repositório filtra automaticamente a perna
+        var transferId = Guid.NewGuid();
+        var contaOrigemId = Guid.NewGuid();
+        var contaReceberId = Guid.NewGuid();
+
+        var transferencia = new Transferencia
+        {
+            Id = transferId,
+            Data = new DateOnly(2025, 2, 8),
+            Valor = 300m,
+            ContaOrigemId = contaOrigemId,
+            ContaDestinoId = null, // Null para emprestimo
+            FaturaId = null,
+            ContaReceberId = contaReceberId,
+            Descricao = "Emprestimo"
+        };
+
+        // Mock retorna lista VAZIA (a perna foi filtrada pelo repositório)
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixa(null))
+            .ReturnsAsync(new List<Lancamento>());
+
+        _transferenciaRepositoryMock.Setup(r => r.ListarTodas())
+            .ReturnsAsync(new List<Transferencia> { transferencia });
+
+        // Act
+        var resultado = await _service.ListarFluxoCaixaTodasContas();
+
+        // Assert
+        var listaResultado = resultado.ToList();
+        Assert.Single(listaResultado); // Apenas a transferência agregada
+        Assert.Equal(TipoItemFluxoCaixa.Transferencia.ToStorageValue(), listaResultado[0].TipoItem);
+        Assert.Null(listaResultado[0].Transferencia?.ContaDestinoId);
+        Assert.Equal(300m, listaResultado[0].Transferencia?.Valor);
+    }
+
+    [Fact]
+    public async Task ListarFluxoCaixaTodasContas_ItensOrdenadosPorDataDescrescente()
+    {
+        // Arrange - múltiplos itens com datas diferentes
+        // ListarParaFluxoCaixa(null) filtra automaticamente lançamentos com TransferenciaId
+        var lancamentoAvulso = new Lancamento
+        {
+            Id = Guid.NewGuid(),
+            ContaId = Guid.NewGuid(),
+            Descricao = "Salario",
+            Valor = 5000m,
+            Tipo = TipoLancamento.Credit,
+            Data = new DateOnly(2025, 2, 15), // Meio
+            Status = StatusLancamento.Pago,
+            Manual = true,
+            Oculto = false,
+            TransferenciaId = null,
+            FaturaId = null
+        };
+
+        var transferId1 = Guid.NewGuid();
+        var transferencia1 = new Transferencia
+        {
+            Id = transferId1,
+            Data = new DateOnly(2025, 2, 20), // Mais recente
+            Valor = 1000m,
+            ContaOrigemId = Guid.NewGuid(),
+            ContaDestinoId = Guid.NewGuid(),
+            FaturaId = null,
+            ContaReceberId = null,
+            Descricao = "Transfer"
+        };
+
+        var lancamento2 = new Lancamento
+        {
+            Id = Guid.NewGuid(),
+            ContaId = Guid.NewGuid(),
+            Descricao = "Despesa",
+            Valor = 100m,
+            Tipo = TipoLancamento.Debit,
+            Data = new DateOnly(2025, 2, 5), // Mais antigo
+            Status = StatusLancamento.Pago,
+            Manual = true,
+            Oculto = false,
+            TransferenciaId = null,
+            FaturaId = null
+        };
+
+        // Mock retorna apenas os lançamentos avulsos (sem TransferenciaId)
+        _lancamentoRepositoryMock.Setup(r => r.ListarParaFluxoCaixa(null))
+            .ReturnsAsync(new List<Lancamento> { lancamentoAvulso, lancamento2 });
+
+        _transferenciaRepositoryMock.Setup(r => r.ListarTodas())
+            .ReturnsAsync(new List<Transferencia> { transferencia1 });
+
+        // Act
+        var resultado = await _service.ListarFluxoCaixaTodasContas();
+
+        // Assert
+        var listaResultado = resultado.ToList();
+        Assert.Equal(3, listaResultado.Count); // Lançamento avulso + transferência + lançamento2
+
+        // Verificar ordem descrescente por data
+        Assert.Equal(new DateOnly(2025, 2, 20), listaResultado[0].Data); // Transferencia (mais recente)
+        Assert.Equal(new DateOnly(2025, 2, 15), listaResultado[1].Data); // Salario
+        Assert.Equal(new DateOnly(2025, 2, 5), listaResultado[2].Data);  // Despesa (mais antigo)
     }
 }

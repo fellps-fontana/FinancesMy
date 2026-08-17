@@ -3,6 +3,7 @@ import type {
   CriarLancamentoRequest,
   CriarTransferenciaRequest,
   EditarLancamentoRequest,
+  FluxoCaixaItem,
   LancamentoResponse,
   TransferenciaResponse,
 } from "@/features/lancamentos/types"
@@ -39,8 +40,24 @@ export function removerLancamento(contaId: string, lancamentoId: string): Promis
   return apiClient.delete<void>(`/api/contas/${contaId}/lancamentos/${lancamentoId}`)
 }
 
+// NAO REMOVIDO nesta tarefa apesar de LancamentosPage.tsx ter migrado para
+// listarFluxoCaixaTodasContas (endpoint agregado abaixo): ainda e consumido
+// por features/dashboard/hooks/useUltimosLancamentos.ts (fora do escopo desta
+// tarefa - ver ARQUIVOS PERMITIDOS/NAO FAZER no briefing), que compoe
+// "ultimos lancamentos" iterando listarContasBanco + esta funcao por conta.
+// Remover quebraria o build do dashboard. Candidato a remocao quando o
+// dashboard migrar para o endpoint agregado.
 export function listarFluxoCaixa(contaId: string): Promise<LancamentoResponse[]> {
   return apiClient.get<LancamentoResponse[]>(`/api/contas/${contaId}/lancamentos/fluxo-caixa`)
+}
+
+// GET /api/lancamentos/fluxo-caixa (endpoint agregado, LancamentosController)
+// - fluxo de caixa (CAIXA, regra-de-negocio.md item 12) de TODAS as contas do
+// usuario numa unica chamada, cada linha ja classificada como LANCAMENTO ou
+// TRANSFERENCIA (ver FluxoCaixaItem, types.ts). Substitui a necessidade de
+// LancamentosPage.tsx escolher uma conta antes de exibir qualquer lancamento.
+export function listarFluxoCaixaTodasContas(): Promise<FluxoCaixaItem[]> {
+  return apiClient.get<FluxoCaixaItem[]>("/api/lancamentos/fluxo-caixa")
 }
 
 // Uma funcao por endpoint real de TransferenciasController.cs

@@ -9,15 +9,16 @@ type MarcarComoPagoVariables = {
 
 // Conciliacao manual (regra-de-negocio.md item 5, "conta de pagamento
 // manual: ao marcar como paga, sai automatico") - PENDENTE -> PAGO muda o
-// fluxo de caixa daquela conta.
+// fluxo de caixa. Invalida por prefixo (lancamentosKeys.all), mesmo
+// raciocinio de useCriarLancamento.ts.
 export function useMarcarComoPago() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ contaId, lancamentoId }: MarcarComoPagoVariables) =>
       marcarLancamentoComoPago(contaId, lancamentoId),
-    onSuccess: (_data, { contaId }) => {
-      queryClient.invalidateQueries({ queryKey: lancamentosKeys.fluxoCaixa(contaId) })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lancamentosKeys.all })
     },
   })
 }

@@ -1,4 +1,4 @@
-import type { LancamentoResponse, TipoLancamento } from "../types"
+import type { FluxoCaixaItem, TipoLancamento } from "../types"
 
 // Recorte de mes calendario (regra-de-negocio.md item 9) aplicado client-side,
 // ja que o endpoint de fluxo-caixa nao aceita periodo como query param. `mes`
@@ -7,15 +7,17 @@ import type { LancamentoResponse, TipoLancamento } from "../types"
 // `data` chega como DateOnly do backend (string "yyyy-MM-dd") - parse manual
 // dos componentes (em vez de `new Date(iso)`) evita o deslocamento de fuso
 // que `Date` aplicaria ao interpretar a string como UTC meia-noite, mesmo
-// cuidado ja tomado em `formatarData.ts`.
+// cuidado ja tomado em `formatarData.ts`. Opera sobre FluxoCaixaItem (uniao
+// LANCAMENTO/TRANSFERENCIA, types.ts) - `data` vive no nivel superior da
+// uniao nos dois casos, entao o recorte de mes nao precisa checar `tipoItem`.
 export function filtrarLancamentosDoMes(
-  lancamentos: LancamentoResponse[],
+  itens: FluxoCaixaItem[],
   ano: number,
   mes: number,
-): LancamentoResponse[] {
-  return lancamentos.filter((lancamento) => {
-    const [anoLancamento, mesLancamento] = lancamento.data.split("-").map(Number)
-    return anoLancamento === ano && mesLancamento === mes
+): FluxoCaixaItem[] {
+  return itens.filter((item) => {
+    const [anoItem, mesItem] = item.data.split("-").map(Number)
+    return anoItem === ano && mesItem === mes
   })
 }
 
@@ -23,13 +25,21 @@ export function filtrarLancamentosDoMes(
 // Classificacao (chips + resumo) - decide o que conta como entrada/saida real.
 // ---------------------------------------------------------------------------
 
-// So ENTRADA e SAIDA contam como movimento real (regra-de-negocio.md itens 2
-// CRITICA, 3 e 12). TRANSFERENCIA (inclui pagamento de fatura) e
-// COMPETENCIA_CARTAO (compra de cartao) NUNCA contam. Fonte da verdade e
-// `classificacao` (vem do backend via ClassificacaoLancamentoService) - nunca
-// reclassificado aqui.
-export function deveContarComoEntradaOuSaida(lancamento: LancamentoResponse): boolean {
-  return lancamento.classificacao === "ENTRADA" || lancamento.classificacao === "SAIDA"
+// So LANCAMENTO com classificacao ENTRADA/SAIDA conta como movimento real
+// (regra-de-negocio.md itens 2 CRITICA, 3 e 12). TRANSFERENCIA (linha inteira
+// da uniao - transferencia comum, pagamento de fatura ou emprestimo) NUNCA
+// conta, mesma regra que ja valia para lancamento.classificacao ===
+// "TRANSFERENCIA" antes do endpoint agregado existir - agora a exclusao
+// acontece um nivel acima, por `tipoItem`, e COMPETENCIA_CARTAO tambem
+// continua fora (item 12: compra de cartao nao entra no fluxo de caixa).
+export function deveContarComoEntradaOuSaida(item: FluxoCaixaItem): item is Extract<
+  FluxoCaixaItem,
+  { tipoItem: "LANCAMENTO" }
+> {
+  return (
+    item.tipoItem === "LANCAMENTO" &&
+    (item.lancamento.classificacao === "ENTRADA" || item.lancamento.classificacao === "SAIDA")
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -38,26 +48,21 @@ export function deveContarComoEntradaOuSaida(lancamento: LancamentoResponse): bo
 
 export type FiltroTipoLancamento = "TODOS" | "ENTRADAS" | "SAIDAS"
 
-// Filtra SEMPRE por `tipo` (DEBIT/CREDIT), nunca pelo sinal cru de `valor`
-// (regra-de-negocio.md item 2, CRITICA). "Entradas" = CREDIT, "Saidas" =
-// DEBIT - mesmo mapeamento ja usado em LancamentoItem/FormLancamento.
-// "TODOS" mantem transferencia/pagamento de fatura na lista (nao esconde o
-// lancamento, so nao soma no resumo - ver deveContarComoEntradaOuSaida
-// acima); "ENTRADAS"/"SAIDAS" exigem TAMBEM ser movimento real (itens 2
-// CRITICA, 3 e 12), senao transferencia de mesma titularidade apareceria
-// misturada com receita/despesa de verdade no chip.
-export function filtrarPorTipo(
-  lancamentos: LancamentoResponse[],
-  filtro: FiltroTipoLancamento,
-): LancamentoResponse[] {
+// Filtra SEMPRE por `tipo` (DEBIT/CREDIT) do LANCAMENTO, nunca pelo sinal cru
+// de `valor` (regra-de-negocio.md item 2, CRITICA). "Entradas" = CREDIT,
+// "Saidas" = DEBIT - mesmo mapeamento ja usado em LancamentoItem/
+// FormLancamento. "TODOS" mantem TAMBEM as linhas de TRANSFERENCIA na lista
+// (nao esconde a transferencia, so nao soma no resumo - ver
+// deveContarComoEntradaOuSaida acima); "ENTRADAS"/"SAIDAS" excluem toda
+// TRANSFERENCIA (transferencia/pagamento de fatura/emprestimo nunca sao
+// entrada nem saida real, itens 2 CRITICA, 3, 12 e 13).
+export function filtrarPorTipo(itens: FluxoCaixaItem[], filtro: FiltroTipoLancamento): FluxoCaixaItem[] {
   if (filtro === "TODOS") {
-    return lancamentos
+    return itens
   }
 
   const tipoAlvo: TipoLancamento = filtro === "ENTRADAS" ? "CREDIT" : "DEBIT"
-  return lancamentos.filter(
-    (lancamento) => deveContarComoEntradaOuSaida(lancamento) && lancamento.tipo === tipoAlvo,
-  )
+  return itens.filter((item) => deveContarComoEntradaOuSaida(item) && item.lancamento.tipo === tipoAlvo)
 }
 
 // ---------------------------------------------------------------------------
@@ -71,24 +76,24 @@ export type ResumoLancamentos = {
 }
 
 // Soma por `tipo` (regra-de-negocio.md item 2, CRITICA) - nunca por sinal de
-// `valor`. Antes de somar, exige deveContarComoEntradaOuSaida: transferencia
-// entre contas e pagamento de fatura de cartao (classificacao TRANSFERENCIA,
-// itens 3 e 12) nao sao gasto nem receita, ficam de fora do resumo. Funcao
+// `valor`. Antes de somar, exige deveContarComoEntradaOuSaida: TRANSFERENCIA
+// inteira (transferencia comum, pagamento de fatura de cartao ou emprestimo -
+// itens 3, 12 e 13) nunca e gasto nem receita, fica de fora do resumo. Funcao
 // pura e testavel: nenhum calculo de dominio mora no componente
 // (clean-code.md, "Organizacao (React)"), so aqui.
-export function calcularResumoLancamentos(lancamentos: LancamentoResponse[]): ResumoLancamentos {
+export function calcularResumoLancamentos(itens: FluxoCaixaItem[]): ResumoLancamentos {
   let totalEntradas = 0
   let totalSaidas = 0
 
-  for (const lancamento of lancamentos) {
-    if (!deveContarComoEntradaOuSaida(lancamento)) {
+  for (const item of itens) {
+    if (!deveContarComoEntradaOuSaida(item)) {
       continue
     }
 
-    if (lancamento.tipo === "CREDIT") {
-      totalEntradas += lancamento.valor
+    if (item.lancamento.tipo === "CREDIT") {
+      totalEntradas += item.lancamento.valor
     } else {
-      totalSaidas += lancamento.valor
+      totalSaidas += item.lancamento.valor
     }
   }
 
@@ -103,7 +108,7 @@ export function calcularResumoLancamentos(lancamentos: LancamentoResponse[]): Re
 export type GrupoLancamentosPorData = {
   data: string
   rotulo: string
-  itens: LancamentoResponse[]
+  itens: FluxoCaixaItem[]
 }
 
 const formatadorDiaMes = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" })
@@ -141,26 +146,28 @@ export function rotularDataLancamento(dataIso: string, hoje: Date = new Date()):
 }
 
 // Agrupa por `data` (uma linha logica por dia, mais recente primeiro - mesma
-// ordem do mockup). Nao reordena os lancamentos dentro do mesmo dia (mantem a
-// ordem que a API ja devolveu).
+// ordem do mockup). Nao reordena os itens dentro do mesmo dia (mantem a ordem
+// que a API ja devolveu) - LANCAMENTO e TRANSFERENCIA convivem no mesmo grupo,
+// quem decide o componente de renderizacao e o pai (LancamentosPage.tsx), por
+// `tipoItem`.
 export function agruparLancamentosPorData(
-  lancamentos: LancamentoResponse[],
+  itens: FluxoCaixaItem[],
   hoje: Date = new Date(),
 ): GrupoLancamentosPorData[] {
-  const porData = new Map<string, LancamentoResponse[]>()
+  const porData = new Map<string, FluxoCaixaItem[]>()
 
-  for (const lancamento of lancamentos) {
-    const grupo = porData.get(lancamento.data)
+  for (const item of itens) {
+    const grupo = porData.get(item.data)
     if (grupo) {
-      grupo.push(lancamento)
+      grupo.push(item)
     } else {
-      porData.set(lancamento.data, [lancamento])
+      porData.set(item.data, [item])
     }
   }
 
   return Array.from(porData.entries())
     .sort(([dataA], [dataB]) => (dataA < dataB ? 1 : dataA > dataB ? -1 : 0))
-    .map(([data, itens]) => ({ data, rotulo: rotularDataLancamento(data, hoje), itens }))
+    .map(([data, grupoItens]) => ({ data, rotulo: rotularDataLancamento(data, hoje), itens: grupoItens }))
 }
 
 // ---------------------------------------------------------------------------
