@@ -58,16 +58,48 @@ retornando os 7 campos da fórmula (`Ano`, `Mes`, `TotalRecebidoNoMes`,
 `TotalAReceberEsperadoNoMes`, `TotalPagoNoMes`, `TotalAPagarNoMes`,
 `SaldoProjetado`).
 
+## Frontend (Dashboard) e widgets configuráveis
+
+A lacuna de UI registrada abaixo foi fechada em duas leva: primeiro o
+esqueleto do dashboard (card de saldo projetado com breakdown dos 4 termos
+da fórmula, gráfico entradas vs saídas, indicador de limite de gasto),
+depois um bloco de melhorias (ações rápidas, últimos lançamentos, widgets
+configuráveis, navegação por categoria).
+
+- **Ações rápidas**: 3 botões no topo do dashboard — "Novo Lançamento" e
+  "Transferir" navegam pra `/lancamentos` com o segmented control
+  pré-selecionado; "Pagar Conta" navega pra `/cartao` (fluxo de pagamento
+  de fatura já existente ali, decisão confirmada com o usuário).
+- **Widget "Últimos lançamentos"**: mostra os N lançamentos mais recentes
+  do fluxo de caixa, reusando `LancamentoItem`. Garantia de contraste
+  cumprida por design — o widget não tem nenhum estado `hover:` (itens não
+  são clicáveis nesta leva).
+- **Widgets configuráveis** (`SeletorWidgets.tsx` +
+  `lib/preferenciaWidgets.ts`): cada card do dashboard — incluindo
+  `CardSaldoProjetado`, o gráfico de entradas/saídas, o indicador de
+  limite, e os dois widgets novos abaixo — pode ser ligado/desligado pelo
+  usuário. Preferência persistida em `localStorage`, sem endpoint de
+  backend. `CardSaldoProjetado` (regra crítica desta página, item 9) só
+  ganhou a capacidade de ser mostrado/ocultado — a fórmula em si não foi
+  tocada, confirmado pelo `style` em 2 rodadas via leitura de diff.
+  - Novo widget de **investimentos**: reusa `GraficoConsolidadoAtivos`
+    (módulo Investimentos).
+  - Novo widget de **rendimentos**: reusa `GraficoRendimentosPorTipo`/
+    `useRendimentosResumo` (módulo Investimentos, item 8.4 — dividendo
+    manual + valorização automática derivada de `valor_atual`; nunca
+    provento de fonte externa).
+- **Navegação por categoria**: no indicador de limite de gasto do
+  dashboard, clicar numa categoria navega pra
+  `/limites-gasto?categoriaId={id}` já filtrada naquela categoria
+  (consome o filtro client-side já suportado por
+  `ComparativoLimiteGastoPage.tsx`).
+
 ## Lacunas conhecidas
 
-- **Sem UI**: `MyFinanceFrontEnd/src/features/dashboard/` só tem `.gitkeep`.
-  Não decompôs tasks de frontend por falta de definição de quais cards/gráfico
-  exibir — pendência registrada, não bloqueia o backend.
-- **Conta Fixa (item 6) não existe no codebase** (nem `Domain`, nem migration
-  da tabela, só a FK morta `conta_fixa_id` em `Lancamento`). Não bloqueia a
-  fórmula (quando existir, vai gerar `Lancamento` comuns que o agregador
-  genérico já soma), mas nenhuma conta fixa aparece na projeção v1 até esse
-  módulo ser construído à parte.
+- ~~Conta Fixa (item 6) não existe no codebase~~ — desatualizado: o módulo
+  foi construído à parte depois (ver `docs/conta-fixa.md`) e seus
+  `Lancamento`s já entram na fórmula pelo agregador genérico, sem mudança
+  nesta página.
 - Dois testes de "empréstimo" em `FluxoCaixaServiceTests.cs` descrevem
   modelagem que diverge do item 13 real (recebimento deveria vincular por
   `ContaReceberId`, não `TransferenciaId`; saída de empréstimo é sempre
@@ -98,6 +130,20 @@ retornando os 7 campos da fórmula (`Ano`, `Mes`, `TotalRecebidoNoMes`,
   primeira na fórmula master e no endpoint final, com verificação explícita
   de ausência de double-counting entre as fontes.
 
+### Bloco J — melhorias de dashboard (TASK-141 a 145)
+
+- **hanzo**: ações rápidas, widget de últimos lançamentos, widgets
+  configuráveis (`SeletorWidgets.tsx`/`preferenciaWidgets.ts`) e navegação
+  por categoria — 4 tasks, arquivos disjuntos entre TASK-143 e TASK-144
+  rodadas em paralelo.
+- **style**: 1ª rodada — PRECISA CORRIGIR: `useUltimosLancamentos.ts` usava
+  queryKey inline (array literal) em vez de `dashboardKeys` centralizado
+  em `query-keys.ts`, quebrando o padrão já seguido por `useProjecaoMes.ts`
+  na mesma feature. hanzo corrigiu (chave `dashboardKeys.
+  ultimosLancamentos(quantidade)` adicionada). 2ª rodada: APROVADO,
+  confirmando que `CardSaldoProjetado` seguiu intocado na semântica e que
+  nada mais do bloco foi reaberto.
+
 ## Notas operacionais
 
 - **Desvio de escopo recorrente**: dois executores (`mike` na TASK-039 e
@@ -110,3 +156,20 @@ retornando os 7 campos da fórmula (`Ano`, `Mes`, `TotalRecebidoNoMes`,
   TASK-039 a TASK-050) já tinha sido implementada, testada, revisada e
   mergeada em `main` via PR #28 antes desta sessão começar — os `STATUS`
   ainda diziam `PENDENTE`. Corrigido no início desta entrega.
+- **Checkout local do `main` pode ficar bem atrás de `origin/main`**: numa
+  sessão de verificação, o `main` local chegou a ficar 45 commits atrás —
+  os Blocos E/F/M (Conta Fixa periodicidade, Investimentos, Rendimentos)
+  já estavam mergeados em `origin/main` sem que o checkout local refletisse
+  isso. Antes de decompor "o que falta" num módulo, sempre conferir contra
+  `origin/main` (fetch + `git log origin/main..HEAD`), não só o `tasks.md`
+  do checkout local.
+- **Ambiente de dev local instável**: o Postgres local (`myfinances_dev`)
+  já perdeu o banco entre sessões de teste manual mais de uma vez
+  (possível reinício do serviço/container). Um `Database.EnsureCreated()`
+  temporário chegou a ser deixado em `Program.cs` por uma sessão anterior
+  pra contornar migrations não aplicadas — já removido, não faz parte de
+  nenhum PR mergeado. Se o app voltar a reclamar de coluna/tabela
+  faltando, o schema local está desalinhado das migrations reais; reiniciar
+  o backend contra um banco vazio recria o schema certo via
+  `EnsureCreated`, mas isso não substitui rodar `dotnet ef database update`
+  de verdade num ambiente persistente.
