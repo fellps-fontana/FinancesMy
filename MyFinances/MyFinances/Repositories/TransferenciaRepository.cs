@@ -45,6 +45,14 @@ public class TransferenciaRepository : ITransferenciaRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<Transferencia>> ListarTodas()
+    {
+        return await _context.Transferencias
+            .Include(t => t.ContaOrigem)
+            .Include(t => t.ContaDestino)
+            .ToListAsync();
+    }
+
     public async Task Atualizar(Transferencia transferencia)
     {
         _context.Transferencias.Update(transferencia);

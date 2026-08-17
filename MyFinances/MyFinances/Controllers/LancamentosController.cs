@@ -82,4 +82,11 @@ public class LancamentosController : ControllerBase
         var lancamentos = await _fluxoCaixaService.ListarFluxoCaixa(contaId);
         return Ok(lancamentos);
     }
+
+    [HttpGet("/api/lancamentos/fluxo-caixa")]
+    public async Task<IActionResult> ListarFluxoCaixaTodasContas()
+    {
+        var itens = await _fluxoCaixaService.ListarFluxoCaixaTodasContas();
+        return Ok(itens);
+    }
 }
