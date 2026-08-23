@@ -153,10 +153,30 @@ tools funcionarem.
 
 ## Teste manual
 
-**Nao foi possivel validar contra a API real rodando nesta sessao**: nao
-havia Postgres local disponivel (sem servico Windows de Postgres, e o
-daemon do Docker Desktop nao estava rodando) para subir
-`MyFinances/MyFinances` com `dotnet run`. Para validar na sua maquina:
+Validado nesta sessao contra a API `.NET` real rodando em
+`http://localhost:5146` (Postgres via container `myfinances-postgres`, banco
+`myfinances_dev`, usuario dev `teste`/`Teste123!`):
+
+- **Build limpo** (`tsc --noEmit` e `npm run build`, sem erros de tipo).
+- **Handshake MCP completo**: `initialize` + `tools/list` via stdio retornam
+  as 52 tools com `inputSchema` valido (JSON Schema gerado corretamente a
+  partir dos schemas zod).
+- **`listar_contas`** (`tipo=banco` e `tipo=cartao`) - retornou a conta
+  Nubank banco (saldo R$ 20,00) e a conta Nubank cartao (fechamento dia 10,
+  vencimento dia 18).
+- **`listar_lancamentos`** - retornou o lancamento pendente real "Aluguekl",
+  R$ 20,00, vencendo 12/09/2026.
+- **`contas_a_pagar`** - com a janela padrao (7 dias) retornou corretamente
+  "nada pendente" (o lancamento acima estava a 20 dias); com `dias=30`
+  encontrou o mesmo lancamento e formatou "vence em 20 dia(s)". Confirma que
+  o filtro de urgencia e o calculo de dias estao corretos.
+- **`projecao_mes`** (8/2026) - retornou totais coerentes com os dados
+  (recebido R$ 0, a receber R$ 123, pago R$ 123, a pagar R$ 0).
+- **Round-trip de escrita**: `criar_lancamento` (R$ 1,23, descricao "TESTE
+  MCP - pode apagar") seguido de `remover_lancamento` no id retornado -
+  criou e removeu com sucesso, sem deixar dado de teste no banco.
+
+Para rodar voce mesmo:
 
 ```bash
 # 1. Suba o Postgres (ajuste conforme seu setup local) e garanta que o banco
@@ -175,14 +195,3 @@ MYFINANCES_USERNAME=teste MYFINANCES_PASSWORD='Teste123!' npm start
 # o processo fica esperando input JSON-RPC via stdin - use um cliente MCP
 # (Claude Desktop/Code) ou um script de teste manual.
 ```
-
-Nesta sessao eu validei, sem a API rodando:
-
-- **Build limpo** (`tsc --noEmit` e `npm run build`, sem erros de tipo).
-- **Handshake MCP completo**: `initialize` + `tools/list` via stdio retornam
-  as 52 tools com `inputSchema` valido (JSON Schema gerado corretamente a
-  partir dos schemas zod).
-
-O que falta validar quando a API estiver de pe (recomendo rodar voce mesmo ou
-me pedir para tentar de novo com o Postgres/Docker Desktop ja rodando):
-`listar_contas`, `listar_lancamentos` e `contas_a_pagar` contra dados reais.
