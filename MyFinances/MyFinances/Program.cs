@@ -22,7 +22,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(FrontendDevCorsPolicy, policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("http://localhost:5173", "http://100.117.99.35:5173", "http://100.112.75.48:5173")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -125,10 +125,11 @@ builder.Services.AddAuthorization(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.UseCors(FrontendDevCorsPolicy);
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.UseCors(FrontendDevCorsPolicy);
 
     using var seedScope = app.Services.CreateScope();
     var seedContext = seedScope.ServiceProvider.GetRequiredService<MyFinancesDbContext>();
