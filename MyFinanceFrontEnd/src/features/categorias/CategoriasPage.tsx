@@ -5,6 +5,7 @@ import { CategoriaItem } from "@/features/categorias/components/CategoriaItem"
 import { FormCategoria } from "@/features/categorias/FormCategoria"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
+import { Modal } from "@/shared/ui/Modal"
 import type { CategoriaResponse, TipoCategoria } from "@/features/categorias/types"
 import type { LimiteGastoResponse } from "@/features/limite-gasto/types"
 
@@ -129,23 +130,21 @@ export function CategoriasPage() {
         </Button>
       </div>
 
-      {formulario?.modo === "criar" && <FormCategoria onSalvar={handleFecharFormulario} />}
+      <Modal open={formulario?.modo === "criar"} onClose={handleFecharFormulario} title="Nova categoria">
+        <FormCategoria onSalvar={handleFecharFormulario} />
+      </Modal>
 
       {formulario?.modo === "editar" && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[13px] text-text-muted">
-              Editando "{formulario.categoria.nome}"
-            </span>
-            <Button type="button" variant="ghost" size="sm" onClick={handleFecharFormulario}>
-              Cancelar
-            </Button>
-          </div>
+        <Modal
+          open
+          onClose={handleFecharFormulario}
+          title={`Editar categoria "${formulario.categoria.nome}"`}
+        >
           <FormCategoria
             categoriaParaEditar={formulario.categoria}
             onSalvar={handleFecharFormulario}
           />
-        </div>
+        </Modal>
       )}
 
       {erroCategorias ? (

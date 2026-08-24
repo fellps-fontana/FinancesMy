@@ -5,6 +5,7 @@ import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { cn } from "@/shared/lib/utils"
+import { formatarMoeda } from "@/shared/lib/formatarMoeda"
 import { dataDeHoje } from "@/features/cartao/lib/formatarData"
 import { useRegistrarRecebimento } from "@/features/contas-receber/hooks/useRegistrarRecebimento"
 import { useContasParaSelecao } from "@/features/contas-receber/hooks/useContasParaSelecao"
@@ -13,8 +14,12 @@ import {
   validarRecebimento,
 } from "@/features/contas-receber/lib/validarRecebimento"
 
+type TipoRecebimento = "PARCIAL" | "TOTAL"
+
 type FormRegistrarRecebimentoProps = {
   contaReceberId: string
+  valorTotal: number
+  saldoPendente: number
   onRegistrado: () => void
   onCancelar: () => void
 }
@@ -43,6 +48,8 @@ type FormRegistrarRecebimentoProps = {
 // esquecimento; reportada na entrega da task.
 export function FormRegistrarRecebimento({
   contaReceberId,
+  valorTotal,
+  saldoPendente,
   onRegistrado,
   onCancelar,
 }: FormRegistrarRecebimentoProps) {
@@ -50,8 +57,37 @@ export function FormRegistrarRecebimento({
   const [data, setData] = useState(dataDeHoje())
   const [contaDestinoId, setContaDestinoId] = useState("")
   const [erro, setErro] = useState<string | null>(null)
+  const [tipoRecebimento, setTipoRecebimento] = useState<TipoRecebimento>("PARCIAL")
 
   const { mutate: registrarRecebimento, isPending } = useRegistrarRecebimento()
+
+  // Card-resumo (mockup "12 Contas a Receber.dc.html"): "recebido" e a mesma
+  // subtracao que ja define saldo_pendente na regra-de-negocio.md item 13
+  // (saldo_pendente = valor_total - soma(recebimentos)), so invertida para
+  // exibicao - valorTotal/saldoPendente ja chegam prontos do backend, nenhum
+  // estado novo de dominio nasce aqui. percentualRecebido e clamp puramente
+  // visual (largura da barra), sem efeito em nenhuma decisao de fluxo.
+  const valorRecebido = valorTotal - saldoPendente
+  const percentualRecebido =
+    valorTotal > 0 ? Math.min(100, Math.max(0, (valorRecebido / valorTotal) * 100)) : 0
+
+  // Toggle Parcial/Total (mockup): "Total" trava o campo Valor no
+  // saldo_pendente atual - o usuario nao deveria digitar algo diferente do
+  // que falta para quitar. "Parcial" libera o campo e limpa o valor
+  // auto-preenchido pelo modo Total, para nao deixar lixo de um modo no
+  // outro (unico caminho que preenche valor durante o modo Total e este
+  // handler, entao limpar ao sair dele e seguro).
+  function handleSelecionarParcial() {
+    if (tipoRecebimento === "PARCIAL") return
+    setTipoRecebimento("PARCIAL")
+    setValor("")
+  }
+
+  function handleSelecionarTotal() {
+    if (tipoRecebimento === "TOTAL") return
+    setTipoRecebimento("TOTAL")
+    setValor(saldoPendente.toFixed(2))
+  }
 
   const {
     data: contasDestino,
@@ -103,6 +139,45 @@ export function FormRegistrarRecebimento({
         </Alert>
       )}
 
+      <div className="flex flex-col gap-2 rounded-xl bg-muted p-3.5">
+        <div className="flex items-center justify-between text-[12px] text-text-muted">
+          <span>Recebido</span>
+          <span>
+            {formatarMoeda(valorRecebido)} de {formatarMoeda(valorTotal)}
+          </span>
+        </div>
+        <div className="h-[5px] overflow-hidden rounded-[5px] bg-border">
+          <div
+            className="h-full rounded-[5px] bg-positivo"
+            style={{ width: `${percentualRecebido}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label>Tipo de recebimento</Label>
+        <div className="flex gap-2" role="group" aria-label="Tipo de recebimento">
+          <Button
+            type="button"
+            variant={tipoRecebimento === "PARCIAL" ? "default" : "outline"}
+            size="sm"
+            onClick={handleSelecionarParcial}
+            className="flex-1"
+          >
+            Parcial
+          </Button>
+          <Button
+            type="button"
+            variant={tipoRecebimento === "TOTAL" ? "default" : "outline"}
+            size="sm"
+            onClick={handleSelecionarTotal}
+            className="flex-1"
+          >
+            Total ({formatarMoeda(saldoPendente)} restante)
+          </Button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={`valorRecebimento-${contaReceberId}`}>Valor recebido</Label>
@@ -114,6 +189,7 @@ export function FormRegistrarRecebimento({
             inputMode="decimal"
             autoFocus
             required
+            disabled={tipoRecebimento === "TOTAL"}
             value={valor}
             onChange={(event) => setValor(event.target.value)}
           />
@@ -164,7 +240,7 @@ export function FormRegistrarRecebimento({
           Cancelar
         </Button>
         <Button type="submit" size="sm" disabled={isPending}>
-          {isPending ? "Registrando..." : "Registrar recebimento"}
+          {isPending ? "Registrando..." : "Confirmar recebimento"}
         </Button>
       </div>
     </form>

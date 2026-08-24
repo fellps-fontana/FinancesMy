@@ -63,6 +63,8 @@ Endpoint real ficou diferente do desenho original de killua: em vez de um
 - `GET /api/contas/{contaId}/lancamentos/fluxo-caixa` — visão de caixa da conta
   (sempre escopada a uma conta específica, não cross-conta)
 - `POST /api/transferencias` (`TransferenciasController`) — criar transferência
+- `GET /api/lancamentos/fluxo-caixa` (rota absoluta, mesmo `LancamentosController`)
+  — visão agregada de TODAS as contas do usuário, ver seção abaixo
 
 ## Frontend (Bloco K, 2026-07-30)
 
@@ -80,11 +82,64 @@ front passou a excluir `TRANSFERENCIA`/`COMPETENCIA_CARTAO` do cálculo
 (`deveContarComoEntradaOuSaida` em `lib/filtrarPeriodo.ts`) — a lista
 "Todos" continua exibindo a transferência normalmente, só não soma no resumo.
 
+## Visão agregada e "novo lançamento" por conta (2026-08-17, PR #62)
+
+Fecha a lacuna abaixo (~~fluxo de caixa não tem visão cross-conta~~) e mais
+dois pedidos de feedback do usuário: por padrão a tela deve mostrar todas as
+contas, e a escolha de conta deve morar dentro do fluxo de "novo lançamento",
+não como filtro de página.
+
+- **Endpoint** `GET /api/lancamentos/fluxo-caixa`: `FluxoCaixaService.ListarFluxoCaixaTodasContas()`
+  compõe, em memória (duas queries, sem join SQL — volume de uso pessoal não
+  justifica), os `Lancamento`s reais (`ILancamentoRepository.ListarParaFluxoCaixa(null)`,
+  que já exclui compra de cartão e tudo `Classificacao == Transferencia`) com
+  as `Transferencia`s (`ITransferenciaRepository.ListarTodas()`) — cada
+  transferência (comum, pagamento de fatura via `EhPagamentoFatura`, ou
+  empréstimo com `ContaDestinoId == null`, item 13) vira UMA linha lógica em
+  vez de aparecer como as duas pernas cruas, fechando de vez o espírito do
+  item 3 também na visão agregada (na visão por conta, item 3 já era
+  respeitado, mas só "por acidente de escopo" — a outra perna vivia numa
+  conta que a query não olhava; aqui é fusão deliberada). Envelope
+  discriminado `FluxoCaixaItemDto` (`TipoItem` enum `TipoItemFluxoCaixa`,
+  `Lancamento`/`Transferencia` opcionais) — não força os dois formatos num
+  DTO só, porque não têm o mesmo shape (transferência não tem `Id` de
+  lançamento único, nem `Tipo`, nem `CategoriaId`).
+- **Frontend**: `LancamentosPage` abre direto na visão agregada (sem select
+  de conta bloqueando a tela). Cada item renderiza `LancamentoItem` ou o novo
+  `TransferenciaFluxoCaixaItem` conforme `tipoItem` — este último sem
+  ações (editar/pagar/remover não existem pra transferência em nenhum lugar
+  da regra). Resumo do mês e chips Entrada/Saída ignoram transferência
+  (neutra, item 3); só aparece no chip "Todos". `FormLancamento` ganhou
+  select de conta próprio (obrigatório, só modo criar) — modo editar
+  continua sem campo de troca de conta (regra omissa, não inventado).
+- **Empréstimo na visão agregada**: rótulo genérico "Empréstimo", sem nome
+  da pessoa (esse dado vive em `ContaReceber.Pessoa`, não em `Transferencia`
+  — juntar exigiria mais um join, fora de escopo).
+- **Ciclo de correção `style`** (único bloco desta leva que tocou regra de
+  negócio, os outros 2 itens do PR #62 foram puramente visuais): 1ª rodada
+  reprovou por 2 motivos — `TipoItem` como string mágica em vez do padrão
+  enum+`ToStorageValue()` já convencionado no projeto, e a composição
+  lançamento+transferência (regra crítica) sem nenhum teste. Corrigido:
+  enum `TipoItemFluxoCaixa` extraído, e `mike` escreveu 6 cenários contra a
+  implementação já existente — achou 5 falhas na primeira rodada, que a
+  investigação (Kira, leitura de `LancamentoRepository.cs:63-68`) confirmou
+  serem falso positivo do mock de teste (não replicava o filtro real do
+  repositório, que já exclui `Classificacao == Transferencia` no branch
+  agregado) — corrigido o setup do mock, não o código de produção. 2ª rodada:
+  aprovado, 568/568 GREEN.
+- **Débito técnico reconhecido**: `useFluxoCaixa.ts`/`listarFluxoCaixa`
+  (escopados por conta, endpoint antigo) seguem vivos porque
+  `features/dashboard/hooks/useUltimosLancamentos.ts` ainda depende deles —
+  candidato a task futura de migração pro endpoint agregado.
+
 ## Lacunas conhecidas
 
-- Fluxo de caixa não tem visão cross-conta via API (o `contaId` é sempre
-  obrigatório na rota) — se um dashboard geral precisar agregar todas as
-  contas, isso ainda não existe.
+- `LancamentoRepository.ListarParaFluxoCaixa(Guid? contaId)` (o método que
+  exclui transferência no branch agregado, pré-existente, base de que o
+  endpoint acima depende) não tem teste de repositório próprio — apontado
+  pelo `style` na revisão do PR #62, não bloqueante, mas é uma lacuna real
+  sustentando os testes do service sem prova automatizada da camada de
+  baixo.
 
 ## O que cada agent entregou
 

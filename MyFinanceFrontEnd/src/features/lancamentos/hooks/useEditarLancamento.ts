@@ -9,16 +9,16 @@ type EditarLancamentoVariables = {
   request: EditarLancamentoRequest
 }
 
-// Editar um lancamento muda o fluxo de caixa daquela conta - invalida so a
-// query da conta afetada.
+// Editar um lancamento muda o fluxo de caixa - invalida por prefixo
+// (lancamentosKeys.all), mesmo raciocinio de useCriarLancamento.ts.
 export function useEditarLancamento() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ contaId, lancamentoId, request }: EditarLancamentoVariables) =>
       editarLancamento(contaId, lancamentoId, request),
-    onSuccess: (_data, { contaId }) => {
-      queryClient.invalidateQueries({ queryKey: lancamentosKeys.fluxoCaixa(contaId) })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lancamentosKeys.all })
     },
   })
 }

@@ -8,6 +8,7 @@ public interface ITransferenciaRepository
     Task<Transferencia?> ObterPorId(Guid id);
     Task<IEnumerable<Transferencia>> ListarPorConta(Guid contaId);
     Task<IEnumerable<Transferencia>> ListarPorFatura(Guid faturaId);
+    Task<IEnumerable<Transferencia>> ListarTodas();
     Task Atualizar(Transferencia transferencia);
     Task Salvar();
 }

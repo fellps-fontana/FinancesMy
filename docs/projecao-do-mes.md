@@ -94,6 +94,16 @@ configuráveis, navegação por categoria).
   (consome o filtro client-side já suportado por
   `ComparativoLimiteGastoPage.tsx`).
 
+### Feedback pós-entrega (2026-08-17)
+
+Usuário reportou que o card de widgets competia com o dado real no topo da
+tela. `SeletorWidgets` foi movido pro FIM da página (depois de todos os
+widgets) e passou a nascer colapsado — só o trigger "Personalizar widgets"
+aparece de início, expande ao clicar (padrão ARIA disclosure, estado de UI
+efêmero, não persiste entre cargas). Mudança puramente visual, revisada
+inline pelo Kira (sem gate `style` — não toca `CardSaldoProjetado` nem
+nenhuma regra crítica). PR #62.
+
 ## Lacunas conhecidas
 
 - ~~Conta Fixa (item 6) não existe no codebase~~ — desatualizado: o módulo
