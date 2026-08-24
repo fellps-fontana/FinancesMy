@@ -24,6 +24,7 @@ Variaveis de ambiente (`.env`):
 | `MYFINANCES_API_URL` | nao | `http://localhost:5146` | URL base da API .NET |
 | `MYFINANCES_USERNAME` | sim | - | Usuario/email para login no `AuthController` |
 | `MYFINANCES_PASSWORD` | sim | - | Senha do usuario |
+| `MCP_HTTP_PORT` | nao | `3939` | Porta do modo HTTP (`npm run start:http`), ver secao abaixo |
 
 O servidor faz login automaticamente no primeiro request que precisar de
 autenticacao (lazy), guarda o token JWT em memoria, e refaz login sozinho se
@@ -59,6 +60,51 @@ MCP server no Claude Code:
 Ajuste o caminho de `args` para onde o repo estiver na sua maquina. A API
 `.NET` (`dotnet run` em `MyFinances/MyFinances`) precisa estar rodando para as
 tools funcionarem.
+
+## Modo HTTP (acesso de outros computadores via rede/VPN)
+
+O modo acima (`command`/`args`, transporte stdio) roda um processo local por
+maquina - nao da pra "compartilhar" com outro computador. Pra acessar de
+qualquer dispositivo da sua rede/VPN so colando uma URL no Claude, suba o
+servidor no modo HTTP em vez do stdio:
+
+```bash
+MCP_HTTP_PORT=3939 npm run start:http
+# ou, em desenvolvimento: MCP_HTTP_PORT=3939 npm run dev:http
+```
+
+Isso sobe um servidor Express escutando em `0.0.0.0:3939` (todas as
+interfaces de rede, nao so localhost), implementando o transporte
+Streamable HTTP do MCP no endpoint `/mcp`. Rode isso numa unica maquina (a
+mesma que tem a API `.NET` acessivel, local ou na rede) - os outros
+dispositivos so precisam da URL, sem instalar nada.
+
+Nos outros computadores, registre como servidor remoto (sem `command`/`args`,
+so a URL):
+
+```json
+{
+  "mcpServers": {
+    "myfinances": {
+      "type": "http",
+      "url": "http://<ip-da-maquina-que-roda-o-servidor>:3939/mcp"
+    }
+  }
+}
+```
+
+No Claude Code tambem da pra registrar via CLI:
+
+```bash
+claude mcp add --transport http myfinances http://<ip>:3939/mcp
+```
+
+**Sem autenticacao no endpoint HTTP em si** - decisao deliberada, assumindo
+que o acesso e restrito a uma rede/VPN de confianca (nao exponha essa porta
+pra internet). Qualquer dispositivo que alcance `http://<ip>:3939/mcp`
+consegue chamar todas as tools, inclusive as de escrita
+(criar/editar/excluir lancamento, pagar fatura etc), usando as credenciais
+configuradas no `.env` de quem sobe o servidor.
 
 ## Tools disponiveis
 
@@ -175,6 +221,10 @@ Validado nesta sessao contra a API `.NET` real rodando em
 - **Round-trip de escrita**: `criar_lancamento` (R$ 1,23, descricao "TESTE
   MCP - pode apagar") seguido de `remover_lancamento` no id retornado -
   criou e removeu com sucesso, sem deixar dado de teste no banco.
+- **Modo HTTP**: `npm run start:http` (porta 3939), `initialize` via `curl`
+  retornou `mcp-session-id` no header e a resposta em SSE; reusando esse
+  session id, `notifications/initialized` (202) seguido de `tools/call`
+  `listar_contas` retornou os mesmos dados reais da conta Nubank.
 
 Para rodar voce mesmo:
 
