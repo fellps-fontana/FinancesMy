@@ -19,7 +19,4 @@ public interface IContaFixaService
     Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> ObterPorId(Guid contaFixaId);
 
     Task<(bool Sucesso, IEnumerable<ContaFixa>? ContasFixas, string? Erro)> Listar(bool? ativaFiltro);
-
-    Task<(bool Sucesso, int LancamentosGerados, string? Erro)> GerarLancamentosPendentes(
-        Guid contaFixaId, DateOnly dataReferencia);
 }

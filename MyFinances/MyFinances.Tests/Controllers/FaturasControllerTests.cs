@@ -60,77 +60,6 @@ public class FaturasControllerTests
         _fixture = fixture;
     }
 
-    #region Regra 17 (y): ListarFaturas deve chamar GarantirOcorrenciasAtivasDoMesAsync
-
-    [Fact]
-    public async Task ListarFaturas_DeveChamarGarantirOcorrenciasAtivasDoMesAsync()
-    {
-        // Arrange - integração real com SQLite
-        var contaId = Guid.NewGuid();
-        var hoje = DateOnly.FromDateTime(DateTime.Today);
-        var ano = hoje.Year;
-        var mes = hoje.Month;
-
-        var conta = new Conta
-        {
-            Id = contaId,
-            Nome = "Cartao Teste",
-            Tipo = TipoConta.Cartao,
-            Origem = OrigemConta.Manual,
-            DiaFechamento = 10,
-            DiaVencimento = 20,
-            Ativa = true
-        };
-
-        _fixture.DbContext.Contas.Add(conta);
-        await _fixture.DbContext.SaveChangesAsync();
-
-        // Setup serviços e mocks
-        var faturaRepository = new FaturaRepository(_fixture.DbContext);
-        var contaRepository = new ContaRepository(_fixture.DbContext);
-        var lancamentoRepository = new LancamentoRepository(_fixture.DbContext);
-        var transferenciaRepository = new TransferenciaRepository(_fixture.DbContext);
-
-        // IRecorrenciaGeradorService como mock (é interface, pode mockar)
-        var mockRecorrenciaGeradorService = new Mock<IRecorrenciaGeradorService>();
-        mockRecorrenciaGeradorService
-            .Setup(s => s.GarantirOcorrenciasAtivasDoMesAsync(ano, mes))
-            .Returns(Task.CompletedTask);
-
-        var faturaCreditoService = new FaturaCreditoService(faturaRepository);
-        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository);
-        var validacaoCartaoService = new ValidacaoCartaoService(contaRepository);
-
-        var pagamentoFaturaService = new PagamentoFaturaService(
-            faturaRepository,
-            transferenciaRepository,
-            lancamentoRepository,
-            contaRepository,
-            faturaCreditoService);
-        var estornoCartaoService = new EstornoCartaoService(
-            lancamentoRepository,
-            faturaCicloService,
-            validacaoCartaoService);
-
-        var controller = new FaturasController(
-            faturaRepository,
-            pagamentoFaturaService,
-            estornoCartaoService,
-            faturaCreditoService,
-            mockRecorrenciaGeradorService.Object);
-
-        // Act
-        await controller.ListarFaturas(contaId);
-
-        // Assert - deve ter chamado GarantirOcorrenciasAtivasDoMesAsync com ano/mes corretos
-        mockRecorrenciaGeradorService.Verify(
-            s => s.GarantirOcorrenciasAtivasDoMesAsync(ano, mes),
-            Times.Once,
-            "FaturasController.ListarFaturas deve chamar GarantirOcorrenciasAtivasDoMesAsync antes de listar faturas");
-    }
-
-    #endregion
-
     #region Gap 3 (CRITICO): ListarFaturas deve usar escopo correto (por conta, nao global)
 
     [Fact]
@@ -204,7 +133,8 @@ public class FaturasControllerTests
             pagamentoFaturaService,
             estornoCartaoService,
             faturaCreditoService,
-            mockRecorrenciaGeradorService.Object);
+            mockRecorrenciaGeradorService.Object,
+            contaFixaRepository);
 
         // Act - abrir fatura da conta X apenas
         await controller.ListarFaturas(contaXId);

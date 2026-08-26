@@ -224,37 +224,6 @@ public class ContaFixaService : IContaFixaService
         return (true, contasFixas, null);
     }
 
-    public async Task<(bool Sucesso, int LancamentosGerados, string? Erro)> GerarLancamentosPendentes(
-        Guid contaFixaId, DateOnly dataReferencia)
-    {
-        var contaFixa = await _contaFixaRepository.ObterPorId(contaFixaId);
-        if (contaFixa == null || !contaFixa.Ativa)
-        {
-            return (false, 0, "Conta fixa nao encontrada ou inativa");
-        }
-
-        var lancamentosGerados = 0;
-
-        var proximaOcorrencia = ContaFixaLancamentoFactory.ProximaOcorrencia(dataReferencia, contaFixa.Periodicidade);
-        var ocorrencias = new[] { dataReferencia, proximaOcorrencia };
-
-        foreach (var data in ocorrencias)
-        {
-            var existeLancamento = await _contaFixaRepository.ExisteLancamentoGerado(contaFixa.Id, data.Year, data.Month);
-
-            if (!existeLancamento)
-            {
-                var lancamento = ContaFixaLancamentoFactory.CriarLancamentoPendente(contaFixa, data.Year, data.Month);
-                await _lancamentoRepository.Adicionar(lancamento);
-                lancamentosGerados++;
-            }
-        }
-
-        await _lancamentoRepository.Salvar();
-
-        return (true, lancamentosGerados, null);
-    }
-
     private static (bool Valido, string? Erro) ValidarDiaVencimentoEValor(int diaVencimento, decimal valor)
     {
         if (diaVencimento < 1 || diaVencimento > 31)

@@ -16,7 +16,7 @@ namespace MyFinances.Migrations
                     (SELECT EXTRACT(MONTH FROM MIN(l.data))::int
                      FROM lancamento l
                      WHERE l.conta_fixa_id = conta_fixa.id),
-                    8)  -- Default to August (month of migration)
+                    EXTRACT(MONTH FROM CURRENT_DATE)::int)
                 WHERE periodicidade = 'ANUAL' AND mes_referencia IS NULL
             ");
         }

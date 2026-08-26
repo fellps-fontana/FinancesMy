@@ -157,7 +157,7 @@ public class RecorrenciaGeradorService : IRecorrenciaGeradorService
         var lancamentosEligiveisParaRemocao = contaFixa.Lancamentos
             .Where(l =>
                 (l.Status == StatusLancamento.Pendente) ||  // Banco: sempre Pendente
-                (l.Fatura?.Status != StatusFatura.Paga))    // Cartao: Fatura nao paga (remove, Fatura paga nunca)
+                (l.Fatura != null && l.Fatura.Status != StatusFatura.Paga))    // Cartao: Fatura nao paga (remove, Fatura paga nunca)
             .ToList();
 
         foreach (var lancamento in lancamentosEligiveisParaRemocao)

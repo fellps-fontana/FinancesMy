@@ -15,22 +15,7 @@ public class FaturasController : ControllerBase
     private readonly EstornoCartaoService _estornoCartaoService;
     private readonly FaturaCreditoService _faturaCreditoService;
     private readonly IRecorrenciaGeradorService _recorrenciaGeradorService;
-    private readonly IContaFixaRepository? _contaFixaRepository;
-
-    public FaturasController(
-        IFaturaRepository faturaRepository,
-        PagamentoFaturaService pagamentoFaturaService,
-        EstornoCartaoService estornoCartaoService,
-        FaturaCreditoService faturaCreditoService,
-        IRecorrenciaGeradorService recorrenciaGeradorService)
-    {
-        _faturaRepository = faturaRepository;
-        _pagamentoFaturaService = pagamentoFaturaService;
-        _estornoCartaoService = estornoCartaoService;
-        _faturaCreditoService = faturaCreditoService;
-        _recorrenciaGeradorService = recorrenciaGeradorService;
-        _contaFixaRepository = null;
-    }
+    private readonly IContaFixaRepository _contaFixaRepository;
 
     public FaturasController(
         IFaturaRepository faturaRepository,
@@ -53,13 +38,10 @@ public class FaturasController : ControllerBase
     {
         var hoje = DateOnly.FromDateTime(DateTime.Today);
 
-        if (_contaFixaRepository != null)
+        var contasFixas = await _contaFixaRepository.ListarPorConta(contaId);
+        foreach (var contaFixa in contasFixas.Where(cf => cf.Conta?.Tipo == TipoConta.Cartao && cf.Ativa))
         {
-            var contasFixas = await _contaFixaRepository.ListarPorConta(contaId);
-            foreach (var contaFixa in contasFixas.Where(cf => cf.Conta?.Tipo == TipoConta.Cartao && cf.Ativa))
-            {
-                await _recorrenciaGeradorService.GarantirOcorrenciaDoMesAsync(contaFixa.Id, hoje.Year, hoje.Month);
-            }
+            await _recorrenciaGeradorService.GarantirOcorrenciaDoMesAsync(contaFixa.Id, hoje.Year, hoje.Month);
         }
 
         var faturas = await _faturaRepository.ListarPorConta(contaId);
