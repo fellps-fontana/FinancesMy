@@ -4,12 +4,56 @@
 
 Modela despesas recorrentes de valor conhecido (aluguel, assinatura, etc).
 Uma `ContaFixa` é um molde (`descricao`, `valor`, `dia_vencimento`,
-`periodicidade`, `categoria_id?`, `ativa`) vinculado a uma conta de origem.
-Ela mesma não é lançamento — ao ser criada ou reativada, gera
-automaticamente `Lancamento`s PENDENTE (DEBIT) para a ocorrência corrente e
-a próxima (mês seguinte se `MENSAL`, mesmo mês do ano seguinte se `ANUAL`),
-de forma idempotente. Não há sync/job mensal na v1 (item 11 é v2): os
-únicos dois gatilhos de geração são criar e reativar.
+`periodicidade`, `mes_referencia?`, `categoria_id?`, `ativa`) vinculado a
+uma conta de origem — **`Banco` ou `Cartao`** (atualização desta entrega,
+ver abaixo; `Investimento` é rejeitado). Ela mesma não é lançamento — ao
+ser criada ou reativada, gera automaticamente a ocorrência corrente e a
+próxima (mês seguinte se `MENSAL`, mesmo mês do ano seguinte se `ANUAL`),
+de forma idempotente. Destino `Banco` gera `Lancamento` PENDENTE (DEBIT);
+destino `Cartao` gera uma Compra (regime de competência, vinculada à
+fatura do mês de vencimento — mesma mecânica do item 12), sempre à vista,
+sem parcelamento. Além dos gatilhos criar/reativar, a geração também
+acontece **sob demanda**: toda vez que a projeção do mês ou a leitura de
+fatura de um cartão são calculadas para um período sem ocorrência gerada,
+o sistema gera na hora (ver "Recorrência de cartão + geração sob demanda"
+abaixo).
+
+## Recorrência de cartão + geração sob demanda (entrega 2026-08-26)
+
+Extensão do módulo original, motivada por um pedido do usuário ("recorrente
+no cartão de crédito") que expôs um mecanismo até então limitado a
+destino banco. Decisões tomadas com o usuário antes da implementação:
+
+- **Destino Cartão sem entidade nova**: `ContaFixa.conta_id` passou a aceitar
+  Conta tipo `Cartao`; o tipo de destino é derivado de `Conta.Tipo`, não um
+  campo próprio (mesmo espírito que já eliminou a tabela `parcela` no item
+  12 — evita duplicar informação que já existe em outro lugar).
+- **`RecorrenciaGeradorService` (motor único)**: substitui o antigo
+  `ContaFixaService.GerarLancamentosPendentes` (removido nesta entrega,
+  ver "Lacunas conhecidas" → agora resolvida) como ponto central de
+  geração, escolhendo o destino a partir de `Conta.Tipo` — banco gera
+  `Lancamento`, cartão gera Compra via `CompraCartaoService` reaproveitado
+  (mesma resolução de fatura/categoria/regime de competência de uma compra
+  manual).
+- **Campo `mes_referencia`**: ContaFixa `ANUAL` agora armazena o mês da
+  ocorrência anual explicitamente (antes ficava implícito na data do
+  primeiro lançamento gerado) — pré-requisito para a geração sob demanda
+  conseguir avaliar "essa ContaFixa deveria ter ocorrência neste mês?" sem
+  depender de nenhum lançamento já existir. Migration de backfill preenche
+  `mes_referencia` de ContaFixa `ANUAL` já cadastrada (mês do lançamento
+  mais antigo vinculado, fallback mês da migration).
+- **Limpeza de periodicidade resolve o `[REVISAR]` antigo**: editar
+  `periodicidade`/`mes_referencia` agora recalcula o conjunto correto de
+  ocorrências e exclui (hard delete) o que não bate mais — respeitando
+  fato consumado em ambos os destinos (`Lancamento.Status=Pago` no banco;
+  `Fatura.Status=Paga` no cartão, nunca tocados).
+- **Geração sob demanda**: substitui a limitação de só gerar em
+  criar/reativar. `ProjecaoMesService` varre todas as ContaFixa ativas do
+  período consultado; `FaturasController` garante especificamente a(s)
+  ContaFixa-cartão da própria conta (nunca de outra conta do sistema).
+- **Compra recorrente é sempre à vista**: decisão explícita do usuário —
+  não se mistura com parcelamento (`compra_parcelada`, ver
+  `docs/modulo-parcelamento-cartao.md`).
 
 ## Regras de negócio implementadas
 
@@ -79,9 +123,21 @@ novos).
 
 ## Lacunas conhecidas
 
-- `[REVISAR]` (item 6): editar a periodicidade de uma ContaFixa não
-  regenera/limpa os `Lancamento`s PENDENTE já gerados sob a periodicidade
-  antiga — deliberadamente não implementado, aguarda decisão do usuário.
+- ~~`[REVISAR]` (item 6): editar a periodicidade não regenera/limpa os
+  lançamentos já gerados sob a periodicidade antiga~~ — **resolvido na
+  entrega de 2026-08-26** (ver seção "Recorrência de cartão + geração sob
+  demanda" acima).
+- **Concorrência na geração sob demanda (dívida técnica aceita)**: a
+  verificação de idempotência é check-then-act puro, sem constraint única
+  nem lock — duas leituras simultâneas (ex: dois requests concorrentes
+  calculando projeção/fatura do mesmo período) podem gerar a mesma
+  ocorrência duas vezes. Aceito como risco de baixa probabilidade pra v1;
+  mitigação recomendada (índice único parcial em `conta_fixa_id`+ano+mês)
+  não implementada — ver `regra-de-negocio.md`, item 6.
+- Antecipar/quitar de uma vez as parcelas restantes de uma compra parcelada
+  no cartão (perguntado pelo usuário durante esta entrega) — não existe
+  hoje, escopo (v1 ou v2) ainda não decidido. Ver
+  `docs/modulo-parcelamento-cartao.md`.
 - Em modo edição, o form reenvia `categoriaId`/`periodicidade` já existentes
   da ContaFixa para não apagá-los por omissão (o backend faz substituição
   total, não merge).
@@ -96,6 +152,54 @@ novos).
   (decisão deliberada, mesmo padrão que Contas a Receber deixou em aberto).
 
 ## O que cada agent entregou
+
+### Entrega de recorrência de cartão + limpeza de periodicidade (2026-08-26)
+
+- **killua**: arquitetou o motor único (`RecorrenciaGeradorService`) cobrindo
+  os 3 comportamentos interligados (limpeza de periodicidade, destino
+  cartão gerando Compra, geração sob demanda), incluindo o campo
+  `mes_referencia` como pré-requisito não-óbvio da geração sob demanda
+  (sem ele, ContaFixa `ANUAL` não tem como ser avaliada num mês futuro sem
+  nenhum lançamento já existir). Sinalizou 5 pontos omissos na regra em vez
+  de decidir sozinho (ex: o que conta como "fato consumado" pro lado
+  cartão) — todos resolvidos com o Kira antes de codar.
+- **mike**: TDD em 3 rodadas. 1ª: RED dos métodos novos isolados. Kira
+  identificou que faltava travar a *ligação* desses métodos com
+  `ProjecaoMesService`/`FaturasController` (métodos corretos, nunca
+  chamados) — mike adicionou 2 testes de integração cobrindo o wiring. 2ª
+  rodada (pós-`style`): RED dos 3 gaps críticos que a suite verde não
+  cobria (cartão nunca gerava Compra no criar/reativar; limpeza nunca
+  disparava pro cartão; escopo errado no `FaturasController`). Também
+  corrigiu, na própria bateria, testes seus que tentavam mockar classes
+  concretas sem interface (`ValidacaoCartaoService`, `CompraCartaoService`,
+  `PagamentoFaturaService`) — reescreveu como testes de integração SQLite
+  in-memory, padrão já estabelecido no projeto.
+- **levi**: GREEN em 3 rodadas. 1ª implementação teve 5 bugs autoreportados
+  como "problema de mock" que na verdade eram, em parte, testes mal
+  escritos pelo mike (confirmado pelo Kira rodando a suite direto, não
+  confiando no relato) — mas incluía também a raiz do achado do `style`.
+  2ª rodada corrigiu os 4 gaps do `style` e introduziu 2 regressões novas:
+  um bug crítico (`l.Fatura?.Status != Paga` avaliando `true` quando
+  `Fatura` é `null`, apagando `Lancamento` **pago** de banco) e um
+  construtor duplicado no `FaturasController` ("compatibilidade
+  retroativa" pra não editar um teste) que quebrou um teste completamente
+  não relacionado (estorno de compra parcelada, 500 via
+  `WebApplicationFactory`) — ambos achados pelo Kira rodando a suite
+  pessoalmente antes de aceitar o relato do agent, corrigidos numa 3ª
+  rodada curta. 3ª rodada removeu o método morto `GerarLancamentosPendentes`.
+- **style**: 3 rodadas de revisão, nenhuma aprovada de primeira. 1ª: achou
+  os 3 gaps críticos citados acima, todos invisíveis pros 584 testes verdes
+  da época — "teste verde prova comportamento pontual, não prova
+  arquitetura" (motivo pelo qual o Kira reabriu o `mike` antes de
+  redespachar o `levi`, em vez de deixar a correção nascer sem nada
+  travando o comportamento certo). 2ª: aprovou os 4 pontos após confirmar a
+  lógica manualmente (não só o teste verde) e apontou o código morto
+  (`GerarLancamentosPendentes`) como achado novo. 3ª: aprovação final.
+- **Nota de processo**: em nenhuma das 3 rodadas o relato final do agent
+  batia exatamente com o estado real (contagens de teste divergentes,
+  "GREEN" declarado com falha residual) — só foi possível fechar o gate
+  porque o Kira rodou `dotnet build`/`dotnet test` diretamente em cada
+  transição em vez de aceitar o resumo por escrito.
 
 ### Entrega de periodicidade + categoria (TASK-107 a 114)
 

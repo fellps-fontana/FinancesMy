@@ -69,8 +69,22 @@ categoria funcional na compra, parcelamento no formulário, múltiplos cartões,
 e removeu a tela morta de relatório por categoria em favor de reusar
 `/limites-gasto` (ver `docs/limite-gasto.md`) — sem duplicar endpoint.
 
+## Recorrência de cartão (2026-08-26)
+
+Compra recorrente (assinatura tipo Netflix/Spotify) passou a existir como
+extensão da `ContaFixa` (destino `Cartao`), não como conceito novo —
+detalhes completos, arquitetura e histórico de agents em
+`docs/conta-fixa.md`. Aqui fica só o que muda na visão do cartão: cada
+ocorrência nasce como Compra normal (regime de competência, vinculada à
+fatura do mês), sempre à vista, sem parcelamento; a fatura passou a se
+garantir sob demanda ao ser lida (`FaturasController`), não só quando o
+usuário lança uma compra manual.
+
 ## Lacunas conhecidas
 
+- Antecipar/quitar de uma vez as parcelas restantes de uma compra parcelada
+  (pergunta do usuário durante a entrega de recorrência, 2026-08-26) — não
+  existe hoje, escopo (v1 ou v2) ainda não decidido.
 - Sem `GET` de compras/lançamentos por fatura (telas mostram "não disponível
   nesta versão").
 - Cobertura de teste do ciclo de fatura contra índice único real (SQLite)
