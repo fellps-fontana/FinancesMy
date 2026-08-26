@@ -16,6 +16,10 @@ public class ContaFixa
 
     public PeriodicidadeContaFixa Periodicidade { get; set; } = PeriodicidadeContaFixa.Mensal;
 
+    // regra-de-negocio.md item 6: so relevante quando Periodicidade == Anual
+    // (mes em que a ocorrencia anual cai); null quando Mensal.
+    public int? MesReferencia { get; set; }
+
     public bool Ativa { get; set; } = true;
 
     // Relacionamentos

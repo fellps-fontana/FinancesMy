@@ -5,10 +5,12 @@ namespace MyFinances.Services;
 public interface IContaFixaService
 {
     Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> CriarAsync(
-        Guid contaId, string descricao, decimal valor, int diaVencimento, Guid? categoriaId, string? periodicidade = null);
+        Guid contaId, string descricao, decimal valor, int diaVencimento, Guid? categoriaId,
+        string? periodicidade = null, int? mesReferencia = null);
 
     Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> EditarAsync(
-        Guid contaFixaId, decimal valor, int diaVencimento, Guid? categoriaId, string? periodicidade = null);
+        Guid contaFixaId, decimal valor, int diaVencimento, Guid? categoriaId,
+        string? periodicidade = null, int? mesReferencia = null);
 
     Task<(bool Sucesso, string? Erro)> DesativarAsync(Guid contaFixaId);
 
@@ -17,7 +19,4 @@ public interface IContaFixaService
     Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> ObterPorId(Guid contaFixaId);
 
     Task<(bool Sucesso, IEnumerable<ContaFixa>? ContasFixas, string? Erro)> Listar(bool? ativaFiltro);
-
-    Task<(bool Sucesso, int LancamentosGerados, string? Erro)> GerarLancamentosPendentes(
-        Guid contaFixaId, DateOnly dataReferencia);
 }

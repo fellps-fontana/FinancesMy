@@ -36,6 +36,13 @@ public class ContaFixaRepository : IContaFixaRepository
         return await query.ToListAsync();
     }
 
+    public async Task<IEnumerable<ContaFixa>> ListarPorConta(Guid contaId)
+    {
+        return await QueryComRelacionamentos()
+            .Where(cf => cf.ContaId == contaId)
+            .ToListAsync();
+    }
+
     public async Task Atualizar(ContaFixa contaFixa)
     {
         _context.ContasFixas.Update(contaFixa);
@@ -60,6 +67,7 @@ public class ContaFixaRepository : IContaFixaRepository
         return _context.ContasFixas
             .Include(cf => cf.Conta)
             .Include(cf => cf.Categoria)
-            .Include(cf => cf.Lancamentos);
+            .Include(cf => cf.Lancamentos)
+                .ThenInclude(l => l.Fatura);
     }
 }

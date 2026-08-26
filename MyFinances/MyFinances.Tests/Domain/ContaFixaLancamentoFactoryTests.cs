@@ -339,4 +339,160 @@ public class ContaFixaLancamentoFactoryTests
     }
 
     #endregion
+
+    #region Regra 7 (o): EhOcorrenciaValida para Mensal sempre true, Anual so no MesReferencia
+
+    [Fact]
+    public void EhOcorrenciaValida_Mensal_SempreSempreTrue()
+    {
+        // Arrange - ContaFixa com periodicidade Mensal
+        var contaFixa = new ContaFixa
+        {
+            Id = Guid.NewGuid(),
+            ContaId = Guid.NewGuid(),
+            Descricao = "Aluguel",
+            Valor = 1000m,
+            DiaVencimento = 15,
+            Periodicidade = PeriodicidadeContaFixa.Mensal,
+            MesReferencia = null,
+            Ativa = true
+        };
+
+        // Act & Assert - qualquer mes e valido para Mensal
+        Assert.True(ContaFixaLancamentoFactory.EhOcorrenciaValida(contaFixa, 2026, 1));
+        Assert.True(ContaFixaLancamentoFactory.EhOcorrenciaValida(contaFixa, 2026, 7));
+        Assert.True(ContaFixaLancamentoFactory.EhOcorrenciaValida(contaFixa, 2026, 12));
+        Assert.True(ContaFixaLancamentoFactory.EhOcorrenciaValida(contaFixa, 2027, 6));
+    }
+
+    [Fact]
+    public void EhOcorrenciaValida_Anual_SoTrueQuandoMesIgualMesReferencia()
+    {
+        // Arrange - ContaFixa com periodicidade Anual e MesReferencia = julho
+        var contaFixa = new ContaFixa
+        {
+            Id = Guid.NewGuid(),
+            ContaId = Guid.NewGuid(),
+            Descricao = "Seguro anual",
+            Valor = 500m,
+            DiaVencimento = 20,
+            Periodicidade = PeriodicidadeContaFixa.Anual,
+            MesReferencia = 7,
+            Ativa = true
+        };
+
+        // Act & Assert - so julho e valido, todos os outros meses sao false
+        Assert.False(ContaFixaLancamentoFactory.EhOcorrenciaValida(contaFixa, 2026, 1));
+        Assert.False(ContaFixaLancamentoFactory.EhOcorrenciaValida(contaFixa, 2026, 6));
+        Assert.True(ContaFixaLancamentoFactory.EhOcorrenciaValida(contaFixa, 2026, 7));
+        Assert.False(ContaFixaLancamentoFactory.EhOcorrenciaValida(contaFixa, 2026, 8));
+        Assert.False(ContaFixaLancamentoFactory.EhOcorrenciaValida(contaFixa, 2026, 12));
+        Assert.True(ContaFixaLancamentoFactory.EhOcorrenciaValida(contaFixa, 2027, 7));
+    }
+
+    #endregion
+
+    #region Regra 8 (p): CalcularConjuntoAtualEProxima recalcula o par sob periodicidade ATUAL
+
+    [Fact]
+    public void CalcularConjuntoAtualEProxima_Mensal_RetornaAtualEProximoMes()
+    {
+        // Arrange - ContaFixa Mensal, dataReferencia = julho 15
+        var contaFixa = new ContaFixa
+        {
+            Id = Guid.NewGuid(),
+            ContaId = Guid.NewGuid(),
+            Descricao = "Conta",
+            Valor = 100m,
+            DiaVencimento = 15,
+            Periodicidade = PeriodicidadeContaFixa.Mensal,
+            MesReferencia = null,
+            Ativa = true
+        };
+        var dataReferencia = new DateOnly(2026, 7, 15);
+
+        // Act
+        var (atual, proxima) = ContaFixaLancamentoFactory.CalcularConjuntoAtualEProxima(contaFixa, dataReferencia);
+
+        // Assert - atual = julho 15, proxima = agosto 15
+        Assert.Equal(new DateOnly(2026, 7, 15), atual);
+        Assert.Equal(new DateOnly(2026, 8, 15), proxima);
+    }
+
+    [Fact]
+    public void CalcularConjuntoAtualEProxima_Mensal_ClampDiaAoUltimoDiaDomes()
+    {
+        // Arrange - dia 31 em mes com 30 dias e depois mes com 28 (fevereiro)
+        var contaFixa = new ContaFixa
+        {
+            Id = Guid.NewGuid(),
+            ContaId = Guid.NewGuid(),
+            Descricao = "Conta",
+            Valor = 100m,
+            DiaVencimento = 31,
+            Periodicidade = PeriodicidadeContaFixa.Mensal,
+            MesReferencia = null,
+            Ativa = true
+        };
+        var dataReferencia = new DateOnly(2026, 1, 31);
+
+        // Act
+        var (atual, proxima) = ContaFixaLancamentoFactory.CalcularConjuntoAtualEProxima(contaFixa, dataReferencia);
+
+        // Assert - atual = janeiro 31, proxima = fevereiro 28 (clampado, 2026 nao eh bissexto)
+        Assert.Equal(new DateOnly(2026, 1, 31), atual);
+        Assert.Equal(new DateOnly(2026, 2, 28), proxima);
+    }
+
+    [Fact]
+    public void CalcularConjuntoAtualEProxima_Anual_RetornaAtualEProximoAno()
+    {
+        // Arrange - ContaFixa Anual em julho
+        var contaFixa = new ContaFixa
+        {
+            Id = Guid.NewGuid(),
+            ContaId = Guid.NewGuid(),
+            Descricao = "Seguro anual",
+            Valor = 500m,
+            DiaVencimento = 20,
+            Periodicidade = PeriodicidadeContaFixa.Anual,
+            MesReferencia = 7,
+            Ativa = true
+        };
+        var dataReferencia = new DateOnly(2026, 7, 20);
+
+        // Act
+        var (atual, proxima) = ContaFixaLancamentoFactory.CalcularConjuntoAtualEProxima(contaFixa, dataReferencia);
+
+        // Assert - atual = 2026 julho 20, proxima = 2027 julho 20
+        Assert.Equal(new DateOnly(2026, 7, 20), atual);
+        Assert.Equal(new DateOnly(2027, 7, 20), proxima);
+    }
+
+    [Fact]
+    public void CalcularConjuntoAtualEProxima_AnualBissexto_ClampDe29FevPara28()
+    {
+        // Arrange - data referencia = fevereiro 29, 2024 (bissexto), prox ano = 2025 (nao bissexto)
+        var contaFixa = new ContaFixa
+        {
+            Id = Guid.NewGuid(),
+            ContaId = Guid.NewGuid(),
+            Descricao = "Conta",
+            Valor = 100m,
+            DiaVencimento = 29,
+            Periodicidade = PeriodicidadeContaFixa.Anual,
+            MesReferencia = 2,
+            Ativa = true
+        };
+        var dataReferencia = new DateOnly(2024, 2, 29);
+
+        // Act
+        var (atual, proxima) = ContaFixaLancamentoFactory.CalcularConjuntoAtualEProxima(contaFixa, dataReferencia);
+
+        // Assert - atual = 2024 fevereiro 29, proxima = 2025 fevereiro 28 (clampado)
+        Assert.Equal(new DateOnly(2024, 2, 29), atual);
+        Assert.Equal(new DateOnly(2025, 2, 28), proxima);
+    }
+
+    #endregion
 }

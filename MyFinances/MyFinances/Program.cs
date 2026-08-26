@@ -78,6 +78,7 @@ builder.Services.AddScoped<PagamentoFaturaService>();
 builder.Services.AddScoped<EstornoCartaoService>();
 builder.Services.AddScoped<EstornoCompraParceladaService>();
 builder.Services.AddScoped<SaldoCartaoService>();
+builder.Services.AddScoped<IRecorrenciaGeradorService, RecorrenciaGeradorService>();
 
 // Services - Lancamentos
 builder.Services.AddScoped<ILancamentoManualService, LancamentoManualService>();

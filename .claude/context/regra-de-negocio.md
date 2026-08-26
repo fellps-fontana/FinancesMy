@@ -153,27 +153,80 @@ opcional para `categoria`). Todo Lancamento PENDENTE gerado automaticamente
 categoria: campo fica `null`, sem quebra.
 
 **Edicao propaga para lancamentos PENDENTE ja gerados.** Editar valor,
-`dia_vencimento`, `periodicidade` ou `categoria_id` de uma ContaFixa
-atualiza os Lancamentos vinculados (`conta_fixa_id`) que ainda estao
-`Status = Pendente`. Lancamentos `Status = Pago` NUNCA sao alterados (fato
-historico, dinheiro ja saiu — mesmo principio do item 13 "valor_total nunca
-muda apos registro"). Mudanca de `periodicidade` em edicao NAO regenera o
-par de lancamentos ja existente — `[REVISAR: se o usuario editar
-periodicidade de MENSAL pra ANUAL com um lancamento PENDENTE ja gerado pro
-mes seguinte (que nao deveria mais existir sob a nova periodicidade), esse
-lancamento fica como esta ate ser pago/a conta ser desativada; nenhuma
-limpeza automatica do "excesso" de ocorrencias geradas sob a periodicidade
-antiga esta definida — confirmar com o usuario se e aceitavel ou se editar
-periodicidade deveria disparar uma regeracao]`.
+`dia_vencimento` ou `categoria_id` de uma ContaFixa atualiza os Lancamentos
+vinculados (`conta_fixa_id`) que ainda estao `Status = Pendente`.
+Lancamentos `Status = Pago` NUNCA sao alterados (fato historico, dinheiro ja
+saiu — mesmo principio do item 13 "valor_total nunca muda apos registro").
 
-**Desativar cancela os lancamentos PENDENTE ja gerados.** Ao desativar
-(`ativa = true -> false`) uma ContaFixa, os Lancamentos vinculados com
-`Status = Pendente` sao excluidos (hard delete, mesma regra de exclusao de
-lancamento manual do item 5/12). Lancamentos `Status = Pago` permanecem
-intocados. Reativar volta a gerar as 2 ocorrencias (atual + proxima,
+**Mudanca de periodicidade regenera o conjunto de ocorrencias (decisao
+confirmada em 2026-08-26 — substitui o REVISAR anterior).** Ao editar
+`periodicidade` (ou `mes_referencia`, ver abaixo) de uma ContaFixa, o
+sistema recalcula o conjunto correto de ocorrencias (atual + proxima) sob a
+configuracao nova, a partir da mesma data-base (`dia_vencimento`, hoje).
+Qualquer ocorrencia ja gerada cuja data nao bate com esse conjunto
+recalculado e excluida (hard delete):
+- destino **BANCO**: elegivel so se `Lancamento.Status = Pendente`.
+- destino **CARTAO** (ver abaixo): elegivel so se `Fatura.Status != Paga`
+  (mesma trava ja usada para editar uma compra — fatura paga e fato
+  consumado).
+Fato consumado nunca e tocado. Em seguida a geracao idempotente normal roda
+para garantir atual+proxima sob a config nova.
+
+**Campo `mes_referencia`.** ContaFixa com `periodicidade = ANUAL` exige
+`mes_referencia` (1-12) — o mes em que a ocorrencia anual cai; se nao
+informado na criacao/edicao, default e o mes de hoje. Irrelevante (`null`)
+quando `periodicidade = MENSAL`, mesmo padrao de `Conta.Subtipo` (item
+10.1). ContaFixa ANUAL ja existente antes desta regra recebe
+`mes_referencia` por backfill (mes do Lancamento mais antigo vinculado a
+ela; sem nenhum lancamento, mes da migration) — migracao aditiva, mesmo
+espirito do backfill de `periodicidade = MENSAL` ja registrado acima.
+
+**Destino BANCO ou CARTAO.** `ContaFixa.conta_id` pode apontar para uma
+Conta `Banco` ou `Cartao` (nunca `Investimento` — nao existe fatura nem
+lancamento normal la). O tipo de destino nao e campo proprio de
+`ContaFixa` — e derivado de `Conta.Tipo` da conta referenciada.
+
+**Destino CARTAO gera Compra, nao Lancamento a pagar.** Quando
+`ContaFixa.conta_id` referencia uma Conta `Cartao`, cada ocorrencia gerada
+e uma Compra (regime de competencia, vinculada a fatura do mes de
+vencimento — mesma mecanica do item 12), sempre a vista, valor fixo
+repetido. Sem suporte a parcelamento dentro da recorrencia (nao confundir
+com `compra_parcelada`, item 12) — decisao confirmada em 2026-08-26.
+
+**Geracao sob demanda, alem dos gatilhos de criar/reativar (decisao
+confirmada em 2026-08-26).** Criar/reativar continuam gerando a ocorrencia
+atual+proxima (convite de UX imediato). Adicionalmente, o sistema tambem
+gera sob demanda: toda vez que a projecao do mes (item 9) for calculada
+para um periodo (ano/mes) em que ainda nao existe ocorrencia gerada de uma
+ContaFixa ativa, gera nesse momento, antes de responder — varrendo
+qualquer ano/mes consultado. Para leitura de fatura de cartao (item 12) a
+geracao sob demanda garante especificamente a ocorrencia atual+proxima da
+ContaFixa daquela conta (nao varre periodo arbitrario). Ambos os casos
+respeitam a mesma verificacao de idempotencia (nao duplica) e valem tanto
+para destino banco quanto cartao, por um unico motor de geracao.
+
+**Divida tecnica conhecida (registrada em 2026-08-26, achado do `style`):**
+a verificacao de idempotencia (`ExisteLancamentoGerado`) e check-then-act
+puro, sem constraint unica nem lock — duas leituras simultaneas (ex: dois
+requests concorrentes calculando projecao/fatura do mesmo periodo) podem
+gerar a mesma ocorrencia duas vezes. Aceito como risco de baixa
+probabilidade pra v1 (poucas ContaFixa por usuario, geracao sob demanda so
+roda quando falta ocorrencia). Mitigacao recomendada, nao implementada:
+indice unico parcial em `(conta_fixa_id, extract(year from data), extract(month from data))`
+`WHERE conta_fixa_id IS NOT NULL`, capturando violacao de unicidade como
+no-op no motor de geracao.
+
+**Desativar cancela as ocorrencias PENDENTE/nao consumadas ja geradas.** Ao
+desativar (`ativa = true -> false`) uma ContaFixa, as ocorrencias vinculadas
+ainda nao consumadas sao excluidas (hard delete): `Lancamento.Status =
+Pendente` para destino banco, Compra com `Fatura.Status != Paga` para
+destino cartao (mesma regra de exclusao de lancamento manual do item
+5/12). Ocorrencias ja consumadas (`Pago` / fatura `Paga`) permanecem
+intocadas. Reativar volta a gerar as 2 ocorrencias (atual + proxima,
 conforme periodicidade) do zero, respeitando a idempotencia acima.
-DECISOES CONFIRMADAS COM O USUARIO EM 2026-07-20 (regra original) e
-2026-07-27 (periodicidade).
+DECISOES CONFIRMADAS COM O USUARIO EM 2026-07-20 (regra original), 2026-07-27
+(periodicidade) e 2026-08-26 (limpeza de periodicidade, destino cartao,
+geracao sob demanda).
 
 ---
 
@@ -300,6 +353,12 @@ em zero, desvalorizacao e informacao real, nao erro. Este mecanismo
 TAMBEM resolve a pendencia historica de falta de tabela de historico de
 `valor_atual` (ver "Pendencias a definir") — cada edicao vira um registro
 datado e auditavel.
+
+**Gatilho (a) — decisao adiada para v2 (2026-08-26).** Discussao com o
+usuario sobre priorizacao confirmou: o comportamento NO-OP (aporte nao gera
+`Rendimento`, ver recomendacao abaixo) fica como definitivo pra v1. Revisao
+formal de "gerar ou nao VALORIZACAO por aporte" so volta a pauta em v2, sem
+bloquear nada da v1.
 
 **Criacao AUTOMATICA de VALORIZACAO — gatilho (a): novo APORTE (item
 8.1) — `[REVISAR: pendente de confirmacao do usuario]`.** A regra 8.2 e
@@ -443,6 +502,14 @@ compras individuais nao entram na projecao.
 **Origem das compras:** manual por enquanto; futuramente via import da fatura
 Nubank (ver Pendencias). O de-para de categoria (item 7) roda sobre a
 `descricao` da compra em vez da `category` do Pierre.
+
+**Compra recorrente (ContaFixa com destino CARTAO, ver item 6) — decisao
+confirmada em 2026-08-26.** Uma Compra pode nascer automaticamente de uma
+ContaFixa cujo destino e uma Conta `Cartao`, seguindo as mesmas regras de
+resolucao de fatura, categoria e regime de competencia de uma compra
+manual — a unica diferenca e a origem (`lancamento.conta_fixa_id`
+preenchido) e a ausencia de parcelamento (nao se mistura com
+`compra_parcelada`, abaixo).
 
 ### Parcelamento (compra parcelada) — decisao registrada em 2026-07-12
 
@@ -726,13 +793,22 @@ relacao com Conta.
 
 - (v2) Rate limit dos endpoints do Pierre (testar com a key real).
 - (v2) Paginacao do get-transactions (confirmar se ha cursor ou se vem tudo).
-- Tratamento de PENDING vs POSTED no painel (mostrar separado?).
+- (v2) Tratamento de PENDING vs POSTED no painel (mostrar separado?) —
+  depende de sync ativo com Pierre (item 11), que e v2. Adiado
+  explicitamente em 2026-08-26, sem bloquear v1.
 - Import da fatura Nubank (item 12): definir dedup sem `pierre_txn_id`
   (sugestao: hash de `data + valor + descricao`, ou so importar linhas apos a
   data da ultima importacao). A linha "Pagamento recebido" do CSV da fatura
   NAO e compra — ignorar ou tratar como estorno.
-- Ciclo da fatura: como capturar `data_fechamento` e `data_vencimento` do cartao
-  (fixo por cartao ou lido do import).
+- **RESOLVIDO em 2026-08-26:** ciclo da fatura (`data_fechamento` /
+  `data_vencimento`) e FIXO por cadastro de cartao, nao lido de import.
+  Confirmado pelo usuario — sem pendencia.
+- Antecipar parcela de compra parcelada no cartao (item 12, subsecao
+  Parcelamento) — pendencia levantada em 2026-08-26. Hoje nao existe
+  mecanismo pra quitar de uma vez as parcelas restantes de uma compra
+  parcelada antes do vencimento (o modelo so cobre estorno — cancelamento,
+  nao antecipacao de pagamento). Escopo (v1 ou v2) e desenho ainda nao
+  decididos com o usuario.
 - (item 8) Sparkline por ativo e "% no mes" do total (presentes no mockup)
   — **RESOLVIDO PARCIALMENTE em 2026-07-27 pelo item 8.4.** Toda edicao de
   `valor_atual` agora gera `Rendimento(VALORIZACAO)` com delta e data — o
@@ -741,6 +817,6 @@ relacao com Conta.
   implementacao (TASK-155 em diante); edicoes de `valor_atual` anteriores
   a essa data nao sao reconstruidas retroativamente. O historico de
   APORTES (item 8.1) continua a parte, alimentando a serie de aportes.
-  Gatilho de VALORIZACAO por APORTE (item 8.4, gatilho a) segue
-  `[REVISAR]` — pendente de confirmacao do usuario, nao afeta o gatilho
-  por edicao de `valor_atual`, que ja esta fechado.
+  Gatilho de VALORIZACAO por APORTE (item 8.4, gatilho a): **decisao
+  adiada para v2 em 2026-08-26** — NO-OP fica definitivo na v1 (ver item
+  8.4).

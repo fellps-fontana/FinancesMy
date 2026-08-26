@@ -45,4 +45,41 @@ public static class ContaFixaLancamentoFactory
 
         return new DateOnly(proximaData.Year, proximaData.Month, diaAjustado);
     }
+
+    // Regra critica (regra-de-negocio.md item 6, geracao sob demanda): decide
+    // se o par (ano, mes) e uma ocorrencia valida para esta ContaFixa, dado
+    // sua periodicidade. Mensal -> sempre true. Anual -> so quando mes ==
+    // contaFixa.MesReferencia.
+    public static bool EhOcorrenciaValida(ContaFixa contaFixa, int ano, int mes)
+        => contaFixa.Periodicidade switch
+        {
+            PeriodicidadeContaFixa.Mensal => true,
+            PeriodicidadeContaFixa.Anual => mes == contaFixa.MesReferencia,
+            _ => false
+        };
+
+    // Regra critica (regra-de-negocio.md item 6, limpeza de periodicidade):
+    // recalcula o par atual+proxima sob a periodicidade/MesReferencia ATUAIS
+    // do objeto ContaFixa passado, a partir de dataReferencia (mesma
+    // data-base usada em CriarAsync/ReativarAsync). Funcao pura, nao
+    // persiste.
+    public static (DateOnly Atual, DateOnly Proxima) CalcularConjuntoAtualEProxima(
+        ContaFixa contaFixa, DateOnly dataReferencia)
+    {
+        DateOnly dataAtualBase = contaFixa.Periodicidade switch
+        {
+            PeriodicidadeContaFixa.Mensal => dataReferencia,
+            PeriodicidadeContaFixa.Anual =>
+                new DateOnly(dataReferencia.Year, contaFixa.MesReferencia ?? dataReferencia.Month, 1),
+            _ => dataReferencia
+        };
+
+        var diasNoMes = DateTime.DaysInMonth(dataAtualBase.Year, dataAtualBase.Month);
+        var diaAjustado = Math.Min(contaFixa.DiaVencimento, diasNoMes);
+        var dataAtual = new DateOnly(dataAtualBase.Year, dataAtualBase.Month, diaAjustado);
+
+        var dataProxima = ProximaOcorrencia(dataAtual, contaFixa.Periodicidade);
+
+        return (dataAtual, dataProxima);
+    }
 }
