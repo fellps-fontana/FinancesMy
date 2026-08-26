@@ -205,6 +205,17 @@ ContaFixa daquela conta (nao varre periodo arbitrario). Ambos os casos
 respeitam a mesma verificacao de idempotencia (nao duplica) e valem tanto
 para destino banco quanto cartao, por um unico motor de geracao.
 
+**Divida tecnica conhecida (registrada em 2026-08-26, achado do `style`):**
+a verificacao de idempotencia (`ExisteLancamentoGerado`) e check-then-act
+puro, sem constraint unica nem lock — duas leituras simultaneas (ex: dois
+requests concorrentes calculando projecao/fatura do mesmo periodo) podem
+gerar a mesma ocorrencia duas vezes. Aceito como risco de baixa
+probabilidade pra v1 (poucas ContaFixa por usuario, geracao sob demanda so
+roda quando falta ocorrencia). Mitigacao recomendada, nao implementada:
+indice unico parcial em `(conta_fixa_id, extract(year from data), extract(month from data))`
+`WHERE conta_fixa_id IS NOT NULL`, capturando violacao de unicidade como
+no-op no motor de geracao.
+
 **Desativar cancela as ocorrencias PENDENTE/nao consumadas ja geradas.** Ao
 desativar (`ativa = true -> false`) uma ContaFixa, as ocorrencias vinculadas
 ainda nao consumadas sao excluidas (hard delete): `Lancamento.Status =
