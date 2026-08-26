@@ -1,3 +1,4 @@
+using MyFinances.Domain;
 using MyFinances.DTOs;
 using MyFinances.Repositories;
 using MyFinances.Services;
@@ -14,6 +15,7 @@ public class FaturasController : ControllerBase
     private readonly EstornoCartaoService _estornoCartaoService;
     private readonly FaturaCreditoService _faturaCreditoService;
     private readonly IRecorrenciaGeradorService _recorrenciaGeradorService;
+    private readonly IContaFixaRepository? _contaFixaRepository;
 
     public FaturasController(
         IFaturaRepository faturaRepository,
@@ -27,13 +29,38 @@ public class FaturasController : ControllerBase
         _estornoCartaoService = estornoCartaoService;
         _faturaCreditoService = faturaCreditoService;
         _recorrenciaGeradorService = recorrenciaGeradorService;
+        _contaFixaRepository = null;
+    }
+
+    public FaturasController(
+        IFaturaRepository faturaRepository,
+        PagamentoFaturaService pagamentoFaturaService,
+        EstornoCartaoService estornoCartaoService,
+        FaturaCreditoService faturaCreditoService,
+        IRecorrenciaGeradorService recorrenciaGeradorService,
+        IContaFixaRepository contaFixaRepository)
+    {
+        _faturaRepository = faturaRepository;
+        _pagamentoFaturaService = pagamentoFaturaService;
+        _estornoCartaoService = estornoCartaoService;
+        _faturaCreditoService = faturaCreditoService;
+        _recorrenciaGeradorService = recorrenciaGeradorService;
+        _contaFixaRepository = contaFixaRepository;
     }
 
     [HttpGet]
     public async Task<IActionResult> ListarFaturas(Guid contaId)
     {
         var hoje = DateOnly.FromDateTime(DateTime.Today);
-        await _recorrenciaGeradorService.GarantirOcorrenciasAtivasDoMesAsync(hoje.Year, hoje.Month);
+
+        if (_contaFixaRepository != null)
+        {
+            var contasFixas = await _contaFixaRepository.ListarPorConta(contaId);
+            foreach (var contaFixa in contasFixas.Where(cf => cf.Conta?.Tipo == TipoConta.Cartao && cf.Ativa))
+            {
+                await _recorrenciaGeradorService.GarantirOcorrenciaDoMesAsync(contaFixa.Id, hoje.Year, hoje.Month);
+            }
+        }
 
         var faturas = await _faturaRepository.ListarPorConta(contaId);
         var cadeia = await _faturaCreditoService.CalcularCadeiaDaContaAsync(contaId);

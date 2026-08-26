@@ -747,4 +747,113 @@ public class ContaFixaServiceTests
     }
 
     #endregion
+
+    #region Gap 1 (CRITICO): CriarAsync e ReativarAsync com destino Cartao devem chamar RecorrenciaGeradorService
+
+    [Fact]
+    public async Task CriarAsync_ContaTipoCartao_ChamaGerarOcorrenciaAtualEProxima()
+    {
+        // Arrange - Gap 1: CriarAsync com destino Cartao deve gerar Compra (via RecorrenciaGeradorService),
+        // nao Lancamento Pendente cru (via GerarLancamentosPendentes antigo).
+        // A regra exige que ContaFixa com destino CARTAO respeite regime de COMPETENCIA:
+        // Compra deve ter Status=Pago + FaturaId (item 12), nao Lancamento Pendente sem fatura.
+        var contaId = Guid.NewGuid();
+        var conta = new Conta
+        {
+            Id = contaId,
+            Nome = "Cartao Credito",
+            Tipo = TipoConta.Cartao,
+            Ativa = true
+        };
+
+        _mockContaRepository
+            .Setup(r => r.ObterPorId(contaId))
+            .ReturnsAsync(conta);
+
+        _mockContaFixaRepository
+            .Setup(r => r.Adicionar(It.IsAny<ContaFixa>()))
+            .Returns(Task.CompletedTask);
+
+        _mockContaFixaRepository
+            .Setup(r => r.Salvar())
+            .Returns(Task.CompletedTask);
+
+        _mockRecorrenciaGeradorService
+            .Setup(s => s.GerarOcorrenciaAtualEProximaAsync(It.IsAny<Guid>(), It.IsAny<DateOnly>()))
+            .ReturnsAsync(2);
+
+        // Act
+        var resultado = await _service.CriarAsync(
+            contaId,
+            "Parcela Cartao",
+            500m,
+            10,
+            null,
+            "MENSAL",
+            null);
+
+        // Assert - deve chamar RecorrenciaGeradorService em vez de gerar Lancamento Pendente direto
+        Assert.True(resultado.Sucesso);
+        _mockRecorrenciaGeradorService.Verify(
+            s => s.GerarOcorrenciaAtualEProximaAsync(It.IsAny<Guid>(), It.IsAny<DateOnly>()),
+            Times.Once,
+            "CriarAsync com destino Cartao deve chamar GerarOcorrenciaAtualEProximaAsync (regime de competencia), nao GerarLancamentosPendentes");
+    }
+
+    [Fact]
+    public async Task ReativarAsync_ContaTipoCartao_ChamaGerarOcorrenciaAtualEProxima()
+    {
+        // Arrange - Gap 1: mesmo que CriarAsync, ReativarAsync (false->true) com destino Cartao
+        // deve gerar Compra via RecorrenciaGeradorService, nao Lancamento Pendente cru.
+        var contaFixaId = Guid.NewGuid();
+        var contaId = Guid.NewGuid();
+        var conta = new Conta
+        {
+            Id = contaId,
+            Nome = "Cartao Credito",
+            Tipo = TipoConta.Cartao,
+            Ativa = true
+        };
+
+        var contaFixa = new ContaFixa
+        {
+            Id = contaFixaId,
+            ContaId = contaId,
+            Conta = conta,
+            Descricao = "Parcela Cartao",
+            Valor = 500m,
+            DiaVencimento = 10,
+            Periodicidade = PeriodicidadeContaFixa.Mensal,
+            Ativa = false,
+            Lancamentos = new List<Lancamento>()
+        };
+
+        _mockContaFixaRepository
+            .Setup(r => r.ObterPorId(contaFixaId))
+            .ReturnsAsync(contaFixa);
+
+        _mockContaFixaRepository
+            .Setup(r => r.Atualizar(It.IsAny<ContaFixa>()))
+            .Returns(Task.CompletedTask);
+
+        _mockContaFixaRepository
+            .Setup(r => r.Salvar())
+            .Returns(Task.CompletedTask);
+
+        _mockRecorrenciaGeradorService
+            .Setup(s => s.GerarOcorrenciaAtualEProximaAsync(contaFixaId, It.IsAny<DateOnly>()))
+            .ReturnsAsync(2);
+
+        // Act
+        var resultado = await _service.ReativarAsync(contaFixaId);
+
+        // Assert - deve chamar RecorrenciaGeradorService em vez de gerar Lancamento Pendente direto
+        Assert.True(resultado.Sucesso);
+        _mockRecorrenciaGeradorService.Verify(
+            s => s.GerarOcorrenciaAtualEProximaAsync(contaFixaId, It.IsAny<DateOnly>()),
+            Times.Once,
+            "ReativarAsync com destino Cartao deve chamar GerarOcorrenciaAtualEProximaAsync (regime de competencia), nao GerarLancamentosPendentes");
+    }
+
+    #endregion
 }

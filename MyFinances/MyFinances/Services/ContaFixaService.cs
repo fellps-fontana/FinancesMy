@@ -82,7 +82,7 @@ public class ContaFixaService : IContaFixaService
         await _contaFixaRepository.Salvar();
 
         var dataReferencia = DateOnly.FromDateTime(DateTime.Today);
-        await GerarLancamentosPendentes(contaFixa.Id, dataReferencia);
+        await _recorrenciaGeradorService.GerarOcorrenciaAtualEProximaAsync(contaFixa.Id, dataReferencia);
 
         return (true, contaFixa, null);
     }
@@ -202,7 +202,7 @@ public class ContaFixaService : IContaFixaService
         await _contaFixaRepository.Salvar();
 
         var dataReferencia = DateOnly.FromDateTime(DateTime.Today);
-        await GerarLancamentosPendentes(contaFixaId, dataReferencia);
+        await _recorrenciaGeradorService.GerarOcorrenciaAtualEProximaAsync(contaFixaId, dataReferencia);
 
         return (true, null);
     }

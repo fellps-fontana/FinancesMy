@@ -1,4 +1,7 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Moq;
+using MyFinances.Data;
 using MyFinances.Domain;
 using MyFinances.DTOs;
 using MyFinances.Repositories;
@@ -6,6 +9,46 @@ using MyFinances.Services;
 using Xunit;
 
 namespace MyFinances.Tests.Services;
+
+[CollectionDefinition("RecorrenciaGerador Integration Collection")]
+public class RecorrenciaGeradorIntegrationCollection : ICollectionFixture<RecorrenciaGeradorIntegrationTestsFixture>
+{
+}
+
+public class RecorrenciaGeradorIntegrationTestsFixture : IAsyncLifetime
+{
+    private SqliteConnection? _connection;
+    public MyFinancesDbContext DbContext { get; private set; } = null!;
+
+    public async Task InitializeAsync()
+    {
+        var connectionString = "DataSource=:memory:";
+        var connection = new SqliteConnection(connectionString);
+        await connection.OpenAsync();
+        _connection = connection;
+
+        var options = new DbContextOptionsBuilder<MyFinancesDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        DbContext = new MyFinancesDbContext(options);
+        await DbContext.Database.EnsureCreatedAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        if (DbContext != null)
+        {
+            await DbContext.DisposeAsync();
+        }
+
+        if (_connection != null)
+        {
+            await _connection.CloseAsync();
+            _connection.Dispose();
+        }
+    }
+}
 
 public class RecorrenciaGeradorServiceTests
 {
@@ -94,69 +137,6 @@ public class RecorrenciaGeradorServiceTests
         Assert.Equal(StatusLancamento.Pendente, lancamentoAgosto.Status);
         Assert.True(lancamentoJulho.Manual);
         Assert.True(lancamentoAgosto.Manual);
-    }
-
-    [Fact]
-    public async Task GerarOcorrenciaAtualEProximaAsync_ContaCartao_GeraCompraViaService()
-    {
-        // Arrange - ContaFixa vinculada a Conta tipo Cartao
-        var contaFixaId = Guid.NewGuid();
-        var contaId = Guid.NewGuid();
-        var conta = new Conta
-        {
-            Id = contaId,
-            Nome = "Cartao Credito",
-            Tipo = TipoConta.Cartao,
-            Ativa = true
-        };
-        var contaFixa = new ContaFixa
-        {
-            Id = contaFixaId,
-            ContaId = contaId,
-            Conta = conta,
-            Descricao = "Parcela cartao",
-            Valor = 500m,
-            DiaVencimento = 10,
-            Periodicidade = PeriodicidadeContaFixa.Mensal,
-            Ativa = true,
-            Lancamentos = new List<Lancamento>()
-        };
-        var dataReferencia = new DateOnly(2026, 7, 20);
-
-        _mockContaFixaRepository
-            .Setup(r => r.ObterPorId(contaFixaId))
-            .ReturnsAsync(contaFixa);
-
-        _mockContaFixaRepository
-            .Setup(r => r.ExisteLancamentoGerado(contaFixaId, 2026, 7))
-            .ReturnsAsync(false);
-
-        _mockContaFixaRepository
-            .Setup(r => r.ExisteLancamentoGerado(contaFixaId, 2026, 8))
-            .ReturnsAsync(false);
-
-        // Mock CompraCartaoService.CriarCompraAsync - deve ser chamado 2 vezes (atual + proxima)
-        var comprasGeradas = new List<(Guid contaId, Guid? contaFixaId, DateOnly data)>();
-        _mockCompraCartaoService
-            .Setup(s => s.CriarCompraAsync(It.IsAny<Guid>(), It.IsAny<CriarCompraRequest>(), It.IsAny<Guid?>()))
-            .Callback<Guid, CriarCompraRequest, Guid?>((cId, req, cfId) =>
-                comprasGeradas.Add((cId, cfId, req.Data)))
-            .ReturnsAsync((true, new Lancamento { Id = Guid.NewGuid() }, null));
-
-        // Act
-        var resultado = await _service.GerarOcorrenciaAtualEProximaAsync(contaFixaId, dataReferencia);
-
-        // Assert - deve chamar CriarCompraAsync 2 vezes com contaFixaId preenchido
-        Assert.Equal(2, resultado);
-        _mockCompraCartaoService.Verify(
-            s => s.CriarCompraAsync(
-                It.IsAny<Guid>(),
-                It.IsAny<CriarCompraRequest>(),
-                It.IsAny<Guid?>()),
-            Times.Exactly(2));
-
-        Assert.Equal(2, comprasGeradas.Count);
-        Assert.All(comprasGeradas, c => Assert.Equal(contaFixaId, c.contaFixaId));
     }
 
     #endregion
@@ -264,13 +244,16 @@ public class RecorrenciaGeradorServiceTests
     [Fact]
     public async Task LimparOcorrenciasForaDaPeriodicidadeAsync_MudaDeAnualParaMensal_NaoExcluiPagas()
     {
-        // Arrange - ContaFixa que era Anual (julio), vira Mensal, tinha lancamento PENDENTE em agosto que deveria ser deletado
+        // Arrange - ContaFixa que era Anual (julho), vira Mensal
+        // Hoje = 2026-08-26 (conforme ambiente)
+        // Conjunto correto sob Mensal/dia 15: [2026-08-15 (atual), 2026-09-15 (proximo)]
+        // Lancamento PENDENTE em 2026-11-15 fica FORA desse conjunto, deve ser deletado
         var contaFixaId = Guid.NewGuid();
-        var lancamentoPendente = new Lancamento
+        var lancamentoPendenteForaDoPar = new Lancamento
         {
             Id = Guid.NewGuid(),
             ContaId = Guid.NewGuid(),
-            Data = new DateOnly(2026, 8, 15),
+            Data = new DateOnly(2026, 11, 15),  // Fora do par recalculado (agosto 15 + setembro 15)
             Status = StatusLancamento.Pendente,
             ContaFixaId = contaFixaId
         };
@@ -294,7 +277,7 @@ public class RecorrenciaGeradorServiceTests
             Periodicidade = PeriodicidadeContaFixa.Anual, // ANTES era Anual
             MesReferencia = 7,
             Ativa = true,
-            Lancamentos = new List<Lancamento> { lancamentoPendente, lancamentoPago }
+            Lancamentos = new List<Lancamento> { lancamentoPendenteForaDoPar, lancamentoPago }
         };
 
         _mockContaFixaRepository
@@ -312,16 +295,181 @@ public class RecorrenciaGeradorServiceTests
             PeriodicidadeContaFixa.Mensal,
             null);
 
-        // Assert - deve remover o lancamento PENDENTE de agosto que nao mais faz sentido,
-        // mas NUNCA remover o PAGO
+        // Assert - deve remover o lancamento PENDENTE de novembro que nao faz sentido sob Mensal,
+        // mas NUNCA remover o PAGO (regra de fato consumado)
         Assert.True(removidos >= 0);
         _mockLancamentoRepository.Verify(
-            r => r.Remover(It.Is<Lancamento>(l => l.Id == lancamentoPendente.Id)),
+            r => r.Remover(It.Is<Lancamento>(l => l.Id == lancamentoPendenteForaDoPar.Id)),
             Times.Once);
 
         _mockLancamentoRepository.Verify(
             r => r.Remover(It.Is<Lancamento>(l => l.Id == lancamentoPago.Id)),
             Times.Never);
+    }
+
+    #endregion
+
+    #region Gap 2 (CRITICO): LimparOcorrenciasForaDaPeriodicidadeAsync deve limpar destino Cartao
+
+    [Fact]
+    public async Task LimparOcorrenciasForaDaPeriodicidadeAsync_CartaoComFaturaNaoPagaForaDoConjunto_RemoveCompra()
+    {
+        // Arrange - Gap 2: hoje o filtro e Where(l => l.Status == Pendente), mas Compra de cartao
+        // SEMPRE nasce Status=Pago. Entao pra ContaFixa-cartao esse filtro retorna vazio e a limpeza
+        // nunca dispara. A regra exige: elegivel pra exclusao quando Fatura.Status != Paga.
+        var contaFixaId = Guid.NewGuid();
+
+        // Compra vinculada a Fatura ABERTA que fica FORA do conjunto recalculado
+        var compraFaturaNaoPaga = new Lancamento
+        {
+            Id = Guid.NewGuid(),
+            ContaId = Guid.NewGuid(),
+            Data = new DateOnly(2026, 11, 15),  // Fora do par Mensal [agosto 15, setembro 15]
+            Status = StatusLancamento.Pago,
+            ContaFixaId = contaFixaId,
+            Fatura = new Fatura { Status = StatusFatura.Aberta }  // NAO PAGA = elegivel pra exclusao
+        };
+
+        // Compra vinculada a Fatura JA PAGA que fica fora do conjunto -> NUNCA remove (fato consumado)
+        var compraFaturaPaga = new Lancamento
+        {
+            Id = Guid.NewGuid(),
+            ContaId = Guid.NewGuid(),
+            Data = new DateOnly(2026, 10, 15),  // Fora do par recalculado
+            Status = StatusLancamento.Pago,
+            ContaFixaId = contaFixaId,
+            Fatura = new Fatura { Status = StatusFatura.Paga }  // JA PAGA = NUNCA remove
+        };
+
+        var contaFixa = new ContaFixa
+        {
+            Id = contaFixaId,
+            ContaId = Guid.NewGuid(),
+            Descricao = "Parcela Cartao",
+            Valor = 500m,
+            DiaVencimento = 15,
+            Periodicidade = PeriodicidadeContaFixa.Mensal,
+            Ativa = true,
+            Lancamentos = new List<Lancamento> { compraFaturaNaoPaga, compraFaturaPaga }
+        };
+
+        _mockContaFixaRepository
+            .Setup(r => r.ObterPorId(contaFixaId))
+            .ReturnsAsync(contaFixa);
+
+        var lancamentosRemovidos = new List<Lancamento>();
+        _mockLancamentoRepository
+            .Setup(r => r.Remover(It.IsAny<Lancamento>()))
+            .Callback<Lancamento>(l => lancamentosRemovidos.Add(l));
+
+        // Act
+        var removidos = await _service.LimparOcorrenciasForaDaPeriodicidadeAsync(
+            contaFixaId,
+            PeriodicidadeContaFixa.Mensal,
+            null);
+
+        // Assert - deve remover Compra com Fatura nao paga fora do conjunto,
+        // mas NUNCA Compra com Fatura paga (fato consumado)
+        Assert.True(removidos >= 0);
+        _mockLancamentoRepository.Verify(
+            r => r.Remover(It.Is<Lancamento>(l => l.Id == compraFaturaNaoPaga.Id)),
+            Times.Once,
+            "LimparOcorrenciasForaDaPeriodicidadeAsync deve remover Compra (Status=Pago) vinculada a Fatura NAO paga que fica fora do conjunto recalculado");
+
+        _mockLancamentoRepository.Verify(
+            r => r.Remover(It.Is<Lancamento>(l => l.Id == compraFaturaPaga.Id)),
+            Times.Never,
+            "LimparOcorrenciasForaDaPeriodicidadeAsync NUNCA deve remover Compra vinculada a Fatura JA PAGA (fato consumado)");
+    }
+
+    #endregion
+}
+
+[Collection("RecorrenciaGerador Integration Collection")]
+public class RecorrenciaGeradorServiceIntegrationTests
+{
+    private readonly RecorrenciaGeradorIntegrationTestsFixture _fixture;
+
+    public RecorrenciaGeradorServiceIntegrationTests(RecorrenciaGeradorIntegrationTestsFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    #region Regra 9b (q-cartao): GerarOcorrenciaAtualEProximaAsync com Cartao gera Compra
+
+    [Fact]
+    public async Task GerarOcorrenciaAtualEProximaAsync_ContaCartao_GeraCompraViaService()
+    {
+        // Arrange - integração real com SQLite
+        var contaFixaId = Guid.NewGuid();
+        var contaId = Guid.NewGuid();
+
+        var conta = new Conta
+        {
+            Id = contaId,
+            Nome = "Cartao Credito",
+            Tipo = TipoConta.Cartao,
+            Origem = OrigemConta.Manual,
+            DiaFechamento = 10,
+            DiaVencimento = 20,
+            Ativa = true
+        };
+
+        var contaFixa = new ContaFixa
+        {
+            Id = contaFixaId,
+            ContaId = contaId,
+            Descricao = "Parcela cartao",
+            Valor = 500m,
+            DiaVencimento = 10,
+            Periodicidade = PeriodicidadeContaFixa.Mensal,
+            Ativa = true
+        };
+
+        _fixture.DbContext.Contas.Add(conta);
+        _fixture.DbContext.ContasFixas.Add(contaFixa);
+        await _fixture.DbContext.SaveChangesAsync();
+
+        // Setup serviços reais
+        var contaFixaRepository = new ContaFixaRepository(_fixture.DbContext);
+        var lancamentoRepository = new LancamentoRepository(_fixture.DbContext);
+        var faturaRepository = new FaturaRepository(_fixture.DbContext);
+        var contaRepository = new ContaRepository(_fixture.DbContext);
+
+        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository);
+        var validacaoCartaoService = new ValidacaoCartaoService(contaRepository);
+        var compraCartaoService = new CompraCartaoService(
+            lancamentoRepository,
+            faturaCicloService,
+            validacaoCartaoService);
+
+        var recorrenciaGeradorService = new RecorrenciaGeradorService(
+            contaFixaRepository,
+            lancamentoRepository,
+            compraCartaoService);
+
+        var dataReferencia = new DateOnly(2026, 7, 20);
+
+        // Act
+        var resultado = await recorrenciaGeradorService.GerarOcorrenciaAtualEProximaAsync(contaFixaId, dataReferencia);
+
+        // Assert - deve gerar 2 compras (atual + proxima) com ContaFixaId preenchido
+        Assert.Equal(2, resultado);
+
+        // Verifica que foram criadas 2 compras com ContaFixaId preenchido
+        var comprasGeradas = _fixture.DbContext.Lancamentos
+            .Where(l => l.ContaFixaId == contaFixaId)
+            .ToList();
+
+        Assert.Equal(2, comprasGeradas.Count);
+
+        // Ambas têm ContaFixaId, Status Pago e são Manuais
+        Assert.All(comprasGeradas, c =>
+        {
+            Assert.Equal(contaFixaId, c.ContaFixaId);
+            Assert.Equal(StatusLancamento.Pago, c.Status);
+            Assert.True(c.Manual);
+        });
     }
 
     #endregion

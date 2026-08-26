@@ -153,11 +153,14 @@ public class RecorrenciaGeradorService : IRecorrenciaGeradorService
             dataReferencia);
 
         var lancamentosRemovidos = 0;
-        var lancamentoPendentes = contaFixa.Lancamentos
-            .Where(l => l.Status == StatusLancamento.Pendente)
+
+        var lancamentosEligiveisParaRemocao = contaFixa.Lancamentos
+            .Where(l =>
+                (l.Status == StatusLancamento.Pendente) ||  // Banco: sempre Pendente
+                (l.Fatura?.Status != StatusFatura.Paga))    // Cartao: Fatura nao paga (remove, Fatura paga nunca)
             .ToList();
 
-        foreach (var lancamento in lancamentoPendentes)
+        foreach (var lancamento in lancamentosEligiveisParaRemocao)
         {
             var ehMesAtualValido = lancamento.Data.Year == dataAtualValida.Year && lancamento.Data.Month == dataAtualValida.Month;
             var ehMesProximoValido = lancamento.Data.Year == dataProximaValida.Year && lancamento.Data.Month == dataProximaValida.Month;
