@@ -13,22 +13,28 @@ public class FaturasController : ControllerBase
     private readonly PagamentoFaturaService _pagamentoFaturaService;
     private readonly EstornoCartaoService _estornoCartaoService;
     private readonly FaturaCreditoService _faturaCreditoService;
+    private readonly IRecorrenciaGeradorService _recorrenciaGeradorService;
 
     public FaturasController(
         IFaturaRepository faturaRepository,
         PagamentoFaturaService pagamentoFaturaService,
         EstornoCartaoService estornoCartaoService,
-        FaturaCreditoService faturaCreditoService)
+        FaturaCreditoService faturaCreditoService,
+        IRecorrenciaGeradorService recorrenciaGeradorService)
     {
         _faturaRepository = faturaRepository;
         _pagamentoFaturaService = pagamentoFaturaService;
         _estornoCartaoService = estornoCartaoService;
         _faturaCreditoService = faturaCreditoService;
+        _recorrenciaGeradorService = recorrenciaGeradorService;
     }
 
     [HttpGet]
     public async Task<IActionResult> ListarFaturas(Guid contaId)
     {
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        await _recorrenciaGeradorService.GarantirOcorrenciasAtivasDoMesAsync(hoje.Year, hoje.Month);
+
         var faturas = await _faturaRepository.ListarPorConta(contaId);
         var cadeia = await _faturaCreditoService.CalcularCadeiaDaContaAsync(contaId);
 

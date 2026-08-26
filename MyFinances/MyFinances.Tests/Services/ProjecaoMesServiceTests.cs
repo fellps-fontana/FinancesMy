@@ -9,6 +9,7 @@ public class ProjecaoMesServiceTests
     private readonly Mock<IFluxoCaixaService> _fluxoCaixaServiceMock;
     private readonly Mock<IContaReceberService> _contaReceberServiceMock;
     private readonly Mock<IFaturaProjecaoService> _faturaProjecaoServiceMock;
+    private readonly Mock<IRecorrenciaGeradorService> _recorrenciaGeradorServiceMock;
     private readonly ProjecaoMesService _service;
 
     public ProjecaoMesServiceTests()
@@ -16,10 +17,12 @@ public class ProjecaoMesServiceTests
         _fluxoCaixaServiceMock = new Mock<IFluxoCaixaService>();
         _contaReceberServiceMock = new Mock<IContaReceberService>();
         _faturaProjecaoServiceMock = new Mock<IFaturaProjecaoService>();
+        _recorrenciaGeradorServiceMock = new Mock<IRecorrenciaGeradorService>();
         _service = new ProjecaoMesService(
             _fluxoCaixaServiceMock.Object,
             _contaReceberServiceMock.Object,
-            _faturaProjecaoServiceMock.Object);
+            _faturaProjecaoServiceMock.Object,
+            _recorrenciaGeradorServiceMock.Object);
     }
 
     [Fact]
@@ -277,4 +280,50 @@ public class ProjecaoMesServiceTests
         _fluxoCaixaServiceMock.Verify(s => s.CalcularTotalAPagarNoMes(ano, mes), Times.Once);
         _faturaProjecaoServiceMock.Verify(s => s.CalcularProjecaoCartaoDoMes(ano, mes), Times.Once);
     }
+
+    #region Regra 16 (x): CalcularProjecaoDoMes deve chamar GarantirOcorrenciasAtivasDoMesAsync
+
+    [Fact]
+    public async Task CalcularProjecaoDoMes_ChamaGarantirOcorrenciasAtivasDoMesAsync()
+    {
+        // Arrange - item 6 (geracao sob demanda): ProjecaoMesService deve garantir ocorrencias ativas antes de calcular
+        int ano = 2026;
+        int mes = 7;
+
+        // Setup mocks para que o calculo nao falhe
+        _fluxoCaixaServiceMock
+            .Setup(s => s.CalcularTotalRecebidoNoMes(ano, mes))
+            .ReturnsAsync(5000m);
+
+        _contaReceberServiceMock
+            .Setup(s => s.CalcularTotalAReceberEsperadoNoMes(ano, mes))
+            .ReturnsAsync(1000m);
+
+        _fluxoCaixaServiceMock
+            .Setup(s => s.CalcularTotalPagoNoMes(ano, mes))
+            .ReturnsAsync(2000m);
+
+        _fluxoCaixaServiceMock
+            .Setup(s => s.CalcularTotalAPagarNoMes(ano, mes))
+            .ReturnsAsync(1500m);
+
+        _faturaProjecaoServiceMock
+            .Setup(s => s.CalcularProjecaoCartaoDoMes(ano, mes))
+            .ReturnsAsync(new FaturaProjecaoMes(500m, 300m));
+
+        _recorrenciaGeradorServiceMock
+            .Setup(s => s.GarantirOcorrenciasAtivasDoMesAsync(ano, mes))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _service.CalcularProjecaoDoMes(ano, mes);
+
+        // Assert - deve chamar GarantirOcorrenciasAtivasDoMesAsync com ano/mes corretos
+        _recorrenciaGeradorServiceMock.Verify(
+            s => s.GarantirOcorrenciasAtivasDoMesAsync(ano, mes),
+            Times.Once,
+            "ProjecaoMesService deve chamar GarantirOcorrenciasAtivasDoMesAsync antes/durante calculo de projecao");
+    }
+
+    #endregion
 }

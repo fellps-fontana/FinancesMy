@@ -42,6 +42,9 @@ public class ContaFixaConfiguration : IEntityTypeConfiguration<ContaFixa>
                 v => v.ToStorageValue(),
                 v => PeriodicidadeContaFixaExtensions.FromStorageValue(v));
 
+        builder.Property(cf => cf.MesReferencia)
+            .HasColumnName("mes_referencia");
+
         builder.Property(cf => cf.Ativa)
             .HasColumnName("ativa")
             .IsRequired()

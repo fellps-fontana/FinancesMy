@@ -20,9 +20,13 @@ public class CompraCartaoService
         _validacaoCartaoService = validacaoCartaoService;
     }
 
+    // contaFixaId: origem da compra quando gerada por recorrencia de cartao
+    // (regra-de-negocio.md item 6/12). Comportamento existente para
+    // contaFixaId == null permanece 100% igual.
     public async Task<(bool Sucesso, Lancamento? Compra, string? Erro)> CriarCompraAsync(
         Guid contaId,
-        CriarCompraRequest request)
+        CriarCompraRequest request,
+        Guid? contaFixaId = null)
     {
         var (valido, conta, erro) = await _validacaoCartaoService.ValidarOperacaoCartaoAsync(
             contaId,
@@ -60,7 +64,7 @@ public class CompraCartaoService
             FaturaId = fatura!.Id,
             TransferenciaId = null,
             ConciliadoCom = null,
-            ContaFixaId = null
+            ContaFixaId = contaFixaId
         };
 
         await _lancamentoRepository.Adicionar(compra);

@@ -9,19 +9,26 @@ public class ContaFixaService : IContaFixaService
     private readonly IContaFixaRepository _contaFixaRepository;
     private readonly IContaRepository _contaRepository;
     private readonly ILancamentoRepository _lancamentoRepository;
+    private readonly IRecorrenciaGeradorService _recorrenciaGeradorService;
 
     public ContaFixaService(
         IContaFixaRepository contaFixaRepository,
         IContaRepository contaRepository,
-        ILancamentoRepository lancamentoRepository)
+        ILancamentoRepository lancamentoRepository,
+        IRecorrenciaGeradorService recorrenciaGeradorService)
     {
         _contaFixaRepository = contaFixaRepository;
         _contaRepository = contaRepository;
         _lancamentoRepository = lancamentoRepository;
+        _recorrenciaGeradorService = recorrenciaGeradorService;
     }
 
+    // mesReferencia: regra-de-negocio.md item 6 exige validar Conta.Tipo IN (Banco, Cartao)
+    // e mesReferencia obrigatorio quando periodicidade resolve para Anual
+    // (default = mes de hoje se omitido).
     public async Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> CriarAsync(
-        Guid contaId, string descricao, decimal valor, int diaVencimento, Guid? categoriaId, string? periodicidade = null)
+        Guid contaId, string descricao, decimal valor, int diaVencimento, Guid? categoriaId,
+        string? periodicidade = null, int? mesReferencia = null)
     {
         var validacao = ValidarDiaVencimentoEValor(diaVencimento, valor);
         if (!validacao.Valido)
@@ -47,6 +54,17 @@ public class ContaFixaService : IContaFixaService
             return (false, null, "Conta nao encontrada");
         }
 
+        if (conta.Tipo != TipoConta.Banco && conta.Tipo != TipoConta.Cartao)
+        {
+            return (false, null, $"Tipo de conta '{conta.Tipo}' nao e permitido para Conta Fixa. Apenas Banco e Cartao sao permitidos.");
+        }
+
+        var mesReferenciaFinal = mesReferencia;
+        if (periodicidadeEnum == PeriodicidadeContaFixa.Anual && !mesReferenciaFinal.HasValue)
+        {
+            mesReferenciaFinal = DateTime.Today.Month;
+        }
+
         var contaFixa = new ContaFixa
         {
             Id = Guid.NewGuid(),
@@ -56,6 +74,7 @@ public class ContaFixaService : IContaFixaService
             DiaVencimento = diaVencimento,
             CategoriaId = categoriaId,
             Periodicidade = periodicidadeEnum,
+            MesReferencia = mesReferenciaFinal,
             Ativa = true
         };
 
@@ -68,8 +87,12 @@ public class ContaFixaService : IContaFixaService
         return (true, contaFixa, null);
     }
 
+    // mesReferencia: regra-de-negocio.md item 6 exige chamar
+    // IRecorrenciaGeradorService.LimparOcorrenciasForaDaPeriodicidadeAsync
+    // quando periodicidade/mesReferencia mudam, antes de regenerar.
     public async Task<(bool Sucesso, ContaFixa? ContaFixa, string? Erro)> EditarAsync(
-        Guid contaFixaId, decimal valor, int diaVencimento, Guid? categoriaId, string? periodicidade = null)
+        Guid contaFixaId, decimal valor, int diaVencimento, Guid? categoriaId,
+        string? periodicidade = null, int? mesReferencia = null)
     {
         var validacao = ValidarDiaVencimentoEValor(diaVencimento, valor);
         if (!validacao.Valido)
@@ -95,12 +118,27 @@ public class ContaFixaService : IContaFixaService
             throw new ContaFixaNaoEncontradaException(contaFixaId);
         }
 
+        var periodicidadeMudou = periodicidadeEnum.HasValue && periodicidadeEnum.Value != contaFixa.Periodicidade;
+        var mesReferenciaMudou = mesReferencia.HasValue && mesReferencia.Value != contaFixa.MesReferencia;
+
+        if (periodicidadeMudou || mesReferenciaMudou)
+        {
+            await _recorrenciaGeradorService.LimparOcorrenciasForaDaPeriodicidadeAsync(
+                contaFixaId,
+                periodicidadeEnum ?? contaFixa.Periodicidade,
+                mesReferencia ?? contaFixa.MesReferencia);
+        }
+
         contaFixa.Valor = valor;
         contaFixa.DiaVencimento = diaVencimento;
         contaFixa.CategoriaId = categoriaId;
         if (periodicidadeEnum.HasValue)
         {
             contaFixa.Periodicidade = periodicidadeEnum.Value;
+        }
+        if (mesReferencia.HasValue)
+        {
+            contaFixa.MesReferencia = mesReferencia.Value;
         }
 
         await _contaFixaRepository.Atualizar(contaFixa);

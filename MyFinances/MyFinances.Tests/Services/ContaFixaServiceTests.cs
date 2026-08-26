@@ -11,6 +11,7 @@ public class ContaFixaServiceTests
     private readonly Mock<IContaFixaRepository> _mockContaFixaRepository;
     private readonly Mock<IContaRepository> _mockContaRepository;
     private readonly Mock<ILancamentoRepository> _mockLancamentoRepository;
+    private readonly Mock<IRecorrenciaGeradorService> _mockRecorrenciaGeradorService;
     private readonly ContaFixaService _service;
 
     public ContaFixaServiceTests()
@@ -18,10 +19,12 @@ public class ContaFixaServiceTests
         _mockContaFixaRepository = new Mock<IContaFixaRepository>();
         _mockContaRepository = new Mock<IContaRepository>();
         _mockLancamentoRepository = new Mock<ILancamentoRepository>();
+        _mockRecorrenciaGeradorService = new Mock<IRecorrenciaGeradorService>();
         _service = new ContaFixaService(
             _mockContaFixaRepository.Object,
             _mockContaRepository.Object,
-            _mockLancamentoRepository.Object);
+            _mockLancamentoRepository.Object,
+            _mockRecorrenciaGeradorService.Object);
     }
 
     #region Regra 2 (g-j): GerarLancamentosPendentes cria 2 lancamentos e respeita idempotencia
@@ -614,6 +617,132 @@ public class ContaFixaServiceTests
         // ContaFixa deve ser desativada
         _mockContaFixaRepository.Verify(
             r => r.Atualizar(It.Is<ContaFixa>(cf => !cf.Ativa)),
+            Times.Once);
+    }
+
+    #endregion
+
+    #region Regra 14 (v): CriarAsync rejeita Tipo=Investimento, default MesReferencia quando Anual
+
+    [Fact]
+    public async Task CriarAsync_ContaTipoInvestimento_RetornaSucessoFalse()
+    {
+        // Arrange - Conta tipo Investimento (nao permitido para ContaFixa)
+        var contaId = Guid.NewGuid();
+        var conta = new Conta
+        {
+            Id = contaId,
+            Nome = "Investimento",
+            Tipo = TipoConta.Investimento,
+            Ativa = true
+        };
+
+        _mockContaRepository
+            .Setup(r => r.ObterPorId(contaId))
+            .ReturnsAsync(conta);
+
+        // Act
+        var resultado = await _service.CriarAsync(
+            contaId,
+            "Conta Fixa",
+            100m,
+            15,
+            null,
+            "MENSAL",
+            null);
+
+        // Assert - deve retornar falso (Investimento nao e permitido)
+        Assert.False(resultado.Sucesso);
+        Assert.NotNull(resultado.Erro);
+        Assert.Contains("Investimento", resultado.Erro, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CriarAsync_PeriodicidadeAnualSemMesReferencia_DefaultMesDeHoje()
+    {
+        // Arrange - Conta Banco valida, periodicidade Anual, sem mesReferencia
+        var contaId = Guid.NewGuid();
+        var conta = new Conta
+        {
+            Id = contaId,
+            Nome = "Conta Corrente",
+            Tipo = TipoConta.Banco,
+            Ativa = true
+        };
+
+        var contaFixaCriada = (ContaFixa?)null;
+        _mockContaRepository
+            .Setup(r => r.ObterPorId(contaId))
+            .ReturnsAsync(conta);
+
+        _mockContaFixaRepository
+            .Setup(r => r.Adicionar(It.IsAny<ContaFixa>()))
+            .Callback<ContaFixa>(cf => contaFixaCriada = cf);
+
+        _mockContaFixaRepository
+            .Setup(r => r.ExisteLancamentoGerado(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(false);
+
+        // Act - passar null para mesReferencia e "ANUAL" para periodicidade
+        var resultado = await _service.CriarAsync(
+            contaId,
+            "Seguro",
+            500m,
+            10,
+            null,
+            "ANUAL",
+            null); // mesReferencia = null, deve defaultar
+
+        // Assert - ContaFixa criada com MesReferencia = mes de hoje
+        Assert.True(resultado.Sucesso);
+        Assert.NotNull(contaFixaCriada);
+        Assert.NotNull(contaFixaCriada.MesReferencia);
+        Assert.Equal(DateTime.Today.Month, contaFixaCriada.MesReferencia.Value);
+    }
+
+    #endregion
+
+    #region Regra 15 (w): EditarAsync chama LimparOcorrenciasForaDaPeriodicidadeAsync quando periodicidade/mesReferencia mudam
+
+    [Fact]
+    public async Task EditarAsync_PeriodicidadeOuMesReferenciamudam_ChamaLimpeza()
+    {
+        // Arrange - ContaFixa Mensal existente, vai ser editada para Anual
+        var contaFixaId = Guid.NewGuid();
+        var contaFixa = new ContaFixa
+        {
+            Id = contaFixaId,
+            ContaId = Guid.NewGuid(),
+            Descricao = "Conta antiga",
+            Valor = 100m,
+            DiaVencimento = 10,
+            Periodicidade = PeriodicidadeContaFixa.Mensal,
+            MesReferencia = null,
+            Ativa = true,
+            Lancamentos = new List<Lancamento>()
+        };
+
+        _mockContaFixaRepository
+            .Setup(r => r.ObterPorId(contaFixaId))
+            .ReturnsAsync(contaFixa);
+
+        // Act - muda periodicidade para Anual e especifica mesReferencia = 7
+        var resultado = await _service.EditarAsync(
+            contaFixaId,
+            150m,
+            15,
+            null,
+            "ANUAL",
+            7); // mesReferencia muda
+
+        // Assert - deve ter chamado LimparOcorrenciasForaDaPeriodicidadeAsync
+        // para remover lancamentos que nao batem com a nova periodicidade
+        Assert.True(resultado.Sucesso);
+        _mockRecorrenciaGeradorService.Verify(
+            s => s.LimparOcorrenciasForaDaPeriodicidadeAsync(
+                contaFixaId,
+                PeriodicidadeContaFixa.Anual,
+                7),
             Times.Once);
     }
 
