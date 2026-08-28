@@ -13,20 +13,152 @@ public static class RecebivelRecorrenteOcorrenciaFactory
     // = molde.Valor. DataPrevista = dataOcorrencia. DataRegistro = dataGeracao.
     public static ContaReceber CriarOcorrenciaPendente(
         RecebivelRecorrente molde, DateOnly dataOcorrencia, DateOnly dataGeracao)
-        => throw new NotImplementedException();
+    {
+        return new ContaReceber
+        {
+            Id = Guid.NewGuid(),
+            Tipo = TipoContaReceber.Recebivel,
+            Descricao = molde.Descricao,
+            Pessoa = null,
+            ValorTotal = molde.Valor,
+            DataRegistro = dataGeracao,
+            DataPrevista = dataOcorrencia,
+            CategoriaId = molde.CategoriaId,
+            Status = StatusContaReceber.Pendente,
+            RecebivelRecorrenteId = molde.Id
+        };
+    }
 
-    // Proxima data de ocorrencia a partir de dataAtual: Mensal +1 mes, Anual +1
-    // ano, Semanal +7 dias. Clamp de dia ancorado em molde.DiaVencimento
-    // (Mensal/Anual). Semanal nao usa DiaVencimento.
+    // Proxima data de ocorrencia estritamente depois de dataAtual: Mensal +1 mes
+    // (dia ancorado em DiaVencimento), Anual +1 ano (mes = MesReferencia, dia =
+    // DiaVencimento), Semanal = o proximo DiaDaSemana alvo depois de dataAtual
+    // (se dataAtual ja e o alvo, +7).
     public static DateOnly ProximaOcorrencia(DateOnly dataAtual, RecebivelRecorrente molde)
-        => throw new NotImplementedException();
+    {
+        switch (molde.Periodicidade)
+        {
+            case PeriodicidadeRecebivel.Mensal:
+            {
+                var proximo = dataAtual.AddMonths(1);
+                return DataAncorada(proximo.Year, proximo.Month, molde.DiaVencimento!.Value);
+            }
+            case PeriodicidadeRecebivel.Anual:
+            {
+                var ano = dataAtual.Year + 1;
+                return DataAncorada(ano, molde.MesReferencia!.Value, molde.DiaVencimento!.Value);
+            }
+            case PeriodicidadeRecebivel.Semanal:
+            {
+                var alvo = (int)molde.DiaDaSemana!.Value.ToDayOfWeek();
+                var dias = ((alvo - (int)dataAtual.DayOfWeek) + 7) % 7;
+                if (dias == 0)
+                {
+                    dias = 7;
+                }
+                return dataAtual.AddDays(dias);
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(molde));
+        }
+    }
+
+    // Primeira data de ocorrencia do molde >= minInclusive.
+    public static DateOnly PrimeiraOcorrenciaAPartirDe(RecebivelRecorrente molde, DateOnly minInclusive)
+    {
+        switch (molde.Periodicidade)
+        {
+            case PeriodicidadeRecebivel.Mensal:
+            {
+                var candidata = DataAncorada(minInclusive.Year, minInclusive.Month, molde.DiaVencimento!.Value);
+                if (candidata < minInclusive)
+                {
+                    var proximo = new DateOnly(minInclusive.Year, minInclusive.Month, 1).AddMonths(1);
+                    candidata = DataAncorada(proximo.Year, proximo.Month, molde.DiaVencimento.Value);
+                }
+                return candidata;
+            }
+            case PeriodicidadeRecebivel.Anual:
+            {
+                var candidata = DataAncorada(minInclusive.Year, molde.MesReferencia!.Value, molde.DiaVencimento!.Value);
+                if (candidata < minInclusive)
+                {
+                    candidata = DataAncorada(minInclusive.Year + 1, molde.MesReferencia.Value, molde.DiaVencimento.Value);
+                }
+                return candidata;
+            }
+            case PeriodicidadeRecebivel.Semanal:
+            {
+                var alvo = (int)molde.DiaDaSemana!.Value.ToDayOfWeek();
+                var dias = ((alvo - (int)minInclusive.DayOfWeek) + 7) % 7;
+                return minInclusive.AddDays(dias);
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(molde));
+        }
+    }
 
     // Todas as datas de ocorrencia do molde dentro de [inicio, fim] (inclusive):
-    // Mensal -> DiaVencimento de cada mes; Anual -> MesReferencia/DiaVencimento de
-    // cada ano; Semanal -> a partir da ocorrencia corrente (dia alvo
-    // molde.DiaDaSemana dentro da semana de `inicio`, mesmo que ja passou),
-    // somando 7 dias. Dia clampado ao ultimo dia do mes quando exceder (Mensal/Anual).
+    // Mensal -> DiaVencimento clampado de cada mes; Anual -> MesReferencia/
+    // DiaVencimento clampado de cada ano; Semanal -> a partir do primeiro
+    // DiaDaSemana alvo >= inicio, somando 7 dias.
     public static IReadOnlyList<DateOnly> CalcularOcorrenciasNoIntervalo(
         RecebivelRecorrente molde, DateOnly inicio, DateOnly fim)
-        => throw new NotImplementedException();
+    {
+        var ocorrencias = new List<DateOnly>();
+        if (inicio > fim)
+        {
+            return ocorrencias;
+        }
+
+        switch (molde.Periodicidade)
+        {
+            case PeriodicidadeRecebivel.Mensal:
+            {
+                var mes = new DateOnly(inicio.Year, inicio.Month, 1);
+                while (mes <= fim)
+                {
+                    var data = DataAncorada(mes.Year, mes.Month, molde.DiaVencimento!.Value);
+                    if (data >= inicio && data <= fim)
+                    {
+                        ocorrencias.Add(data);
+                    }
+                    mes = mes.AddMonths(1);
+                }
+                break;
+            }
+            case PeriodicidadeRecebivel.Anual:
+            {
+                for (var ano = inicio.Year; ano <= fim.Year; ano++)
+                {
+                    var data = DataAncorada(ano, molde.MesReferencia!.Value, molde.DiaVencimento!.Value);
+                    if (data >= inicio && data <= fim)
+                    {
+                        ocorrencias.Add(data);
+                    }
+                }
+                break;
+            }
+            case PeriodicidadeRecebivel.Semanal:
+            {
+                var data = PrimeiraOcorrenciaAPartirDe(molde, inicio);
+                while (data <= fim)
+                {
+                    ocorrencias.Add(data);
+                    data = data.AddDays(7);
+                }
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(molde));
+        }
+
+        return ocorrencias;
+    }
+
+    // Dia clampado ao ultimo dia do mes quando dia excede os dias do mes/ano.
+    private static DateOnly DataAncorada(int ano, int mes, int dia)
+    {
+        var diasNoMes = DateTime.DaysInMonth(ano, mes);
+        return new DateOnly(ano, mes, Math.Min(dia, diasNoMes));
+    }
 }

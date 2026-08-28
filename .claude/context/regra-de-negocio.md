@@ -799,12 +799,16 @@ check-then-act registrada no item 6.
    job, materializando so nos gatilhos e sob demanda (item 6).
 
 **Janela de materializacao.** Ocorrencias com data no intervalo
-[primeiro dia do mes corrente, hoje + 90 dias]. Comecar a janela no
-primeiro dia do mes corrente (e nao na data da ultima execucao do job)
-limita o backfill a ~1 mes por mais tempo que o job fique fora do ar, e
-garante que a ocorrencia do mes corrente — a unica que entra na projecao
-(item 9) — sempre exista. Meses fechados anteriores nao sao reconstruidos:
-recebivel esperado de mes fechado nao e mais projecao.
+[primeiro dia do mes corrente, `max(hoje + 90 dias, data da proxima
+ocorrencia do molde)`]. Comecar a janela no primeiro dia do mes corrente (e
+nao na data da ultima execucao do job) limita o backfill a ~1 mes por mais
+tempo que o job fique fora do ar, e garante que a ocorrencia do mes corrente
+— a unica que entra na projecao (item 9) — sempre exista. Meses fechados
+anteriores nao sao reconstruidos: recebivel esperado de mes fechado nao e
+mais projecao. O `max(...)` garante que TODO molde ativo sempre tenha ao
+menos a proxima ocorrencia materializada (espelha o "atual + proxima" do
+item 6) — sem isso um molde ANUAL cadastrado com muitos meses de
+antecedencia ficaria sem nenhuma ocorrencia ate o job de ~90 dias antes.
 
 **Heranca de categoria.** Toda ocorrencia materializada nasce com
 `categoria_id` = a categoria do molde no momento da materializacao. Um
