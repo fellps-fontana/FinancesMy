@@ -43,7 +43,7 @@ public class ProjecaoMesServiceTests
         decimal totalNaoPagoFatura = 300m;
 
         _recebivelRecorrenteGeradorServiceMock
-            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Setup(s => s.MaterializarTodosAtivosNaJanelaPadraoAsync(It.IsAny<DateOnly>()))
             .Returns(Task.CompletedTask);
 
         _fluxoCaixaServiceMock
@@ -93,7 +93,7 @@ public class ProjecaoMesServiceTests
         decimal totalNaoPagoFatura = 500m;
 
         _recebivelRecorrenteGeradorServiceMock
-            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Setup(s => s.MaterializarTodosAtivosNaJanelaPadraoAsync(It.IsAny<DateOnly>()))
             .Returns(Task.CompletedTask);
 
         _fluxoCaixaServiceMock
@@ -144,7 +144,7 @@ public class ProjecaoMesServiceTests
         decimal totalNaoPagoFatura = 500m;
 
         _recebivelRecorrenteGeradorServiceMock
-            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Setup(s => s.MaterializarTodosAtivosNaJanelaPadraoAsync(It.IsAny<DateOnly>()))
             .Returns(Task.CompletedTask);
 
         _fluxoCaixaServiceMock
@@ -190,7 +190,7 @@ public class ProjecaoMesServiceTests
         decimal totalNaoPagoFatura = 200m;
 
         _recebivelRecorrenteGeradorServiceMock
-            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Setup(s => s.MaterializarTodosAtivosNaJanelaPadraoAsync(It.IsAny<DateOnly>()))
             .Returns(Task.CompletedTask);
 
         _fluxoCaixaServiceMock
@@ -236,7 +236,7 @@ public class ProjecaoMesServiceTests
         decimal totalNaoPagoFatura = 0m;
 
         _recebivelRecorrenteGeradorServiceMock
-            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Setup(s => s.MaterializarTodosAtivosNaJanelaPadraoAsync(It.IsAny<DateOnly>()))
             .Returns(Task.CompletedTask);
 
         _fluxoCaixaServiceMock
@@ -274,7 +274,7 @@ public class ProjecaoMesServiceTests
         int mes = 12;
 
         _recebivelRecorrenteGeradorServiceMock
-            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Setup(s => s.MaterializarTodosAtivosNaJanelaPadraoAsync(It.IsAny<DateOnly>()))
             .Returns(Task.CompletedTask);
 
         _fluxoCaixaServiceMock
@@ -319,7 +319,7 @@ public class ProjecaoMesServiceTests
 
         // Setup mocks para que o calculo nao falhe
         _recebivelRecorrenteGeradorServiceMock
-            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Setup(s => s.MaterializarTodosAtivosNaJanelaPadraoAsync(It.IsAny<DateOnly>()))
             .Returns(Task.CompletedTask);
 
         _fluxoCaixaServiceMock
@@ -348,6 +348,12 @@ public class ProjecaoMesServiceTests
 
         // Act
         await _service.CalcularProjecaoDoMes(ano, mes);
+
+        // Assert - deve chamar MaterializarTodosAtivosNaJanelaPadraoAsync (rede de seguranca da projecao)
+        _recebivelRecorrenteGeradorServiceMock.Verify(
+            s => s.MaterializarTodosAtivosNaJanelaPadraoAsync(It.IsAny<DateOnly>()),
+            Times.Once,
+            "ProjecaoMesService deve chamar MaterializarTodosAtivosNaJanelaPadraoAsync na janela padrao antes de calcular");
 
         // Assert - deve chamar GarantirOcorrenciasAtivasDoMesAsync com ano/mes corretos
         _recorrenciaGeradorServiceMock.Verify(

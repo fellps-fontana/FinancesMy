@@ -403,6 +403,13 @@ public class RecebivelRecorrenteServiceTests
             // Deve existir >= 1 conta PENDENTE com DataPrevista em marco (mes 3)
             var contasMarco = contasAposEdit.Where(c => c.DataPrevista.HasValue && c.DataPrevista.Value.Month == 3).ToList();
             Assert.NotEmpty(contasMarco);
+
+            // ASSERCAO INCONDICIONAL: apos trocar MENSAL(dia 10) -> ANUAL(mes 3),
+            // NENHUMA conta PENDENTE pode ter DataPrevista.Month != 3.
+            // Se RemoverPendentesForaDoConjunto for removida do RegenerarOcorrenciasAsync,
+            // este teste FALHA. Garante que as datas antigas foram limpas.
+            Assert.NotEmpty(contasAposEdit);
+            Assert.All(contasAposEdit, c => Assert.Equal(3, c.DataPrevista!.Value.Month));
         }
         finally
         {
