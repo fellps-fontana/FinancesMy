@@ -31,26 +31,20 @@ public class RecebivelRecorrenteMaterializacaoJob : BackgroundService
 
         try
         {
-            // Executa uma vez no startup
-            await ExecutarMaterializacao(stoppingToken);
-
-            // Depois executa periodicamente a cada intervalo
-            while (await timer.WaitForNextTickAsync(stoppingToken))
+            // Executa uma vez no startup, depois a cada intervalo.
+            do
             {
-                await ExecutarMaterializacao(stoppingToken);
+                await ExecutarMaterializacao();
             }
+            while (await timer.WaitForNextTickAsync(stoppingToken));
         }
         catch (OperationCanceledException)
         {
-            // Cancelamento normal do timer durante shutdown
-        }
-        finally
-        {
-            timer.Dispose();
+            // Cancelamento normal durante shutdown.
         }
     }
 
-    private async Task ExecutarMaterializacao(CancellationToken stoppingToken)
+    private async Task ExecutarMaterializacao()
     {
         try
         {
@@ -60,6 +54,7 @@ public class RecebivelRecorrenteMaterializacaoJob : BackgroundService
         }
         catch (Exception ex)
         {
+            // clean-code.md: falha de job nao pode quebrar o app -- loga e segue.
             _logger.LogError(ex, "Erro ao materializar recebivel recorrente no job");
         }
     }

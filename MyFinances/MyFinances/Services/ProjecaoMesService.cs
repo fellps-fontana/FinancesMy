@@ -24,8 +24,10 @@ public class ProjecaoMesService : IProjecaoMesService
 
     public async Task<ProjecaoMesResultado> CalcularProjecaoDoMes(int ano, int mes)
     {
-        // Rede de seguranca (item 15): materializa recebivel recorrente antes do calculo
-        await _recebivelRecorrenteGeradorService.MaterializarTodosAtivosAsync(DateOnly.FromDateTime(DateTime.UtcNow.Date));
+        // Rede de seguranca (item 15): materializa recebivel recorrente na janela
+        // padrao antes do calculo -- sem estender ate a proxima ocorrencia.
+        await _recebivelRecorrenteGeradorService.MaterializarTodosAtivosNaJanelaPadraoAsync(
+            DateOnly.FromDateTime(DateTime.UtcNow.Date));
 
         await _recorrenciaGeradorService.GarantirOcorrenciasAtivasDoMesAsync(ano, mes);
 

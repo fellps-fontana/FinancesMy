@@ -141,7 +141,8 @@ public class RecebivelRecorrenteService : IRecebivelRecorrenteService
         return await _recebivelRecorrenteRepository.Listar(ativaFiltro);
     }
 
-    private static DateOnly Hoje() => DateOnly.FromDateTime(DateTime.Today);
+    // stack.md: datas em UTC no banco. Igual ao Job e ao ProjecaoMesService.
+    private static DateOnly Hoje() => DateOnly.FromDateTime(DateTime.UtcNow.Date);
 
     // Item 15: validacao por periodicidade (espelha ValidarDiaVencimentoEValor do
     // ContaFixaService) + recorte dos campos incompativeis para null.

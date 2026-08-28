@@ -12,9 +12,14 @@ public interface IRecebivelRecorrenteGeradorService
     // Retorna quantas conta_receber foram criadas.
     Task<int> MaterializarOcorrenciasAsync(Guid recebivelRecorrenteId, DateOnly dataReferencia);
 
-    // Percorre todos os moldes ativos e materializa. Entrypoint do job e da
-    // rede de seguranca da projecao do mes.
+    // Percorre todos os moldes ativos e materializa (janela estendida ate a
+    // proxima ocorrencia). Entrypoint do job.
     Task MaterializarTodosAtivosAsync(DateOnly dataReferencia);
+
+    // Percorre todos os moldes ativos materializando SO a janela padrao
+    // [primeiro dia do mes, hoje + 90 dias]. Entrypoint da rede de seguranca da
+    // projecao do mes (item 15: nao varre ano/mes arbitrario).
+    Task MaterializarTodosAtivosNaJanelaPadraoAsync(DateOnly dataReferencia);
 
     // Hard delete das ocorrencias conta_receber do molde ainda com status PENDENTE.
     // Preserva PARCIAL/RECEBIDO (fato consumado). Usado no desativar.
