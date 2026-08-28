@@ -25,9 +25,42 @@ public class RecebivelRecorrenteMaterializacaoJob : BackgroundService
         _logger = logger;
     }
 
-    // ESQUELETO: no-op ate levi implementar o loop (PeriodicTimer 24h + 1 execucao
-    // no startup, abrindo escopo de DI e chamando MaterializarTodosAtivosAsync).
-    // NAO pode lancar aqui -- ExecuteAsync que falha no startup derruba o host.
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
-        => Task.CompletedTask;
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        using var timer = new PeriodicTimer(Intervalo);
+
+        try
+        {
+            // Executa uma vez no startup
+            await ExecutarMaterializacao(stoppingToken);
+
+            // Depois executa periodicamente a cada intervalo
+            while (await timer.WaitForNextTickAsync(stoppingToken))
+            {
+                await ExecutarMaterializacao(stoppingToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelamento normal do timer durante shutdown
+        }
+        finally
+        {
+            timer.Dispose();
+        }
+    }
+
+    private async Task ExecutarMaterializacao(CancellationToken stoppingToken)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var gerador = scope.ServiceProvider.GetRequiredService<IRecebivelRecorrenteGeradorService>();
+            await gerador.MaterializarTodosAtivosAsync(DateOnly.FromDateTime(DateTime.UtcNow.Date));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao materializar recebivel recorrente no job");
+        }
+    }
 }

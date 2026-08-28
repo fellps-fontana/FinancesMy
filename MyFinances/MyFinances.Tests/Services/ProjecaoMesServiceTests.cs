@@ -10,6 +10,7 @@ public class ProjecaoMesServiceTests
     private readonly Mock<IContaReceberService> _contaReceberServiceMock;
     private readonly Mock<IFaturaProjecaoService> _faturaProjecaoServiceMock;
     private readonly Mock<IRecorrenciaGeradorService> _recorrenciaGeradorServiceMock;
+    private readonly Mock<IRecebivelRecorrenteGeradorService> _recebivelRecorrenteGeradorServiceMock;
     private readonly ProjecaoMesService _service;
 
     public ProjecaoMesServiceTests()
@@ -18,11 +19,13 @@ public class ProjecaoMesServiceTests
         _contaReceberServiceMock = new Mock<IContaReceberService>();
         _faturaProjecaoServiceMock = new Mock<IFaturaProjecaoService>();
         _recorrenciaGeradorServiceMock = new Mock<IRecorrenciaGeradorService>();
+        _recebivelRecorrenteGeradorServiceMock = new Mock<IRecebivelRecorrenteGeradorService>();
         _service = new ProjecaoMesService(
             _fluxoCaixaServiceMock.Object,
             _contaReceberServiceMock.Object,
             _faturaProjecaoServiceMock.Object,
-            _recorrenciaGeradorServiceMock.Object);
+            _recorrenciaGeradorServiceMock.Object,
+            _recebivelRecorrenteGeradorServiceMock.Object);
     }
 
     [Fact]
@@ -38,6 +41,10 @@ public class ProjecaoMesServiceTests
         decimal totalAPagarFluxoCaixa = 1500m;
         decimal totalPagoFatura = 500m;
         decimal totalNaoPagoFatura = 300m;
+
+        _recebivelRecorrenteGeradorServiceMock
+            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Returns(Task.CompletedTask);
 
         _fluxoCaixaServiceMock
             .Setup(s => s.CalcularTotalRecebidoNoMes(ano, mes))
@@ -84,6 +91,10 @@ public class ProjecaoMesServiceTests
         decimal totalAPagarFluxoCaixa = 1500m;
         decimal totalPagoFatura = 1000m;
         decimal totalNaoPagoFatura = 500m;
+
+        _recebivelRecorrenteGeradorServiceMock
+            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Returns(Task.CompletedTask);
 
         _fluxoCaixaServiceMock
             .Setup(s => s.CalcularTotalRecebidoNoMes(ano, mes))
@@ -132,6 +143,10 @@ public class ProjecaoMesServiceTests
         decimal totalPagoFatura = 1000m;
         decimal totalNaoPagoFatura = 500m;
 
+        _recebivelRecorrenteGeradorServiceMock
+            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Returns(Task.CompletedTask);
+
         _fluxoCaixaServiceMock
             .Setup(s => s.CalcularTotalRecebidoNoMes(ano, mes))
             .ReturnsAsync(totalRecebidoNoMes);
@@ -173,6 +188,10 @@ public class ProjecaoMesServiceTests
         decimal totalAPagarFluxoCaixa = 1500m;
         decimal totalPagoFatura = 800m;
         decimal totalNaoPagoFatura = 200m;
+
+        _recebivelRecorrenteGeradorServiceMock
+            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Returns(Task.CompletedTask);
 
         _fluxoCaixaServiceMock
             .Setup(s => s.CalcularTotalRecebidoNoMes(ano, mes))
@@ -216,6 +235,10 @@ public class ProjecaoMesServiceTests
         decimal totalPagoFatura = 0m;
         decimal totalNaoPagoFatura = 0m;
 
+        _recebivelRecorrenteGeradorServiceMock
+            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Returns(Task.CompletedTask);
+
         _fluxoCaixaServiceMock
             .Setup(s => s.CalcularTotalRecebidoNoMes(ano, mes))
             .ReturnsAsync(totalRecebidoNoMes);
@@ -249,6 +272,10 @@ public class ProjecaoMesServiceTests
         // Arrange
         int ano = 2025;
         int mes = 12;
+
+        _recebivelRecorrenteGeradorServiceMock
+            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Returns(Task.CompletedTask);
 
         _fluxoCaixaServiceMock
             .Setup(s => s.CalcularTotalRecebidoNoMes(ano, mes))
@@ -291,6 +318,10 @@ public class ProjecaoMesServiceTests
         int mes = 7;
 
         // Setup mocks para que o calculo nao falhe
+        _recebivelRecorrenteGeradorServiceMock
+            .Setup(s => s.MaterializarTodosAtivosAsync(It.IsAny<DateOnly>()))
+            .Returns(Task.CompletedTask);
+
         _fluxoCaixaServiceMock
             .Setup(s => s.CalcularTotalRecebidoNoMes(ano, mes))
             .ReturnsAsync(5000m);

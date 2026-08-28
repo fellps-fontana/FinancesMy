@@ -6,21 +6,27 @@ public class ProjecaoMesService : IProjecaoMesService
     private readonly IContaReceberService _contaReceberService;
     private readonly IFaturaProjecaoService _faturaProjecaoService;
     private readonly IRecorrenciaGeradorService _recorrenciaGeradorService;
+    private readonly IRecebivelRecorrenteGeradorService _recebivelRecorrenteGeradorService;
 
     public ProjecaoMesService(
         IFluxoCaixaService fluxoCaixaService,
         IContaReceberService contaReceberService,
         IFaturaProjecaoService faturaProjecaoService,
-        IRecorrenciaGeradorService recorrenciaGeradorService)
+        IRecorrenciaGeradorService recorrenciaGeradorService,
+        IRecebivelRecorrenteGeradorService recebivelRecorrenteGeradorService)
     {
         _fluxoCaixaService = fluxoCaixaService;
         _contaReceberService = contaReceberService;
         _faturaProjecaoService = faturaProjecaoService;
         _recorrenciaGeradorService = recorrenciaGeradorService;
+        _recebivelRecorrenteGeradorService = recebivelRecorrenteGeradorService;
     }
 
     public async Task<ProjecaoMesResultado> CalcularProjecaoDoMes(int ano, int mes)
     {
+        // Rede de seguranca (item 15): materializa recebivel recorrente antes do calculo
+        await _recebivelRecorrenteGeradorService.MaterializarTodosAtivosAsync(DateOnly.FromDateTime(DateTime.UtcNow.Date));
+
         await _recorrenciaGeradorService.GarantirOcorrenciasAtivasDoMesAsync(ano, mes);
 
         var totalRecebidoNoMes = await _fluxoCaixaService.CalcularTotalRecebidoNoMes(ano, mes);

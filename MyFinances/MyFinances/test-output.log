@@ -1,0 +1,3 @@
+  Determinando os projetos a serem restaurados...
+D:\Estudos\MyFinances\.claude\worktrees\contas-receber-recorrente\MyFinances\MyFinances\MyFinances.csproj : warning NU1903: O pacote 'Microsoft.OpenApi' 2.0.0 tem uma alta vulnerabilidade de gravidade conhecida, https://github.com/advisories/GHSA-v5pm-xwqc-g5wc
+  Todos os projetos estão atualizados para restauração.
