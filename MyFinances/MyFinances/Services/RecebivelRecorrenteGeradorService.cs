@@ -121,7 +121,10 @@ public class RecebivelRecorrenteGeradorService : IRecebivelRecorrenteGeradorServ
     {
         var inicio = new DateOnly(dataReferencia.Year, dataReferencia.Month, 1);
         var fimLookahead = dataReferencia.AddDays(LookaheadDias);
-        var proximaOcorrencia = RecebivelRecorrenteOcorrenciaFactory.PrimeiraOcorrenciaAPartirDe(molde, inicio);
+        // item 15: a janela vai ate no minimo a proxima ocorrencia a partir de
+        // hoje -- garante que um molde ANUAL distante materialize a proxima
+        // mesmo alem do lookahead de 90 dias.
+        var proximaOcorrencia = RecebivelRecorrenteOcorrenciaFactory.PrimeiraOcorrenciaAPartirDe(molde, dataReferencia);
         var fim = proximaOcorrencia > fimLookahead ? proximaOcorrencia : fimLookahead;
         return (inicio, fim);
     }

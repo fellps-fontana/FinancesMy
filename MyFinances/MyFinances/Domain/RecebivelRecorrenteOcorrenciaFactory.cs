@@ -29,40 +29,8 @@ public static class RecebivelRecorrenteOcorrenciaFactory
         };
     }
 
-    // Proxima data de ocorrencia estritamente depois de dataAtual: Mensal +1 mes
-    // (dia ancorado em DiaVencimento), Anual +1 ano (mes = MesReferencia, dia =
-    // DiaVencimento), Semanal = o proximo DiaDaSemana alvo depois de dataAtual
-    // (se dataAtual ja e o alvo, +7).
-    public static DateOnly ProximaOcorrencia(DateOnly dataAtual, RecebivelRecorrente molde)
-    {
-        switch (molde.Periodicidade)
-        {
-            case PeriodicidadeRecebivel.Mensal:
-            {
-                var proximo = dataAtual.AddMonths(1);
-                return DataAncorada(proximo.Year, proximo.Month, molde.DiaVencimento!.Value);
-            }
-            case PeriodicidadeRecebivel.Anual:
-            {
-                var ano = dataAtual.Year + 1;
-                return DataAncorada(ano, molde.MesReferencia!.Value, molde.DiaVencimento!.Value);
-            }
-            case PeriodicidadeRecebivel.Semanal:
-            {
-                var alvo = (int)molde.DiaDaSemana!.Value.ToDayOfWeek();
-                var dias = ((alvo - (int)dataAtual.DayOfWeek) + 7) % 7;
-                if (dias == 0)
-                {
-                    dias = 7;
-                }
-                return dataAtual.AddDays(dias);
-            }
-            default:
-                throw new ArgumentOutOfRangeException(nameof(molde));
-        }
-    }
-
-    // Primeira data de ocorrencia do molde >= minInclusive.
+    // Primeira data de ocorrencia do molde >= minInclusive. E a "proxima
+    // ocorrencia" quando minInclusive = hoje (usada pela janela do gerador).
     public static DateOnly PrimeiraOcorrenciaAPartirDe(RecebivelRecorrente molde, DateOnly minInclusive)
     {
         switch (molde.Periodicidade)

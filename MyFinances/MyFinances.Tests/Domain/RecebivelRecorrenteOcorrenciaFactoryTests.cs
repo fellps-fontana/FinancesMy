@@ -5,204 +5,147 @@ namespace MyFinances.Tests.Domain;
 
 public class RecebivelRecorrenteOcorrenciaFactoryTests
 {
-    #region Regra ProximaOcorrencia: MENSAL +1 mes, ANUAL +1 ano, SEMANAL +7 dias
+    #region PrimeiraOcorrenciaAPartirDe: ancora por periodicidade (MENSAL/ANUAL/SEMANAL)
 
     [Fact]
-    public void ProximaOcorrencia_Mensal_SomaPrimeiroMesAncoroDiaVencimento()
+    public void PrimeiraOcorrenciaAPartirDe_Mensal_DiaDoMesAindaNaoPassou_RetornaEsteMes()
     {
-        // Arrange
-        var dataAtual = new DateOnly(2026, 7, 15);
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Receita mensal",
-            Valor = 1000m,
-            Periodicidade = PeriodicidadeRecebivel.Mensal,
-            DiaVencimento = 15,
-            Ativa = true
-        };
+        var molde = MoldeMensal(diaVencimento: 15);
 
-        // Act
-        var proximaData = RecebivelRecorrenteOcorrenciaFactory.ProximaOcorrencia(dataAtual, molde);
+        var data = RecebivelRecorrenteOcorrenciaFactory.PrimeiraOcorrenciaAPartirDe(molde, new DateOnly(2026, 7, 10));
 
-        // Assert - deve ser agosto (proximo mes), dia 15
-        Assert.Equal(15, proximaData.Day);
-        Assert.Equal(8, proximaData.Month);
-        Assert.Equal(2026, proximaData.Year);
+        Assert.Equal(new DateOnly(2026, 7, 15), data);
     }
 
     [Fact]
-    public void ProximaOcorrencia_Mensal_AventuraDezembroParaJaneiro()
+    public void PrimeiraOcorrenciaAPartirDe_Mensal_DiaDoMesJaPassou_RetornaProximoMes()
     {
-        // Arrange
-        var dataAtual = new DateOnly(2026, 12, 20);
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Receita",
-            Valor = 500m,
-            Periodicidade = PeriodicidadeRecebivel.Mensal,
-            DiaVencimento = 20,
-            Ativa = true
-        };
+        var molde = MoldeMensal(diaVencimento: 15);
 
-        // Act
-        var proximaData = RecebivelRecorrenteOcorrenciaFactory.ProximaOcorrencia(dataAtual, molde);
+        var data = RecebivelRecorrenteOcorrenciaFactory.PrimeiraOcorrenciaAPartirDe(molde, new DateOnly(2026, 7, 16));
 
-        // Assert - deve ser janeiro de 2027, dia 20
-        Assert.Equal(20, proximaData.Day);
-        Assert.Equal(1, proximaData.Month);
-        Assert.Equal(2027, proximaData.Year);
+        Assert.Equal(new DateOnly(2026, 8, 15), data);
     }
 
     [Fact]
-    public void ProximaOcorrencia_Anual_SomaUmAnoAncoraMesReferencia()
+    public void PrimeiraOcorrenciaAPartirDe_Mensal_DezembroParaJaneiro()
     {
-        // Arrange
-        var dataAtual = new DateOnly(2026, 7, 15);
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Receita anual",
-            Valor = 1000m,
-            Periodicidade = PeriodicidadeRecebivel.Anual,
-            MesReferencia = 7,
-            DiaVencimento = 15,
-            Ativa = true
-        };
+        var molde = MoldeMensal(diaVencimento: 20);
 
-        // Act
-        var proximaData = RecebivelRecorrenteOcorrenciaFactory.ProximaOcorrencia(dataAtual, molde);
+        var data = RecebivelRecorrenteOcorrenciaFactory.PrimeiraOcorrenciaAPartirDe(molde, new DateOnly(2026, 12, 21));
 
-        // Assert - deve ser 2027, mes 7, dia 15
-        Assert.Equal(15, proximaData.Day);
-        Assert.Equal(7, proximaData.Month);
-        Assert.Equal(2027, proximaData.Year);
+        Assert.Equal(new DateOnly(2027, 1, 20), data);
     }
 
     [Fact]
-    public void ProximaOcorrencia_Semanal_SomaSeteDias()
+    public void PrimeiraOcorrenciaAPartirDe_Anual_MesReferenciaJaPassou_RetornaProximoAno()
     {
-        // Arrange
-        var dataAtual = new DateOnly(2026, 8, 26); // Quarta
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Receita semanal",
-            Valor = 100m,
-            Periodicidade = PeriodicidadeRecebivel.Semanal,
-            DiaDaSemana = DiaDaSemana.Quarta,
-            Ativa = true
-        };
+        var molde = MoldeAnual(mesReferencia: 7, diaVencimento: 15);
 
-        // Act
-        var proximaData = RecebivelRecorrenteOcorrenciaFactory.ProximaOcorrencia(dataAtual, molde);
+        var data = RecebivelRecorrenteOcorrenciaFactory.PrimeiraOcorrenciaAPartirDe(molde, new DateOnly(2026, 8, 1));
 
-        // Assert - deve ser 7 dias depois
-        Assert.Equal(new DateOnly(2026, 9, 2), proximaData);
+        Assert.Equal(new DateOnly(2027, 7, 15), data);
+    }
+
+    [Fact]
+    public void PrimeiraOcorrenciaAPartirDe_Anual_MesReferenciaNoFuturo_RetornaEsteAno()
+    {
+        var molde = MoldeAnual(mesReferencia: 7, diaVencimento: 15);
+
+        var data = RecebivelRecorrenteOcorrenciaFactory.PrimeiraOcorrenciaAPartirDe(molde, new DateOnly(2026, 1, 5));
+
+        Assert.Equal(new DateOnly(2026, 7, 15), data);
+    }
+
+    [Fact]
+    public void PrimeiraOcorrenciaAPartirDe_Semanal_DataAtualNoAlvo_RetornaODia()
+    {
+        var molde = MoldeSemanal(DiaDaSemana.Quarta);
+
+        var data = RecebivelRecorrenteOcorrenciaFactory.PrimeiraOcorrenciaAPartirDe(molde, new DateOnly(2026, 8, 26)); // Quarta
+
+        Assert.Equal(new DateOnly(2026, 8, 26), data);
+    }
+
+    [Fact]
+    public void PrimeiraOcorrenciaAPartirDe_Semanal_DataAtualAntesDoAlvo_RetornaProximoAlvo()
+    {
+        var molde = MoldeSemanal(DiaDaSemana.Segunda);
+
+        var data = RecebivelRecorrenteOcorrenciaFactory.PrimeiraOcorrenciaAPartirDe(molde, new DateOnly(2026, 8, 28)); // Sexta
+
+        Assert.Equal(new DateOnly(2026, 8, 31), data); // proxima segunda
     }
 
     #endregion
 
-    #region Regra Clamp: DiaVencimento=31 em fevereiro -> dia 28/29 (ultimo dia do mes)
+    #region Clamp de dia: DiaVencimento excede os dias do mes -> ultimo dia do mes
 
     [Fact]
-    public void ProximaOcorrencia_Mensal_Dia31EmFevereiro_ClampParaDia28AnoComum()
+    public void PrimeiraOcorrenciaAPartirDe_Mensal_Dia31EmFevereiro_ClampAnoComum()
     {
-        // Arrange
-        var dataAtual = new DateOnly(2026, 1, 31);
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Conta",
-            Valor = 100m,
-            Periodicidade = PeriodicidadeRecebivel.Mensal,
-            DiaVencimento = 31,
-            Ativa = true
-        };
+        var molde = MoldeMensal(diaVencimento: 31);
 
-        // Act
-        var proximaData = RecebivelRecorrenteOcorrenciaFactory.ProximaOcorrencia(dataAtual, molde);
+        var data = RecebivelRecorrenteOcorrenciaFactory.PrimeiraOcorrenciaAPartirDe(molde, new DateOnly(2026, 2, 1));
 
-        // Assert - fevereiro 2026 tem 28 dias, deve clampar pra 28
-        Assert.Equal(28, proximaData.Day);
-        Assert.Equal(2, proximaData.Month);
-        Assert.Equal(2026, proximaData.Year);
+        Assert.Equal(new DateOnly(2026, 2, 28), data);
     }
 
     [Fact]
-    public void ProximaOcorrencia_Mensal_Dia31EmFevereiro_ClampParaDia29AnoBissexto()
+    public void PrimeiraOcorrenciaAPartirDe_Mensal_Dia31EmFevereiro_ClampAnoBissexto()
     {
-        // Arrange - 2024 eh ano bissexto
-        var dataAtual = new DateOnly(2024, 1, 31);
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Conta",
-            Valor = 100m,
-            Periodicidade = PeriodicidadeRecebivel.Mensal,
-            DiaVencimento = 31,
-            Ativa = true
-        };
+        var molde = MoldeMensal(diaVencimento: 31);
 
-        // Act
-        var proximaData = RecebivelRecorrenteOcorrenciaFactory.ProximaOcorrencia(dataAtual, molde);
+        var data = RecebivelRecorrenteOcorrenciaFactory.PrimeiraOcorrenciaAPartirDe(molde, new DateOnly(2024, 2, 1));
 
-        // Assert - fevereiro 2024 eh bissexto (29 dias), deve clampar pra 29
-        Assert.Equal(29, proximaData.Day);
-        Assert.Equal(2, proximaData.Month);
-        Assert.Equal(2024, proximaData.Year);
+        Assert.Equal(new DateOnly(2024, 2, 29), data);
     }
 
     [Fact]
-    public void ProximaOcorrencia_Mensal_AncoraSempreEmDiaVencimentoNunca_NoClampAntigo()
+    public void PrimeiraOcorrenciaAPartirDe_Anual_MesReferenciaFevereiroDia31_Clampa()
     {
-        // Arrange - regra critica: ancora sempre em DiaVencimento do molde, nao no dia ja clampado
-        // Comeca em 28/02 (clampado de 31), proxima deve ser 31/03 (nao 28/03)
-        var dataAtual = new DateOnly(2026, 2, 28);
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Conta",
-            Valor = 100m,
-            Periodicidade = PeriodicidadeRecebivel.Mensal,
-            DiaVencimento = 31, // Ancora sempre em 31, mesmo que fevereiro tenha 28
-            Ativa = true
-        };
+        var molde = MoldeAnual(mesReferencia: 2, diaVencimento: 31);
 
-        // Act
-        var proximaData = RecebivelRecorrenteOcorrenciaFactory.ProximaOcorrencia(dataAtual, molde);
+        var anoComum = RecebivelRecorrenteOcorrenciaFactory.PrimeiraOcorrenciaAPartirDe(molde, new DateOnly(2026, 1, 1));
+        var anoBissexto = RecebivelRecorrenteOcorrenciaFactory.PrimeiraOcorrenciaAPartirDe(molde, new DateOnly(2024, 1, 1));
 
-        // Assert - deve ser 31/03, nao 28/03 (comprova que ancora em DiaVencimento=31, nao no dia atual=28)
-        Assert.Equal(31, proximaData.Day);
-        Assert.Equal(3, proximaData.Month);
-        Assert.Equal(2026, proximaData.Year);
+        Assert.Equal(new DateOnly(2026, 2, 28), anoComum);
+        Assert.Equal(new DateOnly(2024, 2, 29), anoBissexto);
+    }
+
+    [Fact]
+    public void CalcularOcorrenciasNoIntervalo_Mensal_Dia31_AncoraCadaMesNoDiaVencimento_NaoNoClampAnterior()
+    {
+        // Regra critica: cada mes clampa a partir de DiaVencimento=31, nunca do
+        // dia ja clampado do mes anterior. Marco tem 31 dias -> 31/03, nao 28/03.
+        var molde = MoldeMensal(diaVencimento: 31);
+
+        var ocorrencias = RecebivelRecorrenteOcorrenciaFactory.CalcularOcorrenciasNoIntervalo(
+            molde, new DateOnly(2026, 1, 1), new DateOnly(2026, 4, 30));
+
+        Assert.Equal(
+            new[]
+            {
+                new DateOnly(2026, 1, 31),
+                new DateOnly(2026, 2, 28),
+                new DateOnly(2026, 3, 31),
+                new DateOnly(2026, 4, 30),
+            },
+            ocorrencias);
     }
 
     #endregion
 
-    #region Regra CalcularOcorrenciasNoIntervalo: MENSAL, ANUAL, SEMANAL
+    #region CalcularOcorrenciasNoIntervalo: MENSAL, ANUAL, SEMANAL
 
     [Fact]
     public void CalcularOcorrenciasNoIntervalo_Mensal_RetornaTodasOcorrenciasDoMes()
     {
-        // Arrange
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Receita mensal",
-            Valor = 1000m,
-            Periodicidade = PeriodicidadeRecebivel.Mensal,
-            DiaVencimento = 10,
-            Ativa = true
-        };
-        var inicio = new DateOnly(2026, 8, 1);
-        var fim = new DateOnly(2026, 10, 31);
+        var molde = MoldeMensal(diaVencimento: 10);
 
-        // Act
-        var ocorrencias = RecebivelRecorrenteOcorrenciaFactory.CalcularOcorrenciasNoIntervalo(molde, inicio, fim);
+        var ocorrencias = RecebivelRecorrenteOcorrenciaFactory.CalcularOcorrenciasNoIntervalo(
+            molde, new DateOnly(2026, 8, 1), new DateOnly(2026, 10, 31));
 
-        // Assert - agosto 10, setembro 10, outubro 10
         Assert.Equal(3, ocorrencias.Count);
         Assert.Contains(new DateOnly(2026, 8, 10), ocorrencias);
         Assert.Contains(new DateOnly(2026, 9, 10), ocorrencias);
@@ -212,24 +155,11 @@ public class RecebivelRecorrenteOcorrenciaFactoryTests
     [Fact]
     public void CalcularOcorrenciasNoIntervalo_Anual_RetornaOcorrenciasDoMesReferencia()
     {
-        // Arrange
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Receita anual",
-            Valor = 5000m,
-            Periodicidade = PeriodicidadeRecebivel.Anual,
-            MesReferencia = 3,
-            DiaVencimento = 15,
-            Ativa = true
-        };
-        var inicio = new DateOnly(2025, 1, 1);
-        var fim = new DateOnly(2027, 12, 31);
+        var molde = MoldeAnual(mesReferencia: 3, diaVencimento: 15);
 
-        // Act
-        var ocorrencias = RecebivelRecorrenteOcorrenciaFactory.CalcularOcorrenciasNoIntervalo(molde, inicio, fim);
+        var ocorrencias = RecebivelRecorrenteOcorrenciaFactory.CalcularOcorrenciasNoIntervalo(
+            molde, new DateOnly(2025, 1, 1), new DateOnly(2027, 12, 31));
 
-        // Assert - deve retornar 15/03 de 2025, 2026, 2027 (3 anos cobridos)
         Assert.Equal(3, ocorrencias.Count);
         Assert.Contains(new DateOnly(2025, 3, 15), ocorrencias);
         Assert.Contains(new DateOnly(2026, 3, 15), ocorrencias);
@@ -239,49 +169,27 @@ public class RecebivelRecorrenteOcorrenciaFactoryTests
     [Fact]
     public void CalcularOcorrenciasNoIntervalo_Semanal_RetornaTodasAsQuartas()
     {
-        // Arrange - interval [segunda 24/08, sabado 13/09], molde DiaDaSemana=Quarta
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Receita semanal",
-            Valor = 100m,
-            Periodicidade = PeriodicidadeRecebivel.Semanal,
-            DiaDaSemana = DiaDaSemana.Quarta,
-            Ativa = true
-        };
+        var molde = MoldeSemanal(DiaDaSemana.Quarta);
         var inicio = new DateOnly(2026, 8, 24); // Segunda
         var fim = new DateOnly(2026, 9, 13);   // Domingo
 
-        // Act
         var ocorrencias = RecebivelRecorrenteOcorrenciaFactory.CalcularOcorrenciasNoIntervalo(molde, inicio, fim);
 
-        // Assert - quarta da semana de 24/08 = 26/08, depois +7 = 02/09, +7 = 09/09
         Assert.Equal(3, ocorrencias.Count);
-        Assert.Contains(new DateOnly(2026, 8, 26), ocorrencias); // Quarta da semana de 24/08
-        Assert.Contains(new DateOnly(2026, 9, 2), ocorrencias);  // +7
-        Assert.Contains(new DateOnly(2026, 9, 9), ocorrencias);  // +7
+        Assert.Contains(new DateOnly(2026, 8, 26), ocorrencias);
+        Assert.Contains(new DateOnly(2026, 9, 2), ocorrencias);
+        Assert.Contains(new DateOnly(2026, 9, 9), ocorrencias);
     }
 
     [Fact]
     public void CalcularOcorrenciasNoIntervalo_Semanal_InicioAntesDoAlvoNaSemana_IncluiOAlvoDaSemana()
     {
-        // Arrange - inicio na terca (25/08), quarta e o dia seguinte, dentro do intervalo
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Receita semanal",
-            Valor = 100m,
-            Periodicidade = PeriodicidadeRecebivel.Semanal,
-            DiaDaSemana = DiaDaSemana.Quarta,
-            Ativa = true
-        };
+        var molde = MoldeSemanal(DiaDaSemana.Quarta);
         var inicio = new DateOnly(2026, 8, 25); // Terca
         var fim = new DateOnly(2026, 9, 20);
 
-        // Act
         var ocorrencias = RecebivelRecorrenteOcorrenciaFactory.CalcularOcorrenciasNoIntervalo(molde, inicio, fim);
 
-        // Assert - quarta 26/08 entra (>= inicio e <= fim), depois +7 = 02/09, +7 = 09/09, +7 = 16/09
         Assert.Equal(4, ocorrencias.Count);
         Assert.Contains(new DateOnly(2026, 8, 26), ocorrencias);
         Assert.Contains(new DateOnly(2026, 9, 2), ocorrencias);
@@ -292,23 +200,12 @@ public class RecebivelRecorrenteOcorrenciaFactoryTests
     [Fact]
     public void CalcularOcorrenciasNoIntervalo_Semanal_InicioNoProprioQuarta_Entra()
     {
-        // Arrange - inicio NA quarta (26/08), a quarta corrente ainda entra se >= inicio
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Receita semanal",
-            Valor = 100m,
-            Periodicidade = PeriodicidadeRecebivel.Semanal,
-            DiaDaSemana = DiaDaSemana.Quarta,
-            Ativa = true
-        };
+        var molde = MoldeSemanal(DiaDaSemana.Quarta);
         var inicio = new DateOnly(2026, 8, 26); // Quarta
         var fim = new DateOnly(2026, 9, 10);
 
-        // Act
         var ocorrencias = RecebivelRecorrenteOcorrenciaFactory.CalcularOcorrenciasNoIntervalo(molde, inicio, fim);
 
-        // Assert - quarta 26/08 entra porque = inicio, depois +7 = 02/09, +7 = 09/09
         Assert.Equal(3, ocorrencias.Count);
         Assert.Contains(new DateOnly(2026, 8, 26), ocorrencias);
         Assert.Contains(new DateOnly(2026, 9, 2), ocorrencias);
@@ -316,57 +213,23 @@ public class RecebivelRecorrenteOcorrenciaFactoryTests
     }
 
     [Fact]
-    public void ProximaOcorrencia_Semanal_DataAtualNoAlvo_RetornaSeteDiasDepois()
+    public void CalcularOcorrenciasNoIntervalo_InicioDepoisDoFim_RetornaVazio()
     {
-        // Arrange - dataAtual no dia alvo, deve retornar a proxima ocorrencia (7 dias depois)
-        var dataAtual = new DateOnly(2026, 8, 26); // Quarta
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Receita semanal",
-            Valor = 100m,
-            Periodicidade = PeriodicidadeRecebivel.Semanal,
-            DiaDaSemana = DiaDaSemana.Quarta,
-            Ativa = true
-        };
+        var molde = MoldeMensal(diaVencimento: 10);
 
-        // Act
-        var proximaData = RecebivelRecorrenteOcorrenciaFactory.ProximaOcorrencia(dataAtual, molde);
+        var ocorrencias = RecebivelRecorrenteOcorrenciaFactory.CalcularOcorrenciasNoIntervalo(
+            molde, new DateOnly(2026, 9, 1), new DateOnly(2026, 8, 1));
 
-        // Assert - deve ser 7 dias depois na mesma quarta
-        Assert.Equal(new DateOnly(2026, 9, 2), proximaData);
-    }
-
-    [Fact]
-    public void ProximaOcorrencia_Semanal_DataAtualForaDoAlvo_RetornaProximoAlvo()
-    {
-        // Arrange - dataAtual em sexta, alvo = segunda, deve retornar a proxima segunda
-        var dataAtual = new DateOnly(2026, 8, 28); // Sexta
-        var molde = new RecebivelRecorrente
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Receita semanal",
-            Valor = 100m,
-            Periodicidade = PeriodicidadeRecebivel.Semanal,
-            DiaDaSemana = DiaDaSemana.Segunda,
-            Ativa = true
-        };
-
-        // Act
-        var proximaData = RecebivelRecorrenteOcorrenciaFactory.ProximaOcorrencia(dataAtual, molde);
-
-        // Assert - proxima segunda depois de sexta 28/08 = 31/08 (a segunda seguinte, 3 dias depois)
-        Assert.Equal(new DateOnly(2026, 8, 31), proximaData);
+        Assert.Empty(ocorrencias);
     }
 
     #endregion
 
-    #region Regra CriarOcorrenciaPendente: ContaReceber com propriedades corretas
+    #region CriarOcorrenciaPendente: ContaReceber com propriedades corretas
 
     [Fact]
     public void CriarOcorrenciaPendente_GeraRecebivelPendenteComPropriedadesCorretas()
     {
-        // Arrange
         var moldeId = Guid.NewGuid();
         var categoriaId = Guid.NewGuid();
         var molde = new RecebivelRecorrente
@@ -382,10 +245,8 @@ public class RecebivelRecorrenteOcorrenciaFactoryTests
         var dataOcorrencia = new DateOnly(2026, 8, 10);
         var dataGeracao = new DateOnly(2026, 8, 1);
 
-        // Act
         var contaReceber = RecebivelRecorrenteOcorrenciaFactory.CriarOcorrenciaPendente(molde, dataOcorrencia, dataGeracao);
 
-        // Assert - tipo, status, pessoa, valor, datas, categoria
         Assert.Equal(TipoContaReceber.Recebivel, contaReceber.Tipo);
         Assert.Equal(StatusContaReceber.Pendente, contaReceber.Status);
         Assert.Null(contaReceber.Pessoa);
@@ -397,9 +258,8 @@ public class RecebivelRecorrenteOcorrenciaFactoryTests
     }
 
     [Fact]
-    public void CriarOcorrenciaPendente_SemCategoria_PessoaSempreMula()
+    public void CriarOcorrenciaPendente_SemCategoria_PessoaSempreNula()
     {
-        // Arrange
         var moldeId = Guid.NewGuid();
         var molde = new RecebivelRecorrente
         {
@@ -411,17 +271,45 @@ public class RecebivelRecorrenteOcorrenciaFactoryTests
             CategoriaId = null,
             Ativa = true
         };
-        var dataOcorrencia = new DateOnly(2026, 8, 28);
-        var dataGeracao = new DateOnly(2026, 8, 21);
 
-        // Act
-        var contaReceber = RecebivelRecorrenteOcorrenciaFactory.CriarOcorrenciaPendente(molde, dataOcorrencia, dataGeracao);
+        var contaReceber = RecebivelRecorrenteOcorrenciaFactory.CriarOcorrenciaPendente(
+            molde, new DateOnly(2026, 8, 28), new DateOnly(2026, 8, 21));
 
-        // Assert
         Assert.Null(contaReceber.Pessoa);
         Assert.Null(contaReceber.CategoriaId);
         Assert.Equal(moldeId, contaReceber.RecebivelRecorrenteId);
     }
 
     #endregion
+
+    private static RecebivelRecorrente MoldeMensal(int diaVencimento) => new()
+    {
+        Id = Guid.NewGuid(),
+        Descricao = "Receita mensal",
+        Valor = 1000m,
+        Periodicidade = PeriodicidadeRecebivel.Mensal,
+        DiaVencimento = diaVencimento,
+        Ativa = true
+    };
+
+    private static RecebivelRecorrente MoldeAnual(int mesReferencia, int diaVencimento) => new()
+    {
+        Id = Guid.NewGuid(),
+        Descricao = "Receita anual",
+        Valor = 5000m,
+        Periodicidade = PeriodicidadeRecebivel.Anual,
+        MesReferencia = mesReferencia,
+        DiaVencimento = diaVencimento,
+        Ativa = true
+    };
+
+    private static RecebivelRecorrente MoldeSemanal(DiaDaSemana diaDaSemana) => new()
+    {
+        Id = Guid.NewGuid(),
+        Descricao = "Receita semanal",
+        Valor = 100m,
+        Periodicidade = PeriodicidadeRecebivel.Semanal,
+        DiaDaSemana = diaDaSemana,
+        Ativa = true
+    };
 }
