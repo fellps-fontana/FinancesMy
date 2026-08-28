@@ -248,38 +248,59 @@ public class RecebivelRecorrenteServiceTests
             var geradorService = new RecebivelRecorrenteGeradorService(repositorioRecebivel, repositorioConta);
             var service = new RecebivelRecorrenteService(repositorioRecebivel, geradorService);
 
-            // Criar uma categoria real para usar no molde
-            var categoriaNova = new Categoria
+            // Criar 2 categorias reais (categoria antiga e categoria nova)
+            var categoriaAntiga = new Categoria
             {
                 Id = Guid.NewGuid(),
-                Nome = "Categoria Teste",
+                Nome = "Categoria Antiga",
                 Tipo = TipoCategoria.Receita,
                 Arquivada = false
             };
-            dbContext.Categorias.Add(categoriaNova);
-            await dbContext.SaveChangesAsync();
-
-            // Criar um molde e suas ocorrencias
-            var molde = await service.CriarAsync("Receita", 1000m, "MENSAL", 10, null, null, null);
-            dbContext.ChangeTracker.Clear();
-
-            // Fetch molde novamente pra ter suas ocorrencias
-            var moldeRecuperado = await repositorioRecebivel.ObterPorId(molde.Id);
-            var contasOriginais = (await repositorioConta.Listar()).Where(c => c.RecebivelRecorrenteId == molde.Id).ToList();
-
-            // Marcar uma como Parcial (simular recebimento)
-            if (contasOriginais.Any())
+            var categoriaNova = new Categoria
             {
-                contasOriginais.First().Status = StatusContaReceber.Parcial;
-                await repositorioConta.Atualizar(contasOriginais.First());
-                await repositorioConta.Salvar();
-            }
-
+                Id = Guid.NewGuid(),
+                Nome = "Categoria Nova",
+                Tipo = TipoCategoria.Receita,
+                Arquivada = false
+            };
+            dbContext.Categorias.AddRange(categoriaAntiga, categoriaNova);
+            await dbContext.SaveChangesAsync();
             dbContext.ChangeTracker.Clear();
 
-            // Act
+            // Criar molde MENSAL com categoria antiga e valor 1000m
+            var molde = await service.CriarAsync("Receita mensal", 1000m, "MENSAL", 10, null, null, categoriaAntiga.Id);
+            dbContext.ChangeTracker.Clear();
+
+            // Pegar as ocorrencias geradas
+            var contasGerais = (await repositorioConta.Listar()).Where(c => c.RecebivelRecorrenteId == molde.Id).ToList();
+            Assert.NotEmpty(contasGerais);
+
+            // Forcar EXATAMENTE 2 ocorrencias com status diferente:
+            // - 1ª ocorrencia: PARCIAL (valor e categoria antigos, imutaveis)
+            // - 2ª ocorrencia: RECEBIDO (valor e categoria antigos, imutaveis)
+            // - resto: PENDENTE (propagara valores novos)
+            var contasTodasExceto2 = contasGerais.Skip(2).ToList();
+            contasTodasExceto2.ForEach(c => dbContext.Entry(c).State = Microsoft.EntityFrameworkCore.EntityState.Detached);
+
+            var contaParcial = contasGerais[0];
+            var contaRecebida = contasGerais[1];
+
+            contaParcial.Status = StatusContaReceber.Parcial;
+            contaParcial.ValorTotal = 1000m;
+            contaParcial.CategoriaId = categoriaAntiga.Id;
+
+            contaRecebida.Status = StatusContaReceber.Recebido;
+            contaRecebida.ValorTotal = 1000m;
+            contaRecebida.CategoriaId = categoriaAntiga.Id;
+
+            await repositorioConta.Atualizar(contaParcial);
+            await repositorioConta.Atualizar(contaRecebida);
+            await repositorioConta.Salvar();
+            dbContext.ChangeTracker.Clear();
+
+            // Act - editar molde para novo valor e nova categoria
             var novoValor = 1500m;
-            var moldeEditado = await service.EditarAsync(
+            await service.EditarAsync(
                 molde.Id,
                 novoValor,
                 "MENSAL",
@@ -288,28 +309,33 @@ public class RecebivelRecorrenteServiceTests
                 null,
                 categoriaNova.Id
             );
+            dbContext.ChangeTracker.Clear();
 
-            // Assert - molde foi editado
-            Assert.NotNull(moldeEditado);
-            Assert.Equal(novoValor, moldeEditado.Valor);
-            Assert.Equal(categoriaNova.Id, moldeEditado.CategoriaId);
-
-            // Assert - ocorrencias PENDENTE foram propagadas com novo valor e categoria
+            // Assert - buscar contasReceber do banco apos edicao
             var contasAposEdicao = (await repositorioConta.Listar()).Where(c => c.RecebivelRecorrenteId == molde.Id).ToList();
+
+            // Assert: TODAS as ocorrencias PENDENTE tem novo valor E nova categoria
             var contasPendentes = contasAposEdicao.Where(c => c.Status == StatusContaReceber.Pendente).ToList();
+            Assert.NotEmpty(contasPendentes);
             foreach (var contaPendente in contasPendentes)
             {
                 Assert.Equal(novoValor, contaPendente.ValorTotal);
                 Assert.Equal(categoriaNova.Id, contaPendente.CategoriaId);
             }
 
-            // Assert - ocorrencia PARCIAL manteve valor e categoria antigos
-            var contaParcial = contasAposEdicao.FirstOrDefault(c => c.Status == StatusContaReceber.Parcial);
-            if (contaParcial != null)
-            {
-                Assert.Equal(1000m, contaParcial.ValorTotal); // Valor original nao foi alterado
-                // Categoria pode ter sido propagada ou nao conforme a implementacao, mas valor deve permanecer
-            }
+            // Assert: ocorrencia PARCIAL continua com valor e categoria ORIGINAIS (nao foi alterada)
+            var contaParcialAposEdicao = contasAposEdicao.FirstOrDefault(c => c.Id == contaParcial.Id);
+            Assert.NotNull(contaParcialAposEdicao);
+            Assert.Equal(StatusContaReceber.Parcial, contaParcialAposEdicao.Status);
+            Assert.Equal(1000m, contaParcialAposEdicao.ValorTotal);
+            Assert.Equal(categoriaAntiga.Id, contaParcialAposEdicao.CategoriaId);
+
+            // Assert: ocorrencia RECEBIDO continua com valor e categoria ORIGINAIS (nao foi alterada)
+            var contaRecebidaAposEdicao = contasAposEdicao.FirstOrDefault(c => c.Id == contaRecebida.Id);
+            Assert.NotNull(contaRecebidaAposEdicao);
+            Assert.Equal(StatusContaReceber.Recebido, contaRecebidaAposEdicao.Status);
+            Assert.Equal(1000m, contaRecebidaAposEdicao.ValorTotal);
+            Assert.Equal(categoriaAntiga.Id, contaRecebidaAposEdicao.CategoriaId);
         }
         finally
         {
@@ -402,25 +428,65 @@ public class RecebivelRecorrenteServiceTests
             var geradorService = new RecebivelRecorrenteGeradorService(repositorioRecebivel, repositorioConta);
             var service = new RecebivelRecorrenteService(repositorioRecebivel, geradorService);
 
-            // Criar molde
-            var molde = await service.CriarAsync("Receita", 1000m, "MENSAL", 10, null, null, null);
-            var contasAntesDeDesativar = (await repositorioConta.Listar()).Where(c => c.RecebivelRecorrenteId == molde.Id).ToList();
-            var countAntes = contasAntesDeDesativar.Count;
+            // Criar molde e materializar ocorrencias PENDENTE
+            var molde = await service.CriarAsync("Receita mensal", 1000m, "MENSAL", 10, null, null, null);
+            dbContext.ChangeTracker.Clear();
 
+            // Pegar contasReceber geradas
+            var contasOriginais = (await repositorioConta.Listar()).Where(c => c.RecebivelRecorrenteId == molde.Id).ToList();
+            Assert.NotEmpty(contasOriginais);
+
+            // Forcar manualmente 1 conta como PARCIAL e 1 como RECEBIDO
+            var contaParcial = new ContaReceber
+            {
+                Id = Guid.NewGuid(),
+                Tipo = TipoContaReceber.Recebivel,
+                Descricao = "Parcial manual",
+                ValorTotal = 500m,
+                DataRegistro = new DateOnly(2026, 8, 1),
+                DataPrevista = new DateOnly(2026, 8, 20),
+                Status = StatusContaReceber.Parcial,
+                RecebivelRecorrenteId = molde.Id
+            };
+
+            var contaRecebida = new ContaReceber
+            {
+                Id = Guid.NewGuid(),
+                Tipo = TipoContaReceber.Recebivel,
+                Descricao = "Recebida manual",
+                ValorTotal = 1000m,
+                DataRegistro = new DateOnly(2026, 7, 1),
+                DataPrevista = new DateOnly(2026, 7, 30),
+                Status = StatusContaReceber.Recebido,
+                RecebivelRecorrenteId = molde.Id
+            };
+
+            dbContext.ContasReceber.AddRange(contaParcial, contaRecebida);
+            await dbContext.SaveChangesAsync();
             dbContext.ChangeTracker.Clear();
 
             // Act
             await service.DesativarAsync(molde.Id);
+            dbContext.ChangeTracker.Clear();
 
-            // Assert
+            // Assert - molde foi desativado
             var moldeAposDesativacao = await repositorioRecebivel.ObterPorId(molde.Id);
+            Assert.NotNull(moldeAposDesativacao);
             Assert.False(moldeAposDesativacao.Ativa);
 
+            // Assert - NENHUMA ocorrencia PENDENTE deve existir (foram deletadas)
             var contasAposDesativacao = (await repositorioConta.Listar()).Where(c => c.RecebivelRecorrenteId == molde.Id).ToList();
-            // Todas as Pendentes devem ter sido deletadas
-            Assert.All(contasAposDesativacao, c =>
-                Assert.NotEqual(StatusContaReceber.Pendente, c.Status)
-            );
+            var pendenteCount = contasAposDesativacao.Count(c => c.Status == StatusContaReceber.Pendente);
+            Assert.Equal(0, pendenteCount);
+
+            // Assert - ocorrencias PARCIAL e RECEBIDO continuam existindo e intactas
+            var contaParcialAposDesativacao = contasAposDesativacao.FirstOrDefault(c => c.Id == contaParcial.Id);
+            Assert.NotNull(contaParcialAposDesativacao);
+            Assert.Equal(StatusContaReceber.Parcial, contaParcialAposDesativacao.Status);
+
+            var contaRecebidaAposDesativacao = contasAposDesativacao.FirstOrDefault(c => c.Id == contaRecebida.Id);
+            Assert.NotNull(contaRecebidaAposDesativacao);
+            Assert.Equal(StatusContaReceber.Recebido, contaRecebidaAposDesativacao.Status);
         }
         finally
         {
@@ -446,35 +512,50 @@ public class RecebivelRecorrenteServiceTests
             var geradorService = new RecebivelRecorrenteGeradorService(repositorioRecebivel, repositorioConta);
             var service = new RecebivelRecorrenteService(repositorioRecebivel, geradorService);
 
-            // Criar e desativar
-            var molde = await service.CriarAsync("Receita", 1000m, "MENSAL", 10, null, null, null);
-            var countAposCriacao = (await repositorioConta.Listar()).Where(c => c.RecebivelRecorrenteId == molde.Id).Count();
+            // Criar molde MENSAL e guardar contagem de ocorrencias criadas
+            var molde = await service.CriarAsync("Receita mensal", 1000m, "MENSAL", 10, null, null, null);
+            var countAposCriacao = (await repositorioConta.Listar())
+                .Where(c => c.RecebivelRecorrenteId == molde.Id && c.Status == StatusContaReceber.Pendente)
+                .Count();
+            Assert.True(countAposCriacao > 0, "Deve ter criado pelo menos 1 ocorrencia PENDENTE");
 
+            dbContext.ChangeTracker.Clear();
+
+            // Desativar (remove todas as PENDENTE)
             await service.DesativarAsync(molde.Id);
 
-            var countAposDesativacao = (await repositorioConta.Listar()).Where(c => c.RecebivelRecorrenteId == molde.Id).Count();
+            var countAposDesativacao = (await repositorioConta.Listar())
+                .Where(c => c.RecebivelRecorrenteId == molde.Id && c.Status == StatusContaReceber.Pendente)
+                .Count();
+            Assert.Equal(0, countAposDesativacao);
+
             dbContext.ChangeTracker.Clear();
 
             // Act - reativar
             await service.ReativarAsync(molde.Id);
+            dbContext.ChangeTracker.Clear();
 
-            // Assert
+            // Assert - molde esta ativo
             var moldeAposReativacao = await repositorioRecebivel.ObterPorId(molde.Id);
+            Assert.NotNull(moldeAposReativacao);
             Assert.True(moldeAposReativacao.Ativa);
 
-            var contasAposReativacao = (await repositorioConta.Listar()).Where(c => c.RecebivelRecorrenteId == molde.Id).ToList();
-            // Deve ter rematerializado ocorrencias (pelo menos as do periodo corrente)
-            Assert.NotEmpty(contasAposReativacao);
+            // Assert - contagem de PENDENTE apos reativacao == contagem apos criacao (restaurou conjunto identico)
+            var contasAposReativacao = (await repositorioConta.Listar())
+                .Where(c => c.RecebivelRecorrenteId == molde.Id && c.Status == StatusContaReceber.Pendente)
+                .ToList();
+            Assert.Equal(countAposCriacao, contasAposReativacao.Count);
 
-            // Deve ter criado >= 1 ocorrencia PENDENTE apos reativacao
-            var pendentesAposReativacao = contasAposReativacao.Where(c => c.Status == StatusContaReceber.Pendente).ToList();
-            Assert.NotEmpty(pendentesAposReativacao);
+            // Assert - idempotencia: chamar MaterializarOcorrenciasAsync novamente retorna 0 (nao cria duplicatas)
+            var dataReferencia = DateOnly.FromDateTime(DateTime.Today);
+            var materializadasNovaRodada = await geradorService.MaterializarOcorrenciasAsync(molde.Id, dataReferencia);
+            Assert.Equal(0, materializadasNovaRodada);
 
-            // Todas as contas rematerializadas devem ter DataPrevista no dia 10 (DiaVencimento)
-            foreach (var conta in pendentesAposReativacao)
-            {
-                Assert.Equal(10, conta.DataPrevista?.Day);
-            }
+            // Assert - contagem nao mudou apos 2a rodada de materializacao
+            var contasAposMaterializacaoNova = (await repositorioConta.Listar())
+                .Where(c => c.RecebivelRecorrenteId == molde.Id && c.Status == StatusContaReceber.Pendente)
+                .Count();
+            Assert.Equal(countAposCriacao, contasAposMaterializacaoNova);
         }
         finally
         {

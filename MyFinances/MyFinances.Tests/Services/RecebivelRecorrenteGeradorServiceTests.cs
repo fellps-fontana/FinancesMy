@@ -352,7 +352,6 @@ public class RecebivelRecorrenteGeradorServiceTests
             var contasAposRegenacao = (await repositorioConta.Listar()).Where(c => c.RecebivelRecorrenteId == moldeId).ToList();
             // Deve ter deletado a de setembro (nao faz parte do novo conjunto ANUAL mes=8)
             // Deve ter mantido/recriado a de agosto (faz parte do novo conjunto ANUAL)
-            Assert.NotNull(contasAposRegenacao);
 
             // A conta PENDENTE de setembro (2026-09-10) nao deve mais existir
             var contaSetembro = contasAposRegenacao.FirstOrDefault(c => c.DataPrevista.HasValue && c.DataPrevista.Value == new DateOnly(2026, 9, 10) && c.Status == StatusContaReceber.Pendente);
@@ -361,6 +360,63 @@ public class RecebivelRecorrenteGeradorServiceTests
             // A conta de agosto (2026-08-10) deve continuar existindo com status Pendente (ou ter sido recriada)
             var contaAgosto = contasAposRegenacao.FirstOrDefault(c => c.DataPrevista.HasValue && c.DataPrevista.Value.Year == 2026 && c.DataPrevista.Value.Month == 8 && c.Status == StatusContaReceber.Pendente);
             Assert.NotNull(contaAgosto);
+        }
+        finally
+        {
+            await dbContext.DisposeAsync();
+            await connection.CloseAsync();
+            connection.Dispose();
+        }
+    }
+
+    #endregion
+
+    #region Janela ANUAL distante: proxima ocorrencia alem de 90 dias ainda e materializada
+
+    [Fact]
+    public async Task MaterializarOcorrenciasAsync_AnualDistanteAlem90Dias_MatSerializaProximaOcorrencia()
+    {
+        // Arrange
+        var (dbContext, connection) = await CriarDbContext();
+        try
+        {
+            var moldeId = Guid.NewGuid();
+            // Molde ANUAL: proxima ocorrencia = 2027-03-10
+            // dataReferencia = 2026-08-15
+            // Diferenca = ~207 dias (alem dos 90 dias de lookahead normal)
+            var molde = new RecebivelRecorrente
+            {
+                Id = moldeId,
+                Descricao = "Receita anual distante",
+                Valor = 2000m,
+                Periodicidade = PeriodicidadeRecebivel.Anual,
+                DiaVencimento = 10,
+                MesReferencia = 3,  // Marco
+                CategoriaId = null,
+                Ativa = true
+            };
+            dbContext.RecebiveisRecorrentes.Add(molde);
+            await dbContext.SaveChangesAsync();
+            dbContext.ChangeTracker.Clear();
+
+            var dataReferencia = new DateOnly(2026, 8, 15);
+            var repositorioRecebivel = new RecebivelRecorrenteRepository(dbContext);
+            var repositorioConta = new ContaReceberRepository(dbContext);
+            var geradorService = new RecebivelRecorrenteGeradorService(repositorioRecebivel, repositorioConta);
+
+            // Act
+            var criadasCount = await geradorService.MaterializarOcorrenciasAsync(moldeId, dataReferencia);
+
+            // Assert - deve ter criado EXATAMENTE 1 ocorrencia (a proxima: 2027-03-10)
+            Assert.Equal(1, criadasCount);
+
+            var contasNoDb = (await repositorioConta.Listar()).Where(c => c.RecebivelRecorrenteId == moldeId).ToList();
+            Assert.Single(contasNoDb);
+
+            var contaCriada = contasNoDb.First();
+            Assert.Equal(new DateOnly(2027, 3, 10), contaCriada.DataPrevista);
+            Assert.Equal(StatusContaReceber.Pendente, contaCriada.Status);
+            Assert.Equal(2000m, contaCriada.ValorTotal);
         }
         finally
         {
