@@ -50,9 +50,19 @@ public class ContaReceberConfiguration : IEntityTypeConfiguration<ContaReceber>
                 v => v.ToStorageValue(),
                 v => StatusContaReceberExtensions.FromStorageValue(v));
 
+        builder.Property(cr => cr.RecebivelRecorrenteId)
+            .HasColumnName("recebivel_recorrente_id");
+
         builder.HasOne(cr => cr.Categoria)
             .WithMany()
             .HasForeignKey(cr => cr.CategoriaId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // regra-de-negocio.md item 15: idempotencia da materializacao no banco --
+        // um molde nao pode ter duas ocorrencias na mesma data_prevista.
+        builder.HasIndex(cr => new { cr.RecebivelRecorrenteId, cr.DataPrevista })
+            .HasFilter("recebivel_recorrente_id IS NOT NULL")
+            .IsUnique()
+            .HasDatabaseName("IX_conta_receber_recorrente_data_prevista");
     }
 }
