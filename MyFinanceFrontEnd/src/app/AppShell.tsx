@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { NavLink } from "react-router-dom"
 import {
+  CalendarSync,
   CreditCard,
   HandCoins,
   LayoutDashboard,
@@ -38,7 +39,7 @@ export type NavItem = {
   end?: boolean
 }
 
-// Os 9 destinos de navegacao do app (stack.md "Estrutura de pastas (src/)" -
+// Os 10 destinos de navegacao do app (stack.md "Estrutura de pastas (src/)" -
 // um destino por modulo/feature). Ordem espelha a prioridade de uso diario:
 // visao geral primeiro, depois contas/dinheiro, depois organizacao (regras,
 // categorias, limites). Puramente estrutural - nenhuma regra de dominio mora
@@ -55,6 +56,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/investimentos", label: "Investimentos", icon: TrendingUp },
   { to: "/contas-fixas", label: "Contas fixas", icon: Repeat },
   { to: "/contas-receber", label: "Contas a receber", icon: HandCoins },
+  { to: "/recebiveis-recorrentes", label: "Recebiveis recorrentes", icon: CalendarSync },
   { to: "/lancamentos", label: "Lancamentos", icon: Receipt },
   { to: "/categorias", label: "Categorias", icon: Tags },
   { to: "/limites-gasto", label: "Limites de gasto", icon: Target },
@@ -75,7 +77,7 @@ const MOBILE_PRIMARY_ITEMS: NavItem[] = [
 
 const MOBILE_PRIMARY_PATHS = new Set(MOBILE_PRIMARY_ITEMS.map((item) => item.to))
 
-// Os 5 destinos restantes (todo NAV_ITEMS fora dos 4 primarios acima),
+// Os 6 destinos restantes (todo NAV_ITEMS fora dos 4 primarios acima),
 // abertos pelo item "Mais" da bottom tab bar - reaproveita rotulo/icone/rota
 // de NAV_ITEMS, sem duplicar texto nem perder nenhuma rota.
 const MOBILE_MORE_ITEMS: NavItem[] = NAV_ITEMS.filter((item) => !MOBILE_PRIMARY_PATHS.has(item.to))

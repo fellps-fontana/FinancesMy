@@ -8,6 +8,7 @@ import { ContaCartaoPage } from "@/features/cartao/ContaCartaoPage"
 import { ComparativoLimiteGastoPage } from "@/features/limite-gasto/ComparativoLimiteGastoPage"
 import { ListaContasReceber } from "@/features/contas-receber/ListaContasReceber"
 import { ListaContasFixas } from "@/features/contas-fixas/ListaContasFixas"
+import { ListaRecebiveisRecorrentes } from "@/features/recebiveis-recorrentes/ListaRecebiveisRecorrentes"
 import { CategoriasPage } from "@/features/categorias/CategoriasPage"
 import { LancamentosPage } from "@/features/lancamentos/LancamentosPage"
 
@@ -23,6 +24,7 @@ export function AppRoutes() {
         <Route path="/limites-gasto" element={<ComparativoLimiteGastoPage />} />
         <Route path="/contas-receber" element={<ListaContasReceber />} />
         <Route path="/contas-fixas" element={<ListaContasFixas />} />
+        <Route path="/recebiveis-recorrentes" element={<ListaRecebiveisRecorrentes />} />
         <Route path="/categorias" element={<CategoriasPage />} />
         <Route path="/lancamentos" element={<LancamentosPage />} />
       </Route>

@@ -143,6 +143,28 @@ Table conta_receber {
   data_prevista date [note: 'opcional; usada para saber em qual mes o saldo PENDENTE entra na projecao (item 9). PARCIAL entra em todo mes corrente ate zerar, independente desta data']
   categoria_id uuid [ref: > categoria.id, note: 'categoria de receita sugerida pros recebimentos; null = sem categoria; pode ser sobrescrita por recebimento individual']
   status varchar [not null, note: 'PENDENTE | PARCIAL | RECEBIDO']
+  recebivel_recorrente_id uuid [ref: > recebivel_recorrente.id, note: 'null se conta_receber avulsa (item 13); preenchido quando a linha foi materializada por um molde recorrente (item 15). Indice unico parcial (recebivel_recorrente_id, data_prevista) WHERE recebivel_recorrente_id IS NOT NULL garante a idempotencia da materializacao']
+}
+
+// Recebivel Recorrente (item 15). MOLDE que materializa ocorrencias como
+// registros conta_receber (tipo=RECEBIVEL, status=PENDENTE) vinculados por
+// recebivel_recorrente_id. Espelha conta_fixa (item 6), mas: (a) so RECEBIVEL,
+// nunca EMPRESTIMO; (b) sem conta/saldo/transferencia na materializacao -- a
+// ocorrencia so vira dinheiro quando o usuario registra o recebimento (item 13);
+// (c) as ocorrencias FUTURAS sao materializadas por um job agendado
+// (BackgroundService) -- extensao consciente da restricao "sem job na v1" do
+// item 6, valida SO aqui. Idempotencia: (recebivel_recorrente_id, data_prevista
+// da ocorrencia) -- data exata, porque SEMANAL nao mapeia em mes/ano.
+Table recebivel_recorrente {
+  id uuid [pk]
+  descricao varchar [not null]
+  valor decimal [not null, note: 'valor de cada ocorrencia; copiado para conta_receber.valor_total na materializacao, fixo dali em diante (item 13)']
+  periodicidade varchar [not null, default: 'MENSAL', note: 'MENSAL | ANUAL | SEMANAL -- enum proprio PeriodicidadeRecebivel, NAO reaproveita o de conta_fixa (que descartou SEMANAL, item 6)']
+  dia_vencimento int [note: '1-31; obrigatorio se MENSAL ou ANUAL, null se SEMANAL; dia clampado ao ultimo dia do mes quando exceder (mesmo padrao de conta_fixa)']
+  mes_referencia int [note: '1-12; obrigatorio se ANUAL, null caso contrario -- mes em que a ocorrencia anual cai (mesmo papel de conta_fixa.mes_referencia)']
+  dia_da_semana varchar [note: 'SEG | TER | QUA | QUI | SEX | SAB | DOM -- enum proprio DiaDaSemana; obrigatorio se SEMANAL, null caso contrario. Ocorrencia corrente = dia alvo da semana atual (mesmo que ja passou); proximas = +7 dias']
+  categoria_id uuid [ref: > categoria.id, note: 'categoria de receita herdada por cada ocorrencia; null = sem categoria']
+  ativa boolean [not null, default: true, note: 'desativar hard-deleta as ocorrencias conta_receber ainda PENDENTE; reativar regenera (item 15)']
 }
 
 Table limite_gasto {

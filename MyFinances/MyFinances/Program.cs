@@ -52,6 +52,7 @@ builder.Services.AddScoped<IAtivoAporteRepository, AtivoAporteRepository>();
 builder.Services.AddScoped<ICompraParceladaRepository, CompraParceladaRepository>();
 builder.Services.AddScoped<IContaFixaRepository, ContaFixaRepository>();
 builder.Services.AddScoped<ILimiteGastoRepository, LimiteGastoRepository>();
+builder.Services.AddScoped<IRecebivelRecorrenteRepository, RecebivelRecorrenteRepository>();
 
 // Services - Conta
 builder.Services.AddScoped<IContaService, ContaService>();
@@ -63,6 +64,11 @@ builder.Services.AddScoped<IRendimentoService, RendimentoService>();
 
 // Services - Contas a Receber
 builder.Services.AddScoped<IContaReceberService, ContaReceberService>();
+
+// Services - Recebivel Recorrente (item 15)
+builder.Services.AddScoped<IRecebivelRecorrenteGeradorService, RecebivelRecorrenteGeradorService>();
+builder.Services.AddScoped<IRecebivelRecorrenteService, RecebivelRecorrenteService>();
+builder.Services.AddHostedService<RecebivelRecorrenteMaterializacaoJob>();
 
 // Services - Categoria
 builder.Services.AddScoped<ICategoriaService, CategoriaService>();

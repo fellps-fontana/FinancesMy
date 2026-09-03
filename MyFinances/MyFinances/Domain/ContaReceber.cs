@@ -20,8 +20,14 @@ public class ContaReceber
 
     public StatusContaReceber Status { get; set; }
 
+    // regra-de-negocio.md item 15: null se conta_receber avulsa (item 13);
+    // preenchido quando a linha foi materializada por um molde recorrente.
+    public Guid? RecebivelRecorrenteId { get; set; }
+
     // Relacionamentos
     public Categoria? Categoria { get; set; }
+
+    public RecebivelRecorrente? RecebivelRecorrente { get; set; }
 
     public ICollection<Lancamento> Recebimentos { get; set; } = new List<Lancamento>();
 }

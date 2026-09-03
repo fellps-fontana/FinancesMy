@@ -718,6 +718,146 @@ implementada).
 
 ---
 
+## 15. Recebivel Recorrente
+
+O usuario pode cadastrar um **recebivel recorrente**: um molde que
+materializa automaticamente Contas a Receber (item 13) do tipo RECEBIVEL a
+cada periodo. E o espelho, do lado da entrada, da Conta Fixa (item 6), com
+as diferencas listadas abaixo. DECISOES CONFIRMADAS COM O USUARIO EM
+2026-08-28.
+
+**So RECEBIVEL.** Recebivel recorrente NUNCA gera EMPRESTIMO — emprestimo
+pressupoe uma pessoa, uma saida de conta e uma transferencia de perna unica
+(item 13), nada disso e recorrente. O molde nao tem campo `pessoa`, nao
+gera transferencia e NAO toca conta nem saldo no momento da materializacao.
+A ocorrencia so vira dinheiro quando o usuario registra o recebimento pelo
+fluxo ja existente do item 13 (lancamento CREDIT, status PAGO, vinculado
+por `conta_receber_id`).
+
+**Molde (`recebivel_recorrente`).** Campos:
+- `descricao` (obrigatorio);
+- `valor` (obrigatorio, > 0) — valor de cada ocorrencia; copiado para
+  `conta_receber.valor_total` na materializacao e fixo dali em diante
+  (item 13: "valor_total nunca muda apos registro");
+- `periodicidade` — `MENSAL` (padrao), `ANUAL` ou `SEMANAL`;
+- `dia_vencimento` (1-31) — obrigatorio para MENSAL e ANUAL, `null` para
+  SEMANAL; dia clampado ao ultimo dia do mes quando o mes tiver menos dias
+  (mesmo padrao do item 6 / `FaturaCicloService.CriarDataValida`);
+- `mes_referencia` (1-12) — obrigatorio para ANUAL, `null` caso contrario;
+  o mes em que a ocorrencia anual cai (mesmo papel do `mes_referencia` do
+  item 6);
+- `dia_da_semana` (`SEG | TER | QUA | QUI | SEX | SAB | DOM`) — obrigatorio
+  para SEMANAL, `null` caso contrario; o dia da semana em que a ocorrencia
+  semanal cai;
+- `categoria_id` (FK opcional para `categoria`, esperado tipo RECEITA) —
+  herdada por toda ocorrencia materializada;
+- `ativa` (boolean, default true).
+
+**Enums proprios.** `periodicidade` usa `PeriodicidadeRecebivel`
+(`MENSAL | ANUAL | SEMANAL`) — NAO reaproveita `PeriodicidadeContaFixa`,
+que descartou SEMANAL de forma explicita no item 6. Manter os dois enums
+separados evita arrastar SEMANAL de volta pra Conta Fixa. `dia_da_semana`
+usa `DiaDaSemana`, enum proprio deste item.
+
+**Ocorrencia materializada.** Cada ocorrencia e uma `conta_receber` com
+`tipo = RECEBIVEL`, `pessoa = null`, `status = PENDENTE`, `valor_total` =
+`valor` do molde, `data_prevista` = data da ocorrencia, `data_registro` =
+data em que foi materializada, `recebivel_recorrente_id` = molde,
+`categoria_id` = categoria do molde no momento da materializacao.
+
+**Calculo da proxima ocorrencia:**
+- `MENSAL`: soma 1 mes (dia = `dia_vencimento`, clampado);
+- `ANUAL`: soma 1 ano (mes = `mes_referencia`, dia = `dia_vencimento`,
+  clampado);
+- `SEMANAL`: soma 7 dias. A serie e ancorada em `dia_da_semana`: a
+  ocorrencia corrente e o `dia_da_semana` alvo dentro da semana corrente —
+  mesmo que ja tenha passado nesta semana (mesmo criterio de "ocorrencia
+  atual" do item 6): `hoje - ((diaDaSemana(hoje) - alvo + 7) mod 7)` dias.
+  As proximas sao +7, +14, +21 dias. Nao ha `dia_vencimento` porque
+  recorrencia semanal nao mapeia em dia-do-mes.
+
+**Idempotencia (obrigatoria).** A chave e
+(`recebivel_recorrente_id`, `data_prevista` da ocorrencia) — a data exata,
+nao mes/ano, porque SEMANAL pode ter mais de uma ocorrencia no mesmo mes.
+Antes de materializar uma ocorrencia o sistema verifica se ja existe uma
+`conta_receber` com esse par; se existir, no-op. Um indice unico parcial
+`(recebivel_recorrente_id, data_prevista) WHERE recebivel_recorrente_id IS
+NOT NULL` reforca a garantia no banco — fecha na origem a divida tecnica de
+check-then-act registrada no item 6.
+
+**Materializacao — dois caminhos:**
+1. **Gatilho de criar / reativar (imediato).** Ao criar um
+   `recebivel_recorrente` ou reativa-lo (`ativa` false -> true), o sistema
+   materializa na hora as ocorrencias da janela corrente (abaixo) —
+   incluindo sempre a ocorrencia do periodo corrente, mesmo que o dia ja
+   tenha passado (mesmo criterio de "ocorrencia atual" do item 6).
+2. **Job agendado (futuras).** Um `BackgroundService` do .NET roda 1x/dia
+   (e uma vez no startup), varre todos os moldes ativos e materializa as
+   ocorrencias da janela que ainda nao existem. **Esta e uma extensao
+   CONSCIENTE da restricao "sem job/sync na v1" do item 6** — decisao do
+   usuario, valida SO para recebivel recorrente; a Conta Fixa continua sem
+   job, materializando so nos gatilhos e sob demanda (item 6).
+
+**Janela de materializacao.** Ocorrencias com data no intervalo
+[primeiro dia do mes corrente, `max(hoje + 90 dias, data da proxima
+ocorrencia do molde)`]. Comecar a janela no primeiro dia do mes corrente (e
+nao na data da ultima execucao do job) limita o backfill a ~1 mes por mais
+tempo que o job fique fora do ar, e garante que a ocorrencia do mes corrente
+— a unica que entra na projecao (item 9) — sempre exista. Meses fechados
+anteriores nao sao reconstruidos: recebivel esperado de mes fechado nao e
+mais projecao. O `max(...)` garante que TODO molde ativo sempre tenha ao
+menos a proxima ocorrencia materializada (espelha o "atual + proxima" do
+item 6) — sem isso um molde ANUAL cadastrado com muitos meses de
+antecedencia ficaria sem nenhuma ocorrencia ate o job de ~90 dias antes.
+
+**Heranca de categoria.** Toda ocorrencia materializada nasce com
+`categoria_id` = a categoria do molde no momento da materializacao. Um
+recebimento individual ainda pode sobrescrever a categoria (item 13).
+
+**Edicao propaga para ocorrencias ainda PENDENTE.** Editar `valor` ou
+`categoria_id` do molde atualiza as `conta_receber` vinculadas cujo
+`status = PENDENTE`. Ocorrencias `PARCIAL` ou `RECEBIDO` NUNCA sao
+alteradas (ja houve recebimento — fato consumado, mesmo principio dos itens
+6 e 13). Editar `periodicidade`, `dia_vencimento`, `mes_referencia` ou
+`dia_da_semana` **regenera o conjunto** (espelha a decisao de 2026-08-26 do
+item 6): o sistema recalcula as datas de ocorrencia sob a config nova,
+hard-deleta as ocorrencias `PENDENTE` cuja data saiu do conjunto e
+materializa as que faltam. `PARCIAL`/`RECEBIDO` permanecem intocadas.
+
+**Desativar cancela as ocorrencias PENDENTE.** Ao desativar (`ativa` true
+-> false), as `conta_receber` vinculadas com `status = PENDENTE` sao
+excluidas (hard delete). As `PARCIAL`/`RECEBIDO` permanecem (fato
+consumado). Reativar volta a materializar do zero, respeitando a
+idempotencia.
+
+**Exclusao do molde.** So `ativa = false` (soft), mesmo padrao do item 6 —
+nao ha hard delete do molde.
+
+**Validacao por periodicidade.** Espelha `ValidarDiaVencimentoEValor` do
+`ContaFixaService`: `valor > 0`, `descricao` nao-vazia, `dia_vencimento`
+1-31 e obrigatorio para MENSAL/ANUAL, `mes_referencia` 1-12 e obrigatorio
+para ANUAL, `dia_da_semana` obrigatorio para SEMANAL. Campo incompativel
+com a periodicidade e ignorado silenciosamente (`null`), mesmo padrao de
+`mes_referencia` no item 6.
+
+**Projecao do mes (item 9) — a formula NAO muda.** Cada ocorrencia e uma
+`conta_receber` PENDENTE com `data_prevista` = data da ocorrencia, entao
+entra em `total_a_receber_esperado_no_mes` exatamente como qualquer conta a
+receber avulsa (item 9: saldo pendente de PENDENTE com `data_prevista` no
+mes corrente; ao receber, vira PARCIAL e passa a contar todo mes ate zerar,
+tambem ja coberto). A formula do item 9 permanece literal.
+
+**Rede de seguranca na projecao (espelha a geracao sob demanda do item
+6).** Alem do job, o calculo da projecao do mes chama
+`MaterializarTodosAtivosAsync` no topo, antes de somar — garantindo que, se
+o job estiver fora do ar, as ocorrencias do periodo consultado sejam
+materializadas na hora. Mesma verificacao de idempotencia (nao duplica).
+Diferente do item 6, aqui a geracao sob demanda nao varre um ano/mes
+arbitrario: materializa a janela padrao [primeiro dia do mes corrente, hoje
++ 90 dias] de todos os moldes ativos.
+
+---
+
 ## Escopo: v1 vs v2
 
 **Integracao real com Pierre (Open Finance) fica para a v2 — decisao

@@ -60,6 +60,11 @@ public class ContaReceberRepository : IContaReceberRepository
         _context.ContasReceber.Update(contaReceber);
     }
 
+    public async Task Remover(ContaReceber contaReceber)
+    {
+        _context.ContasReceber.Remove(contaReceber);
+    }
+
     public async Task Salvar()
     {
         await _context.SaveChangesAsync();
