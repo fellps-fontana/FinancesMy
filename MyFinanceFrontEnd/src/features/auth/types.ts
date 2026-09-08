@@ -11,3 +11,9 @@ export type LoginResponse = {
   token: string
   usuario: Usuario
 }
+
+export type RegistrarUsuarioRequest = {
+  username: string
+  email: string
+  senha: string
+}

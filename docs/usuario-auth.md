@@ -61,11 +61,9 @@ qualquer resposta 401 (token expirado ou inválido).
 
 ## Lacunas conhecidas
 
-- **Sem tela de registro no frontend.** `POST /auth/registrar` só é
-  acessível via API direta (Swagger/curl) — coerente com o app ser
-  single-user (o único cadastro acontece uma vez, na configuração inicial),
-  mas é uma lacuna real se algum dia precisar recriar o usuário sem acesso
-  ao backend.
+- **Tela de registro no frontend:** integrada na tela de login (`/login` e `/registrar`),
+  permitindo alternar para o formulário de cadastro com nome de usuário, e-mail e senha,
+  consumindo `POST /api/auth/registrar` e realizando auto-login após o sucesso.
 - **Sem refresh token / "lembrar-me"** — sessão sempre expira em ~8h fixas,
   decisão assumida na v1 e nunca revisada.
 - **Sem rota de troca de senha ou recuperação de senha** — não existe
