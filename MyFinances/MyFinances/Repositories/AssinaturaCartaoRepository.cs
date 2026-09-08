@@ -72,6 +72,7 @@ public class AssinaturaCartaoRepository : IAssinaturaCartaoRepository
         return _context.AssinaturasCartao
             .Include(a => a.Conta)
             .Include(a => a.Categoria)
-            .Include(a => a.Compras);
+            .Include(a => a.Compras)
+                .ThenInclude(c => c.Fatura);
     }
 }

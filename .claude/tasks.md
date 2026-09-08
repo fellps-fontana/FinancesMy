@@ -3197,7 +3197,7 @@ HISTORICO: mike escreveu a suite completa de 22 testes em AssinaturaCartaoServic
 
 ## TASK-168 — Implementacao GREEN: AssinaturaCartaoService e geracao de compras (levi)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (652/652 testes verdes, 22/22 novos testes GREEN sem regressoes)
 AGENT: levi
 DEPENDENCIAS: TASK-167
 FLUXO: Implementacao (rodada GREEN)
@@ -3207,12 +3207,13 @@ Integrar a geracao sob demanda (`GarantirAssinaturasDoCicloAsync`) no fluxo de c
 ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/AssinaturaCartaoService.cs`, `MyFinances/MyFinances/Services/IAssinaturaCartaoService.cs`, `MyFinances/MyFinances/Services/FaturaCicloService.cs`, `MyFinances/MyFinances/Controllers/FaturasController.cs`
 NAO FAZER: Nao alterar os arquivos de teste; nao quebrar os 630 testes existentes.
 RETORNO ESPERADO: 100% dos testes da TASK-167 e da suite geral passando (GREEN).
+HISTORICO: levi implementou AssinaturaCartaoService com injecao de repositorios e FaturaCicloService. Validacoes de entrada (campos obrigatorios, tipos de conta, dia 1-31), geracao de compra imediata com clamp de data, propagacao em edicao restrita a faturas abertas, desativacao preservando historico, reativacao com idempotencia e geracao sob demanda integrados. Integrado no FaturasController.ListarFaturas com injecao opcional retrocompativel. 652/652 testes verdes.
 
 ---
 
 ## TASK-169 — Style review: Assinatura de Cartao (style)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (Veredito: APROVADO)
 AGENT: style
 DEPENDENCIAS: TASK-168
 FLUXO: Implementacao
@@ -3221,12 +3222,13 @@ ESCOPO: Revisar o codigo de `AssinaturaCartao` contra as regras de negocio e pad
 CRITERIO DE ACEITE: Veredito APROVADO ou tarefas de correcao.
 ARQUIVOS PERMITIDOS: nenhum (apenas leitura e relatorio).
 RETORNO ESPERADO: Veredito e apontamentos de style.
+HISTORICO: style revisou o modulo de AssinaturaCartao. Controller limpo sem logica de dominio; DTOs corretos na pasta DTOs/AssinaturaCartao; isolamento estrito de faturas fechadas/pagas garantido na propagacao de edicao; desativacao preservando compras historicas; clamp de data robusto; idempotencia checada via ExisteCompraGerada; comentarios sem acentuacao; suite 100% verde (652 testes). Veredito: APROVADO sem pendencias.
 
 ---
 
 ## TASK-170 — Ferramentas MCP para Assinatura de Cartao (levi)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (5 ferramentas criadas e registradas, build TypeScript 0 erros)
 AGENT: levi
 DEPENDENCIAS: TASK-168, TASK-169
 FLUXO: Implementacao
@@ -3234,5 +3236,8 @@ CONTEXTO A LER: docs/assinatura-cartao.md; `mcp-server/src/tools/cartao.ts`; `mc
 ESCOPO: Adicionar ferramentas no servidor MCP para assinaturas de cartao: `criar_assinatura_cartao`, `listar_assinaturas_cartao`, `editar_assinatura_cartao`, `desativar_assinatura_cartao`, `reativar_assinatura_cartao`.
 ARQUIVOS PERMITIDOS: `mcp-server/src/tools/cartao.ts` (ou `mcp-server/src/tools/assinaturasCartao.ts`), `mcp-server/src/server.ts`
 RETORNO ESPERADO: Ferramentas registradas e testadas via MCP.
+HISTORICO: levi criou mcp-server/src/tools/assinaturasCartao.ts com as 5 ferramentas (criar, listar, editar, desativar, reativar) e formatacao propria; registrou em mcp-server/src/server.ts via registerAssinaturasCartaoTools. Build do TypeScript (npm run build) executado com 0 erros.
+
+
 
 

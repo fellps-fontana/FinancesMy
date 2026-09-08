@@ -16,6 +16,7 @@ public class FaturasController : ControllerBase
     private readonly FaturaCreditoService _faturaCreditoService;
     private readonly IRecorrenciaGeradorService _recorrenciaGeradorService;
     private readonly IContaFixaRepository _contaFixaRepository;
+    private readonly IAssinaturaCartaoService? _assinaturaCartaoService;
 
     public FaturasController(
         IFaturaRepository faturaRepository,
@@ -23,7 +24,8 @@ public class FaturasController : ControllerBase
         EstornoCartaoService estornoCartaoService,
         FaturaCreditoService faturaCreditoService,
         IRecorrenciaGeradorService recorrenciaGeradorService,
-        IContaFixaRepository contaFixaRepository)
+        IContaFixaRepository contaFixaRepository,
+        IAssinaturaCartaoService? assinaturaCartaoService = null)
     {
         _faturaRepository = faturaRepository;
         _pagamentoFaturaService = pagamentoFaturaService;
@@ -31,6 +33,7 @@ public class FaturasController : ControllerBase
         _faturaCreditoService = faturaCreditoService;
         _recorrenciaGeradorService = recorrenciaGeradorService;
         _contaFixaRepository = contaFixaRepository;
+        _assinaturaCartaoService = assinaturaCartaoService;
     }
 
     [HttpGet]
@@ -42,6 +45,11 @@ public class FaturasController : ControllerBase
         foreach (var contaFixa in contasFixas.Where(cf => cf.Conta?.Tipo == TipoConta.Cartao && cf.Ativa))
         {
             await _recorrenciaGeradorService.GarantirOcorrenciaDoMesAsync(contaFixa.Id, hoje.Year, hoje.Month);
+        }
+
+        if (_assinaturaCartaoService != null)
+        {
+            await _assinaturaCartaoService.GarantirAssinaturasDoCicloAsync(contaId, hoje.Year, hoje.Month);
         }
 
         var faturas = await _faturaRepository.ListarPorConta(contaId);

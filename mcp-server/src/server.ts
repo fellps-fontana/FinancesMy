@@ -5,6 +5,7 @@ import { registerCategoriasTools } from "./tools/categorias.js";
 import { registerContasFixasTools } from "./tools/contasFixas.js";
 import { registerContasReceberTools } from "./tools/contasReceber.js";
 import { registerCartaoTools } from "./tools/cartao.js";
+import { registerAssinaturasCartaoTools } from "./tools/assinaturasCartao.js";
 import { registerLimitesGastoTools } from "./tools/limitesGasto.js";
 import { registerDashboardTools } from "./tools/dashboard.js";
 import { registerAtivosTools } from "./tools/ativos.js";
@@ -24,6 +25,7 @@ export function buildServer(): McpServer {
   registerContasFixasTools(server);
   registerContasReceberTools(server);
   registerCartaoTools(server);
+  registerAssinaturasCartaoTools(server);
   registerLimitesGastoTools(server);
   registerDashboardTools(server);
   registerAtivosTools(server);
