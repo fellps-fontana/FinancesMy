@@ -38,6 +38,8 @@ public class Lancamento
 
     public int? ParcelaNumero { get; set; }
 
+    public Guid? AssinaturaCartaoId { get; set; }
+
     // Relacionamentos
     public Conta? Conta { get; set; }
 
@@ -54,6 +56,8 @@ public class Lancamento
     public CompraParcelada? CompraParcelada { get; set; }
 
     public ContaFixa? ContaFixa { get; set; }
+
+    public AssinaturaCartao? AssinaturaCartao { get; set; }
 
     public ICollection<Lancamento> LancamentosConciliados { get; set; } = new List<Lancamento>();
 }

@@ -84,6 +84,9 @@ public class LancamentoConfiguration : IEntityTypeConfiguration<Lancamento>
         builder.Property(l => l.ParcelaNumero)
             .HasColumnName("parcela_numero");
 
+        builder.Property(l => l.AssinaturaCartaoId)
+            .HasColumnName("assinatura_cartao_id");
+
         builder.HasOne(l => l.Conta)
             .WithMany()
             .HasForeignKey(l => l.ContaId)
@@ -122,6 +125,11 @@ public class LancamentoConfiguration : IEntityTypeConfiguration<Lancamento>
         builder.HasOne(l => l.ContaFixa)
             .WithMany(cf => cf.Lancamentos)
             .HasForeignKey(l => l.ContaFixaId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(l => l.AssinaturaCartao)
+            .WithMany(ac => ac.Compras)
+            .HasForeignKey(l => l.AssinaturaCartaoId)
             .OnDelete(DeleteBehavior.SetNull);
 
         // Indice para PierreTxnId se nao nulo (dedup)
