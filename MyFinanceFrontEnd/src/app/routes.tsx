@@ -16,6 +16,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/registrar" element={<LoginPage initialMode="register" />} />
       <Route element={<AuthenticatedLayout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/investimentos" element={<ListaAtivosPage />} />
