@@ -858,6 +858,90 @@ arbitrario: materializa a janela padrao [primeiro dia do mes corrente, hoje
 
 ---
 
+## 16. Assinatura de Cartao (Compra Recorrente no Cartao)
+
+O usuario pode cadastrar uma **assinatura de cartao**: um molde que materializa
+automaticamente Compras (item 12) na fatura de uma conta do tipo CARTAO a cada
+ciclo/mes (ex: Netflix, Spotify, assinaturas recorrentes de servicos).
+
+**Racional e decisao registrada em 2026-09-08 (TASK-166).**
+O sistema ja possuia:
+- `criar_compra_cartao`: compra avulsa na fatura aberta (exige chamada manual todo mes).
+- `criar_compra_parcelada`: N parcelas pre-fixadas dividindo um `valor_total` com fim definido.
+- `criar_conta_fixa`: molde recorrente que gera lancamentos de fluxo de caixa (DEBIT, status PENDENTE) em conta bancaria.
+Embora uma tentativa anterior tenha permitido `ContaFixa` apontar para conta `Cartao` (item 6), misturar compras de fatura de cartao com lancamentos de fluxo de caixa bancario causava sobreposicao de conceitos e fragilidade semantica (especialmente na desativacao, onde conta fixa apaga pendentes, enquanto no cartao as compras geradas sao fatos historicos consolidados na fatura). `assinatura_cartao` nasce como entidade propria de primeira classe para compras recorrentes em cartao.
+
+**Molde (`assinatura_cartao`).** Campos:
+- `id` (uuid, PK);
+- `conta_id` (FK not null para `conta.id`): RESTRITO OBRIGATORIAMENTE a contas com `tipo = CARTAO` e `ativa = true`. Cadastrar ou editar apontando para conta `BANCO` ou `INVESTIMENTO` e REJEITADO com erro de validacao;
+- `descricao` (varchar, obrigatorio, nao-vazio);
+- `valor` (decimal, obrigatorio, > 0) — valor fixo de cada cobranca mensal;
+- `dia_referencia` (int, 1-31, obrigatorio) — o dia do mes em que a assinatura e cobrada. Se o mes tiver menos dias que `dia_referencia` (ex: dia 31 em meses de 30 dias ou fevereiro), e ajustado (clampado) para o ultimo dia do mes, seguindo o mesmo padrao de `FaturaCicloService.CriarDataValida`;
+- `categoria_id` (FK opcional para `categoria`, esperado tipo DESPESA) — herdada pelas Compras geradas;
+- `ativa` (boolean, default true).
+
+**Ocorrencia gerada (Compra de Cartao).**
+Cada cobranca gerada e um `Lancamento` com:
+- `tipo = DEBIT`
+- `status = PAGO` (regime de competencia no cartao: compras individuais ja nascem computadas no saldo da fatura, item 12)
+- `manual = true`
+- `conta_id = assinatura_cartao.conta_id`
+- `categoria_id = assinatura_cartao.categoria_id`
+- `descricao = assinatura_cartao.descricao`
+- `valor = assinatura_cartao.valor`
+- `data = DateOnly(ano, mes, diaClampado)`
+- `fatura_id = fatura resolvida` (via `FaturaCicloService.ResolverFaturaParaLancamentoAsync`, casando o ciclo da fatura com a `data` da compra)
+- `assinatura_cartao_id = assinatura_cartao.id`
+- `conta_fixa_id = null`, `compra_parcelada_id = null`, `transferencia_id = null`.
+
+**Regra de geracao na criacao e reativacao (gatilhos imediatos).**
+Ao CRIAR ou REATIVAR (`ativa` false -> true) uma `assinatura_cartao`:
+1. O sistema calcula a data de ocorrencia para o ciclo/mes corrente: `DateOnly(anoAtual, mesAtual, diaClampado)`.
+2. Resolve a fatura de destino atraves do `FaturaCicloService.ResolverFaturaParaLancamentoAsync(conta_id, data)`. Se a data de ocorrencia ja ultrapassou o fechamento da fatura atual do cartao, a compra cai na fatura subsequente, exatamente como qualquer compra de cartao (item 12).
+3. Gera a Compra correspondente vinculada a essa fatura, respeitando a idempotencia abaixo.
+
+**Idempotencia (obrigatoria).**
+Uma `assinatura_cartao` NUNCA pode gerar mais de uma compra para o mesmo mes/ano de referencia (ou ciclo de fatura).
+Antes de gerar a compra de uma ocorrencia, o sistema verifica se ja existe um `Lancamento` com `assinatura_cartao_id` vinculado para aquele mes e ano de competencia (`ExisteCompraGerada`). Se ja existir, a operacao e um no-op seguro. Rodar a geracao repetidas vezes nao duplica lancamentos na fatura.
+
+**Desativacao (`ativa = false`) — compras geradas sao FATO HISTORICO.**
+Ao desativar uma `assinatura_cartao`:
+- As compras ja geradas em faturas anteriores, fechadas ou abertas PERMANECEM INTOCADAS (mesmo principio de fato historico do item 6 para lancamentos PAGO e do item 12 para compras de cartao). A cobranca no cartao existiu e o limite/fatura foi consumido.
+- Apenas novas geracoes futuras deixam de ocorrer.
+- Ao reativar (`ativa = true`), a geracao volta a rodar a partir do ciclo/mes atual, respeitando a verificacao de idempotencia (se o ciclo atual ja possuir compra gerada, nao gera duplicata).
+
+**Exclusao do molde.**
+Apenas soft-delete via `ativa = false` (mesmo padrao de `conta_fixa`, item 6, e `recebivel_recorrente`, item 15). Nao ha hard delete do molde de assinatura.
+
+---
+
+### Pontos em Aberto / Pendencias de Confirmacao com o Usuario
+
+`[REVISAR: Propagacao de edicao de valor/descricao para compras ja geradas]`
+Ao editar o valor, descricao ou categoria de uma `assinatura_cartao`:
+- *Opcao A (Recomendada por Killua):* A alteracao afeta APENAS as geracoes dos ciclos futuros. As compras ja geradas (inclusive na fatura aberta atual) permanecem como foram lancadas, preservando o historico da cobranca emitida no cartao naquele momento.
+- *Opcao B (Similar a Conta Fixa):* A alteracao propaga para a compra da fatura corrente SE a fatura ainda estiver com `status = ABERTA`. Compras em faturas `FECHADA` ou `PAGA` nunca sao alteradas.
+*Necessita confirmacao do usuario antes de implementar.*
+
+`[REVISAR: Fim opcional da assinatura (quantidade de ciclos ou data limite)]`
+Atualmente o molde e sem fim definido (indeterminado, ativo ate o usuario desativar manualmente).
+- Caso o usuario deseje cadastrar assinaturas promocionais ou temporarias (ex: "6 meses de desconto"), deve-se adicionar campos opcionais como `quantidade_ciclos` ou `data_fim`?
+*Recomendacao Killua: manter simples e sem fim em v1 (espelhando `conta_fixa`); se surgir caso real, estender depois.*
+
+`[REVISAR: Periodicidade alem de MENSAL (ex: ANUAL)]`
+A imensa maioria das assinaturas de cartao e mensal. No entanto, existem assinaturas com cobranca anual (ex: anuidade de cartao, plano anual de servico com cobranca unica por ano).
+- Devemos suportar `periodicidade = ANUAL` (com `mes_referencia`) ja na v1 de `assinatura_cartao`, ou manter restrito a `MENSAL` neste primeiro momento?
+*Recomendacao Killua: focar em MENSAL em v1; se necessario, estender com o enum `Periodicidade` no futuro.*
+
+`[REVISAR: Mecanismo de geracao futura para meses subsequentes]`
+Ao virar o mes ou fechar a fatura, como a compra do novo mes sera gerada?
+- *Opcao 1:* Sob demanda na consulta/leitura das faturas do cartao (`FaturasController.ListarFaturas` / `FaturaCicloService`), garantindo que compras de assinaturas ativas existam antes de responder a fatura.
+- *Opcao 2:* Job agendado diario (`BackgroundService`), no mesmo modelo de `RecebivelRecorrenteMaterializacaoJob` (item 15).
+- *Opcao 3 (Hibrida):* Job agendado diario para materializacao antecipada + rede de seguranca sob demanda ao consultar a fatura.
+*Necessita confirmacao do usuario sobre preferencia arquitetural.*
+
+---
+
 ## Escopo: v1 vs v2
 
 **Integracao real com Pierre (Open Finance) fica para a v2 — decisao

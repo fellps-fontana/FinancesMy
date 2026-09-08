@@ -47,6 +47,7 @@ Table lancamento {
   conta_receber_id uuid [ref: > conta_receber.id, note: 'null se nao for recebimento de conta a receber; 1:N — varios recebimentos podem apontar pro mesmo conta_receber ate zerar o saldo pendente (item 13)']
   compra_parcelada_id uuid [ref: > compra_parcelada.id, note: 'null se nao for parcela de compra parcelada; agrupa as N parcelas da mesma compra so para exibicao (item 12)']
   parcela_numero int [note: 'posicao desta parcela no grupo, ex: 3; null se nao for parcela (item 12)']
+  assinatura_cartao_id uuid [ref: > assinatura_cartao.id, note: 'null se nao for compra gerada por assinatura de cartao; 1:N — varias compras podem apontar pra mesma assinatura ao longo dos meses (item 16)']
 }
 
 // Transferencia de mesma titularidade (item 3). Modelo de duas pernas:
@@ -173,3 +174,21 @@ Table limite_gasto {
   valor_limite decimal [not null]
   periodo varchar [not null, default: 'MENSAL']
 }
+
+// Assinatura de Cartao (item 16). MOLDE de compra recorrente vinculado exclusivamente
+// a conta do tipo CARTAO (ex: Netflix, Spotify). Materializa uma Compra (Lancamento com
+// fatura_id, Tipo=DEBIT, Status=PAGO) a cada ciclo/mes. Diferente de conta_fixa (que gera
+// lancamentos de fluxo de caixa em conta bancaria) e compra_parcelada (que divide
+// valor_total em N vezes com fim fixado). Idempotencia: (assinatura_cartao_id, ano, mes).
+// Desativacao cessa novas geracoes futuras, mantendo as compras ja geradas intocadas
+// (fato historico consumado na fatura do cartao).
+Table assinatura_cartao {
+  id uuid [pk]
+  conta_id uuid [ref: > conta.id, not null, note: 'restrito a conta com tipo=CARTAO']
+  categoria_id uuid [ref: > categoria.id, note: 'null = sem categoria; categoria de despesa herdada pelas compras geradas']
+  descricao varchar [not null, note: 'descricao da assinatura, ex: Netflix, Spotify']
+  valor decimal [not null, note: 'valor fixo cobrado a cada ciclo/mes']
+  dia_referencia int [not null, note: '1-31; dia de referencia no mes para data da compra; clampado ao ultimo dia se mes for mais curto']
+  ativa boolean [not null, default: true, note: 'desativar cessa geracao de novas compras; compras passadas e atuais permanecem intocadas']
+}
+

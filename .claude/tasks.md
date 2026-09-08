@@ -3150,3 +3150,23 @@ verdes/front OK, ordem correta em AtualizarValorAtual pos-merge, gatilho (a)/apo
 sem tocar Rendimento, POST /rendimentos sem campo tipo/origem exposto, isolamento
 de saldo, e grafico sem misturar taxonomias. Kira removeu o hook orfao inline
 (commit 08ba273) e fechou o bloco.
+
+---
+
+## TASK-166 — Modelagem e Esqueleto: Assinatura de Cartao (recorrencia em cartao)
+
+STATUS: CONCLUIDA
+AGENT: killua
+DEPENDENCIAS: vazio
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 6 (Conta fixa) e item 12 (Cartao de credito) INTEIROS; schema.dbml; stack.md
+ESCOPO: Modelar uma recorrencia de compra vinculada a uma conta CARTAO (assinatura tipo Netflix/Spotify) que gere automaticamente uma Compra em cada fatura futura — hoje nao existe: criar_compra_cartao e avulsa, criar_compra_parcelada tem fim definido (N parcelas com valor dividido), e criar_conta_fixa gera lancamento de fluxo de caixa em conta comum, nao compra de fatura de cartao.
+CRITERIO DE ACEITE:
+1. Nova entidade modelada (assinatura_cartao: conta_id restrito a tipo CARTAO, descricao, valor, dia_referencia, categoria_id opcional, ativa) documentada em schema.dbml e como novo item 16 da regra-de-negocio.md.
+2. Regra de geracao definida e documentada: fatura resolvida via FaturaCicloService, gerando ocorrencia atual com idempotencia por ciclo/mes; desativar mantem compras ja geradas intocadas (fato historico).
+3. Esqueleto de assinatura compilavel (Domain + DTOs + contrato de Service/Controller com NotImplementedException, Repositories, Configurations, DbContext e DI) entregue nos caminhos corretos conforme stack.md.
+ARQUIVOS PERMITIDOS: context/regra-de-negocio.md, context/schema.dbml, esqueleto backend nos caminhos que killua definir conforme stack.md
+NAO FAZER: Nao implementar logica de geracao real (fica para levi, apos TDD com mike). Nao decidir sozinho pontos que dependem do usuario — registrar como [REVISAR: ...] e sinalizar.
+RETORNO ESPERADO: schema.dbml atualizado, novo item 16 documentado, esqueleto compilavel, e lista de pontos em aberto.
+HISTORICO: killua modelou a entidade AssinaturaCartao, adicionou vinculo assinatura_cartao_id em lancamento e schema.dbml, documentou Item 16 em regra-de-negocio.md com 4 pontos [REVISAR: ...] identificados. Entregou esqueleto compilavel completo (Domain/AssinaturaCartao.cs, DTOs/AssinaturaCartao, Exceptions/AssinaturaCartaoNaoEncontradaException.cs, Repositories/IAssinaturaCartaoRepository.cs, Repositories/AssinaturaCartaoRepository.cs, Services/IAssinaturaCartaoService.cs, Services/AssinaturaCartaoService.cs, Controllers/AssinaturaCartaoController.cs, Configurations/AssinaturaCartaoConfiguration.cs, DbContext e DI). Build limpo e 630/630 testes verdes.
+
