@@ -3174,7 +3174,7 @@ HISTORICO: killua modelou a entidade AssinaturaCartao, adicionou vinculo assinat
 
 ## TASK-167 — Testes RED: regra de Assinatura de Cartao (mike)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA (22 testes unitarios escritos, RED confirmado por NotImplementedException; 630 testes legados verdes)
 AGENT: mike
 DEPENDENCIAS: TASK-166
 FLUXO: Implementacao (rodada RED — testes devem falhar por NotImplementedException)
@@ -3191,6 +3191,7 @@ ESCOPO: Escrever testes unitarios cobrindo:
 ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Services/AssinaturaCartaoServiceTests.cs` (novo)
 NAO FAZER: Nao implementar logica no Service para fazer passar (isso e de levi na TASK-168).
 RETORNO ESPERADO: Suite de testes compilando e falhando com NotImplementedException (RED confirmado).
+HISTORICO: mike escreveu a suite completa de 22 testes em AssinaturaCartaoServiceTests.cs cobrindo todas as regras do Item 16: validacoes de conta/tipo/status, validacao de campos (valor, dia, descricao), geracao imediata de compra no ciclo, clamp de dia, idempotencia por mes/ano, propagacao de edicao apenas para fatura ABERTA (fechada/paga intocada), desativacao preservando fatos historicos, reativacao e geracao sob demanda (GarantirAssinaturasDoCicloAsync). 22/22 RED confirmados.
 
 ---
 

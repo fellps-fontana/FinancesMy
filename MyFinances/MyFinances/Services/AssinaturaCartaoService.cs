@@ -7,13 +7,19 @@ public class AssinaturaCartaoService : IAssinaturaCartaoService
 {
     private readonly IAssinaturaCartaoRepository _assinaturaCartaoRepository;
     private readonly IContaRepository _contaRepository;
+    private readonly ILancamentoRepository _lancamentoRepository;
+    private readonly FaturaCicloService _faturaCicloService;
 
     public AssinaturaCartaoService(
         IAssinaturaCartaoRepository assinaturaCartaoRepository,
-        IContaRepository contaRepository)
+        IContaRepository contaRepository,
+        ILancamentoRepository lancamentoRepository,
+        FaturaCicloService faturaCicloService)
     {
         _assinaturaCartaoRepository = assinaturaCartaoRepository;
         _contaRepository = contaRepository;
+        _lancamentoRepository = lancamentoRepository;
+        _faturaCicloService = faturaCicloService;
     }
 
     public Task<AssinaturaCartao> CriarAsync(
@@ -57,6 +63,12 @@ public class AssinaturaCartaoService : IAssinaturaCartaoService
     }
 
     public Task<IEnumerable<AssinaturaCartao>> ListarAsync(Guid? contaId = null, bool? ativaFiltro = null)
+    {
+        // Esqueleto compilavel (Killua - TASK-166). Logica real sera implementada por Levi via TDD com Mike.
+        throw new NotImplementedException();
+    }
+
+    public Task<int> GarantirAssinaturasDoCicloAsync(Guid contaId, int ano, int mes)
     {
         // Esqueleto compilavel (Killua - TASK-166). Logica real sera implementada por Levi via TDD com Mike.
         throw new NotImplementedException();
