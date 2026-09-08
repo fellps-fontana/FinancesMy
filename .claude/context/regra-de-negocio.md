@@ -913,32 +913,20 @@ Ao desativar uma `assinatura_cartao`:
 **Exclusao do molde.**
 Apenas soft-delete via `ativa = false` (mesmo padrao de `conta_fixa`, item 6, e `recebivel_recorrente`, item 15). Nao ha hard delete do molde de assinatura.
 
----
+**Edicao e propagacao (DECISAO DO PO CONFIRMADA EM 2026-09-08).**
+Ao editar `valor`, `descricao` ou `categoria_id` de uma `assinatura_cartao`:
+- A alteracao propaga para a compra vinculada na fatura corrente SE E SOMENTE SE a fatura estiver com `status = ABERTA`.
+- Compras vinculadas em faturas com `status = FECHADA` ou `status = PAGA` NUNCA sao alteradas (fato consumado e auditado no cartao).
+- Se o `dia_referencia` for alterado, a data da compra vinculada na fatura `ABERTA` e recalculada para o novo dia (com clamp) e a fatura e revalidada.
 
-### Pontos em Aberto / Pendencias de Confirmacao com o Usuario
+**Sem fim definido em v1 (DECISAO DO PO CONFIRMADA EM 2026-09-08).**
+Na v1, a assinatura e indeterminada, gerando ocorrencias a cada ciclo ate que o usuario a desative explicitamente (`ativa = false`). Campos como `quantidade_ciclos` ou `data_fim` ficam fora de escopo na v1 (YAGNI); extensao com prazo determinado fica reservada para v2 se surgir demanda real.
 
-`[REVISAR: Propagacao de edicao de valor/descricao para compras ja geradas]`
-Ao editar o valor, descricao ou categoria de uma `assinatura_cartao`:
-- *Opcao A (Recomendada por Killua):* A alteracao afeta APENAS as geracoes dos ciclos futuros. As compras ja geradas (inclusive na fatura aberta atual) permanecem como foram lancadas, preservando o historico da cobranca emitida no cartao naquele momento.
-- *Opcao B (Similar a Conta Fixa):* A alteracao propaga para a compra da fatura corrente SE a fatura ainda estiver com `status = ABERTA`. Compras em faturas `FECHADA` ou `PAGA` nunca sao alteradas.
-*Necessita confirmacao do usuario antes de implementar.*
+**Periodicidade exclusivamente MENSAL em v1 (DECISAO DO PO CONFIRMADA EM 2026-09-08).**
+A assinatura de cartao opera exclusivamente em base mensal ancorada em `dia_referencia` (1-31). Nao ha suporte a periodicidade anual ou semanal na v1.
 
-`[REVISAR: Fim opcional da assinatura (quantidade de ciclos ou data limite)]`
-Atualmente o molde e sem fim definido (indeterminado, ativo ate o usuario desativar manualmente).
-- Caso o usuario deseje cadastrar assinaturas promocionais ou temporarias (ex: "6 meses de desconto"), deve-se adicionar campos opcionais como `quantidade_ciclos` ou `data_fim`?
-*Recomendacao Killua: manter simples e sem fim em v1 (espelhando `conta_fixa`); se surgir caso real, estender depois.*
-
-`[REVISAR: Periodicidade alem de MENSAL (ex: ANUAL)]`
-A imensa maioria das assinaturas de cartao e mensal. No entanto, existem assinaturas com cobranca anual (ex: anuidade de cartao, plano anual de servico com cobranca unica por ano).
-- Devemos suportar `periodicidade = ANUAL` (com `mes_referencia`) ja na v1 de `assinatura_cartao`, ou manter restrito a `MENSAL` neste primeiro momento?
-*Recomendacao Killua: focar em MENSAL em v1; se necessario, estender com o enum `Periodicidade` no futuro.*
-
-`[REVISAR: Mecanismo de geracao futura para meses subsequentes]`
-Ao virar o mes ou fechar a fatura, como a compra do novo mes sera gerada?
-- *Opcao 1:* Sob demanda na consulta/leitura das faturas do cartao (`FaturasController.ListarFaturas` / `FaturaCicloService`), garantindo que compras de assinaturas ativas existam antes de responder a fatura.
-- *Opcao 2:* Job agendado diario (`BackgroundService`), no mesmo modelo de `RecebivelRecorrenteMaterializacaoJob` (item 15).
-- *Opcao 3 (Hibrida):* Job agendado diario para materializacao antecipada + rede de seguranca sob demanda ao consultar a fatura.
-*Necessita confirmacao do usuario sobre preferencia arquitetural.*
+**Mecanismo de geracao sob demanda na consulta de fatura (DECISAO DO PO CONFIRMADA EM 2026-09-08).**
+A geracao futura e materializada sob demanda ao consultar/listar faturas (`FaturasController.ListarFaturas` / `FaturaCicloService`), chamando metodo garantidor (`GarantirAssinaturasDoCicloAsync`) que varre as assinaturas ativas daquele cartao e gera a compra para o ciclo correspondente se ainda nao existir (idempotente). Nao ha job agendado em background na v1 para assinatura de cartao.
 
 ---
 
