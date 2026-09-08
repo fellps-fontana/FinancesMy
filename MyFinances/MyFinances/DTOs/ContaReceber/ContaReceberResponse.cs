@@ -23,6 +23,8 @@ public class ContaReceberResponse
 
     public DateOnly? DataPrevista { get; set; }
 
+    public Guid? RecebivelRecorrenteId { get; set; }
+
     public static ContaReceberResponse FromContaReceber(ContaReceberDomain contaReceber)
     {
         var saldo = ContaReceberSaldoCalculator.Calcular(contaReceber);
@@ -37,7 +39,9 @@ public class ContaReceberResponse
             SaldoPendente = saldo.SaldoPendente,
             Status = saldo.Status.ToStorageValue(),
             DataRegistro = contaReceber.DataRegistro,
-            DataPrevista = contaReceber.DataPrevista
+            DataPrevista = contaReceber.DataPrevista,
+            RecebivelRecorrenteId = contaReceber.RecebivelRecorrenteId
         };
     }
 }
+

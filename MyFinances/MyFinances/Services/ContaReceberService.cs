@@ -10,17 +10,20 @@ public class ContaReceberService : IContaReceberService
     private readonly ITransferenciaRepository _transferenciaRepository;
     private readonly ILancamentoRepository _lancamentoRepository;
     private readonly IContaRepository _contaRepository;
+    private readonly IRecebivelRecorrenteRepository? _recebivelRecorrenteRepository;
 
     public ContaReceberService(
         IContaReceberRepository contaReceberRepository,
         ITransferenciaRepository transferenciaRepository,
         ILancamentoRepository lancamentoRepository,
-        IContaRepository contaRepository)
+        IContaRepository contaRepository,
+        IRecebivelRecorrenteRepository? recebivelRecorrenteRepository = null)
     {
         _contaReceberRepository = contaReceberRepository;
         _transferenciaRepository = transferenciaRepository;
         _lancamentoRepository = lancamentoRepository;
         _contaRepository = contaRepository;
+        _recebivelRecorrenteRepository = recebivelRecorrenteRepository;
     }
 
     public async Task<ContaReceber> RegistrarRecebivel(
@@ -180,9 +183,52 @@ public class ContaReceberService : IContaReceberService
         return totalAReceber;
     }
 
+    public async Task Excluir(Guid contaReceberId)
+    {
+        var contaReceber = await _contaReceberRepository.ObterPorId(contaReceberId);
+        if (contaReceber == null)
+        {
+            throw new ContaReceberNaoEncontradaException(contaReceberId);
+        }
+
+        if (contaReceber.RecebivelRecorrenteId.HasValue && _recebivelRecorrenteRepository != null)
+        {
+            var molde = await _recebivelRecorrenteRepository.ObterPorId(contaReceber.RecebivelRecorrenteId.Value);
+            if (molde != null)
+            {
+                // Desativa o molde para nao gerar novas ocorrencias futuras
+                molde.Ativa = false;
+                await _recebivelRecorrenteRepository.Atualizar(molde);
+                await _recebivelRecorrenteRepository.Salvar();
+
+                // Apaga a atual e as posteriores que ainda estiverem PENDENTE. O que passou nao precisa mexer.
+                var ocorrenciasParaRemover = molde.Ocorrencias
+                    .Where(o => o.Status == StatusContaReceber.Pendente &&
+                                (!contaReceber.DataPrevista.HasValue || o.DataPrevista >= contaReceber.DataPrevista.Value))
+                    .ToList();
+
+                foreach (var ocorrencia in ocorrenciasParaRemover)
+                {
+                    await _contaReceberRepository.Remover(ocorrencia);
+                }
+            }
+            else
+            {
+                await _contaReceberRepository.Remover(contaReceber);
+            }
+        }
+        else
+        {
+            await _contaReceberRepository.Remover(contaReceber);
+        }
+
+        await _contaReceberRepository.Salvar();
+    }
+
     private static void ValidarPessoa(string pessoa)
     {
         if (string.IsNullOrWhiteSpace(pessoa))
             throw new PessoaObrigatoriaParaEmprestimoException();
     }
 }
+

@@ -14,7 +14,9 @@ export type ContaReceberResponse = {
   status: string
   dataRegistro: string
   dataPrevista: string | null
+  recebivelRecorrenteId?: string | null
 }
+
 
 export type RecebimentoResponse = {
   id: string

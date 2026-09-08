@@ -691,4 +691,48 @@ public class ContaReceberControllerTests
     }
 
     #endregion
+
+    #region DELETE /api/contas-receber/{id}
+
+    [Fact]
+    public async Task Excluir_IdInexistente_Retorna404()
+    {
+        await _fixture.ClearAsync();
+
+        var idInexistente = Guid.NewGuid();
+        var response = await _fixture.Client.DeleteAsync($"/api/contas-receber/{idInexistente}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Excluir_ContaExistente_Retorna204ERemoveDoBanco()
+    {
+        await _fixture.ClearAsync();
+
+        var request = new RegistrarRecebivelRequest
+        {
+            Descricao = "Recebivel Para Excluir",
+            ValorTotal = 250m,
+            DataRegistro = DateOnly.FromDateTime(DateTime.UtcNow)
+        };
+
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var postResponse = await _fixture.Client.PostAsync("/api/contas-receber/recebiveis", content);
+        Assert.Equal(HttpStatusCode.Created, postResponse.StatusCode);
+
+        var body = await postResponse.Content.ReadAsStringAsync();
+        var criado = JsonSerializer.Deserialize<ContaReceberResponse>(body, ContaReceberControllerTestsFixture.JsonOptions);
+        Assert.NotNull(criado);
+
+        var deleteResponse = await _fixture.Client.DeleteAsync($"/api/contas-receber/{criado.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        var getResponse = await _fixture.Client.GetAsync($"/api/contas-receber/{criado.Id}");
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+    }
+
+    #endregion
 }
+

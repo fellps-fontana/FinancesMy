@@ -150,4 +150,19 @@ export function registerContasReceberTools(server: McpServer) {
       }
     }
   );
+
+  server.tool(
+    "excluir_conta_receber",
+    "Exclui uma conta a receber. Se fizer parte de uma recorrencia, apaga a ocorrencia atual e as posteriores pendentes, desativando a recorrencia (ocorrencias passadas ou ja recebidas sao preservadas).",
+    { contaReceberId: z.string().uuid().describe("Id da conta a receber a ser excluida") },
+    async ({ contaReceberId }) => {
+      try {
+        await api.delete(`api/contas-receber/${contaReceberId}`);
+        return ok(`Conta a receber ${contaReceberId} excluida com sucesso.`);
+      } catch (e) {
+        return err(e);
+      }
+    }
+  );
 }
+

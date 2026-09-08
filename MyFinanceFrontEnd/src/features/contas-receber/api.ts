@@ -43,3 +43,8 @@ export function buscarTotalAReceberEsperadoNoMes(
     `/api/contas-receber/total-esperado-mes?ano=${ano}&mes=${mes}`,
   )
 }
+
+export function excluirContaReceber(id: string): Promise<void> {
+  return apiClient.delete<void>(`/api/contas-receber/${id}`)
+}
+
