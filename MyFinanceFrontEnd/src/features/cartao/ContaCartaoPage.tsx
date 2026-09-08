@@ -9,6 +9,7 @@ import { CartaoVisual, CartaoVisualNovo } from "@/features/cartao/components/Car
 import { CriarContaCartaoForm } from "@/features/cartao/components/CriarContaCartaoForm"
 import { LancarCompraForm } from "@/features/cartao/components/LancarCompraForm"
 import { FaturasSection } from "@/features/cartao/components/FaturasSection"
+import { AssinaturasCartaoSection } from "@/features/assinaturas-cartao/AssinaturasCartaoSection"
 import { validarNovaContaCartao } from "@/features/cartao/lib/validarNovaContaCartao"
 import { validarCompra } from "@/features/cartao/lib/validarCompra"
 import { validarNumeroParcelas } from "@/features/cartao/lib/validarNumeroParcelas"
@@ -288,6 +289,8 @@ export function ContaCartaoPage() {
                 )}
 
                 <FaturasSection contaId={contaCartaoAtual.id} />
+
+                <AssinaturasCartaoSection contaId={contaCartaoAtual.id} />
 
                 <Link
                   className="text-sm text-accent underline-offset-4 hover:underline"
