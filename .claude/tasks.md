@@ -3170,3 +3170,74 @@ NAO FAZER: Nao implementar logica de geracao real (fica para levi, apos TDD com 
 RETORNO ESPERADO: schema.dbml atualizado, novo item 16 documentado, esqueleto compilavel, e lista de pontos em aberto.
 HISTORICO: killua modelou a entidade AssinaturaCartao, adicionou vinculo assinatura_cartao_id em lancamento e schema.dbml, documentou Item 16 em regra-de-negocio.md com 4 pontos [REVISAR: ...] identificados. Entregou esqueleto compilavel completo (Domain/AssinaturaCartao.cs, DTOs/AssinaturaCartao, Exceptions/AssinaturaCartaoNaoEncontradaException.cs, Repositories/IAssinaturaCartaoRepository.cs, Repositories/AssinaturaCartaoRepository.cs, Services/IAssinaturaCartaoService.cs, Services/AssinaturaCartaoService.cs, Controllers/AssinaturaCartaoController.cs, Configurations/AssinaturaCartaoConfiguration.cs, DbContext e DI). Build limpo e 630/630 testes verdes.
 
+---
+
+## TASK-167 — Testes RED: regra de Assinatura de Cartao (mike)
+
+STATUS: CONCLUIDA (22 testes unitarios escritos, RED confirmado por NotImplementedException; 630 testes legados verdes)
+AGENT: mike
+DEPENDENCIAS: TASK-166
+FLUXO: Implementacao (rodada RED — testes devem falhar por NotImplementedException)
+CONTEXTO A LER: regra-de-negocio.md item 16 INTEIRO (decisoes do PO registradas); docs/assinatura-cartao.md; `AssinaturaCartaoService.cs`
+ESCOPO: Escrever testes unitarios cobrindo:
+1. Validacao de entrada: conta inexistente, conta inativa, conta nao-cartao (Banco ou Investimento) rejeitadas; valor <= 0 rejeitado; dia_referencia fora de 1-31 rejeitado; descricao vazia rejeitada.
+2. Criacao e geracao no ciclo corrente: cria AssinaturaCartao com Ativa=true, gera Compra (Lancamento Debit, Status Pago, Manual true, FaturaId resolvido, AssinaturaCartaoId preenchido).
+3. Idempotencia: chamar geracao 2x para o mesmo mes/ano nao duplica a compra.
+4. Clamp de data: dia_referencia 31 em mes de 30 dias (ex: abril) gera compra no dia 30; dia 31 em fevereiro gera 28/29.
+5. Edicao e propagacao: editar valor/descricao/categoria atualiza a compra vinculada SE a fatura estiver ABERTA; compra em fatura FECHADA ou PAGA nunca e alterada.
+6. Desativacao: desativar assinatura mantem compras ja geradas intocadas.
+7. Reativacao: reativar volta a gerar para o ciclo atual respeitando idempotencia.
+8. Garantir geracao sob demanda ao consultar ciclo/fatura (`GarantirAssinaturasDoCicloAsync`).
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances.Tests/Services/AssinaturaCartaoServiceTests.cs` (novo)
+NAO FAZER: Nao implementar logica no Service para fazer passar (isso e de levi na TASK-168).
+RETORNO ESPERADO: Suite de testes compilando e falhando com NotImplementedException (RED confirmado).
+HISTORICO: mike escreveu a suite completa de 22 testes em AssinaturaCartaoServiceTests.cs cobrindo todas as regras do Item 16: validacoes de conta/tipo/status, validacao de campos (valor, dia, descricao), geracao imediata de compra no ciclo, clamp de dia, idempotencia por mes/ano, propagacao de edicao apenas para fatura ABERTA (fechada/paga intocada), desativacao preservando fatos historicos, reativacao e geracao sob demanda (GarantirAssinaturasDoCicloAsync). 22/22 RED confirmados.
+
+---
+
+## TASK-168 — Implementacao GREEN: AssinaturaCartaoService e geracao de compras (levi)
+
+STATUS: CONCLUIDA (652/652 testes verdes, 22/22 novos testes GREEN sem regressoes)
+AGENT: levi
+DEPENDENCIAS: TASK-167
+FLUXO: Implementacao (rodada GREEN)
+CONTEXTO A LER: regra-de-negocio.md item 16 INTEIRO; testes da TASK-167
+ESCOPO: Implementar `AssinaturaCartaoService` contra os testes RED da TASK-167 ate todos ficarem GREEN.
+Integrar a geracao sob demanda (`GarantirAssinaturasDoCicloAsync`) no fluxo de consulta de faturas (`FaturasController.ListarFaturas` / `FaturaCicloService`).
+ARQUIVOS PERMITIDOS: `MyFinances/MyFinances/Services/AssinaturaCartaoService.cs`, `MyFinances/MyFinances/Services/IAssinaturaCartaoService.cs`, `MyFinances/MyFinances/Services/FaturaCicloService.cs`, `MyFinances/MyFinances/Controllers/FaturasController.cs`
+NAO FAZER: Nao alterar os arquivos de teste; nao quebrar os 630 testes existentes.
+RETORNO ESPERADO: 100% dos testes da TASK-167 e da suite geral passando (GREEN).
+HISTORICO: levi implementou AssinaturaCartaoService com injecao de repositorios e FaturaCicloService. Validacoes de entrada (campos obrigatorios, tipos de conta, dia 1-31), geracao de compra imediata com clamp de data, propagacao em edicao restrita a faturas abertas, desativacao preservando historico, reativacao com idempotencia e geracao sob demanda integrados. Integrado no FaturasController.ListarFaturas com injecao opcional retrocompativel. 652/652 testes verdes.
+
+---
+
+## TASK-169 — Style review: Assinatura de Cartao (style)
+
+STATUS: CONCLUIDA (Veredito: APROVADO)
+AGENT: style
+DEPENDENCIAS: TASK-168
+FLUXO: Implementacao
+CONTEXTO A LER: regra-de-negocio.md item 16; clean-code.md; stack.md
+ESCOPO: Revisar o codigo de `AssinaturaCartao` contra as regras de negocio e padroes de clean code (ausencia de logica no controller, DTOs corretos, isolamento de fatura fechada/paga, idempotencia sem race condition critica).
+CRITERIO DE ACEITE: Veredito APROVADO ou tarefas de correcao.
+ARQUIVOS PERMITIDOS: nenhum (apenas leitura e relatorio).
+RETORNO ESPERADO: Veredito e apontamentos de style.
+HISTORICO: style revisou o modulo de AssinaturaCartao. Controller limpo sem logica de dominio; DTOs corretos na pasta DTOs/AssinaturaCartao; isolamento estrito de faturas fechadas/pagas garantido na propagacao de edicao; desativacao preservando compras historicas; clamp de data robusto; idempotencia checada via ExisteCompraGerada; comentarios sem acentuacao; suite 100% verde (652 testes). Veredito: APROVADO sem pendencias.
+
+---
+
+## TASK-170 — Ferramentas MCP para Assinatura de Cartao (levi)
+
+STATUS: CONCLUIDA (5 ferramentas criadas e registradas, build TypeScript 0 erros)
+AGENT: levi
+DEPENDENCIAS: TASK-168, TASK-169
+FLUXO: Implementacao
+CONTEXTO A LER: docs/assinatura-cartao.md; `mcp-server/src/tools/cartao.ts`; `mcp-server/src/tools/contasFixas.ts`
+ESCOPO: Adicionar ferramentas no servidor MCP para assinaturas de cartao: `criar_assinatura_cartao`, `listar_assinaturas_cartao`, `editar_assinatura_cartao`, `desativar_assinatura_cartao`, `reativar_assinatura_cartao`.
+ARQUIVOS PERMITIDOS: `mcp-server/src/tools/cartao.ts` (ou `mcp-server/src/tools/assinaturasCartao.ts`), `mcp-server/src/server.ts`
+RETORNO ESPERADO: Ferramentas registradas e testadas via MCP.
+HISTORICO: levi criou mcp-server/src/tools/assinaturasCartao.ts com as 5 ferramentas (criar, listar, editar, desativar, reativar) e formatacao propria; registrou em mcp-server/src/server.ts via registerAssinaturasCartaoTools. Build do TypeScript (npm run build) executado com 0 erros.
+
+
+
+

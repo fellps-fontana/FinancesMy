@@ -849,4 +849,123 @@ public class ContaReceberServiceTests
     }
 
     #endregion
+
+    #region Regra: Excluir ContaReceber
+
+    [Fact]
+    public async Task Excluir_ContaInexistente_LancaContaReceberNaoEncontradaException()
+    {
+        var idInexistente = Guid.NewGuid();
+        _mockContaReceberRepository
+            .Setup(r => r.ObterPorId(idInexistente))
+            .ReturnsAsync((ContaReceber?)null);
+
+        await Assert.ThrowsAsync<ContaReceberNaoEncontradaException>(() =>
+            _service.Excluir(idInexistente));
+    }
+
+    [Fact]
+    public async Task Excluir_ContaAvulsa_RemoveContaReceberESalva()
+    {
+        var id = Guid.NewGuid();
+        var conta = new ContaReceber
+        {
+            Id = id,
+            Tipo = TipoContaReceber.Recebivel,
+            Descricao = "Avulso",
+            ValorTotal = 200m,
+            Status = StatusContaReceber.Pendente
+        };
+
+        _mockContaReceberRepository
+            .Setup(r => r.ObterPorId(id))
+            .ReturnsAsync(conta);
+
+        await _service.Excluir(id);
+
+        _mockContaReceberRepository.Verify(r => r.Remover(conta), Times.Once);
+        _mockContaReceberRepository.Verify(r => r.Salvar(), Times.Once);
+    }
+
+    [Fact]
+    public async Task Excluir_ContaRecorrente_DesativaMoldeERemoveAtualEPosterioresPendentes()
+    {
+        var moldeId = Guid.NewGuid();
+        var molde = new RecebivelRecorrente
+        {
+            Id = moldeId,
+            Descricao = "Salario",
+            Valor = 5000m,
+            Ativa = true
+        };
+
+        var ocorrenciaPassada = new ContaReceber
+        {
+            Id = Guid.NewGuid(),
+            RecebivelRecorrenteId = moldeId,
+            DataPrevista = new DateOnly(2026, 6, 5),
+            Status = StatusContaReceber.Pendente
+        };
+
+        var ocorrenciaAtual = new ContaReceber
+        {
+            Id = Guid.NewGuid(),
+            RecebivelRecorrenteId = moldeId,
+            DataPrevista = new DateOnly(2026, 7, 5),
+            Status = StatusContaReceber.Pendente
+        };
+
+        var ocorrenciaFutura = new ContaReceber
+        {
+            Id = Guid.NewGuid(),
+            RecebivelRecorrenteId = moldeId,
+            DataPrevista = new DateOnly(2026, 8, 5),
+            Status = StatusContaReceber.Pendente
+        };
+
+        var ocorrenciaFuturaPaga = new ContaReceber
+        {
+            Id = Guid.NewGuid(),
+            RecebivelRecorrenteId = moldeId,
+            DataPrevista = new DateOnly(2026, 9, 5),
+            Status = StatusContaReceber.Recebido
+        };
+
+        molde.Ocorrencias = new List<ContaReceber>
+        {
+            ocorrenciaPassada,
+            ocorrenciaAtual,
+            ocorrenciaFutura,
+            ocorrenciaFuturaPaga
+        };
+
+        var mockRecebivelRepo = new Mock<IRecebivelRecorrenteRepository>();
+        mockRecebivelRepo.Setup(r => r.ObterPorId(moldeId)).ReturnsAsync(molde);
+
+        var serviceComRecorrencia = new ContaReceberService(
+            _mockContaReceberRepository.Object,
+            _mockTransferenciaRepository.Object,
+            _mockLancamentoRepository.Object,
+            _mockContaRepository.Object,
+            mockRecebivelRepo.Object);
+
+        _mockContaReceberRepository.Setup(r => r.ObterPorId(ocorrenciaAtual.Id)).ReturnsAsync(ocorrenciaAtual);
+
+        await serviceComRecorrencia.Excluir(ocorrenciaAtual.Id);
+
+        // Molde foi desativado
+        Assert.False(molde.Ativa);
+        mockRecebivelRepo.Verify(r => r.Atualizar(molde), Times.Once);
+
+        // Atual e posterior pendente foram removidas
+        _mockContaReceberRepository.Verify(r => r.Remover(ocorrenciaAtual), Times.Once);
+        _mockContaReceberRepository.Verify(r => r.Remover(ocorrenciaFutura), Times.Once);
+
+        // Passada e recebida foram preservadas
+        _mockContaReceberRepository.Verify(r => r.Remover(ocorrenciaPassada), Times.Never);
+        _mockContaReceberRepository.Verify(r => r.Remover(ocorrenciaFuturaPaga), Times.Never);
+    }
+
+    #endregion
 }
+

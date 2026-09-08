@@ -33,6 +33,14 @@ Item 13 da `regra-de-negocio.md`, ponto a ponto:
   lança `ValorRecebimentoExcedeSaldoPendenteException` (422), sem persistir
   nada — saldo pendente nunca fica negativo. Decisão confirmada com o usuário
   (a alternativa seria aceitar e deixar saldo negativo).
+- **Exclusão ("o que passou não precisa mexer")**: ao excluir uma `ContaReceber`:
+  - Se for avulsa (`RecebivelRecorrenteId == null`), a ocorrência é excluída.
+    Lançamentos já existentes no banco (saída de empréstimo ou créditos de
+    recebimentos passados) permanecem como fatos históricos com FK desvinculada.
+  - Se for vinculada a um `RecebivelRecorrente`, o sistema desativa o molde
+    (`Ativa = false`) e exclui a ocorrência atual e todas as ocorrências
+    posteriores com status `PENDENTE`. Ocorrências passadas ou já recebidas
+    permanecem intocadas no histórico.
 - **Projeção do mês** (item 9, fatia isolada — não existe endpoint de
   dashboard/projeção completo no codebase ainda): `total_a_receber_esperado_no_mes`
   soma o **saldo pendente** (nunca `valor_total`) de toda `ContaReceber`
@@ -52,11 +60,13 @@ Endpoints (`ContasReceberController`):
 - `POST /api/contas-receber/{id}/recebimentos`
 - `GET /api/contas-receber?status=`, `GET /api/contas-receber/{id}`
 - `GET /api/contas-receber/total-esperado-mes?ano=&mes=`
+- `DELETE /api/contas-receber/{id}` (exclusão de conta a receber)
 
 Frontend em `MyFinanceFrontEnd/src/features/contas-receber/`: listagem com
-badge de status/tipo, formulário de criar (toggle Recebível/Empréstimo) e ação
-inline de registrar recebimento — mesmo padrão container/apresentação já
-usado em `features/investimentos/`.
+badge de status/tipo, formulário de criar (toggle Recebível/Empréstimo), ação
+inline de registrar recebimento e botão de excluir com confirmação inline
+(cancelando também parcelas futuras se recorrente).
+
 
 ### Feedback pós-entrega (2026-08-17)
 

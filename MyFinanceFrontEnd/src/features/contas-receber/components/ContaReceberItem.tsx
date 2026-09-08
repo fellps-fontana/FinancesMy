@@ -6,7 +6,9 @@ import { cn } from "@/shared/lib/utils"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
 import { formatarData } from "@/features/cartao/lib/formatarData"
 import { FormRegistrarRecebimento } from "@/features/contas-receber/FormRegistrarRecebimento"
+import { useExcluirContaReceber } from "@/features/contas-receber/hooks/useExcluirContaReceber"
 import type { ContaReceberResponse } from "@/features/contas-receber/types"
+
 
 type StatusContaReceber = "PENDENTE" | "PARCIAL" | "RECEBIDO"
 type TipoContaReceber = "RECEBIVEL" | "EMPRESTIMO"
@@ -47,6 +49,8 @@ type ContaReceberItemProps = {
 // decide QUANDO exibi-lo.
 export function ContaReceberItem({ contaReceber }: ContaReceberItemProps) {
   const [registrandoRecebimento, setRegistrandoRecebimento] = useState(false)
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
+  const { mutate: excluir, isPending: excluindo } = useExcluirContaReceber()
 
   const status = contaReceber.status as StatusContaReceber
   const statusConfig = CONFIG_POR_STATUS[status]
@@ -112,19 +116,62 @@ export function ContaReceberItem({ contaReceber }: ContaReceberItemProps) {
           </span>
         )}
 
-        {saldoPendenteEmAberto && (
-          <div className="flex justify-end">
+        {confirmandoExclusao ? (
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-1 text-[12px] text-text-muted">
+            <span className="text-alerta">
+              {contaReceber.recebivelRecorrenteId
+                ? "Excluir esta e as próximas parcelas pendentes?"
+                : "Excluir esta conta a receber?"}
+            </span>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={() => setRegistrandoRecebimento(true)}
+              disabled={excluindo}
+              onClick={() => setConfirmandoExclusao(false)}
             >
-              Registrar recebimento
+              Cancelar
             </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={excluindo}
+              onClick={() => {
+                excluir(contaReceber.id, {
+                  onSuccess: () => setConfirmandoExclusao(false),
+                })
+              }}
+            >
+              {excluindo ? "Excluindo..." : "Sim, excluir"}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-text-muted hover:text-alerta"
+              onClick={() => setConfirmandoExclusao(true)}
+            >
+              Excluir
+            </Button>
+
+            {saldoPendenteEmAberto && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setRegistrandoRecebimento(true)}
+              >
+                Registrar recebimento
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
+
 
       <Modal
         open={registrandoRecebimento}

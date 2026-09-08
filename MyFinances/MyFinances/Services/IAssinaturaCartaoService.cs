@@ -25,4 +25,8 @@ public interface IAssinaturaCartaoService
     Task<AssinaturaCartao> ObterPorIdAsync(Guid id);
 
     Task<IEnumerable<AssinaturaCartao>> ListarAsync(Guid? contaId = null, bool? ativaFiltro = null);
+
+    // Geracao sob demanda (item 16): garante que as assinaturas ativas daquele cartao
+    // gerem a compra correspondente na fatura/ciclo consultado, com idempotencia.
+    Task<int> GarantirAssinaturasDoCicloAsync(Guid contaId, int ano, int mes);
 }

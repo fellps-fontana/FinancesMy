@@ -128,4 +128,19 @@ public class ContasReceberController : ControllerBase
         var response = new TotalAReceberEsperadoResponse { TotalAReceberEsperadoNoMes = total };
         return Ok(response);
     }
+
+    [HttpDelete("api/contas-receber/{id}")]
+    public async Task<IActionResult> Excluir(Guid id)
+    {
+        try
+        {
+            await _contaReceberService.Excluir(id);
+            return NoContent();
+        }
+        catch (ContaReceberNaoEncontradaException ex)
+        {
+            return NotFound(new { erro = ex.Message });
+        }
+    }
 }
+
