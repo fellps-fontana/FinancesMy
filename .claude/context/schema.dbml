@@ -95,8 +95,9 @@ Table conta_fixa {
   ativa boolean [not null, default: true]
 }
 
-// Agrupador logico de compra parcelada no cartao (item 12). Cada parcela e
-// seu proprio Lancamento (com fatura_id proprio, igual compra a vista) —
+// Agrupador logico de compra parcelada (item 12, cartao; item 17, conta banco
+// desde 2026-10-07). Cada parcela e seu proprio Lancamento (no cartao com
+// fatura_id proprio, igual compra a vista; na conta banco com fatura_id null) —
 // compra_parcelada so guarda o metadado compartilhado da compra original
 // para a UI agrupar/exibir "3/10". Mesmo padrao ja usado por `transferencia`
 // (item 3): entidade compartilhada agrupando N lancamentos, sem estado de
@@ -117,7 +118,8 @@ Table ativo {
   id uuid [pk]
   nome varchar [not null]
   tipo varchar [not null, note: 'RENDA_FIXA | RENDA_VARIAVEL']
-  instituicao varchar [not null, note: 'texto livre; nao existe catalogo de instituicoes no sistema']
+  conta_id uuid [ref: > conta.id, note: 'conta tipo INVESTIMENTO (item 8.5, 2026-10-08); null so em ativo antigo ainda nao vinculado; obrigatorio no cadastro de ativo novo (validacao de servico)']
+  instituicao varchar [note: 'texto livre, legado: so ativos cadastrados antes de 2026-10-08; ativo novo nao preenche (item 8.5)']
   valor_investido decimal [not null]
   valor_atual decimal [not null, note: 'nasce igual a valor_investido; so muda por atualizacao manual do usuario (item 8.1)']
   data_compra date [not null]

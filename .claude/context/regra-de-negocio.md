@@ -156,7 +156,7 @@ categoria: campo fica `null`, sem quebra.
 `dia_vencimento` ou `categoria_id` de uma ContaFixa atualiza os Lancamentos
 vinculados (`conta_fixa_id`) que ainda estao `Status = Pendente`.
 Lancamentos `Status = Pago` NUNCA sao alterados (fato historico, dinheiro ja
-saiu — mesmo principio do item 13 "valor_total nunca muda apos registro").
+saiu — mesmo principio do item 13 "valor_total nao muda apos o primeiro recebimento").
 
 **Mudanca de periodicidade regenera o conjunto de ocorrencias (decisao
 confirmada em 2026-08-26 — substitui o REVISAR anterior).** Ao editar
@@ -193,6 +193,13 @@ vencimento — mesma mecanica do item 12), sempre a vista, valor fixo
 repetido. Sem suporte a parcelamento dentro da recorrencia (nao confundir
 com `compra_parcelada`, item 12) — decisao confirmada em 2026-08-26.
 
+**Conta fixa NUNCA tem parcelamento, em nenhum destino (reconfirmado pelo
+usuario em 2026-10-07).** Vale para destino BANCO e CARTAO: conta fixa e
+so recorrencia de valor fixo, sem fim definido. Despesa com numero de
+parcelas definido e outro mecanismo — compra parcelada no cartao (item 12)
+ou lancamento parcelado em conta banco (item 17) — e nao passa por
+`conta_fixa`.
+
 **Geracao sob demanda, alem dos gatilhos de criar/reativar (decisao
 confirmada em 2026-08-26).** Criar/reativar continuam gerando a ocorrencia
 atual+proxima (convite de UX imediato). Adicionalmente, o sistema tambem
@@ -228,6 +235,15 @@ DECISOES CONFIRMADAS COM O USUARIO EM 2026-07-20 (regra original), 2026-07-27
 (periodicidade) e 2026-08-26 (limpeza de periodicidade, destino cartao,
 geracao sob demanda).
 
+**Apagar conta fixa (decisao confirmada com o usuario em 2026-10-08).**
+Alem de desativar, a conta fixa pode ser APAGADA: hard delete do molde. Na
+mesma acao, as ocorrencias nao consumadas sao excluidas, com o mesmo
+criterio do desativar (`Status = Pendente` no destino banco; compra com
+`Fatura.Status != Paga` no destino cartao). As ocorrencias consumadas
+(`Pago` / fatura `Paga`) PERMANECEM como lancamentos avulsos:
+`conta_fixa_id` vira `null`, valor, data e categoria nao mudam. Nao existe
+desfazer. Desativar continua existindo para pausar sem perder o molde.
+
 ---
 
 ## 7. Categorias
@@ -245,22 +261,30 @@ a uma categoria do usuario (DE_PARA_CATEGORIA).
 - Se NAO existe vinculo -> lancamento fica com `categoria_id = null`
   (sem categoria) e aparece na aba de vinculo pendente.
 
+**Edicao de categoria (registrada em 2026-10-08).** Editaveis: `nome`,
+`icone`, `parent_id` (o pai precisa ser do mesmo tipo) e o limite de gasto
+(item 14), no mesmo formulario. "Remover limite" apaga o `limite_gasto` da
+categoria. O `tipo` (DESPESA | RECEITA) NAO muda depois de criada:
+subcategorias, lancamentos e limite dependem dele — e o comportamento ja
+implementado em `CategoriaService.Editar`. Arquivar continua sendo a unica
+forma de "excluir" (sem hard delete).
+
 ---
 
 ## 8. Cofrinho, investimentos e ativos
 
 Nao classificar por nome de transacao. O modulo de investimentos tem duas
-formas independentes, sem relacao uma com a outra:
+formas, que desde 2026-10-08 se relacionam (ver 8.5):
 
 - **Conta de investimento (saldo simples):** cofrinho Mercado Pago, XP sem
   detalhe de ativo — CONTA MANUAL propria (tipo INVESTIMENTO), saldo
   atualizado pelo usuario via `saldo_manual`, igual qualquer conta manual
   (item 10).
 - **Ativo (posicao individual, tela "Investimentos"):** Tesouro Selic, CDB,
-  uma acao especifica, fundo imobiliario etc. Registro STANDALONE, SEM
-  vinculo com Conta — o usuario nao precisa cadastrar uma "conta XP" antes de
-  lancar um Tesouro Selic. Campos: `nome`, `tipo` (RENDA_FIXA |
-  RENDA_VARIAVEL), `instituicao` (texto livre, ex: "Nubank"), `quantidade`
+  uma acao especifica, fundo imobiliario etc. Pertence a uma
+  conta de investimento (`conta_id`, ver 8.5 — o modelo standalone de
+  2026-07-12 foi REVERTIDO em 2026-10-08). Campos: `nome`, `tipo` (RENDA_FIXA |
+  RENDA_VARIAVEL), `instituicao` (texto livre, so em ativo antigo — ver 8.5), `quantidade`
   (total de unidades/cotas em carteira, soma de todos os aportes),
   `valor_investido` (soma monetaria de todos os aportes, NUNCA editado
   diretamente apos o cadastro — so muda por novo aporte, ver 8.1),
@@ -299,8 +323,8 @@ cada leitura), e permanecem sempre consistentes com essa formula.
 
 Aporte individual e registro historico IMUTAVEL — sem edicao nem exclusao
 isolada (mesmo principio de fato historico que nao muda depois de registrado,
-ja usado em `lancamento.valor`/item 13 "valor_total nunca muda apos
-registro"). Historico completo de aportes fica consultavel por ativo — base
+ja usado em `lancamento.valor`/item 13 "valor_total nao muda apos o
+primeiro recebimento"). Historico completo de aportes fica consultavel por ativo — base
 do grafico de aportes por ativo (tela "Investimentos").
 
 ### 8.2 Valor atual e evolucao (100% manual)
@@ -380,6 +404,49 @@ perde. Fica como NO-OP explicito ate confirmacao do usuario.
 widget do dashboard (rendimento por tipo) e tela "Investimentos". Sem
 relacao com `Lancamento`/fluxo de caixa.
 
+### 8.5 Ativo vinculado a conta de investimento — DECISAO CONFIRMADA COM O USUARIO EM 2026-10-08
+
+Reverte o "ativo standalone, sem vinculo com Conta" de 2026-07-12.
+
+**Ativo pertence a uma conta de investimento.** `ativo.conta_id` e FK para
+uma Conta com `tipo = INVESTIMENTO` e `ativa = true`. E OBRIGATORIO no
+cadastro de ativo novo. O cadastro nao pede mais `instituicao` — a conta
+ja diz onde o ativo esta. Sem nenhuma conta de investimento, o usuario cria
+uma antes (atalho "Nova conta de investimento" no proprio cadastro).
+
+**Ativos antigos (cadastrados antes desta decisao):** sem migracao
+automatica. Ficam com `conta_id = null` ate o usuario vincular a mao (acao
+"Vincular conta" no ativo). A `instituicao` antiga e mantida so para
+identificacao na tela. No schema, `conta_id` e `instituicao` sao anulaveis;
+a obrigatoriedade de `conta_id` e validacao do cadastro de ativo novo.
+
+**Trocar de conta:** o usuario pode definir ou trocar a conta de um ativo
+(vincular um antigo ou mover entre contas de investimento). Nunca volta para
+`null`. Aportes e rendimentos do ativo nao mudam.
+
+**Saldo da conta de investimento (item 10):**
+- com pelo menos UM ativo ativo vinculado: saldo CALCULADO = soma do
+  `valor_atual` dos ativos ativos vinculados. `saldo_manual` nao vale e nao
+  e editavel enquanto isso for verdade;
+- sem nenhum ativo ativo vinculado (cofrinho, caixinha): `saldo_manual`,
+  como sempre. Se todos os ativos de uma conta forem desativados, volta a
+  valer o ultimo `saldo_manual` gravado nela.
+
+**Totais sem dupla contagem:** total investido / patrimonio = soma dos
+saldos das contas INVESTIMENTO (regra acima) + soma do `valor_atual` dos
+ativos ativos SEM conta (antigos). Ativo vinculado nunca e somado de novo
+fora da conta.
+
+**Aporte nao mexe em conta corrente** — igual 8.1. Aportar nao gera
+transferencia nem lancamento; so muda `quantidade`/`valor_investido` do
+ativo (e o saldo da conta so muda quando o `valor_atual` muda).
+
+**Desativar conta de investimento com ativo ativo vinculado e recusado.**
+Mover ou desativar os ativos antes.
+
+**Tela Investimentos:** coluna "Conta"; ativo antigo mostra "Sem conta" com
+a acao "Vincular conta".
+
 ---
 
 ## 9. Projecao do mes (dashboard)
@@ -420,9 +487,11 @@ isso somar o saldo pendente, e nao o valor_total, evita dupla contagem.
   corrente/poupanca/dinheiro fisico; e investimento simples): nao ha piso em
   zero nem validacao de saldo minimo — `saldo_manual` reflete exatamente o
   que o usuario informar, inclusive divida/saldo devedor.
-- **Ativo (item 8):** standalone, NAO participa do saldo de nenhuma Conta. O
-  total do modulo de investimentos soma `ativo.valor_atual` separadamente
-  (ver tela "Investimentos").
+- **Conta de investimento com ativo vinculado (item 8.5, desde
+  2026-10-08):** saldo CALCULADO = soma do `valor_atual` dos ativos ativos
+  vinculados; `saldo_manual` nao vale enquanto houver ativo ativo
+  vinculado. Ativo antigo sem conta nao entra em saldo de conta e soma
+  separado no total de investimentos (8.5).
 
 ### 10.1 Subtipo de conta (so aplicavel a Tipo = Banco)
 
@@ -563,6 +632,11 @@ permitir valor manual por parcela abriria brecha pra soma nao bater com
 `valor_total`, quebrando a auditoria da compra original sem cobrir nenhum
 caso de uso real.
 
+**Mesmo agrupador fora do cartao (2026-10-07).** `compra_parcelada` +
+`parcela_numero` tambem agrupam o lancamento parcelado em conta banco (item
+17). La cada parcela e um Lancamento normal com `fatura_id = null`; o que
+esta nesta subsecao sobre fatura vale so para conta CARTAO.
+
 ### Estorno de compra parcelada — decisao registrada em 2026-07-20
 
 Regra estava omissa (DEMANDA-006, Killua sinalizou) e foi decidida agora,
@@ -602,6 +676,66 @@ do total da PROXIMA fatura em aberto do mesmo cartao, reduzindo o valor que
 o usuario precisa pagar naquele ciclo seguinte. Nao ha acao manual do
 usuario nem mudanca de status na fatura ja paga.
 
+### Antecipacao de parcelas — decisao confirmada com o usuario em 2026-10-07
+
+Entra na v1. Resolve a pendencia levantada em 2026-08-26 (ver "Pendencias a
+definir"). Antecipar e trazer parcelas FUTURAS de uma compra parcelada para
+a fatura atual, pra quitar a compra antes do prazo.
+
+**Acao sobre a compra, com quantidade escolhida.** A antecipacao e
+disparada sobre `compra_parcelada_id` informando `quantidade` (inteiro >=
+1). O usuario escolhe QUANTAS parcelas antecipa, nao QUAIS.
+
+**Parcelas elegiveis:** so as que estao em fatura POSTERIOR a fatura ABERTA
+do ciclo corrente do cartao. Parcela que ja esta na fatura aberta atual, em
+fatura FECHADA ou em fatura PAGA nao e elegivel (ja esta no ciclo corrente
+ou ja venceu). Se `quantidade` for maior que o numero de parcelas
+elegiveis, a acao e REJEITADA inteira (erro de validacao) — nao antecipa
+parcialmente.
+
+**Ordem: das ultimas para tras.** Sao antecipadas as parcelas de MAIOR
+`parcela_numero` primeiro. Exemplo: compra em 10x, parcela 3/10 na fatura
+aberta atual, elegiveis 4/10 a 10/10. Antecipar 2 move a 10/10 e a 9/10;
+as parcelas 4/10 a 8/10 continuam nas faturas originais.
+
+**Efeito em cada parcela antecipada:** o proprio Lancamento-parcela e
+movido — `fatura_id` passa a apontar para a fatura ABERTA atual e `data`
+passa a ser a data da antecipacao. `valor`, `parcela_numero`,
+`compra_parcelada_id` e categoria NAO mudam. Nenhum lancamento e criado
+nem removido, entao a soma das N parcelas continua batendo exatamente com
+`valor_total`.
+
+**Consequencias (nenhuma logica nova, sai do que ja existe):**
+- o total da fatura atual sobe e o das faturas futuras cai, porque fatura
+  e so recorte de lancamentos por `fatura_id`;
+- a projecao do mes (item 9) reflete sozinha, ja que o cartao entra como o
+  total da fatura atual;
+- gasto por categoria e limite de gasto (item 14) passam a contar a parcela
+  no mes da nova `data` — a despesa "anda" para o mes da antecipacao.
+
+**Antecipar NAO e pagar.** A antecipacao nao gera pagamento nem
+transferencia. So muda em qual fatura a parcela esta. A quitacao continua
+sendo o pagamento da fatura como um todo, nunca de uma compra especifica
+(regra de "Pagamento x fatura" acima).
+
+**Sem desconto.** A parcela antecipada mantem o valor original. Se o banco
+der desconto pela antecipacao, o usuario registra um estorno avulso (compra
+negativa) na mesma fatura, mecanismo ja existente. Nao existe campo de
+desconto na antecipacao.
+
+**Repetivel, sem desfazer.** A mesma compra pode ser antecipada mais de uma
+vez enquanto houver parcela elegivel. Nao existe acao de desfazer
+antecipacao na v1.
+
+**Estorno depois de antecipar:** segue a subsecao "Estorno de compra
+parcelada" sem mudanca — a acao continua sendo unica sobre a compra inteira
+e trata cada parcela conforme a fatura em que ela esta AGORA.
+
+**Exibicao:** a parcela antecipada continua aparecendo com seu numero
+original ("Notebook Dell 10/10") e precisa ser distinguivel das demais na
+fatura (marca "antecipada"). Decisao tecnica em aberto para o arquiteto:
+como persistir essa marca — o schema atual nao tem campo para isso.
+
 ---
 
 ## 13. Contas a Receber (Recebivel e Emprestimo)
@@ -614,9 +748,19 @@ Modela dois casos com a MESMA entidade (`conta_receber`, campo `tipo`):
 - **EMPRESTIMO:** dinheiro emprestado pelo usuario a uma pessoa. `pessoa` e
   texto livre (sem cadastro/entidade propria de PESSOA).
 
-**Valor fixo:** `valor_total` e definido no registro e NUNCA muda — sem
-juros, sem correcao. O que varia com o tempo e o saldo pendente, conforme
-os recebimentos acontecem.
+**Valor fixo depois do primeiro recebimento (revisado em 2026-10-08):** sem
+juros, sem correcao. `valor_total` so pode ser editado em RECEBIVEL que
+ainda nao teve nenhum recebimento (status PENDENTE). Depois do primeiro
+recebimento NUNCA muda. Em EMPRESTIMO nunca muda (o valor ja saiu da conta
+de origem como transferencia). O que varia com o tempo e o saldo pendente,
+conforme os recebimentos acontecem.
+
+**Edicao de conta a receber (decisao confirmada com o usuario em
+2026-10-08).** Editaveis em qualquer status: `descricao`, `pessoa` (so
+EMPRESTIMO) e `data_prevista`. `valor_total` so na condicao acima. `tipo`
+nunca muda. Ocorrencia gerada por recebivel recorrente (item 15) nao e
+editada individualmente — edita-se o molde (mesmo principio de "editar na
+origem" do item 18).
 
 **Emprestimo: saida como transferencia de perna unica.** Ao registrar um
 EMPRESTIMO, o valor sai da conta de origem escolhida pelo usuario. Usa a
@@ -738,7 +882,7 @@ por `conta_receber_id`).
 - `descricao` (obrigatorio);
 - `valor` (obrigatorio, > 0) — valor de cada ocorrencia; copiado para
   `conta_receber.valor_total` na materializacao e fixo dali em diante
-  (item 13: "valor_total nunca muda apos registro");
+  (item 13: "valor_total nao muda apos o primeiro recebimento");
 - `periodicidade` — `MENSAL` (padrao), `ANUAL` ou `SEMANAL`;
 - `dia_vencimento` (1-31) — obrigatorio para MENSAL e ANUAL, `null` para
   SEMANAL; dia clampado ao ultimo dia do mes quando o mes tiver menos dias
@@ -830,8 +974,9 @@ excluidas (hard delete). As `PARCIAL`/`RECEBIDO` permanecem (fato
 consumado). Reativar volta a materializar do zero, respeitando a
 idempotencia.
 
-**Exclusao do molde.** So `ativa = false` (soft), mesmo padrao do item 6 —
-nao ha hard delete do molde.
+**Exclusao do molde.** So `ativa = false` (soft) — nao ha hard delete do
+molde. Diferente da conta fixa, que ganhou "Apagar" em 2026-10-08 (item 6);
+o recebivel recorrente continua so com desativar.
 
 **Validacao por periodicidade.** Espelha `ValidarDiaVencimentoEValor` do
 `ContaFixaService`: `valor > 0`, `descricao` nao-vazia, `dia_vencimento`
@@ -911,7 +1056,7 @@ Ao desativar uma `assinatura_cartao`:
 - Ao reativar (`ativa = true`), a geracao volta a rodar a partir do ciclo/mes atual, respeitando a verificacao de idempotencia (se o ciclo atual ja possuir compra gerada, nao gera duplicata).
 
 **Exclusao do molde.**
-Apenas soft-delete via `ativa = false` (mesmo padrao de `conta_fixa`, item 6, e `recebivel_recorrente`, item 15). Nao ha hard delete do molde de assinatura.
+Apenas soft-delete via `ativa = false` (mesmo padrao de `recebivel_recorrente`, item 15; a conta fixa ganhou "Apagar" em 2026-10-08, a assinatura nao). Nao ha hard delete do molde de assinatura.
 
 **Edicao e propagacao (DECISAO DO PO CONFIRMADA EM 2026-09-08).**
 Ao editar `valor`, `descricao` ou `categoria_id` de uma `assinatura_cartao`:
@@ -927,6 +1072,141 @@ A assinatura de cartao opera exclusivamente em base mensal ancorada em `dia_refe
 
 **Mecanismo de geracao sob demanda na consulta de fatura (DECISAO DO PO CONFIRMADA EM 2026-09-08).**
 A geracao futura e materializada sob demanda ao consultar/listar faturas (`FaturasController.ListarFaturas` / `FaturaCicloService`), chamando metodo garantidor (`GarantirAssinaturasDoCicloAsync`) que varre as assinaturas ativas daquele cartao e gera a compra para o ciclo correspondente se ainda nao existir (idempotente). Nao ha job agendado em background na v1 para assinatura de cartao.
+
+---
+
+## 17. Lancamento parcelado em conta banco (despesa parcelada fora do cartao)
+
+**DECISAO CONFIRMADA COM O USUARIO EM 2026-10-07.** Estilo Organizze: no
+lancamento normal o usuario pode marcar a despesa como parcelada, informando
+o VALOR TOTAL e a quantidade de parcelas. Entra na v1.
+
+**So despesa.** Vale apenas para lancamento DEBIT. Receita em parcelas NAO
+passa por aqui — e Contas a Receber (item 13), que ja cobre recebimento
+incremental. Nao criar um segundo caminho para a mesma coisa.
+
+**Onde vale:** nas mesmas contas e com as mesmas validacoes do lancamento
+manual avulso (conta MANUAL ativa que aceita lancamento normal). Em conta
+CARTAO o caminho continua sendo a compra parcelada do item 12. Conta fixa
+nunca parcela (item 6).
+
+**Modelo: N Lancamentos independentes, um por parcela** — mesmo desenho do
+item 12 (subsecao Parcelamento), sem lancamento-pai. As parcelas
+compartilham `compra_parcelada_id` e cada uma carrega `parcela_numero`;
+`fatura_id` e sempre `null`. O agrupamento e so de exibicao ("Notebook
+3/10"), nunca entra em calculo.
+
+**Valor de cada parcela:** mesma regra do item 12 — `valor_total /
+quantidade_parcelas`, resto do arredondamento inteiro na ULTIMA parcela,
+sem valor manual por parcela. `quantidade_parcelas` e inteiro >= 2 (1x e
+lancamento avulso comum).
+
+**Datas:** a parcela 1 usa a data informada pelo usuario. A parcela `i` cai
+`i-1` meses depois, no mesmo dia; se o mes nao tiver esse dia, usa o ultimo
+dia do mes (mesmo ajuste da conta fixa, item 6). Periodicidade so MENSAL.
+
+**Status na criacao:** a parcela 1 nasce com o status escolhido no
+formulario (PENDENTE ou PAGO). As parcelas 2..N nascem sempre PENDENTE.
+
+**Descricao, categoria e conta:** iguais em todas as parcelas, herdadas do
+formulario.
+
+**Cada parcela e um lancamento normal de caixa.** Entra no fluxo de caixa,
+na projecao do mes (item 9, como conta a pagar do mes da sua data) e no
+gasto por categoria / limite de gasto (item 14) pela propria `data`, sem
+logica especial de parcela.
+
+**Pagamento e parcela a parcela.** Cada parcela vai de PENDENTE a PAGO
+individualmente (item 5). Diferente do cartao, onde a quitacao e da fatura.
+Por isso NAO existe mecanismo de antecipacao em conta banco: adiantar e
+simplesmente marcar a parcela como paga antes da data. A "Antecipacao de
+parcelas" do item 12 e exclusiva de conta CARTAO.
+
+**Cancelamento: acao unica sobre a compra inteira.** Disparada sobre
+`compra_parcelada_id`, exclui (hard delete) TODAS as parcelas ainda
+PENDENTE. Parcelas PAGO ficam intocadas (fato historico, dinheiro ja saiu)
+e nao geram estorno. Nao existe exclusao de UMA parcela isolada: a exclusao
+de lancamento manual (item 5) deve recusar lancamento com
+`compra_parcelada_id` preenchido. Se nao houver nenhuma parcela PENDENTE,
+nao ha o que cancelar.
+
+**Sem edicao de valor ou quantidade depois de criado.** `valor_total`,
+`quantidade_parcelas` e o valor de cada parcela nao mudam apos o registro.
+Para corrigir, cancela a compra e lanca de novo. Edicao de descricao,
+categoria ou data de uma parcela ainda nao foi decidida (ver "Pendencias a
+definir") — ate decidir, nenhuma edicao e permitida em lancamento com
+`compra_parcelada_id`.
+
+---
+
+## 18. Edicao e exclusao de lancamento — DECISAO CONFIRMADA COM O USUARIO EM 2026-10-08
+
+**So lancamento avulso edita ou exclui por aqui.** Avulso = `manual =
+true` e TODOS os vinculos nulos: `transferencia_id`, `fatura_id`,
+`conta_fixa_id`, `compra_parcelada_id`, `conta_receber_id`,
+`assinatura_cartao_id` e `conciliado_com`. Lancamento com qualquer vinculo
+e editado ou excluido NA ORIGEM; a tela mostra Editar/Excluir desabilitados
+indicando onde fazer:
+- `conta_fixa_id` -> Contas fixas (item 6);
+- `compra_parcelada_id` -> cancelar a compra parcelada (itens 12 e 17);
+- `fatura_id` / `assinatura_cartao_id` -> Cartao (itens 12 e 16);
+- `conta_receber_id` -> Contas a receber (item 13);
+- `transferencia_id` (transferencia, pagamento de fatura, emprestimo) ->
+  fluxo de origem; perna de transferencia nunca e editada isolada.
+Motivo: cada dado tem um unico dono, entao nada sobrescreve nada
+(propagacao de molde, divisao de parcela, saldo de fatura).
+
+**Campos editaveis no avulso:** descricao, valor (> 0), data, categoria,
+conta, tipo e status.
+- **Tipo** (DEBIT <-> CREDIT) pode mudar. Ao trocar, `categoria_id` vira
+  `null` e o usuario escolhe uma categoria do tipo novo. DEBIT so aceita
+  categoria DESPESA; CREDIT so aceita RECEITA. Nunca salva categoria de
+  tipo incompativel.
+- **Conta** pode mudar para outra conta com as mesmas validacoes da criacao
+  de lancamento manual (manual e ativa). Conta CARTAO nao: compra de cartao
+  e outro fluxo (item 12).
+- **Status** muda nos dois sentidos, PENDENTE <-> PAGO (desmarcar pagamento
+  e permitido). SUGERIDO nunca (item 5).
+
+**Efeitos:** projecao (item 9), limite de gasto (item 14), relatorio por
+categoria (item 19) e fluxo de caixa leem o lancamento como ele esta, sem
+logica extra. O saldo de conta manual e o `saldo_manual` digitado (item
+10): editar ou excluir lancamento NAO recalcula saldo de conta.
+
+**Exclusao:** hard delete, mesmo escopo (so avulso). Sem desfazer.
+
+**Implementacao atual (registrado em 2026-10-08):**
+`LancamentoManualService.EditarAsync` e `RemoverAsync` hoje nao checam
+vinculo nenhum — precisam passar a recusar lancamento nao avulso.
+
+---
+
+## 19. Relatorio por categoria — DECISAO CONFIRMADA COM O USUARIO EM 2026-10-08
+
+**Recorte:** mes calendario escolhido (padrao: mes corrente). Mesmo calculo
+do "Gasto realizado no periodo" do item 14: lancamentos DEBIT, regime de
+COMPETENCIA (conta banco e compra de cartao pela propria `data`), status
+PENDENTE e PAGO, sem lancamento oculto. Transferencia e pagamento de fatura
+nunca entram (itens 3 e 12). Parcela antecipada conta no mes da nova data
+(item 12).
+
+**Lista:** uma linha por categoria DESPESA de primeiro nivel com gasto > 0
+no mes, somando as subcategorias diretas (mesma agregacao do item 14).
+Ordem: maior gasto primeiro. Cada linha mostra o valor e o % do total gasto
+do mes. Lancamento DEBIT com `categoria_id = null` entra numa linha "Sem
+categoria".
+
+**Total gasto do mes** = soma das linhas. Variacao contra o mes anterior =
+(total do mes - total do mes anterior) / total do mes anterior; se o mes
+anterior for zero, nao exibe a variacao.
+
+**Detalhe (clique na categoria):** lista os lancamentos que compoem o valor
+da linha — descricao, data, conta (ou cartao, identificado como tal),
+subcategoria quando houver, e valor — em ordem crescente de data. No topo:
+total da categoria, % do total gasto e, se a categoria tiver limite, a
+barra limite x realizado (item 14). A soma do detalhe e sempre igual ao
+valor da linha. So leitura: editar ou excluir e pela tela de origem (item
+18).
 
 ---
 
@@ -996,8 +1276,8 @@ Historico da decisao (registrado para nao se perder de novo):
     definir").
 
 **Na v1**, cofrinho e XP (sem detalhe de ativo) continuam como conta manual
-simples com `saldo_manual` (ver item 8). Ativo e um modulo separado, sem
-relacao com Conta.
+simples com `saldo_manual` (ver item 8). **Revisado em 2026-10-08:** Ativo
+passa a pertencer a uma conta de investimento (item 8.5).
 
 ---
 
@@ -1015,12 +1295,12 @@ relacao com Conta.
 - **RESOLVIDO em 2026-08-26:** ciclo da fatura (`data_fechamento` /
   `data_vencimento`) e FIXO por cadastro de cartao, nao lido de import.
   Confirmado pelo usuario — sem pendencia.
-- Antecipar parcela de compra parcelada no cartao (item 12, subsecao
-  Parcelamento) — pendencia levantada em 2026-08-26. Hoje nao existe
-  mecanismo pra quitar de uma vez as parcelas restantes de uma compra
-  parcelada antes do vencimento (o modelo so cobre estorno — cancelamento,
-  nao antecipacao de pagamento). Escopo (v1 ou v2) e desenho ainda nao
-  decididos com o usuario.
+- **RESOLVIDO em 2026-10-07:** antecipar parcela de compra parcelada no
+  cartao (pendencia de 2026-08-26) entra na v1 — ver item 12, subsecao
+  "Antecipacao de parcelas".
+- Lancamento parcelado em conta banco (item 17): edicao de descricao,
+  categoria ou data de uma parcela ja criada — nao decidido com o usuario.
+  Ate decidir, lancamento com `compra_parcelada_id` nao e editavel.
 - (item 8) Sparkline por ativo e "% no mes" do total (presentes no mockup)
   — **RESOLVIDO PARCIALMENTE em 2026-07-27 pelo item 8.4.** Toda edicao de
   `valor_atual` agora gera `Rendimento(VALORIZACAO)` com delta e data — o
