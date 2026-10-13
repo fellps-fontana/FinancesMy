@@ -18,14 +18,14 @@ public class ParcelaElegivelResponse
 
     public DateOnly FaturaDataVencimento { get; set; }
 
-    // Exige Lancamento.Fatura e Lancamento.CompraParcelada carregados.
-    public static ParcelaElegivelResponse FromLancamento(Lancamento lancamento)
+    // totalParcelas vem da CompraParcelada. Exige Lancamento.Fatura carregado.
+    public static ParcelaElegivelResponse FromLancamento(Lancamento lancamento, int totalParcelas)
     {
         return new()
         {
             LancamentoId = lancamento.Id,
             ParcelaNumero = lancamento.ParcelaNumero!.Value,
-            TotalParcelas = lancamento.CompraParcelada!.QuantidadeParcelas,
+            TotalParcelas = totalParcelas,
             Valor = lancamento.Valor,
             Data = lancamento.Data,
             FaturaId = lancamento.FaturaId!.Value,
