@@ -107,4 +107,18 @@ public class LancamentoRepository : ILancamentoRepository
     {
         await _context.SaveChangesAsync();
     }
+
+    // Item 19. Sem filtro de FaturaId: compra de cartao entra pela propria data (competencia).
+    public async Task<IEnumerable<Lancamento>> ListarDebitosParaRelatorioAsync(int ano, int mes)
+    {
+        return await _context.Lancamentos
+            .Include(l => l.Conta)
+            .Include(l => l.Categoria)
+            .Where(l => l.Tipo == TipoLancamento.Debit)
+            .Where(l => !l.Oculto)
+            .Where(l => l.TransferenciaId == null)
+            .Where(l => GastoPorCategoriaCalculator.StatusElegiveis.Contains(l.Status))
+            .Where(l => l.Data.Year == ano && l.Data.Month == mes)
+            .ToListAsync();
+    }
 }
