@@ -84,6 +84,22 @@ public class FaturasController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("{faturaId}/compras")]
+    public async Task<IActionResult> ListarComprasDaFatura(
+        Guid contaId,
+        Guid faturaId,
+        [FromServices] IFaturaComprasService faturaComprasService)
+    {
+        var compras = await faturaComprasService.ListarComprasAsync(contaId, faturaId);
+
+        if (compras == null)
+        {
+            return NotFound(new { erro = "Fatura nao encontrada" });
+        }
+
+        return Ok(compras.Select(CompraResponse.FromLancamento));
+    }
+
     [HttpPost("{faturaId}/pagamentos")]
     public async Task<IActionResult> PagarFatura(
         Guid contaId,

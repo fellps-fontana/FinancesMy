@@ -89,6 +89,7 @@ builder.Services.AddScoped<IRecorrenciaGeradorService, RecorrenciaGeradorService
 builder.Services.AddScoped<IAssinaturaCartaoService, AssinaturaCartaoService>();
 builder.Services.AddScoped<IAntecipacaoParcelasService, AntecipacaoParcelasService>();
 builder.Services.AddScoped<IRelatorioCategoriaService, RelatorioCategoriaService>();
+builder.Services.AddScoped<IFaturaComprasService, FaturaComprasService>();
 
 // Services - Lancamentos
 builder.Services.AddScoped<ILancamentoManualService, LancamentoManualService>();
