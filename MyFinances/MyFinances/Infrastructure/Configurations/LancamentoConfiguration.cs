@@ -87,6 +87,11 @@ public class LancamentoConfiguration : IEntityTypeConfiguration<Lancamento>
         builder.Property(l => l.AssinaturaCartaoId)
             .HasColumnName("assinatura_cartao_id");
 
+        builder.Property(l => l.Antecipada)
+            .HasColumnName("antecipada")
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.HasOne(l => l.Conta)
             .WithMany()
             .HasForeignKey(l => l.ContaId)
