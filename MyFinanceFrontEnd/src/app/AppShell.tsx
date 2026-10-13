@@ -1,21 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { NavLink } from "react-router-dom"
-import {
-  CalendarSync,
-  CreditCard,
-  HandCoins,
-  LayoutDashboard,
-  Receipt,
-  Repeat,
-  Tags,
-  Target,
-  TrendingUp,
-  Wallet,
-  type LucideIcon,
-} from "lucide-react"
+import { LogOut, Wallet } from "lucide-react"
 import { useAuth } from "@/features/auth/useAuth"
 import { Button } from "@/shared/ui/button"
 import { cn } from "@/shared/lib/utils"
+import { NAV_GROUPS, MOBILE_MORE_ITEMS, MOBILE_PRIMARY_ITEMS, type NavItem } from "@/app/navigation"
 import { BottomTabBar } from "@/app/components/BottomTabBar"
 import { ThemeToggle } from "@/app/components/ThemeToggle"
 import {
@@ -32,75 +21,38 @@ type AppShellProps = {
   children: ReactNode
 }
 
-export type NavItem = {
-  to: string
-  label: string
-  icon: LucideIcon
-  end?: boolean
-}
-
-// Os 10 destinos de navegacao do app (stack.md "Estrutura de pastas (src/)" -
-// um destino por modulo/feature). Ordem espelha a prioridade de uso diario:
-// visao geral primeiro, depois contas/dinheiro, depois organizacao (regras,
-// categorias, limites). Puramente estrutural - nenhuma regra de dominio mora
-// aqui, so rotulo + rota + icone.
-//
-// Fonte unica da sidebar desktop (>= md), que permanece INALTERADA nesta
-// mudanca (ver ESCOPO da task de bottom tab bar mobile). A navegacao mobile
-// (< md) usa MOBILE_PRIMARY_ITEMS + MOBILE_MORE_ITEMS abaixo, derivados
-// deste array para nao duplicar rota/icone.
-const NAV_ITEMS: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/contas", label: "Contas", icon: Wallet },
-  { to: "/cartao", label: "Cartao de credito", icon: CreditCard },
-  { to: "/investimentos", label: "Investimentos", icon: TrendingUp },
-  { to: "/contas-fixas", label: "Contas fixas", icon: Repeat },
-  { to: "/contas-receber", label: "Contas a receber", icon: HandCoins },
-  { to: "/recebiveis-recorrentes", label: "Recebiveis recorrentes", icon: CalendarSync },
-  { to: "/lancamentos", label: "Lancamentos", icon: Receipt },
-  { to: "/categorias", label: "Categorias", icon: Tags },
-  { to: "/limites-gasto", label: "Limites de gasto", icon: Target },
-]
-
-// 4 destinos de maior uso, sempre visiveis na bottom tab bar mobile (padrao
-// repetido nos mockups "02 Dashboard", "03 Contas", "05 Cartao de Credito").
-// Rotulos curtos ("Inicio"/"Cartao") sao PROPOSITAIS - o mockup usa texto
-// mais compacto que a sidebar (11px, 5 itens na largura da tela) - por isso
-// nao reaproveita o rotulo de NAV_ITEMS, so rota/icone equivalentes. A
-// sidebar desktop continua usando NAV_ITEMS sem alteracao.
-const MOBILE_PRIMARY_ITEMS: NavItem[] = [
-  { to: "/", label: "Inicio", icon: LayoutDashboard, end: true },
-  { to: "/lancamentos", label: "Lancamentos", icon: Receipt },
-  { to: "/cartao", label: "Cartao", icon: CreditCard },
-  { to: "/contas", label: "Contas", icon: Wallet },
-]
-
-const MOBILE_PRIMARY_PATHS = new Set(MOBILE_PRIMARY_ITEMS.map((item) => item.to))
-
-// Os 6 destinos restantes (todo NAV_ITEMS fora dos 4 primarios acima),
-// abertos pelo item "Mais" da bottom tab bar - reaproveita rotulo/icone/rota
-// de NAV_ITEMS, sem duplicar texto nem perder nenhuma rota.
-const MOBILE_MORE_ITEMS: NavItem[] = NAV_ITEMS.filter((item) => !MOBILE_PRIMARY_PATHS.has(item.to))
+export type { NavItem }
 
 function navLinkClassName(isActive: boolean) {
   return cn(
-    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+    "flex items-center gap-2.5 rounded-[10px] px-3 py-[9px] text-sm transition-colors",
     isActive
-      ? "bg-primary/10 text-primary"
+      ? "bg-accent-deep text-text-primary"
       : "text-text-muted hover:bg-secondary hover:text-text-body",
   )
 }
 
-// Lista de navegacao pura da sidebar fixa (desktop) - unico consumidor
-// depois que o drawer mobile foi substituido pela BottomTabBar.
+// Lista de navegacao da sidebar fixa (desktop), agrupada conforme o mockup.
 function NavList() {
   return (
-    <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-      {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
-        <NavLink key={to} to={to} end={end} className={({ isActive }) => navLinkClassName(isActive)}>
-          <Icon className="size-4 shrink-0" strokeWidth={1.6} />
-          {label}
-        </NavLink>
+    <nav className="flex flex-1 flex-col gap-6 overflow-y-auto">
+      {NAV_GROUPS.map((group, index) => (
+        <div key={group.label ?? index} className="flex flex-col gap-0.5">
+          {group.label && <div className="px-3 pb-1.5 text-xs text-text-faint">{group.label}</div>}
+          {group.items.map(({ to, label, icon: Icon, end }) => (
+            <NavLink key={to} to={to} end={end} className={({ isActive }) => navLinkClassName(isActive)}>
+              {({ isActive }) => (
+                <>
+                  <Icon
+                    className={cn("size-4 shrink-0", isActive ? "text-accent-soft" : "text-text-faint")}
+                    strokeWidth={1.6}
+                  />
+                  {label}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
       ))}
     </nav>
   )
@@ -185,25 +137,51 @@ function ThemeProvider({ children }: { children: ReactNode }) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }
 
+function SidebarBrand() {
+  return (
+    <div className="flex items-center gap-2.5 px-2">
+      <div className="flex size-8 items-center justify-center rounded-[10px] bg-accent-deep text-accent-soft">
+        <Wallet className="size-4" strokeWidth={1.6} />
+      </div>
+      <span className="text-sm font-medium text-text-primary">Financeiro</span>
+    </div>
+  )
+}
+
+// Rodape da sidebar desktop: Sair + alternancia de tema (unico ponto de tema).
+function SidebarFooter({ onLogout }: { onLogout: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
+      <button
+        type="button"
+        onClick={onLogout}
+        className="flex items-center gap-2.5 rounded-[10px] px-3 py-[9px] text-sm text-text-muted transition-colors hover:bg-secondary hover:text-text-body"
+      >
+        <LogOut className="size-4 shrink-0 text-text-faint" strokeWidth={1.6} />
+        Sair
+      </button>
+      <ThemeToggle />
+    </div>
+  )
+}
+
 export function AppShell({ children }: AppShellProps) {
   const { usuario, logout } = useAuth()
 
   return (
     <ThemeProvider>
       <div className="flex min-h-svh flex-col bg-background md:flex-row">
-        {/* Sidebar fixa (>= md) - INALTERADA por esta mudanca. */}
-        <aside className="hidden shrink-0 border-r border-border bg-card md:sticky md:top-0 md:flex md:h-svh md:w-64 md:flex-col">
-          <div className="border-b border-border px-4 py-4">
-            <BrandTitle />
-          </div>
+        {/* Sidebar fixa (>= md), padrao do mockup desktop. */}
+        <aside className="hidden shrink-0 gap-6 border-r border-border bg-card px-4 py-6 md:sticky md:top-0 md:flex md:h-svh md:w-[232px] md:flex-col">
+          <SidebarBrand />
           <NavList />
-          <UserFooter username={usuario?.username} onLogout={logout} />
+          <SidebarFooter onLogout={logout} />
         </aside>
 
         {/* pb-24 da folga pra bottom tab bar fixa (< md) nao cobrir o fim do
             conteudo; sem efeito em >= md (bar so existe no mobile). */}
-        <main className="flex-1 px-4 pt-8 pb-24 md:pb-8">
-          <div className="mx-auto w-full max-w-2xl">{children}</div>
+        <main className="flex-1 px-4 pt-8 pb-24 md:px-10 md:py-8">
+          <div className="mx-auto w-full">{children}</div>
         </main>
 
         {/* Bottom tab bar mobile (< md): substitui o antigo drawer full-screen

@@ -6,7 +6,7 @@ import { Wallet } from "lucide-react"
 export function LoginBrandPanel() {
   return (
     <div className="hidden w-1/2 flex-col justify-center bg-accent-deep px-20 py-16 lg:flex">
-      <div className="mb-10 flex size-13 items-center justify-center rounded-xl bg-card">
+      <div className="mb-10 flex size-13 items-center justify-center rounded-[14px] bg-card">
         <Wallet className="size-6 text-accent-soft" strokeWidth={1.6} />
       </div>
       <h1 className="max-w-[420px] text-[28px] leading-snug font-medium text-text-primary">

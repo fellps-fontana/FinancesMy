@@ -1,7 +1,13 @@
+import { ArrowLeftRight } from "lucide-react"
+import { Link } from "react-router-dom"
+import { Badge, type BadgeVariant } from "@/shared/ui/badge"
 import { Card, CardContent } from "@/shared/ui/card"
+import { IconTile } from "@/shared/ui/icon-tile"
 import { cn } from "@/shared/lib/utils"
+import { obterIconeCatalogo } from "@/shared/lib/catalogoIcones"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
-import { formatarData } from "@/features/cartao/lib/formatarData"
+import { useCategorias } from "@/features/categorias/hooks/useCategorias"
+import type { CategoriaResponse } from "@/features/categorias/types"
 import { useUltimosLancamentos } from "@/features/dashboard/hooks/useUltimosLancamentos"
 import type {
   LancamentoResponse,
@@ -9,60 +15,85 @@ import type {
   TipoLancamento,
 } from "@/features/lancamentos/types"
 
-// Mesma tabela cor/sinal de LancamentoItem.tsx (regra-de-negocio.md item 2,
-// CRITICA: "usar SEMPRE o campo tipo... Nunca somar valor cru") - duplicada
-// aqui, em vez de importar LancamentoItem inteiro, porque LancamentoItem e
-// um item de LISTA COMPLETA com mutations (marcar pago/editar/remover, ver
-// LancamentoItem.tsx) - carga pesada demais pra uma previa do dashboard
-// so-leitura. O que se reusa e o PADRAO VISUAL (tokens de cor/badge), nao o
-// componente com efeito colateral acoplado.
+// Cor/sinal por tipo (regra-de-negocio.md item 2, CRITICA: "usar SEMPRE o
+// campo tipo... Nunca somar valor cru"). verde = entrada, coral = saida
+// (identidade-visual.md). Transferencia (item 3) nao e entrada nem saida:
+// ver LinhaUltimoLancamento.
 const CONFIG_POR_TIPO: Record<TipoLancamento, { corValor: string; sinal: string }> = {
   DEBIT: { corValor: "text-negativo", sinal: "-" },
   CREDIT: { corValor: "text-positivo", sinal: "+" },
 }
 
-// Status (regra-de-negocio.md item 5): mesmas 3 cores de LancamentoItem.tsx
-// ("pago -> positivo; pendente -> alerta; sugerido -> accent/roxo real via
-// token --primary", identidade-visual.md).
-const CONFIG_POR_STATUS: Record<StatusLancamento, { label: string; className: string }> = {
-  PENDENTE: { label: "Pendente", className: "bg-alerta/15 text-alerta" },
-  SUGERIDO: { label: "Sugerido", className: "bg-primary/15 text-primary" },
-  PAGO: { label: "Pago", className: "bg-positivo/15 text-positivo" },
+// Status (item 5) -> variante do Badge compartilhado: pago -> positivo,
+// pendente -> alerta, sugerido -> accent (identidade-visual.md).
+const CONFIG_POR_STATUS: Record<StatusLancamento, { label: string; variant: BadgeVariant }> = {
+  PENDENTE: { label: "Pendente", variant: "pendente" },
+  SUGERIDO: { label: "Sugerido", variant: "sugerido" },
+  PAGO: { label: "Pago", variant: "pago" },
 }
 
 const QUANTIDADE_EXIBIDA = 5
+
+const formatadorDiaMes = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" })
+
+// "Hoje" / "Ontem" / "2 de julho" a partir de yyyy-MM-dd. Parse manual
+// evita o deslocamento de fuso de `new Date(iso)`.
+export function rotuloData(dataIso: string, hoje: Date): string {
+  const [ano, mes, dia] = dataIso.split("-").map(Number)
+  const data = new Date(ano, mes - 1, dia)
+  const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
+  const dias = Math.round((inicioHoje.getTime() - data.getTime()) / (24 * 60 * 60 * 1000))
+
+  if (dias === 0) return "Hoje"
+  if (dias === 1) return "Ontem"
+  return formatadorDiaMes.format(data)
+}
+
+// Indice id -> categoria sobre a hierarquia que o backend ja devolve
+// aninhada (item 7). So achata para lookup de nome/icone.
+function indexarCategorias(categorias: CategoriaResponse[]): Map<string, CategoriaResponse> {
+  const indice = new Map<string, CategoriaResponse>()
+  const visitar = (lista: CategoriaResponse[]) => {
+    for (const categoria of lista) {
+      indice.set(categoria.id, categoria)
+      visitar(categoria.subcategorias)
+    }
+  }
+  visitar(categorias)
+  return indice
+}
 
 type UltimosLancamentosProps = {
   className?: string
 }
 
 /**
- * Widget "Ultimos lancamentos" (mockup "02 Dashboard.dc.html", secao de
- * mesmo nome) - previa SOMENTE LEITURA dos lancamentos mais recentes do
- * fluxo de caixa (regra-de-negocio.md item 12), agregados entre as contas
- * BANCO do usuario (ver useUltimosLancamentos.ts). Sem acoes de editar/
- * marcar como pago/remover aqui - isso continua exclusivo da tela
- * /lancamentos (LancamentoItem.tsx); este widget e so um atalho visual do
- * que aconteceu por ultimo.
- *
- * Mesmo padrao estrutural de CardSaldoProjetado/LimiteGastoIndicador: Card +
- * label + estado de loading/erro/vazio + lista. Container puro - nenhum
- * calculo de dominio mora aqui, so leitura de LancamentoResponse ja pronto e
- * formatacao (formatarMoeda/formatarData).
- *
- * Garantia de contraste (achado previo repassado por Kira: bug de hover
- * ilegivel relatado, mas o widget simplesmente nao existia ainda no
- * Dashboard): este componente NAO usa nenhuma classe `hover:` - os itens da
- * lista nao sao interativos/clicaveis nesta leva, entao nao ha estado de
- * hover pra repetir o bug relatado em nenhum lugar deste arquivo.
+ * Widget "Ultimos lancamentos" (mockups 02 Dashboard) - previa SOMENTE
+ * LEITURA do fluxo de caixa (regra-de-negocio.md item 12), agregada entre as
+ * contas BANCO (ver useUltimosLancamentos.ts). Clique leva a /lancamentos.
+ * No mobile e uma lista solta; no desktop vira card. Valores e status vem
+ * prontos do backend; aqui so formatacao.
  */
 export function UltimosLancamentos({ className }: UltimosLancamentosProps) {
   const { data, isLoading, isError } = useUltimosLancamentos(QUANTIDADE_EXIBIDA)
+  const { data: categorias } = useCategorias()
+  const indiceCategorias = indexarCategorias(categorias ?? [])
 
   return (
-    <Card className={className}>
-      <CardContent className="flex flex-col gap-3">
-        <span className="text-[13px] text-text-muted">Ultimos lancamentos</span>
+    <Card
+      className={cn(
+        "gap-0 bg-transparent py-0 ring-0 [--card-spacing:0px]",
+        "md:rounded-2xl md:bg-card md:py-5 md:ring-1 md:[--card-spacing:--spacing(5.5)]",
+        className,
+      )}
+    >
+      <CardContent className="flex flex-col gap-2.5 md:gap-3.5">
+        <Link
+          to="/lancamentos"
+          className="text-[13px] text-text-muted hover:text-text-body focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:text-[15px] md:text-text-primary"
+        >
+          Ultimos lancamentos
+        </Link>
 
         {isLoading && <p className="text-sm text-text-muted">Carregando lancamentos...</p>}
 
@@ -75,9 +106,15 @@ export function UltimosLancamentos({ className }: UltimosLancamentosProps) {
         )}
 
         {!isLoading && !isError && data !== undefined && data.length > 0 && (
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col gap-2.5 md:gap-3">
             {data.map((lancamento) => (
-              <LinhaUltimoLancamento key={lancamento.id} lancamento={lancamento} />
+              <LinhaUltimoLancamento
+                key={lancamento.id}
+                lancamento={lancamento}
+                categoria={
+                  lancamento.categoriaId ? indiceCategorias.get(lancamento.categoriaId) : undefined
+                }
+              />
             ))}
           </ul>
         )}
@@ -88,33 +125,39 @@ export function UltimosLancamentos({ className }: UltimosLancamentosProps) {
 
 type LinhaUltimoLancamentoProps = {
   lancamento: LancamentoResponse
+  categoria?: CategoriaResponse
 }
 
-function LinhaUltimoLancamento({ lancamento }: LinhaUltimoLancamentoProps) {
-  const tipoConfig = CONFIG_POR_TIPO[lancamento.tipo]
+function LinhaUltimoLancamento({ lancamento, categoria }: LinhaUltimoLancamentoProps) {
   const statusConfig = CONFIG_POR_STATUS[lancamento.status]
+  const ehTransferencia = lancamento.classificacao === "TRANSFERENCIA"
+  const tipoConfig = CONFIG_POR_TIPO[lancamento.tipo]
+  const Icone = ehTransferencia ? ArrowLeftRight : obterIconeCatalogo(categoria?.icone)
 
   return (
-    <li className="flex items-center justify-between gap-3">
-      <div className="flex min-w-0 flex-col gap-0.5">
+    <li className="flex items-center gap-3">
+      <IconTile>
+        <Icone strokeWidth={1.6} aria-hidden="true" />
+      </IconTile>
+
+      <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm text-text-body">
           {lancamento.descricao ?? "Sem descricao"}
         </span>
-        <span className="text-[12px] text-text-faint">{formatarData(lancamento.data)}</span>
+        <span className="truncate text-[12px] text-text-faint">
+          {rotuloData(lancamento.data, new Date())}
+          {categoria !== undefined && <span className="hidden md:inline"> · {categoria.nome}</span>}
+        </span>
       </div>
 
-      <div className="flex shrink-0 flex-col items-end gap-1">
-        <span className={cn("text-sm font-medium", tipoConfig.corValor)}>
-          {tipoConfig.sinal} {formatarMoeda(lancamento.valor)}
+      <div className="flex shrink-0 flex-col items-end gap-0.5 md:flex-row md:items-center md:gap-3">
+        <span className={cn("text-sm", ehTransferencia ? "text-text-body" : tipoConfig.corValor)}>
+          {ehTransferencia ? "" : tipoConfig.sinal}
+          {formatarMoeda(lancamento.valor)}
         </span>
-        <span
-          className={cn(
-            "inline-flex items-center rounded-[5px] px-2 py-0.5 text-[11px] font-medium",
-            statusConfig.className,
-          )}
-        >
+        <Badge variant={statusConfig.variant} className="md:min-w-[70px]">
           {statusConfig.label}
-        </span>
+        </Badge>
       </div>
     </li>
   )
