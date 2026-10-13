@@ -75,6 +75,10 @@ export type CompraResponse = {
   faturaId: string | null
   compraParceladaId: string | null
   parcelaNumero: number | null
+  // DTOs/CompraResponse.cs: total de parcelas da compra (null se nao e
+  // parcela) e flag de parcela ja antecipada.
+  totalParcelas?: number | null
+  antecipada?: boolean
 }
 
 // POST /api/contas/{contaId}/compras-parceladas (DTOs/CriarCompraParceladaRequest.cs).
@@ -141,4 +145,32 @@ export type PagamentoFaturaResponse = {
   contaDestinoId: string
   faturaId: string | null
   descricao: string | null
+}
+
+// GET /api/contas/{contaId}/compras-parceladas/{compraParceladaId}/antecipacoes/elegiveis
+// (DTOs ParcelaElegivelResponse). Parcelas que ainda podem ser antecipadas.
+export type ParcelaElegivelResponse = {
+  lancamentoId: string
+  parcelaNumero: number
+  totalParcelas: number
+  valor: number
+  data: string
+  faturaId: string
+  faturaDataVencimento: string
+}
+
+// POST .../antecipacoes (AnteciparParcelasRequest). dataAntecipacao omitida =
+// hoje, resolvido pelo backend.
+export type AnteciparParcelasRequest = {
+  quantidade: number
+  dataAntecipacao?: string // yyyy-MM-dd
+}
+
+// AnteciparParcelasResponse - parcelas ja movidas para a fatura de destino.
+export type AnteciparParcelasResponse = {
+  compraParceladaId: string
+  faturaDestinoId: string
+  quantidadeAntecipada: number
+  valorAntecipado: number
+  parcelas: CompraResponse[]
 }

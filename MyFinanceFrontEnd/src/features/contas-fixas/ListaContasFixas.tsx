@@ -1,11 +1,17 @@
 import { useMemo, useState } from "react"
+import { Plus } from "lucide-react"
 import { useContasFixas } from "@/features/contas-fixas/hooks/useContasFixas"
-import { ContaFixaItem } from "@/features/contas-fixas/components/ContaFixaItem"
+import { ContaFixaItem, GRADE_COLUNAS_CONTA_FIXA } from "@/features/contas-fixas/components/ContaFixaItem"
 import { FormContaFixa } from "@/features/contas-fixas/FormContaFixa"
 import { useCategorias } from "@/features/categorias/hooks/useCategorias"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
+import { BottomSheet } from "@/shared/ui/bottom-sheet"
 import { Button } from "@/shared/ui/button"
-import { Modal } from "@/shared/ui/Modal"
+import { Card, CardContent } from "@/shared/ui/card"
+import { PageHeader } from "@/shared/ui/page-header"
+import { cn } from "@/shared/lib/utils"
+import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
+import type { ContaFixaResponse } from "@/features/contas-fixas/types"
 import type { CategoriaResponse } from "@/features/categorias/types"
 
 // Achata categoria + subcategorias (regra-de-negocio.md item 7) num mapa
@@ -27,6 +33,15 @@ function construirMapaNomeCategoria(categorias: CategoriaResponse[]): Record<str
   }
 
   return mapa
+}
+
+// O backend nao expoe total agregado de contas fixas: soma simples, so para
+// exibicao, dos valores das contas ATIVAS e MENSAIS (anuais nao pesam todo
+// mes). Nao alimenta nenhuma regra de dominio.
+function somarTotalFixoMensal(contasFixas: ContaFixaResponse[]): number {
+  return contasFixas
+    .filter((contaFixa) => contaFixa.ativa && contaFixa.periodicidade === "MENSAL")
+    .reduce((total, contaFixa) => total + contaFixa.valor, 0)
 }
 
 // Container: le o estado de servidor (React Query, via useContasFixas e
@@ -102,25 +117,39 @@ export function ListaContasFixas() {
     )
   }
 
-  return (
-    <div className="mx-auto flex min-h-svh max-w-2xl flex-col gap-6 px-4 py-8">
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-[19px] font-medium text-text-primary">Contas Fixas</h1>
-          <p className="text-sm text-text-muted">Despesas recorrentes geradas automaticamente todo mes.</p>
-        </div>
-        <Button type="button" onClick={() => setCriandoContaFixa((aberto) => !aberto)}>
-          {criandoContaFixa ? "Cancelar" : "Nova conta fixa"}
-        </Button>
-      </header>
+  const totalFixoMensal = somarTotalFixoMensal(contasFixas ?? [])
 
-      <Modal
+  return (
+    <div className="mx-auto flex min-h-svh max-w-4xl flex-col gap-5 px-4 py-8 md:px-10">
+      <PageHeader
+        title="Contas fixas"
+        action={
+          <Button type="button" onClick={() => setCriandoContaFixa(true)}>
+            <Plus aria-hidden="true" />
+            Nova conta fixa
+          </Button>
+        }
+      />
+
+      <Card>
+        <CardContent className="flex flex-col gap-1.5">
+          <span className="text-[13px] text-text-muted">Total fixo mensal</span>
+          <span className="text-[28px] leading-tight font-medium text-text-primary">
+            {formatarMoeda(totalFixoMensal)}
+          </span>
+        </CardContent>
+      </Card>
+
+      <BottomSheet
         open={criandoContaFixa}
         onClose={() => setCriandoContaFixa(false)}
         title="Nova conta fixa"
       >
-        <FormContaFixa onSalvar={() => setCriandoContaFixa(false)} />
-      </Modal>
+        <FormContaFixa
+          onSalvar={() => setCriandoContaFixa(false)}
+          onCancelar={() => setCriandoContaFixa(false)}
+        />
+      </BottomSheet>
 
       {error ? (
         <Alert variant="destructive">
@@ -130,16 +159,30 @@ export function ListaContasFixas() {
       ) : isLoading ? (
         <p className="text-sm text-text-muted">Carregando...</p>
       ) : contasFixas && contasFixas.length > 0 ? (
-        <div className="flex flex-col gap-3">
-          {contasFixas.map((contaFixa) => (
-            <ContaFixaItem
-              key={contaFixa.id}
-              contaFixa={contaFixa}
-              categoriaNome={
-                contaFixa.categoriaId ? (mapaNomeCategoria[contaFixa.categoriaId] ?? null) : null
-              }
-            />
-          ))}
+        <div className="overflow-hidden rounded-2xl border-[0.5px] border-border bg-card">
+          <div
+            className={cn(
+              "hidden border-b-[0.5px] border-border px-[22px] py-3.5 text-xs text-text-muted md:grid",
+              GRADE_COLUNAS_CONTA_FIXA,
+            )}
+          >
+            <span>Descricao</span>
+            <span>Recorrencia</span>
+            <span className="text-right">Valor</span>
+            <span className="text-right">Ativa</span>
+            <span />
+          </div>
+          <ul>
+            {contasFixas.map((contaFixa) => (
+              <ContaFixaItem
+                key={contaFixa.id}
+                contaFixa={contaFixa}
+                categoriaNome={
+                  contaFixa.categoriaId ? (mapaNomeCategoria[contaFixa.categoriaId] ?? null) : null
+                }
+              />
+            ))}
+          </ul>
         </div>
       ) : (
         <p className="text-sm text-text-muted">Nenhuma conta fixa cadastrada ainda.</p>

@@ -1,5 +1,8 @@
 import { apiClient } from "@/shared/api/client"
 import type {
+  AnteciparParcelasRequest,
+  AnteciparParcelasResponse,
+  ParcelaElegivelResponse,
   CompraParceladaResponse,
   CompraResponse,
   ContaResponse,
@@ -76,6 +79,30 @@ export function pagarFatura(
 ): Promise<PagamentoFaturaResponse> {
   return apiClient.post<PagamentoFaturaResponse>(
     `/api/contas/${contaId}/faturas/${faturaId}/pagamentos`,
+    request,
+  )
+}
+
+// GET .../compras-parceladas/{compraParceladaId}/antecipacoes/elegiveis
+// (CartaoComprasParceladasController.ObterParcelasElegiveis).
+export function listarParcelasElegiveis(
+  contaId: string,
+  compraParceladaId: string,
+): Promise<ParcelaElegivelResponse[]> {
+  return apiClient.get<ParcelaElegivelResponse[]>(
+    `/api/contas/${contaId}/compras-parceladas/${compraParceladaId}/antecipacoes/elegiveis`,
+  )
+}
+
+// POST .../compras-parceladas/{compraParceladaId}/antecipacoes
+// (CartaoComprasParceladasController.AnteciparParcelas).
+export function anteciparParcelas(
+  contaId: string,
+  compraParceladaId: string,
+  request: AnteciparParcelasRequest,
+): Promise<AnteciparParcelasResponse> {
+  return apiClient.post<AnteciparParcelasResponse>(
+    `/api/contas/${contaId}/compras-parceladas/${compraParceladaId}/antecipacoes`,
     request,
   )
 }
