@@ -34,5 +34,16 @@ public interface IContaReceberService
     Task<decimal> CalcularTotalAReceberEsperadoNoMes(int ano, int mes);
 
     Task Excluir(Guid contaReceberId);
+
+    // regra-de-negocio.md itens 9, 13 e 15.
+    // Lanca: ContaReceberNaoEncontradaException, ContaReceberRecorrenteNaoEditavelException,
+    // CampoObrigatorioException (descricao), ValorInvalidoException (valor_total <= 0),
+    // PessoaObrigatoriaParaEmprestimoException, ValorTotalNaoEditavelException.
+    Task<ContaReceber> EditarAsync(
+        Guid id,
+        string descricao,
+        string? pessoa,
+        DateOnly? dataPrevista,
+        decimal? valorTotal);
 }
 

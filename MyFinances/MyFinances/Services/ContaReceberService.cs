@@ -6,6 +6,9 @@ namespace MyFinances.Services;
 
 public class ContaReceberService : IContaReceberService
 {
+    private const string MotivoEmprestimo = "EMPRESTIMO nao altera o valor_total depois de registrado";
+    private const string MotivoJaRecebido = "ja houve recebimento registrado nesta conta";
+
     private readonly IContaReceberRepository _contaReceberRepository;
     private readonly ITransferenciaRepository _transferenciaRepository;
     private readonly ILancamentoRepository _lancamentoRepository;
@@ -225,7 +228,85 @@ public class ContaReceberService : IContaReceberService
         await _contaReceberRepository.Salvar();
     }
 
-    private static void ValidarPessoa(string pessoa)
+    // regra-de-negocio.md itens 9, 13 e 15. Ordem: 404 -> recorrente (409) -> descricao/valor (400)
+    // -> pessoa (400) -> valor_total (409 se EMPRESTIMO ou RECEBIVEL fora de Pendente; igual ao atual e no-op)
+    // -> grava descricao/pessoa/dataPrevista. Nunca altera Tipo nem Status. Nada e gravado em erro.
+    public async Task<ContaReceber> EditarAsync(
+        Guid id,
+        string descricao,
+        string? pessoa,
+        DateOnly? dataPrevista,
+        decimal? valorTotal)
+    {
+        var contaReceber = await ObterContaEditavel(id);
+
+        ValidarDescricao(descricao);
+        ValidarValorTotalInformado(valorTotal);
+        var pessoaFinal = DefinirPessoaDaEdicao(contaReceber.Tipo, pessoa);
+
+        var alterarValorTotal = ValorTotalMudou(contaReceber, valorTotal);
+        if (alterarValorTotal)
+            ValidarValorTotalEditavel(contaReceber);
+
+        contaReceber.Descricao = descricao;
+        contaReceber.Pessoa = pessoaFinal;
+        contaReceber.DataPrevista = dataPrevista;
+
+        if (alterarValorTotal)
+            contaReceber.ValorTotal = valorTotal!.Value;
+
+        await _contaReceberRepository.Atualizar(contaReceber);
+        await _contaReceberRepository.Salvar();
+
+        return contaReceber;
+    }
+
+    private async Task<ContaReceber> ObterContaEditavel(Guid id)
+    {
+        var contaReceber = await ObterPorId(id);
+        if (contaReceber.RecebivelRecorrenteId.HasValue)
+            throw new ContaReceberRecorrenteNaoEditavelException(id);
+
+        return contaReceber;
+    }
+
+    private static void ValidarDescricao(string descricao)
+    {
+        if (string.IsNullOrWhiteSpace(descricao))
+            throw new CampoObrigatorioException("descricao");
+    }
+
+    private static void ValidarValorTotalInformado(decimal? valorTotal)
+    {
+        if (valorTotal.HasValue && valorTotal.Value <= 0m)
+            throw new ValorInvalidoException("valor_total", valorTotal.Value);
+    }
+
+    private static string? DefinirPessoaDaEdicao(TipoContaReceber tipo, string? pessoa)
+    {
+        if (tipo != TipoContaReceber.Emprestimo)
+            return null;
+
+        ValidarPessoa(pessoa);
+        return pessoa;
+    }
+
+    private static bool ValorTotalMudou(ContaReceber contaReceber, decimal? valorTotal)
+    {
+        return valorTotal.HasValue && valorTotal.Value != contaReceber.ValorTotal;
+    }
+
+    private static void ValidarValorTotalEditavel(ContaReceber contaReceber)
+    {
+        if (contaReceber.Tipo == TipoContaReceber.Emprestimo)
+            throw new ValorTotalNaoEditavelException(MotivoEmprestimo);
+
+        var status = ContaReceberSaldoCalculator.Calcular(contaReceber).Status;
+        if (status != StatusContaReceber.Pendente)
+            throw new ValorTotalNaoEditavelException(MotivoJaRecebido);
+    }
+
+    private static void ValidarPessoa(string? pessoa)
     {
         if (string.IsNullOrWhiteSpace(pessoa))
             throw new PessoaObrigatoriaParaEmprestimoException();
