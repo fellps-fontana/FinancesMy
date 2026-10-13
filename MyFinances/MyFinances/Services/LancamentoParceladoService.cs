@@ -75,13 +75,15 @@ public class LancamentoParceladoService : ILancamentoParceladoService
             return (false, 0, 0, ErroSemParcelaPendente);
         }
 
+        // Calculado ANTES de remover: o EF tira as entidades deletadas de compra.Lancamentos no SaveChanges.
+        var mantidas = compra.Lancamentos.Count(parcela => !EhPendente(parcela));
+
         foreach (var parcela in pendentes)
         {
             await _lancamentoRepository.Remover(parcela);
         }
         await _lancamentoRepository.Salvar();
 
-        var mantidas = compra.Lancamentos.Count - pendentes.Count;
         return (true, pendentes.Count, mantidas, null);
     }
 
