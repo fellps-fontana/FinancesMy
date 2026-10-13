@@ -14,6 +14,8 @@ import { LancamentosPage } from "@/features/lancamentos/LancamentosPage"
 import { MaisPage } from "@/app/MaisPage"
 import { DeParaPage } from "@/features/de-para/DeParaPage"
 import { ConciliacaoPage } from "@/features/conciliacao/ConciliacaoPage"
+import { RelatorioCategoriaPage } from "@/features/relatorios/RelatorioCategoriaPage"
+import { RelatorioCategoriaDetalhePage } from "@/features/relatorios/RelatorioCategoriaDetalhePage"
 
 export function AppRoutes() {
   return (
@@ -33,6 +35,9 @@ export function AppRoutes() {
         <Route path="/de-para" element={<DeParaPage />} />
         <Route path="/conciliacao" element={<ConciliacaoPage />} />
         <Route path="/lancamentos" element={<LancamentosPage />} />
+        <Route path="/relatorio" element={<RelatorioCategoriaPage />} />
+        <Route path="/relatorio/sem-categoria" element={<RelatorioCategoriaDetalhePage />} />
+        <Route path="/relatorio/:categoriaId" element={<RelatorioCategoriaDetalhePage />} />
         <Route path="/mais" element={<MaisPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
