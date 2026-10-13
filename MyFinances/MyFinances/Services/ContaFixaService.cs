@@ -174,17 +174,24 @@ public class ContaFixaService : IContaFixaService
 
         contaFixa.Ativa = false;
         await _contaFixaRepository.Atualizar(contaFixa);
+        await _recorrenciaGeradorService.RemoverOcorrenciasNaoConsumadasAsync(contaFixaId);
 
-        var lancamentosPendentes = contaFixa.Lancamentos
-            .Where(l => l.Status == StatusLancamento.Pendente)
-            .ToList();
+        return (true, null);
+    }
 
-        foreach (var lancamento in lancamentosPendentes)
+    public async Task<(bool Sucesso, string? Erro)> ApagarAsync(Guid contaFixaId)
+    {
+        var contaFixa = await _contaFixaRepository.ObterPorId(contaFixaId);
+        if (contaFixa == null)
         {
-            await _lancamentoRepository.Remover(lancamento);
+            return (false, "Conta fixa nao encontrada");
         }
 
-        await _lancamentoRepository.Salvar();
+        await _recorrenciaGeradorService.RemoverOcorrenciasNaoConsumadasAsync(contaFixaId);
+        await _recorrenciaGeradorService.DesvincularOcorrenciasConsumadasAsync(contaFixaId);
+
+        await _contaFixaRepository.Remover(contaFixa);
+        await _contaFixaRepository.Salvar();
 
         return (true, null);
     }
