@@ -1,5 +1,6 @@
 using MyFinances.DTOs;
 using MyFinances.Domain;
+using MyFinances.Exceptions;
 using MyFinances.Repositories;
 
 namespace MyFinances.Services;
@@ -7,47 +8,49 @@ namespace MyFinances.Services;
 public class LancamentoManualService : ILancamentoManualService
 {
     private readonly ILancamentoRepository _lancamentoRepository;
-    private readonly IContaRepository _contaRepository;
+    private readonly ValidadorLancamentoManual _validador;
 
     public LancamentoManualService(
         ILancamentoRepository lancamentoRepository,
-        IContaRepository contaRepository)
+        IContaRepository contaRepository,
+        ICategoriaRepository categoriaRepository)
     {
         _lancamentoRepository = lancamentoRepository;
-        _contaRepository = contaRepository;
+        _validador = new ValidadorLancamentoManual(contaRepository, categoriaRepository);
     }
 
     public async Task<(bool Sucesso, LancamentoResponseDto? Lancamento, string? Erro)> CriarAsync(
         Guid contaId,
         CriarLancamentoRequest request)
     {
-        var validacao = await ValidarContaAtiva(contaId);
+        var validacao = await _validador.ValidarContaDeLancamentoManualAsync(contaId);
         if (!validacao.Valido)
         {
             return (false, null, validacao.Erro);
         }
 
-        var validacaoDados = ValidarDadosLancamento(request.Descricao, request.Valor);
+        var validacaoDados = ValidadorLancamentoManual.ValidarDadosLancamento(request.Descricao, request.Valor);
         if (!validacaoDados.Valido)
         {
             return (false, null, validacaoDados.Erro);
         }
 
-        var statusParsed = TentarParsearStatus(request.Status);
+        var statusParsed = ValidadorLancamentoManual.ValidarStatusManual(request.Status);
         if (statusParsed.Status == null)
         {
             return (false, null, statusParsed.Erro);
         }
 
-        if (statusParsed.Status == StatusLancamento.Sugerido)
-        {
-            return (false, null, "Status SUGERIDO nao e permitido para lancamentos manuais");
-        }
-
-        var tipoParsed = TentarParsearTipo(request.Tipo);
+        var tipoParsed = ValidadorLancamentoManual.TentarParsearTipo(request.Tipo);
         if (tipoParsed.Tipo == null)
         {
             return (false, null, tipoParsed.Erro);
+        }
+
+        var validacaoCategoria = await _validador.ValidarCategoriaDoTipoAsync(request.CategoriaId, tipoParsed.Tipo.Value);
+        if (!validacaoCategoria.Valido)
+        {
+            return (false, null, validacaoCategoria.Erro);
         }
 
         var lancamento = new Lancamento
@@ -88,44 +91,20 @@ public class LancamentoManualService : ILancamentoManualService
             return (false, null, "Lancamento nao encontrado");
         }
 
+        GarantirAvulso(lancamento);
+
         if (lancamento.Conta != null && !lancamento.Conta.Ativa)
         {
-            return (false, null, "Conta inativa nao pode ser utilizada");
+            return (false, null, ValidadorLancamentoManual.MensagemContaInativa);
         }
 
-        var validacaoDados = ValidarDadosLancamento(request.Descricao, request.Valor);
-        if (!validacaoDados.Valido)
+        var (dados, erro) = await ValidarEdicao(lancamento, request);
+        if (dados == null)
         {
-            return (false, null, validacaoDados.Erro);
+            return (false, null, erro);
         }
 
-        var tipoParsed = TentarParsearTipo(request.Tipo);
-        if (tipoParsed.Tipo == null)
-        {
-            return (false, null, tipoParsed.Erro);
-        }
-
-        lancamento.Descricao = request.Descricao;
-        lancamento.Valor = request.Valor;
-        lancamento.Tipo = tipoParsed.Tipo.Value;
-        lancamento.Data = request.Data;
-        lancamento.CategoriaId = request.CategoriaId;
-
-        if (!string.IsNullOrWhiteSpace(request.Status))
-        {
-            var statusParsed = TentarParsearStatus(request.Status);
-            if (statusParsed.Status == null)
-            {
-                return (false, null, statusParsed.Erro);
-            }
-
-            if (statusParsed.Status == StatusLancamento.Sugerido)
-            {
-                return (false, null, "Status SUGERIDO nao e permitido para lancamentos manuais");
-            }
-
-            lancamento.Status = statusParsed.Status.Value;
-        }
+        AplicarEdicao(lancamento, request, dados);
 
         await _lancamentoRepository.Atualizar(lancamento);
         await _lancamentoRepository.Salvar();
@@ -146,7 +125,7 @@ public class LancamentoManualService : ILancamentoManualService
 
         if (lancamento.Conta != null && !lancamento.Conta.Ativa)
         {
-            return (false, "Conta inativa nao pode ser utilizada");
+            return (false, ValidadorLancamentoManual.MensagemContaInativa);
         }
 
         if (lancamento.Status != StatusLancamento.Pendente)
@@ -173,66 +152,93 @@ public class LancamentoManualService : ILancamentoManualService
             return (false, "Lancamento nao encontrado");
         }
 
+        GarantirAvulso(lancamento);
+
         await _lancamentoRepository.Remover(lancamento);
         await _lancamentoRepository.Salvar();
 
         return (true, null);
     }
 
-    private async Task<(bool Valido, Conta? Conta, string? Erro)> ValidarContaAtiva(Guid contaId)
+    // Regra-de-negocio item 18: so avulso e editado ou excluido aqui.
+    private static void GarantirAvulso(Lancamento lancamento)
     {
-        var conta = await _contaRepository.ObterPorId(contaId);
-        if (conta == null)
+        var origem = LancamentoVinculoResolver.ResolverOrigem(lancamento);
+        if (origem != OrigemVinculoLancamento.Avulso)
         {
-            return (false, null, "Conta nao encontrada");
-        }
-
-        if (!conta.Ativa)
-        {
-            return (false, null, "Conta inativa nao pode ser utilizada");
-        }
-
-        return (true, conta, null);
-    }
-
-    private static (bool Valido, string? Erro) ValidarDadosLancamento(string? descricao, decimal valor)
-    {
-        if (string.IsNullOrWhiteSpace(descricao))
-        {
-            return (false, "Descricao do lancamento e obrigatoria");
-        }
-
-        if (valor <= 0)
-        {
-            return (false, "Valor do lancamento deve ser maior que zero");
-        }
-
-        return (true, null);
-    }
-
-    private static (StatusLancamento? Status, string? Erro) TentarParsearStatus(string status)
-    {
-        try
-        {
-            var parsed = StatusLancamentoExtensions.FromStorageValue(status);
-            return (parsed, null);
-        }
-        catch
-        {
-            return (null, $"Status invalido: {status}. Use PENDENTE, SUGERIDO ou PAGO");
+            throw new LancamentoNaoAvulsoException(origem);
         }
     }
 
-    private static (TipoLancamento? Tipo, string? Erro) TentarParsearTipo(string tipo)
+    private async Task<(DadosEdicaoValidados? Dados, string? Erro)> ValidarEdicao(
+        Lancamento lancamento,
+        EditarLancamentoRequest request)
     {
-        try
+        var validacaoDados = ValidadorLancamentoManual.ValidarDadosLancamento(request.Descricao, request.Valor);
+        if (!validacaoDados.Valido)
         {
-            var parsed = TipoLancamentoExtensions.FromStorageValue(tipo);
-            return (parsed, null);
+            return (null, validacaoDados.Erro);
         }
-        catch
+
+        var tipoParsed = ValidadorLancamentoManual.TentarParsearTipo(request.Tipo);
+        if (tipoParsed.Tipo == null)
         {
-            return (null, $"Tipo invalido: {tipo}. Use DEBIT ou CREDIT");
+            return (null, tipoParsed.Erro);
+        }
+
+        var status = ValidadorLancamentoManual.ValidarStatusOpcional(request.Status);
+        if (status.Erro != null)
+        {
+            return (null, status.Erro);
+        }
+
+        var validacaoCategoria = await _validador.ValidarCategoriaDoTipoAsync(request.CategoriaId, tipoParsed.Tipo.Value);
+        if (!validacaoCategoria.Valido)
+        {
+            return (null, validacaoCategoria.Erro);
+        }
+
+        var contaDestino = await ValidarTrocaDeConta(lancamento, request.ContaId);
+        if (!contaDestino.Valido)
+        {
+            return (null, contaDestino.Erro);
+        }
+
+        return (new DadosEdicaoValidados(tipoParsed.Tipo.Value, status.Status, contaDestino.Conta), null);
+    }
+
+    private static void AplicarEdicao(Lancamento lancamento, EditarLancamentoRequest request, DadosEdicaoValidados dados)
+    {
+        lancamento.Descricao = request.Descricao;
+        lancamento.Valor = request.Valor;
+        lancamento.Tipo = dados.Tipo;
+        lancamento.Data = request.Data;
+        lancamento.CategoriaId = request.CategoriaId;
+
+        if (dados.Status != null)
+        {
+            lancamento.Status = dados.Status.Value;
+        }
+
+        if (dados.ContaDestino != null)
+        {
+            lancamento.ContaId = dados.ContaDestino.Id;
+            lancamento.Conta = dados.ContaDestino;
         }
     }
+
+    // Conta omitida ou igual a atual = mantem a conta (Conta null, sem validacao).
+    private async Task<(bool Valido, Conta? Conta, string? Erro)> ValidarTrocaDeConta(
+        Lancamento lancamento,
+        Guid? contaDestinoId)
+    {
+        if (contaDestinoId == null || contaDestinoId.Value == lancamento.ContaId)
+        {
+            return (true, null, null);
+        }
+
+        return await _validador.ValidarContaDeLancamentoManualAsync(contaDestinoId.Value);
+    }
+
+    private sealed record DadosEdicaoValidados(TipoLancamento Tipo, StatusLancamento? Status, Conta? ContaDestino);
 }

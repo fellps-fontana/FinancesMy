@@ -1,4 +1,6 @@
+using MyFinances.Domain;
 using MyFinances.DTOs;
+using MyFinances.Exceptions;
 using MyFinances.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -39,15 +41,22 @@ public class LancamentosController : ControllerBase
         Guid lancamentoId,
         [FromBody] EditarLancamentoRequest request)
     {
-        var (sucesso, lancamento, erro) = await _lancamentoManualService.EditarAsync(contaId, lancamentoId, request);
-
-        if (!sucesso)
+        try
         {
-            return BadRequest(new { erro });
-        }
+            var (sucesso, lancamento, erro) = await _lancamentoManualService.EditarAsync(contaId, lancamentoId, request);
 
-        var response = lancamento!;
-        return Ok(response);
+            if (!sucesso)
+            {
+                return BadRequest(new { erro });
+            }
+
+            var response = lancamento!;
+            return Ok(response);
+        }
+        catch (LancamentoNaoAvulsoException ex)
+        {
+            return RespostaNaoAvulso(ex);
+        }
     }
 
     [HttpPost("{lancamentoId}/pagamentos")]
@@ -66,14 +75,27 @@ public class LancamentosController : ControllerBase
     [HttpDelete("{lancamentoId}")]
     public async Task<IActionResult> Remover(Guid contaId, Guid lancamentoId)
     {
-        var (sucesso, erro) = await _lancamentoManualService.RemoverAsync(contaId, lancamentoId);
-
-        if (!sucesso)
+        try
         {
-            return BadRequest(new { erro });
-        }
+            var (sucesso, erro) = await _lancamentoManualService.RemoverAsync(contaId, lancamentoId);
 
-        return Ok();
+            if (!sucesso)
+            {
+                return BadRequest(new { erro });
+            }
+
+            return Ok();
+        }
+        catch (LancamentoNaoAvulsoException ex)
+        {
+            return RespostaNaoAvulso(ex);
+        }
+    }
+
+    // Regra-de-negocio item 18: lancamento com vinculo e editado/excluido na origem.
+    private ObjectResult RespostaNaoAvulso(LancamentoNaoAvulsoException ex)
+    {
+        return Conflict(new { erro = ex.Message, origemVinculo = ex.Origem.ToStorageValue() });
     }
 
     [HttpGet("fluxo-caixa")]

@@ -14,4 +14,8 @@ public interface ILancamentoRepository
     Task Atualizar(Lancamento lancamento);
     Task Remover(Lancamento lancamento);
     Task Salvar();
+
+    // Item 19: Debit, !Oculto, TransferenciaId == null, Status in (Pendente, Pago), mes/ano
+    // pela Data; Include Conta.
+    Task<IEnumerable<Lancamento>> ListarDebitosParaRelatorioAsync(int ano, int mes);
 }

@@ -23,6 +23,7 @@ public class LancamentoRepository : ILancamentoRepository
         return await _context.Lancamentos
             .Include(l => l.Conta)
             .Include(l => l.Categoria)
+            .Include(l => l.CompraParcelada)
             .Include(l => l.Fatura)
             .FirstOrDefaultAsync(l => l.Id == id);
     }
@@ -32,6 +33,7 @@ public class LancamentoRepository : ILancamentoRepository
         return await _context.Lancamentos
             .Include(l => l.Conta)
             .Include(l => l.Categoria)
+            .Include(l => l.CompraParcelada)
             .Where(l => l.ContaId == contaId)
             .ToListAsync();
     }
@@ -41,6 +43,7 @@ public class LancamentoRepository : ILancamentoRepository
         return await _context.Lancamentos
             .Include(l => l.Conta)
             .Include(l => l.Categoria)
+            .Include(l => l.CompraParcelada)
             .Where(l => l.FaturaId == faturaId)
             .ToListAsync();
     }
@@ -50,6 +53,7 @@ public class LancamentoRepository : ILancamentoRepository
         var lancamentos = await _context.Lancamentos
             .Include(l => l.Conta)
             .Include(l => l.Categoria)
+            .Include(l => l.CompraParcelada)
             .Where(l => l.FaturaId == null)
             .Where(l => !l.Oculto)
             .ToListAsync();
@@ -77,6 +81,7 @@ public class LancamentoRepository : ILancamentoRepository
         return await _context.Lancamentos
             .Include(l => l.Conta)
             .Include(l => l.Categoria)
+            .Include(l => l.CompraParcelada)
             .Where(l => l.CategoriaId.HasValue && categoriasSet.Contains(l.CategoriaId.Value))
             .Where(l => l.Data.Year == ano && l.Data.Month == mes)
             .ToListAsync();
@@ -87,6 +92,7 @@ public class LancamentoRepository : ILancamentoRepository
         return await _context.Lancamentos
             .Include(l => l.Conta)
             .Include(l => l.Categoria)
+            .Include(l => l.CompraParcelada)
             .Where(l => l.FaturaId == null)
             .Where(l => !l.Oculto)
             .Where(l => l.Data.Year == ano && l.Data.Month == mes)
@@ -113,7 +119,6 @@ public class LancamentoRepository : ILancamentoRepository
     {
         return await _context.Lancamentos
             .Include(l => l.Conta)
-            .Include(l => l.Categoria)
             .Where(l => l.Tipo == TipoLancamento.Debit)
             .Where(l => !l.Oculto)
             .Where(l => l.TransferenciaId == null)

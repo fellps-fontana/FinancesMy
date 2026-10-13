@@ -11,16 +11,19 @@ public class LancamentoManualServiceTests
 {
     private readonly Mock<ILancamentoRepository> _lancamentoRepositoryMock;
     private readonly Mock<IContaRepository> _contaRepositoryMock;
+    private readonly Mock<ICategoriaRepository> _categoriaRepositoryMock;
     private readonly LancamentoManualService _service;
 
     public LancamentoManualServiceTests()
     {
         _lancamentoRepositoryMock = new Mock<ILancamentoRepository>();
         _contaRepositoryMock = new Mock<IContaRepository>();
+        _categoriaRepositoryMock = new Mock<ICategoriaRepository>();
 
         _service = new LancamentoManualService(
             _lancamentoRepositoryMock.Object,
-            _contaRepositoryMock.Object);
+            _contaRepositoryMock.Object,
+            _categoriaRepositoryMock.Object);
     }
 
     [Fact]
@@ -351,7 +354,8 @@ public class LancamentoManualServiceTests
             Valor = 50m,
             Tipo = TipoLancamento.Debit,
             Data = new DateOnly(2025, 1, 10),
-            Status = StatusLancamento.Pendente
+            Status = StatusLancamento.Pendente,
+            Manual = true
         };
 
         var request = new EditarLancamentoRequest
@@ -523,7 +527,8 @@ public class LancamentoManualServiceTests
             Valor = 100m,
             Tipo = TipoLancamento.Debit,
             Data = new DateOnly(2025, 1, 15),
-            Status = StatusLancamento.Pendente
+            Status = StatusLancamento.Pendente,
+            Manual = true
         };
 
         _lancamentoRepositoryMock.Setup(r => r.ObterPorId(lancamentoId))

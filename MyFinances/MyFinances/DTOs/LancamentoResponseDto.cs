@@ -32,6 +32,22 @@ public class LancamentoResponseDto
 
     public bool Oculto { get; set; }
 
+    // Item 18: true quando LancamentoVinculoResolver.EhAvulso. A UI habilita
+    // Editar/Excluir so quando true.
+    public bool Avulso { get; set; }
+
+    // Item 18: AVULSO | CONTA_FIXA | COMPRA_PARCELADA | CARTAO | CONTA_RECEBER |
+    // TRANSFERENCIA | CONCILIADO | NAO_MANUAL. Diz a UI onde editar.
+    public string OrigemVinculo { get; set; } = string.Empty;
+
+    // Item 17: exibicao "Notebook 3/10". Nulos quando nao e parcela.
+    public Guid? CompraParceladaId { get; set; }
+
+    public int? ParcelaNumero { get; set; }
+
+    // = CompraParcelada.QuantidadeParcelas; exige Include de CompraParcelada.
+    public int? TotalParcelas { get; set; }
+
     public static LancamentoResponseDto FromLancamento(Lancamento lancamento)
     {
         return new()
@@ -46,7 +62,12 @@ public class LancamentoResponseDto
             Data = lancamento.Data,
             Status = lancamento.Status.ToStorageValue(),
             Manual = lancamento.Manual,
-            Oculto = lancamento.Oculto
+            Oculto = lancamento.Oculto,
+            Avulso = LancamentoVinculoResolver.EhAvulso(lancamento),
+            OrigemVinculo = LancamentoVinculoResolver.ResolverOrigem(lancamento).ToStorageValue(),
+            CompraParceladaId = lancamento.CompraParceladaId,
+            ParcelaNumero = lancamento.ParcelaNumero,
+            TotalParcelas = lancamento.CompraParcelada?.QuantidadeParcelas
         };
     }
 }

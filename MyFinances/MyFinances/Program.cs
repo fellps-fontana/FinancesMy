@@ -87,9 +87,12 @@ builder.Services.AddScoped<EstornoCompraParceladaService>();
 builder.Services.AddScoped<SaldoCartaoService>();
 builder.Services.AddScoped<IRecorrenciaGeradorService, RecorrenciaGeradorService>();
 builder.Services.AddScoped<IAssinaturaCartaoService, AssinaturaCartaoService>();
+builder.Services.AddScoped<IAntecipacaoParcelasService, AntecipacaoParcelasService>();
+builder.Services.AddScoped<IRelatorioCategoriaService, RelatorioCategoriaService>();
 
 // Services - Lancamentos
 builder.Services.AddScoped<ILancamentoManualService, LancamentoManualService>();
+builder.Services.AddScoped<ILancamentoParceladoService, LancamentoParceladoService>();
 builder.Services.AddScoped<ITransferenciaService, TransferenciaService>();
 builder.Services.AddScoped<IFluxoCaixaService, FluxoCaixaService>();
 
