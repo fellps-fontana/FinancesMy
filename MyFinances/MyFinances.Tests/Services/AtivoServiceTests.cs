@@ -13,6 +13,8 @@ public class AtivoServiceTests
     private readonly Mock<IAtivoRepository> _mockAtivoRepository;
     private readonly Mock<IRendimentoService> _mockRendimentoService;
     private readonly Mock<IAtivoAporteRepository> _mockAporteRepository;
+    private readonly Mock<IContaRepository> _mockContaRepository;
+    private readonly Guid _contaId = Guid.NewGuid();
     private readonly AtivoService _service;
 
     public AtivoServiceTests()
@@ -20,7 +22,26 @@ public class AtivoServiceTests
         _mockAtivoRepository = new Mock<IAtivoRepository>();
         _mockRendimentoService = new Mock<IRendimentoService>();
         _mockAporteRepository = new Mock<IAtivoAporteRepository>();
-        _service = new AtivoService(_mockAtivoRepository.Object, _mockRendimentoService.Object, _mockAporteRepository.Object);
+        _mockContaRepository = new Mock<IContaRepository>();
+
+        // Conta de investimento ativa: unica conta valida para os CriarAtivo deste arquivo.
+        _mockContaRepository
+            .Setup(r => r.ObterPorId(_contaId))
+            .ReturnsAsync(new Conta
+            {
+                Id = _contaId,
+                Nome = "Corretora Teste",
+                Origem = OrigemConta.Manual,
+                Tipo = TipoConta.Investimento,
+                SaldoManual = 0m,
+                Ativa = true
+            });
+
+        _service = new AtivoService(
+            _mockAtivoRepository.Object,
+            _mockRendimentoService.Object,
+            _mockAporteRepository.Object,
+            _mockContaRepository.Object);
     }
 
     #region Regra 1: Criacao de ativo - nasce com valor_atual == valor_investido
@@ -31,19 +52,18 @@ public class AtivoServiceTests
         // Arrange
         var nome = "Tesouro Direto";
         var tipo = TipoAtivo.RendaFixa;
-        var instituicao = "B3";
         var quantidade = 10m;
         var precoUnitario = 100m;
         var dataCompra = new DateOnly(2024, 1, 15);
 
         // Act
-        var ativo = await _service.CriarAtivo(nome, tipo, instituicao, quantidade, precoUnitario, dataCompra);
+        var ativo = await _service.CriarAtivo(nome, tipo, _contaId, quantidade, precoUnitario, dataCompra);
 
         // Assert
         Assert.NotEqual(Guid.Empty, ativo.Id);
         Assert.Equal(nome, ativo.Nome);
         Assert.Equal(tipo, ativo.Tipo);
-        Assert.Equal(instituicao, ativo.Instituicao);
+        Assert.Equal(_contaId, ativo.ContaId);
         Assert.Equal(quantidade, ativo.Quantidade);
         Assert.Equal(1000m, ativo.ValorInvestido); // quantidade * precoUnitario
         Assert.Equal(1000m, ativo.ValorAtual); // NO FIRST DAY, ALWAYS EQUAL
@@ -57,13 +77,12 @@ public class AtivoServiceTests
         // Arrange
         var nome = "ETF Acoes";
         var tipo = TipoAtivo.RendaVariavel;
-        var instituicao = "XP";
         var quantidade = 50m;
         var precoUnitario = 100m;
         var dataCompra = new DateOnly(2024, 2, 20);
 
         // Act
-        await _service.CriarAtivo(nome, tipo, instituicao, quantidade, precoUnitario, dataCompra);
+        await _service.CriarAtivo(nome, tipo, _contaId, quantidade, precoUnitario, dataCompra);
 
         // Assert
         _mockAtivoRepository.Verify(r => r.Adicionar(It.IsAny<Ativo>()), Times.Once);
@@ -78,13 +97,12 @@ public class AtivoServiceTests
         // Arrange
         var nome = "LCI";
         var tipo = TipoAtivo.RendaFixa;
-        var instituicao = "Banco XYZ";
         var quantidade = 20m;
         var precoUnitario = 100m;
         var dataCompra = new DateOnly(2024, 3, 10);
 
         // Act
-        var ativo = await _service.CriarAtivo(nome, tipo, instituicao, quantidade, precoUnitario, dataCompra);
+        var ativo = await _service.CriarAtivo(nome, tipo, _contaId, quantidade, precoUnitario, dataCompra);
 
         // Assert
         Assert.Equal(TipoAtivo.RendaFixa, ativo.Tipo);
@@ -97,13 +115,12 @@ public class AtivoServiceTests
         // Arrange
         var nome = "Fundo Imobiliario";
         var tipo = TipoAtivo.RendaVariavel;
-        var instituicao = "Itau";
         var quantidade = 30m;
         var precoUnitario = 100m;
         var dataCompra = new DateOnly(2024, 4, 5);
 
         // Act
-        var ativo = await _service.CriarAtivo(nome, tipo, instituicao, quantidade, precoUnitario, dataCompra);
+        var ativo = await _service.CriarAtivo(nome, tipo, _contaId, quantidade, precoUnitario, dataCompra);
 
         // Assert
         Assert.Equal(TipoAtivo.RendaVariavel, ativo.Tipo);
@@ -119,14 +136,13 @@ public class AtivoServiceTests
         // Arrange
         var nome = "Tesouro";
         var tipo = TipoAtivo.RendaFixa;
-        var instituicao = "B3";
         var quantidade = -10m;
         var precoUnitario = 100m;
         var dataCompra = new DateOnly(2024, 1, 15);
 
         // Act & Assert
         await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.CriarAtivo(nome, tipo, instituicao, quantidade, precoUnitario, dataCompra));
+            () => _service.CriarAtivo(nome, tipo, _contaId, quantidade, precoUnitario, dataCompra));
 
         _mockAtivoRepository.Verify(r => r.Salvar(), Times.Never);
     }
@@ -137,14 +153,13 @@ public class AtivoServiceTests
         // Arrange
         var nome = "Tesouro";
         var tipo = TipoAtivo.RendaFixa;
-        var instituicao = "B3";
         var quantidade = 0m;
         var precoUnitario = 100m;
         var dataCompra = new DateOnly(2024, 1, 15);
 
         // Act & Assert
         await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.CriarAtivo(nome, tipo, instituicao, quantidade, precoUnitario, dataCompra));
+            () => _service.CriarAtivo(nome, tipo, _contaId, quantidade, precoUnitario, dataCompra));
 
         _mockAtivoRepository.Verify(r => r.Salvar(), Times.Never);
     }
@@ -155,14 +170,13 @@ public class AtivoServiceTests
         // Arrange
         var nome = "Tesouro";
         var tipo = TipoAtivo.RendaFixa;
-        var instituicao = "B3";
         var quantidade = 10m;
         var precoUnitario = -100m;
         var dataCompra = new DateOnly(2024, 1, 15);
 
         // Act & Assert
         await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.CriarAtivo(nome, tipo, instituicao, quantidade, precoUnitario, dataCompra));
+            () => _service.CriarAtivo(nome, tipo, _contaId, quantidade, precoUnitario, dataCompra));
 
         _mockAtivoRepository.Verify(r => r.Salvar(), Times.Never);
     }
@@ -173,14 +187,13 @@ public class AtivoServiceTests
         // Arrange
         var nome = "Tesouro";
         var tipo = TipoAtivo.RendaFixa;
-        var instituicao = "B3";
         var quantidade = 10m;
         var precoUnitario = 0m;
         var dataCompra = new DateOnly(2024, 1, 15);
 
         // Act & Assert
         await Assert.ThrowsAsync<ValorInvalidoException>(
-            () => _service.CriarAtivo(nome, tipo, instituicao, quantidade, precoUnitario, dataCompra));
+            () => _service.CriarAtivo(nome, tipo, _contaId, quantidade, precoUnitario, dataCompra));
 
         _mockAtivoRepository.Verify(r => r.Salvar(), Times.Never);
     }
@@ -195,14 +208,13 @@ public class AtivoServiceTests
         // Arrange
         var nome = string.Empty;
         var tipo = TipoAtivo.RendaFixa;
-        var instituicao = "B3";
         var quantidade = 10m;
         var precoUnitario = 100m;
         var dataCompra = new DateOnly(2024, 1, 15);
 
         // Act & Assert
         await Assert.ThrowsAsync<CampoObrigatorioException>(
-            () => _service.CriarAtivo(nome, tipo, instituicao, quantidade, precoUnitario, dataCompra));
+            () => _service.CriarAtivo(nome, tipo, _contaId, quantidade, precoUnitario, dataCompra));
 
         _mockAtivoRepository.Verify(r => r.Salvar(), Times.Never);
     }
@@ -213,50 +225,13 @@ public class AtivoServiceTests
         // Arrange
         var nome = "   ";
         var tipo = TipoAtivo.RendaFixa;
-        var instituicao = "B3";
         var quantidade = 10m;
         var precoUnitario = 100m;
         var dataCompra = new DateOnly(2024, 1, 15);
 
         // Act & Assert
         await Assert.ThrowsAsync<CampoObrigatorioException>(
-            () => _service.CriarAtivo(nome, tipo, instituicao, quantidade, precoUnitario, dataCompra));
-
-        _mockAtivoRepository.Verify(r => r.Salvar(), Times.Never);
-    }
-
-    [Fact]
-    public async Task CriarAtivo_ComInstituicaoVazia_LancaCampoObrigatorioException()
-    {
-        // Arrange
-        var nome = "Tesouro Direto";
-        var tipo = TipoAtivo.RendaFixa;
-        var instituicao = string.Empty;
-        var quantidade = 10m;
-        var precoUnitario = 100m;
-        var dataCompra = new DateOnly(2024, 1, 15);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<CampoObrigatorioException>(
-            () => _service.CriarAtivo(nome, tipo, instituicao, quantidade, precoUnitario, dataCompra));
-
-        _mockAtivoRepository.Verify(r => r.Salvar(), Times.Never);
-    }
-
-    [Fact]
-    public async Task CriarAtivo_ComInstituicaoApenasBranco_LancaCampoObrigatorioException()
-    {
-        // Arrange
-        var nome = "Tesouro Direto";
-        var tipo = TipoAtivo.RendaFixa;
-        var instituicao = "  \t\n  ";
-        var quantidade = 10m;
-        var precoUnitario = 100m;
-        var dataCompra = new DateOnly(2024, 1, 15);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<CampoObrigatorioException>(
-            () => _service.CriarAtivo(nome, tipo, instituicao, quantidade, precoUnitario, dataCompra));
+            () => _service.CriarAtivo(nome, tipo, _contaId, quantidade, precoUnitario, dataCompra));
 
         _mockAtivoRepository.Verify(r => r.Salvar(), Times.Never);
     }
@@ -816,13 +791,12 @@ public class AtivoServiceTests
         // Arrange
         var nome = "Tesouro SELIC";
         var tipo = TipoAtivo.RendaFixa;
-        var instituicao = "B3";
         var quantidade = 10m;
         var precoUnitario = 100m;
         var dataCompra = new DateOnly(2024, 5, 15);
 
         // Act
-        var ativo = await _service.CriarAtivo(nome, tipo, instituicao, quantidade, precoUnitario, dataCompra);
+        var ativo = await _service.CriarAtivo(nome, tipo, _contaId, quantidade, precoUnitario, dataCompra);
 
         // Assert
         Assert.Equal(quantidade, ativo.Quantidade);
@@ -1211,7 +1185,7 @@ public class AtivoServiceTests
         var fakeRendimentoRepository = new FakeRendimentoRepository();
         var rendimentoService = new RendimentoService(fakeRendimentoRepository, _mockAtivoRepository.Object);
         var fakeAtivoRepository = new FakeAtivoRepository();
-        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>());
+        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>(), Mock.Of<IContaRepository>());
 
         var ativoId = Guid.NewGuid();
         var ativoExistente = new Ativo
@@ -1253,7 +1227,7 @@ public class AtivoServiceTests
         var fakeRendimentoRepository = new FakeRendimentoRepository();
         var rendimentoService = new RendimentoService(fakeRendimentoRepository, _mockAtivoRepository.Object);
         var fakeAtivoRepository = new FakeAtivoRepository();
-        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>());
+        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>(), Mock.Of<IContaRepository>());
 
         var ativoId = Guid.NewGuid();
         var ativoExistente = new Ativo
@@ -1292,7 +1266,7 @@ public class AtivoServiceTests
         var fakeRendimentoRepository = new FakeRendimentoRepository();
         var rendimentoService = new RendimentoService(fakeRendimentoRepository, _mockAtivoRepository.Object);
         var fakeAtivoRepository = new FakeAtivoRepository();
-        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>());
+        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>(), Mock.Of<IContaRepository>());
 
         var ativoId = Guid.NewGuid();
         var ativoExistente = new Ativo
@@ -1324,7 +1298,7 @@ public class AtivoServiceTests
         var fakeRendimentoRepository = new FakeRendimentoRepository();
         var rendimentoService = new RendimentoService(fakeRendimentoRepository, _mockAtivoRepository.Object);
         var fakeAtivoRepository = new FakeAtivoRepository();
-        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>());
+        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>(), Mock.Of<IContaRepository>());
 
         var ativoId = Guid.NewGuid();
         var ativoExistente = new Ativo
@@ -1363,7 +1337,7 @@ public class AtivoServiceTests
         var fakeRendimentoRepository = new FakeRendimentoRepository();
         var rendimentoService = new RendimentoService(fakeRendimentoRepository, _mockAtivoRepository.Object);
         var fakeAtivoRepository = new FakeAtivoRepository();
-        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>());
+        var ativoService = new AtivoService(fakeAtivoRepository, rendimentoService, Mock.Of<IAtivoAporteRepository>(), Mock.Of<IContaRepository>());
 
         var ativoId = Guid.NewGuid();
         var ativoExistente = new Ativo

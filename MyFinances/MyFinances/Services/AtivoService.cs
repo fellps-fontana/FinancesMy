@@ -10,52 +10,44 @@ public class AtivoService : IAtivoService
     private readonly IAtivoRepository _ativoRepository;
     private readonly IRendimentoService _rendimentoService;
     private readonly IAtivoAporteRepository _ativoAporteRepository;
+    private readonly IContaRepository _contaRepository;
 
-    public AtivoService(IAtivoRepository ativoRepository, IRendimentoService rendimentoService, IAtivoAporteRepository ativoAporteRepository)
+    public AtivoService(
+        IAtivoRepository ativoRepository,
+        IRendimentoService rendimentoService,
+        IAtivoAporteRepository ativoAporteRepository,
+        IContaRepository contaRepository)
     {
         _ativoRepository = ativoRepository;
         _rendimentoService = rendimentoService;
         _ativoAporteRepository = ativoAporteRepository;
+        _contaRepository = contaRepository;
     }
 
-    public async Task<Ativo> CriarAtivo(string nome, TipoAtivo tipo, string instituicao, decimal quantidade, decimal precoUnitario, DateOnly dataCompra)
+    public async Task<Ativo> CriarAtivo(string nome, TipoAtivo tipo, Guid contaId, decimal quantidade, decimal precoUnitario, DateOnly dataCompra)
     {
         ValidarCampoObrigatorio(nome, "nome");
-        ValidarCampoObrigatorio(instituicao, "instituicao");
+        ValidarContaId(contaId);
         ValidarValor(quantidade, "quantidade");
         ValidarValor(precoUnitario, "preco_unitario");
+        var conta = await ObterContaInvestimentoAtivaOuFalhar(contaId);
 
-        var valorInvestido = quantidade * precoUnitario;
-        var agora = DateTime.UtcNow;
+        var (ativo, aporte) = MontarAtivoComAporteInicial(nome, tipo, quantidade, precoUnitario, dataCompra);
+        VincularContaCarregada(ativo, contaId, conta);
 
-        var ativo = new Ativo
-        {
-            Id = Guid.NewGuid(),
-            Nome = nome,
-            Tipo = tipo,
-            Instituicao = instituicao,
-            Quantidade = quantidade,
-            ValorInvestido = valorInvestido,
-            ValorAtual = valorInvestido,
-            DataCompra = dataCompra,
-            Ativa = true,
-            CriadoEm = agora
-        };
+        await PersistirNovoAtivo(ativo, aporte);
+        return ativo;
+    }
 
-        var aporte = new AtivoAporte
-        {
-            Id = Guid.NewGuid(),
-            AtivoId = ativo.Id,
-            Data = dataCompra,
-            Quantidade = quantidade,
-            PrecoUnitario = precoUnitario,
-            CriadoEm = agora
-        };
+    public async Task<Ativo> VincularConta(Guid ativoId, Guid contaId)
+    {
+        ValidarContaId(contaId);
+        var ativo = await ObterAtivoAtivoOuFalhar(ativoId);
+        var conta = await ObterContaInvestimentoAtivaOuFalhar(contaId);
 
-        await _ativoRepository.Adicionar(ativo);
-        await _ativoAporteRepository.Adicionar(aporte);
+        VincularContaCarregada(ativo, contaId, conta);
+        ativo.AtualizadoEm = DateTime.UtcNow;
         await _ativoRepository.Salvar();
-        await _ativoAporteRepository.Salvar();
 
         return ativo;
     }
@@ -65,11 +57,7 @@ public class AtivoService : IAtivoService
         ValidarValor(quantidade, "quantidade");
         ValidarValor(precoUnitario, "preco_unitario");
 
-        var ativo = await _ativoRepository.ObterPorId(ativoId);
-        if (ativo == null || !ativo.Ativa)
-        {
-            throw new AtivoNaoEncontradoException(ativoId);
-        }
+        var ativo = await ObterAtivoAtivoOuFalhar(ativoId);
 
         ativo.Quantidade += quantidade;
         ativo.ValorInvestido += precoUnitario * quantidade;
@@ -111,6 +99,92 @@ public class AtivoService : IAtivoService
         {
             throw new ValorInvalidoException(nomeCampo, valor);
         }
+    }
+
+    private static void ValidarContaId(Guid contaId)
+    {
+        if (contaId == Guid.Empty)
+        {
+            throw new CampoObrigatorioException("conta_id");
+        }
+    }
+
+    private async Task<Ativo> ObterAtivoAtivoOuFalhar(Guid ativoId)
+    {
+        var ativo = await _ativoRepository.ObterPorId(ativoId);
+        if (ativo == null || !ativo.Ativa)
+        {
+            throw new AtivoNaoEncontradoException(ativoId);
+        }
+
+        return ativo;
+    }
+
+    private async Task<Conta> ObterContaInvestimentoAtivaOuFalhar(Guid contaId)
+    {
+        var conta = await _contaRepository.ObterPorId(contaId);
+        if (conta == null)
+        {
+            throw new ContaNaoEncontradaException(contaId);
+        }
+
+        if (!EhContaInvestimentoAtiva(conta))
+        {
+            throw new ContaInvestimentoInvalidaParaAtivoException(contaId);
+        }
+
+        return conta;
+    }
+
+    private static void VincularContaCarregada(Ativo ativo, Guid contaId, Conta conta)
+    {
+        ativo.ContaId = contaId;
+        ativo.Conta = conta;
+    }
+
+    private static bool EhContaInvestimentoAtiva(Conta conta)
+    {
+        return conta.Tipo == TipoConta.Investimento && conta.Ativa;
+    }
+
+    private static (Ativo Ativo, AtivoAporte Aporte) MontarAtivoComAporteInicial(
+        string nome, TipoAtivo tipo, decimal quantidade, decimal precoUnitario, DateOnly dataCompra)
+    {
+        var valorInvestido = quantidade * precoUnitario;
+        var agora = DateTime.UtcNow;
+
+        var ativo = new Ativo
+        {
+            Id = Guid.NewGuid(),
+            Nome = nome,
+            Tipo = tipo,
+            Quantidade = quantidade,
+            ValorInvestido = valorInvestido,
+            ValorAtual = valorInvestido,
+            DataCompra = dataCompra,
+            Ativa = true,
+            CriadoEm = agora
+        };
+
+        var aporte = new AtivoAporte
+        {
+            Id = Guid.NewGuid(),
+            AtivoId = ativo.Id,
+            Data = dataCompra,
+            Quantidade = quantidade,
+            PrecoUnitario = precoUnitario,
+            CriadoEm = agora
+        };
+
+        return (ativo, aporte);
+    }
+
+    private async Task PersistirNovoAtivo(Ativo ativo, AtivoAporte aporte)
+    {
+        await _ativoRepository.Adicionar(ativo);
+        await _ativoAporteRepository.Adicionar(aporte);
+        await _ativoRepository.Salvar();
+        await _ativoAporteRepository.Salvar();
     }
 
     public async Task<IEnumerable<Ativo>> ListarAtivos()

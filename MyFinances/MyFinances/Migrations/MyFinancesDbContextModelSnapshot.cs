@@ -22,6 +22,51 @@ namespace MyFinances.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MyFinances.Domain.AssinaturaCartao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativa")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativa");
+
+                    b.Property<Guid?>("CategoriaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("categoria_id");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("descricao");
+
+                    b.Property<int>("DiaReferencia")
+                        .HasColumnType("integer")
+                        .HasColumnName("dia_referencia");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId");
+
+                    b.HasIndex("ContaId");
+
+                    b.ToTable("assinatura_cartao", (string)null);
+                });
+
             modelBuilder.Entity("MyFinances.Domain.Ativo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -39,6 +84,10 @@ namespace MyFinances.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("atualizado_em");
 
+                    b.Property<Guid?>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("criado_em");
@@ -48,7 +97,6 @@ namespace MyFinances.Migrations
                         .HasColumnName("data_compra");
 
                     b.Property<string>("Instituicao")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("instituicao");
@@ -80,6 +128,8 @@ namespace MyFinances.Migrations
                         .HasColumnName("valor_investido");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ContaId");
 
                     b.ToTable("ativo", (string)null);
                 });
@@ -436,6 +486,16 @@ namespace MyFinances.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool>("Antecipada")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("antecipada");
+
+                    b.Property<Guid?>("AssinaturaCartaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assinatura_cartao_id");
+
                     b.Property<Guid?>("CategoriaId")
                         .HasColumnType("uuid")
                         .HasColumnName("categoria_id");
@@ -514,6 +574,8 @@ namespace MyFinances.Migrations
                         .HasColumnName("valor");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AssinaturaCartaoId");
 
                     b.HasIndex("CategoriaId");
 
@@ -752,6 +814,34 @@ namespace MyFinances.Migrations
                     b.ToTable("usuario", (string)null);
                 });
 
+            modelBuilder.Entity("MyFinances.Domain.AssinaturaCartao", b =>
+                {
+                    b.HasOne("MyFinances.Domain.Categoria", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MyFinances.Domain.Conta", "Conta")
+                        .WithMany()
+                        .HasForeignKey("ContaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Categoria");
+
+                    b.Navigation("Conta");
+                });
+
+            modelBuilder.Entity("MyFinances.Domain.Ativo", b =>
+                {
+                    b.HasOne("MyFinances.Domain.Conta", "Conta")
+                        .WithMany()
+                        .HasForeignKey("ContaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Conta");
+                });
+
             modelBuilder.Entity("MyFinances.Domain.AtivoAporte", b =>
                 {
                     b.HasOne("MyFinances.Domain.Ativo", null)
@@ -830,6 +920,11 @@ namespace MyFinances.Migrations
 
             modelBuilder.Entity("MyFinances.Domain.Lancamento", b =>
                 {
+                    b.HasOne("MyFinances.Domain.AssinaturaCartao", "AssinaturaCartao")
+                        .WithMany("Compras")
+                        .HasForeignKey("AssinaturaCartaoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MyFinances.Domain.Categoria", "Categoria")
                         .WithMany("Lancamentos")
                         .HasForeignKey("CategoriaId")
@@ -870,6 +965,8 @@ namespace MyFinances.Migrations
                         .WithMany("Lancamentos")
                         .HasForeignKey("TransferenciaId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AssinaturaCartao");
 
                     b.Navigation("Categoria");
 
@@ -951,6 +1048,11 @@ namespace MyFinances.Migrations
                     b.Navigation("ContaReceber");
 
                     b.Navigation("Fatura");
+                });
+
+            modelBuilder.Entity("MyFinances.Domain.AssinaturaCartao", b =>
+                {
+                    b.Navigation("Compras");
                 });
 
             modelBuilder.Entity("MyFinances.Domain.Ativo", b =>

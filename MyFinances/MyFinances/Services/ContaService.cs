@@ -10,10 +10,12 @@ public class ContaService : IContaService
 {
     private readonly IContaRepository _contaRepository;
     private readonly ILogger<ContaService> _logger;
+    private readonly IAtivoRepository _ativoRepository;
 
-    public ContaService(IContaRepository contaRepository, ILogger<ContaService> logger)
+    public ContaService(IContaRepository contaRepository, IAtivoRepository ativoRepository, ILogger<ContaService> logger)
     {
         _contaRepository = contaRepository;
+        _ativoRepository = ativoRepository;
         _logger = logger;
     }
 
@@ -107,7 +109,19 @@ public class ContaService : IContaService
     public async Task<decimal> CalcularTotalInvestido()
     {
         var contasInvestimento = await ListarContasInvestimento();
-        return contasInvestimento.Sum(c => c.SaldoManual ?? 0m);
+        var ativosAtivos = await _ativoRepository.ListarAtivas();
+
+        return ContaInvestimentoSaldoCalculator.CalcularTotalInvestido(contasInvestimento, ativosAtivos);
+    }
+
+    public async Task<(decimal Saldo, bool Calculado)> ObterSaldo(Conta conta)
+    {
+        var ativosDaConta = (await _ativoRepository.ListarAtivosPorConta(conta.Id)).ToList();
+
+        var calculado = ContaInvestimentoSaldoCalculator.PossuiAtivoAtivoVinculado(ativosDaConta);
+        var saldo = ContaInvestimentoSaldoCalculator.CalcularSaldo(conta, ativosDaConta);
+
+        return (saldo, calculado);
     }
 
     public async Task AtualizarSaldoManual(Guid contaId, decimal novoSaldo)
@@ -119,6 +133,11 @@ public class ContaService : IContaService
             throw new SaldoManualNaoPermitidoException(contaId, conta.Origem);
         }
 
+        if (await _ativoRepository.ExisteAtivoAtivoVinculado(contaId))
+        {
+            throw new SaldoCalculadoNaoEditavelException(contaId);
+        }
+
         conta.SaldoManual = novoSaldo;
         await _contaRepository.Salvar();
     }
@@ -126,6 +145,11 @@ public class ContaService : IContaService
     public async Task DesativarConta(Guid contaId)
     {
         var conta = await ObterContaOuFalhar(contaId);
+
+        if (await _ativoRepository.ExisteAtivoAtivoVinculado(contaId))
+        {
+            throw new ContaPossuiAtivoAtivoException(contaId);
+        }
 
         conta.Ativa = false;
         await _contaRepository.Salvar();

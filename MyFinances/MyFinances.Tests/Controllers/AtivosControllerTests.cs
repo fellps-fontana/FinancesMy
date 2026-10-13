@@ -126,6 +126,29 @@ public class AtivosControllerTestsFixture : IAsyncLifetime
         await dbContext.SaveChangesAsync();
     }
 
+    public async Task<Guid> AddContaInvestimentoAsync(bool ativa = true)
+    {
+        return await AddContaAsync(TipoConta.Investimento, ativa);
+    }
+
+    public async Task<Guid> AddContaAsync(TipoConta tipo, bool ativa = true)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<MyFinancesDbContext>();
+        var conta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = $"Conta {tipo} Teste",
+            Origem = OrigemConta.Manual,
+            Tipo = tipo,
+            SaldoManual = 0m,
+            Ativa = ativa
+        };
+        dbContext.Contas.Add(conta);
+        await dbContext.SaveChangesAsync();
+        return conta.Id;
+    }
+
     public async Task<Ativo?> GetAtivoByIdAsync(Guid id)
     {
         using var scope = _factory.Services.CreateScope();
@@ -172,12 +195,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var request = new CriarAtivoRequest
         {
             Nome = "Tesouro Direto IPCA",
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 1m,
             PrecoUnitario = 1000m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -201,7 +225,9 @@ public class AtivosControllerTests
         Assert.NotEqual(Guid.Empty, ativoResponse.Id);
         Assert.Equal("Tesouro Direto IPCA", ativoResponse.Nome);
         Assert.Equal(TipoAtivo.RendaFixa, ativoResponse.Tipo);
-        Assert.Equal("B3", ativoResponse.Instituicao);
+        Assert.Equal(contaId, ativoResponse.ContaId);
+        Assert.False(ativoResponse.SemConta);
+        Assert.Null(ativoResponse.Instituicao);
         Assert.Equal(1000m, ativoResponse.ValorInvestido);
         Assert.Equal(1000m, ativoResponse.ValorAtual); // NO FIRST DAY, ALWAYS EQUAL
         Assert.Equal(0m, ativoResponse.EvolucaoPercentual); // NO FIRST DAY, ALWAYS ZERO
@@ -216,12 +242,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var request = new CriarAtivoRequest
         {
             Nome = "ETF IBOV",
             Tipo = TipoAtivo.RendaVariavel,
-            Instituicao = "XP",
+            ContaId = contaId,
             Quantidade = 1m,
             PrecoUnitario = 5000m,
             DataCompra = new DateOnly(2024, 2, 20)
@@ -249,12 +276,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var request = new CriarAtivoRequest
         {
             Nome = "Tesouro",
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 1m,
             PrecoUnitario = -1000m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -275,12 +303,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var request = new CriarAtivoRequest
         {
             Nome = "Tesouro",
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 1m,
             PrecoUnitario = 0m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -301,12 +330,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var request = new CriarAtivoRequest
         {
             Nome = string.Empty,
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 1m,
             PrecoUnitario = 1000m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -327,77 +357,300 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var request = new CriarAtivoRequest
         {
             Nome = "   ",
             Tipo = TipoAtivo.RendaFixa,
+            ContaId = contaId,
+            Quantidade = 1m,
+            PrecoUnitario = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15)
+        };
+
+        var json = JsonSerializer.Serialize(request, AtivosControllerTestsFixture.JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PostAsync("/api/ativos", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CriarAtivo_ComContaIdAusente_Retorna400ENaoPersiste()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+
+        var request = new CriarAtivoRequest
+        {
+            Nome = "Tesouro Direto",
+            Tipo = TipoAtivo.RendaFixa,
+            ContaId = Guid.Empty,
+            Quantidade = 1m,
+            PrecoUnitario = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15)
+        };
+
+        var json = JsonSerializer.Serialize(request, AtivosControllerTestsFixture.JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PostAsync("/api/ativos", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var ativos = await _fixture.Client.GetFromJsonAsync<List<AtivoResponse>>("/api/ativos", AtivosControllerTestsFixture.JsonOptions);
+        Assert.Empty(ativos!);
+    }
+
+    [Fact]
+    public async Task CriarAtivo_ComContaInexistente_Retorna400ENaoPersiste()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+
+        var request = new CriarAtivoRequest
+        {
+            Nome = "Tesouro Direto",
+            Tipo = TipoAtivo.RendaFixa,
+            ContaId = Guid.NewGuid(),
+            Quantidade = 1m,
+            PrecoUnitario = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15)
+        };
+
+        var json = JsonSerializer.Serialize(request, AtivosControllerTestsFixture.JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PostAsync("/api/ativos", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var ativos = await _fixture.Client.GetFromJsonAsync<List<AtivoResponse>>("/api/ativos", AtivosControllerTestsFixture.JsonOptions);
+        Assert.Empty(ativos!);
+    }
+
+    [Fact]
+    public async Task CriarAtivo_ComContaDoTipoBanco_Retorna400ENaoPersiste()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+        var contaBancoId = await _fixture.AddContaAsync(TipoConta.Banco);
+
+        var request = new CriarAtivoRequest
+        {
+            Nome = "Tesouro Direto",
+            Tipo = TipoAtivo.RendaFixa,
+            ContaId = contaBancoId,
+            Quantidade = 1m,
+            PrecoUnitario = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15)
+        };
+
+        var json = JsonSerializer.Serialize(request, AtivosControllerTestsFixture.JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PostAsync("/api/ativos", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var ativos = await _fixture.Client.GetFromJsonAsync<List<AtivoResponse>>("/api/ativos", AtivosControllerTestsFixture.JsonOptions);
+        Assert.Empty(ativos!);
+    }
+
+    [Fact]
+    public async Task CriarAtivo_ComContaInvestimentoInativa_Retorna400ENaoPersiste()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+        var contaInativaId = await _fixture.AddContaInvestimentoAsync(ativa: false);
+
+        var request = new CriarAtivoRequest
+        {
+            Nome = "Tesouro Direto",
+            Tipo = TipoAtivo.RendaFixa,
+            ContaId = contaInativaId,
+            Quantidade = 1m,
+            PrecoUnitario = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15)
+        };
+
+        var json = JsonSerializer.Serialize(request, AtivosControllerTestsFixture.JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PostAsync("/api/ativos", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var ativos = await _fixture.Client.GetFromJsonAsync<List<AtivoResponse>>("/api/ativos", AtivosControllerTestsFixture.JsonOptions);
+        Assert.Empty(ativos!);
+    }
+
+    #endregion
+
+    #region PATCH /api/ativos/{id}/conta - Vincular ou trocar conta (item 8.5)
+
+    [Fact]
+    public async Task VincularConta_ComContaInvestimentoValida_Retorna200EAtualizaContaId()
+    {
+        // Arrange (ativo antigo, sem conta)
+        await _fixture.ClearAsync();
+        var ativoId = Guid.NewGuid();
+        await _fixture.AddAtivoAsync(new Ativo
+        {
+            Id = ativoId,
+            Nome = "Ativo antigo",
+            Tipo = TipoAtivo.RendaVariavel,
             Instituicao = "B3",
-            Quantidade = 1m,
-            PrecoUnitario = 1000m,
-            DataCompra = new DateOnly(2024, 1, 15)
-        };
+            ContaId = null,
+            Quantidade = 10m,
+            ValorInvestido = 1000m,
+            ValorAtual = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15),
+            Ativa = true,
+            CriadoEm = DateTime.UtcNow
+        });
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
-        var json = JsonSerializer.Serialize(request, AtivosControllerTestsFixture.JsonOptions);
+        var json = JsonSerializer.Serialize(new VincularContaAtivoRequest { ContaId = contaId }, AtivosControllerTestsFixture.JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // Act
-        var response = await _fixture.Client.PostAsync("/api/ativos", content);
+        var response = await _fixture.Client.PatchAsync($"/api/ativos/{ativoId}/conta", content);
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var ativoAposVinculo = await _fixture.GetAtivoByIdAsync(ativoId);
+        Assert.NotNull(ativoAposVinculo);
+        Assert.Equal(contaId, ativoAposVinculo.ContaId);
     }
 
     [Fact]
-    public async Task CriarAtivo_ComInstituicaoVazia_Retorna400()
+    public async Task VincularConta_ComAtivoInexistente_Retorna404()
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
-        var request = new CriarAtivoRequest
-        {
-            Nome = "Tesouro Direto",
-            Tipo = TipoAtivo.RendaFixa,
-            Instituicao = string.Empty,
-            Quantidade = 1m,
-            PrecoUnitario = 1000m,
-            DataCompra = new DateOnly(2024, 1, 15)
-        };
-
-        var json = JsonSerializer.Serialize(request, AtivosControllerTestsFixture.JsonOptions);
+        var json = JsonSerializer.Serialize(new VincularContaAtivoRequest { ContaId = contaId }, AtivosControllerTestsFixture.JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // Act
-        var response = await _fixture.Client.PostAsync("/api/ativos", content);
+        var response = await _fixture.Client.PatchAsync($"/api/ativos/{Guid.NewGuid()}/conta", content);
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
-    public async Task CriarAtivo_ComInstituicaoApenasBranco_Retorna400()
+    public async Task VincularConta_ComContaInexistente_Retorna404ESemAlterarAtivo()
     {
         // Arrange
         await _fixture.ClearAsync();
-
-        var request = new CriarAtivoRequest
+        var ativoId = Guid.NewGuid();
+        await _fixture.AddAtivoAsync(new Ativo
         {
-            Nome = "Tesouro Direto",
-            Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "  \t\n  ",
-            Quantidade = 1m,
-            PrecoUnitario = 1000m,
-            DataCompra = new DateOnly(2024, 1, 15)
-        };
+            Id = ativoId,
+            Nome = "Ativo antigo",
+            Tipo = TipoAtivo.RendaVariavel,
+            Instituicao = "XP",
+            ContaId = null,
+            Quantidade = 10m,
+            ValorInvestido = 1000m,
+            ValorAtual = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15),
+            Ativa = true,
+            CriadoEm = DateTime.UtcNow
+        });
 
-        var json = JsonSerializer.Serialize(request, AtivosControllerTestsFixture.JsonOptions);
+        var json = JsonSerializer.Serialize(new VincularContaAtivoRequest { ContaId = Guid.NewGuid() }, AtivosControllerTestsFixture.JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // Act
-        var response = await _fixture.Client.PostAsync("/api/ativos", content);
+        var response = await _fixture.Client.PatchAsync($"/api/ativos/{ativoId}/conta", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var ativoAposTentativa = await _fixture.GetAtivoByIdAsync(ativoId);
+        Assert.NotNull(ativoAposTentativa);
+        Assert.Null(ativoAposTentativa.ContaId);
+    }
+
+    [Fact]
+    public async Task VincularConta_ComContaNaoInvestimento_Retorna400ESemAlterarAtivo()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+        var ativoId = Guid.NewGuid();
+        await _fixture.AddAtivoAsync(new Ativo
+        {
+            Id = ativoId,
+            Nome = "Ativo antigo",
+            Tipo = TipoAtivo.RendaVariavel,
+            ContaId = null,
+            Quantidade = 10m,
+            ValorInvestido = 1000m,
+            ValorAtual = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15),
+            Ativa = true,
+            CriadoEm = DateTime.UtcNow
+        });
+        var contaBancoId = await _fixture.AddContaAsync(TipoConta.Banco);
+
+        var json = JsonSerializer.Serialize(new VincularContaAtivoRequest { ContaId = contaBancoId }, AtivosControllerTestsFixture.JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PatchAsync($"/api/ativos/{ativoId}/conta", content);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var ativoAposTentativa = await _fixture.GetAtivoByIdAsync(ativoId);
+        Assert.NotNull(ativoAposTentativa);
+        Assert.Null(ativoAposTentativa.ContaId);
+    }
+
+    [Fact]
+    public async Task VincularConta_ComContaIdVazio_Retorna400ESemAlterarAtivo()
+    {
+        // Arrange
+        // Bug de producao: VincularConta nao captura CampoObrigatorioException,
+        // entao Guid.Empty cai no GlobalExceptionFilter e vira 500. Teste espera 400
+        // (mesmo contrato do POST /api/ativos). Falha ate o controller ser corrigido.
+        await _fixture.ClearAsync();
+        var ativoId = Guid.NewGuid();
+        await _fixture.AddAtivoAsync(new Ativo
+        {
+            Id = ativoId,
+            Nome = "Ativo antigo",
+            Tipo = TipoAtivo.RendaVariavel,
+            ContaId = null,
+            Quantidade = 10m,
+            ValorInvestido = 1000m,
+            ValorAtual = 1000m,
+            DataCompra = new DateOnly(2024, 1, 15),
+            Ativa = true,
+            CriadoEm = DateTime.UtcNow
+        });
+
+        var json = JsonSerializer.Serialize(new VincularContaAtivoRequest { ContaId = Guid.Empty }, AtivosControllerTestsFixture.JsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PatchAsync($"/api/ativos/{ativoId}/conta", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var ativoAposTentativa = await _fixture.GetAtivoByIdAsync(ativoId);
+        Assert.NotNull(ativoAposTentativa);
+        Assert.Null(ativoAposTentativa.ContaId);
     }
 
     #endregion
@@ -800,12 +1053,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var ativoRequest = new CriarAtivoRequest
         {
             Nome = "Tesouro Direto IPCA",
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 2m,
             PrecoUnitario = 500m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -850,12 +1104,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var ativoRequest = new CriarAtivoRequest
         {
             Nome = "Tesouro Direto IPCA",
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 2m,
             PrecoUnitario = 500m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -899,12 +1154,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var ativoRequest = new CriarAtivoRequest
         {
             Nome = "Tesouro Direto IPCA",
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 2m,
             PrecoUnitario = 500m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -970,12 +1226,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var ativoRequest = new CriarAtivoRequest
         {
             Nome = "Tesouro Direto IPCA",
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 2m,
             PrecoUnitario = 500m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -1011,12 +1268,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var ativoRequest = new CriarAtivoRequest
         {
             Nome = "Tesouro Direto IPCA",
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 2m,
             PrecoUnitario = 500m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -1049,12 +1307,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var ativoRequest = new CriarAtivoRequest
         {
             Nome = "Tesouro Direto IPCA",
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 2m,
             PrecoUnitario = 500m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -1087,12 +1346,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var ativoRequest = new CriarAtivoRequest
         {
             Nome = "Tesouro Direto IPCA",
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 2m,
             PrecoUnitario = 500m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -1125,12 +1385,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var ativoRequest = new CriarAtivoRequest
         {
             Nome = "Tesouro Direto IPCA",
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 2m,
             PrecoUnitario = 500m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -1167,12 +1428,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var ativoRequest = new CriarAtivoRequest
         {
             Nome = "Tesouro Direto IPCA",
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 1m,
             PrecoUnitario = 500m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -1237,12 +1499,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var ativoRequest = new CriarAtivoRequest
         {
             Nome = "Tesouro Direto IPCA",
             Tipo = TipoAtivo.RendaFixa,
-            Instituicao = "B3",
+            ContaId = contaId,
             Quantidade = 1m,
             PrecoUnitario = 500m,
             DataCompra = new DateOnly(2024, 1, 15)
@@ -1279,12 +1542,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var request = new CriarAtivoRequest
         {
             Nome = "ETF IBOV",
             Tipo = TipoAtivo.RendaVariavel,
-            Instituicao = "XP",
+            ContaId = contaId,
             Quantidade = 5m,
             PrecoUnitario = 150m,
             DataCompra = new DateOnly(2024, 2, 20)
@@ -1318,12 +1582,13 @@ public class AtivosControllerTests
     {
         // Arrange
         await _fixture.ClearAsync();
+        var contaId = await _fixture.AddContaInvestimentoAsync();
 
         var ativoRequest = new CriarAtivoRequest
         {
             Nome = "ETF IBOV",
             Tipo = TipoAtivo.RendaVariavel,
-            Instituicao = "XP",
+            ContaId = contaId,
             Quantidade = 2m,
             PrecoUnitario = 100m,
             DataCompra = new DateOnly(2024, 1, 15)

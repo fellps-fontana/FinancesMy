@@ -60,9 +60,20 @@ public class ContasController : ControllerBase
             return BadRequest(new { erro = $"Tipo '{tipo}' nao e suportado. Use 'investimento', 'cartao' ou 'banco'." });
         }
 
-        var response = contas.Select(c => ContaResponse.FromConta(c));
+        var response = new List<ContaResponse>();
+
+        foreach (var conta in contas)
+        {
+            response.Add(await MontarResponse(conta));
+        }
 
         return Ok(response);
+    }
+
+    private async Task<ContaResponse> MontarResponse(Conta conta)
+    {
+        var (saldo, calculado) = await _contaService.ObterSaldo(conta);
+        return ContaResponse.FromConta(conta, saldo, calculado);
     }
 
     [HttpGet("{id}/saldo")]
@@ -100,6 +111,10 @@ public class ContasController : ControllerBase
         {
             return UnprocessableEntity(new { erro = ex.Message });
         }
+        catch (SaldoCalculadoNaoEditavelException ex)
+        {
+            return UnprocessableEntity(new { erro = ex.Message });
+        }
     }
 
     [HttpPatch("{id}/desativar")]
@@ -113,6 +128,10 @@ public class ContasController : ControllerBase
         catch (ContaNaoEncontradaException ex)
         {
             return NotFound(new { erro = ex.Message });
+        }
+        catch (ContaPossuiAtivoAtivoException ex)
+        {
+            return Conflict(new { erro = ex.Message });
         }
     }
 

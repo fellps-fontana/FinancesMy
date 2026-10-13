@@ -25,6 +25,17 @@ public class FakeAtivoRepository : IAtivoRepository
         return Task.FromResult((IEnumerable<Ativo>)ativas);
     }
 
+    public Task<IEnumerable<Ativo>> ListarAtivosPorConta(Guid contaId)
+    {
+        var daConta = _ativos.Where(a => a.Ativa && a.ContaId == contaId).ToList();
+        return Task.FromResult((IEnumerable<Ativo>)daConta);
+    }
+
+    public Task<bool> ExisteAtivoAtivoVinculado(Guid contaId)
+    {
+        return Task.FromResult(_ativos.Any(a => a.Ativa && a.ContaId == contaId));
+    }
+
     public Task Salvar()
     {
         return Task.CompletedTask;

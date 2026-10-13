@@ -135,10 +135,21 @@ public class ContasControllerTestsFixture : IAsyncLifetime
         return await dbContext.Contas.FirstOrDefaultAsync(c => c.Id == id);
     }
 
+    public async Task AddAtivoAsync(Ativo ativo)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<MyFinancesDbContext>();
+        dbContext.Ativos.Add(ativo);
+        await dbContext.SaveChangesAsync();
+    }
+
+    // Ativos entram no mesmo banco in-memory: limpar junto, senao o total investido
+    // (que soma ativos sem conta) vaza entre testes.
     public async Task ClearAsync()
     {
         using var scope = _factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<MyFinancesDbContext>();
+        dbContext.Ativos.RemoveRange(await dbContext.Ativos.ToListAsync());
         dbContext.Contas.RemoveRange(await dbContext.Contas.ToListAsync());
         await dbContext.SaveChangesAsync();
     }
@@ -853,6 +864,154 @@ public class ContasControllerTests
         Assert.True(errorResponse.ContainsKey("erro"));
         Assert.Contains("Subtipo", errorResponse["erro"]);
         Assert.Contains("nao e valido", errorResponse["erro"]);
+    }
+
+    #endregion
+
+    #region Conta de investimento com ativo vinculado (item 8.5)
+
+    [Fact]
+    public async Task DesativarConta_ComAtivoAtivoVinculado_Retorna409ComErroEContaContinuaAtiva()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+        var conta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Corretora com ativo",
+            Tipo = TipoConta.Investimento,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 0m,
+            Ativa = true
+        };
+        await _fixture.AddContaAsync(conta);
+        await _fixture.AddAtivoAsync(CriarAtivoVinculado(conta.Id, valorAtual: 500m, ativa: true));
+
+        // Act
+        var response = await _fixture.Client.PatchAsync($"/api/contas/{conta.Id}/desativar", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var errorResponse = JsonSerializer.Deserialize<Dictionary<string, string>>(responseBody, ContasControllerTestsFixture.JsonOptions);
+        Assert.NotNull(errorResponse);
+        Assert.True(errorResponse.ContainsKey("erro"));
+
+        var contaAposTentativa = await _fixture.GetContaByIdAsync(conta.Id);
+        Assert.NotNull(contaAposTentativa);
+        Assert.True(contaAposTentativa.Ativa);
+    }
+
+    [Fact]
+    public async Task AtualizarSaldo_ComContaDeSaldoCalculado_Retorna422ComErroESaldoManualInalterado()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+        var conta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Corretora calculada",
+            Tipo = TipoConta.Investimento,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 1000m,
+            Ativa = true
+        };
+        await _fixture.AddContaAsync(conta);
+        await _fixture.AddAtivoAsync(CriarAtivoVinculado(conta.Id, valorAtual: 1200m, ativa: true));
+
+        var json = JsonSerializer.Serialize(new AtualizarSaldoRequest { NovoSaldo = 9999m });
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await _fixture.Client.PatchAsync($"/api/contas/{conta.Id}/saldo", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var errorResponse = JsonSerializer.Deserialize<Dictionary<string, string>>(responseBody, ContasControllerTestsFixture.JsonOptions);
+        Assert.NotNull(errorResponse);
+        Assert.True(errorResponse.ContainsKey("erro"));
+
+        var contaAposTentativa = await _fixture.GetContaByIdAsync(conta.Id);
+        Assert.NotNull(contaAposTentativa);
+        Assert.Equal(1000m, contaAposTentativa.SaldoManual);
+    }
+
+    [Fact]
+    public async Task ListarContas_ContaInvestimentoComAtivos_ExibeSaldoCalculadoPelaSomaDosAtivosAtivos()
+    {
+        // Arrange
+        await _fixture.ClearAsync();
+        var conta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Corretora calculada",
+            Tipo = TipoConta.Investimento,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 50m,
+            Ativa = true
+        };
+        await _fixture.AddContaAsync(conta);
+        await _fixture.AddAtivoAsync(CriarAtivoVinculado(conta.Id, valorAtual: 1200m, ativa: true));
+        await _fixture.AddAtivoAsync(CriarAtivoVinculado(conta.Id, valorAtual: 300m, ativa: true));
+        // Ativo desativado nao entra no saldo calculado
+        await _fixture.AddAtivoAsync(CriarAtivoVinculado(conta.Id, valorAtual: 9000m, ativa: false));
+
+        // Act
+        var response = await _fixture.Client.GetAsync("/api/contas?tipo=investimento");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var contas = await response.Content.ReadFromJsonAsync<List<ContaResponse>>(ContasControllerTestsFixture.JsonOptions);
+        var contaResposta = Assert.Single(contas!, c => c.Id == conta.Id);
+        Assert.True(contaResposta.SaldoCalculado);
+        Assert.Equal(1500m, contaResposta.Saldo);
+        Assert.Equal(50m, contaResposta.SaldoManual);
+    }
+
+    [Fact]
+    public async Task ListarContas_ContaInvestimentoSemAtivoAtivo_ExibeSaldoManualSemCalculo()
+    {
+        // Arrange (borda: cofrinho sem ativo, ou todos os ativos desativados)
+        await _fixture.ClearAsync();
+        var conta = new Conta
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Cofrinho",
+            Tipo = TipoConta.Investimento,
+            Origem = OrigemConta.Manual,
+            SaldoManual = 800m,
+            Ativa = true
+        };
+        await _fixture.AddContaAsync(conta);
+        await _fixture.AddAtivoAsync(CriarAtivoVinculado(conta.Id, valorAtual: 9000m, ativa: false));
+
+        // Act
+        var response = await _fixture.Client.GetAsync("/api/contas?tipo=investimento");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var contas = await response.Content.ReadFromJsonAsync<List<ContaResponse>>(ContasControllerTestsFixture.JsonOptions);
+        var contaResposta = Assert.Single(contas!, c => c.Id == conta.Id);
+        Assert.False(contaResposta.SaldoCalculado);
+        Assert.Equal(800m, contaResposta.Saldo);
+    }
+
+    private static Ativo CriarAtivoVinculado(Guid contaId, decimal valorAtual, bool ativa)
+    {
+        return new Ativo
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Ativo vinculado",
+            Tipo = TipoAtivo.RendaVariavel,
+            ContaId = contaId,
+            Quantidade = 1m,
+            ValorInvestido = valorAtual,
+            ValorAtual = valorAtual,
+            DataCompra = new DateOnly(2024, 1, 15),
+            Ativa = ativa,
+            CriadoEm = DateTime.UtcNow
+        };
     }
 
     #endregion
