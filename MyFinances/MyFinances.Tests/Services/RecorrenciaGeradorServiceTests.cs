@@ -245,15 +245,17 @@ public class RecorrenciaGeradorServiceTests
     public async Task LimparOcorrenciasForaDaPeriodicidadeAsync_MudaDeAnualParaMensal_NaoExcluiPagas()
     {
         // Arrange - ContaFixa que era Anual (julho), vira Mensal
-        // Hoje = 2026-08-26 (conforme ambiente)
-        // Conjunto correto sob Mensal/dia 15: [2026-08-15 (atual), 2026-09-15 (proximo)]
-        // Lancamento PENDENTE em 2026-11-15 fica FORA desse conjunto, deve ser deletado
+        // Datas relativas a DateTime.Today (o servico usa DateTime.Today como referencia):
+        // Conjunto correto sob Mensal/dia 15: [mes atual dia 15, mes seguinte dia 15]
+        // Lancamento PENDENTE em hoje + 3 meses fica FORA desse conjunto, deve ser deletado
+        // Lancamento PAGO em hoje - 2 meses e consumado, nunca removido
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
         var contaFixaId = Guid.NewGuid();
         var lancamentoPendenteForaDoPar = new Lancamento
         {
             Id = Guid.NewGuid(),
             ContaId = Guid.NewGuid(),
-            Data = new DateOnly(2026, 11, 15),  // Fora do par recalculado (agosto 15 + setembro 15)
+            Data = new DateOnly(hoje.Year, hoje.Month, 15).AddMonths(3),  // Fora do par recalculado
             Status = StatusLancamento.Pendente,
             ContaFixaId = contaFixaId
         };
@@ -262,7 +264,7 @@ public class RecorrenciaGeradorServiceTests
         {
             Id = Guid.NewGuid(),
             ContaId = Guid.NewGuid(),
-            Data = new DateOnly(2026, 6, 15),
+            Data = new DateOnly(hoje.Year, hoje.Month, 15).AddMonths(-2),
             Status = StatusLancamento.Pago,
             ContaFixaId = contaFixaId
         };
@@ -319,12 +321,16 @@ public class RecorrenciaGeradorServiceTests
         // nunca dispara. A regra exige: elegivel pra exclusao quando Fatura.Status != Paga.
         var contaFixaId = Guid.NewGuid();
 
+        // Datas relativas a DateTime.Today (o servico usa DateTime.Today como referencia).
+        // Par Mensal dia 15 = [mes atual, mes seguinte]; as compras abaixo caem FORA desse par.
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+
         // Compra vinculada a Fatura ABERTA que fica FORA do conjunto recalculado
         var compraFaturaNaoPaga = new Lancamento
         {
             Id = Guid.NewGuid(),
             ContaId = Guid.NewGuid(),
-            Data = new DateOnly(2026, 11, 15),  // Fora do par Mensal [agosto 15, setembro 15]
+            Data = new DateOnly(hoje.Year, hoje.Month, 15).AddMonths(3),  // hoje + 3 meses, fora do par
             Status = StatusLancamento.Pago,
             ContaFixaId = contaFixaId,
             Fatura = new Fatura { Status = StatusFatura.Aberta }  // NAO PAGA = elegivel pra exclusao
@@ -335,7 +341,7 @@ public class RecorrenciaGeradorServiceTests
         {
             Id = Guid.NewGuid(),
             ContaId = Guid.NewGuid(),
-            Data = new DateOnly(2026, 10, 15),  // Fora do par recalculado
+            Data = new DateOnly(hoje.Year, hoje.Month, 15).AddMonths(2),  // hoje + 2 meses, fora do par
             Status = StatusLancamento.Pago,
             ContaFixaId = contaFixaId,
             Fatura = new Fatura { Status = StatusFatura.Paga }  // JA PAGA = NUNCA remove
