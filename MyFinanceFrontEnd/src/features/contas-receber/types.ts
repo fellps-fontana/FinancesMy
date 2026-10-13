@@ -61,3 +61,13 @@ export type RegistrarRecebimentoRequest = {
   contaDestinoId: string
   categoriaId?: string
 }
+
+// `pessoa` so vale em EMPRESTIMO (ignorada em RECEBIVEL). `dataPrevista: null`
+// limpa a data; omitir `valorTotal` nao o altera (so aceito em RECEBIVEL
+// PENDENTE - o backend e quem valida e responde 409).
+export type EditarContaReceberRequest = {
+  descricao: string
+  pessoa?: string | null
+  dataPrevista?: string | null
+  valorTotal?: number
+}
