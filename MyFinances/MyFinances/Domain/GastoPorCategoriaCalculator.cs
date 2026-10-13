@@ -11,11 +11,11 @@ public static class GastoPorCategoriaCalculator
     private const decimal PercentualMaximo = 100m;
 
     // Status que compoem o gasto do relatorio (item 19). Compartilhado com a consulta do repositorio.
-    public static readonly StatusLancamento[] StatusElegiveis =
-    {
+    public static readonly IReadOnlyList<StatusLancamento> StatusElegiveis =
+    [
         StatusLancamento.Pendente,
         StatusLancamento.Pago
-    };
+    ];
 
     // Elegivel: Tipo == Debit, !Oculto, TransferenciaId == null (exclui transferencia e
     // pagamento de fatura), Status Pendente ou Pago. Estorno de cartao (Credit) fica fora.

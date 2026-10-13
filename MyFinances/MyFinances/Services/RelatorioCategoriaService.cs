@@ -88,7 +88,7 @@ public class RelatorioCategoriaService : IRelatorioCategoriaService
             throw new ValorInvalidoException("ano", ano);
 
         if (mes < MesMinimo || mes > MesMaximo)
-            throw new ValorInvalidoException("mes", mes);
+            throw new ValorInvalidoException("mes", mes, MesMinimo, MesMaximo);
     }
 
     private static (int Ano, int Mes) CalcularMesAnterior(int ano, int mes) =>

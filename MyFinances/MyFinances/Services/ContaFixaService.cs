@@ -174,6 +174,7 @@ public class ContaFixaService : IContaFixaService
 
         contaFixa.Ativa = false;
         await _contaFixaRepository.Atualizar(contaFixa);
+        await _contaFixaRepository.Salvar();
         await _recorrenciaGeradorService.RemoverOcorrenciasNaoConsumadasAsync(contaFixaId);
 
         return (true, null);
