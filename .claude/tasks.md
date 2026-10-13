@@ -3241,3 +3241,1062 @@ HISTORICO: levi criou mcp-server/src/tools/assinaturasCartao.ts com as 5 ferrame
 
 
 
+
+---
+
+# Bloco Regras 2026-10-08 + realinhamento UI ao mockup (TASK-171..236)
+
+## TASK-171 — Esqueleto: Apagar conta fixa e motor unico de limpeza de ocorrencias (item 6)
+
+STATUS: CONCLUIDA
+AGENT: killua
+DEPENDENCIAS: vazio
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (monolitico; itens 6 e 12), .claude/context/stack.md, .claude/context/clean-code.md, .claude/context/schema.dbml, MyFinances/MyFinances/Services/ContaFixaService.cs, MyFinances/MyFinances/Services/IContaFixaService.cs, MyFinances/MyFinances/Services/RecorrenciaGeradorService.cs, MyFinances/MyFinances/Services/IRecorrenciaGeradorService.cs, MyFinances/MyFinances/Controllers/ContaFixaController.cs
+ESCOPO: Devolver esqueleto compilavel (Kira cria os arquivos) com `IContaFixaService.ApagarAsync(Guid contaFixaId) -> Task<(bool Sucesso, string? Erro)>`, `IRecorrenciaGeradorService.RemoverOcorrenciasNaoConsumadasAsync(Guid contaFixaId) -> Task<int>` (banco: Lancamento.Status=Pendente; cartao: Fatura.Status != Paga; reaproveitar o criterio da limpeza de periodicidade) e `DesvincularOcorrenciasConsumadasAsync(Guid contaFixaId) -> Task<int>` (ContaFixaId=null nas Pago / fatura Paga, valor/data/categoria intactos), corpos NotImplementedException; registrar que DesativarAsync hoje ignora compra de cartao (divergencia do item 6) e deve passar a usar o motor.
+CRITERIO DE ACEITE: 1) assinaturas finais de interface e classe compilam (build limpo, 0 testes novos); 2) contrato descreve a ordem exata do Apagar: remover nao consumadas -> desvincular consumadas -> remover molde; 3) lista de testes que mike deve cobrir (banco, cartao, inexistente, ja desativada, Desativar corrigido).
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/IContaFixaService.cs, MyFinances/MyFinances/Services/ContaFixaService.cs, MyFinances/MyFinances/Services/IRecorrenciaGeradorService.cs, MyFinances/MyFinances/Services/RecorrenciaGeradorService.cs
+NAO FAZER: nao implementar logica real; nao tocar controller; nao editar .claude/tasks.md; nao alterar regra-de-negocio.md.
+RETORNO ESPERADO: texto dos esqueletos + contrato do fluxo + lista de casos de teste.
+HISTORICO: Esqueleto gravado pelo Kira (ApagarAsync, RemoverOcorrenciasNaoConsumadasAsync, DesvincularOcorrenciasConsumadasAsync). Build ok. Achados killua: IContaFixaRepository sem Remover (liberar p/ levi na 173); predicado nao-consumada atual remove cartao Pendente em fatura Paga (corrigir com EhNaoConsumada).
+
+---
+
+## TASK-172 — Testes RED: Apagar conta fixa e Desativar corrigido (mike)
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-171
+FLUXO: Implementacao (rodada RED)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 6 e 12), MyFinances/MyFinances/Services/ContaFixaService.cs, MyFinances/MyFinances/Services/RecorrenciaGeradorService.cs, MyFinances/MyFinances.Tests/Services/ContaFixaServiceTests.cs, MyFinances/MyFinances.Tests/Services/RecorrenciaGeradorServiceTests.cs
+ESCOPO: Escrever testes que falham por NotImplementedException: (1) apagar destino banco remove Lancamento Pendente, mantem Pago com ContaFixaId=null (valor/data/categoria iguais) e remove o molde; (2) apagar destino cartao remove compra em fatura Aberta/Fechada, mantem compra em fatura Paga desvinculada; (3) conta fixa inexistente -> (false, "Conta fixa nao encontrada"); (4) apagar conta ja desativada funciona; (5) nao toca ocorrencias de outra conta fixa; (6) DesativarAsync corrigido: cartao em fatura nao paga removido, Pago/fatura Paga intocados, molde fica Ativa=false.
+CRITERIO DE ACEITE: 1) testes compilam e falham por logica ausente (NotImplementedException), nunca por erro de compilacao; 2) suite legada continua verde exceto testes existentes que contradigam o item 6 (reportar quais); 3) cada caso acima mapeado a um teste nomeado.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Services/ContaFixaApagarServiceTests.cs (novo)
+NAO FAZER: nao implementar no service; nao editar testes existentes; nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista de testes + saida `dotnet test` mostrando RED + testes legados que conflitam com a regra.
+HISTORICO: mike RED: ContaFixaApagarServiceTests (18 testes; 17 RED + 1 guarda). Causa das 2 falhas pre-existentes identificada (data fixa 2026-08-26).
+
+---
+
+## TASK-173 — GREEN: ApagarAsync + motor unico de limpeza + Desativar corrigido (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-172
+FLUXO: Implementacao (rodada GREEN)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 6 e 12), .claude/context/stack.md, .claude/context/clean-code.md, MyFinances/MyFinances.Tests/Services/ContaFixaApagarServiceTests.cs (leitura), MyFinances/MyFinances/Services/ContaFixaService.cs, MyFinances/MyFinances/Services/RecorrenciaGeradorService.cs, MyFinances/MyFinances/Repositories/IContaFixaRepository.cs, MyFinances/MyFinances/Repositories/ContaFixaRepository.cs
+ESCOPO: Implementar ApagarAsync, RemoverOcorrenciasNaoConsumadasAsync e DesvincularOcorrenciasConsumadasAsync; DesativarAsync passa a usar o motor (banco Pendente + cartao fatura != Paga); adicionar Remover ao IContaFixaRepository se faltar.
+CRITERIO DE ACEITE: 1) todos os testes da TASK-172 GREEN; 2) suite legada verde (ajustar teste legado so se contradizer o item 6, reportando); 3) service nao acessa DbContext direto.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/ContaFixaService.cs, MyFinances/MyFinances/Services/RecorrenciaGeradorService.cs, MyFinances/MyFinances/Services/IContaFixaService.cs, MyFinances/MyFinances/Services/IRecorrenciaGeradorService.cs, MyFinances/MyFinances/Repositories/IContaFixaRepository.cs, MyFinances/MyFinances/Repositories/ContaFixaRepository.cs
+NAO FAZER: nao alterar o arquivo de teste da TASK-172; nao criar endpoint; nao criar migration (FK ja e SetNull); nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos tocados + saida `dotnet test` verde + divergencias com testes legados.
+HISTORICO: levi GREEN 18/18, commit 4f38b10. EhNaoConsumada compartilhado (corrige bug cartao Pendente em fatura Paga na limpeza). Desvincular usa EhConsumada explicito: SUGERIDO em banco nao e removido nem desvinculado (pergunta aberta ao usuario). mike ajustou teste legado DesativarAsync_ExcluiLancamentoPendenteMantemPago e tornou 2 testes de RecorrenciaGerador independentes de data (32/32 verdes).
+
+---
+
+## TASK-174 — Controller: DELETE /api/contas-fixas/{id} (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-173
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 6), .claude/context/stack.md, MyFinances/MyFinances/Controllers/ContaFixaController.cs, MyFinances/MyFinances/Services/IContaFixaService.cs
+ESCOPO: Adicionar `[HttpDelete("api/contas-fixas/{id}")]` chamando ApagarAsync: 204 no sucesso, 404 {erro} se nao encontrada.
+CRITERIO DE ACEITE: 1) DELETE existente -> 204; 2) inexistente -> 404 com `{ erro }`; 3) controller sem logica de negocio.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Controllers/ContaFixaController.cs
+NAO FAZER: nao alterar service; nao editar .claude/tasks.md.
+RETORNO ESPERADO: diff do controller + build limpo.
+HISTORICO: levi: DELETE /api/contas-fixas/{id} (204/404). Build ok.
+
+---
+
+## TASK-175 — Mike GREEN + testes HTTP: Apagar conta fixa
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-174
+FLUXO: Implementacao (rodada GREEN + HTTP)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 6), MyFinances/MyFinances.Tests/Services/ContaFixaApagarServiceTests.cs, MyFinances/MyFinances.Tests/Controllers/ContaFixaControllerTests.cs, MyFinances/MyFinances/Controllers/ContaFixaController.cs
+ESCOPO: Rodar os testes da TASK-172 (confirmar GREEN sem reescrever) e escrever testes HTTP do DELETE: 204 apaga e GET posterior 404; 404 inexistente; Pago permanece listado sem conta fixa; nao consumado some.
+CRITERIO DE ACEITE: 1) testes da TASK-172 GREEN; 2) novos testes HTTP GREEN; 3) suite completa verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Controllers/ContaFixaApagarControllerTests.cs (novo)
+NAO FAZER: nao alterar codigo de producao; se achar bug, reportar (relatorio de bug) em vez de corrigir; nao editar .claude/tasks.md.
+RETORNO ESPERADO: saida `dotnet test` + relatorio de bug se houver.
+HISTORICO: mike: 18 servico GREEN + 4 HTTP GREEN (22/22). Commit 2dcd80f.
+
+---
+
+## TASK-176 — Style review: Apagar conta fixa (style)
+
+STATUS: CONCLUIDA
+AGENT: style
+DEPENDENCIAS: TASK-175
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 6 e 12), .claude/context/clean-code.md, .claude/context/stack.md, MyFinances/MyFinances/Services/ContaFixaService.cs, MyFinances/MyFinances/Services/RecorrenciaGeradorService.cs, MyFinances/MyFinances/Controllers/ContaFixaController.cs
+ESCOPO: Revisar contra regra e clean-code: ordem remover->desvincular->apagar, criterio de nao consumada unico (sem duplicacao entre Desativar/Apagar/limpeza de periodicidade), controller magro.
+CRITERIO DE ACEITE: veredito APROVADO ou tarefa(s) de correcao no esquema da Secao 4.
+ARQUIVOS PERMITIDOS: nenhum (somente leitura)
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+HISTORICO: style: APROVADO. Ressalvas: Salvar explicito em DesativarAsync (despachado ao levi); 3 Salvar sem transacao no Apagar (risco aceito, idempotente). SUGERIDO em banco fica fora de remover/desvincular e e desvinculado pelo SetNull (decisao pendente do usuario).
+
+---
+
+## TASK-177 — Front: camada de dados de apagar conta fixa (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-174
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/stack.md ("Frontend (React)"), MyFinanceFrontEnd/src/features/contas-fixas/api.ts, MyFinanceFrontEnd/src/features/contas-fixas/query-keys.ts, MyFinanceFrontEnd/src/features/contas-fixas/hooks/useDesativarContaFixa.ts
+ESCOPO: Adicionar `apagarContaFixa(id)` em api.ts e hook `useApagarContaFixa` (invalida contas-fixas e lancamentos/fluxo de caixa/projecao).
+CRITERIO DE ACEITE: 1) hook tipado sem any; 2) invalidacao cruzada de cache (contas fixas + lancamentos + dashboard); 3) typecheck limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/contas-fixas/api.ts, MyFinanceFrontEnd/src/features/contas-fixas/hooks/useApagarContaFixa.ts (novo)
+NAO FAZER: nao renderizar UI; nao editar .claude/tasks.md.
+RETORNO ESPERADO: hook pronto + typecheck.
+HISTORICO: hanzo: apagarContaFixa + useApagarContaFixa (invalida contas-fixas, lancamentos, dashboard). Commit d412c4f.
+
+---
+
+## TASK-178 — Esqueleto: lancamento avulso x vinculado (guard de editar/excluir, item 18)
+
+STATUS: CONCLUIDA
+AGENT: killua
+DEPENDENCIAS: vazio
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 5, 17 e 18), .claude/context/stack.md, .claude/context/clean-code.md, MyFinances/MyFinances/Services/LancamentoManualService.cs, MyFinances/MyFinances/Services/ILancamentoManualService.cs, MyFinances/MyFinances/Controllers/LancamentosController.cs, MyFinances/MyFinances/DTOs/LancamentoResponseDto.cs, MyFinances/MyFinances/DTOs/EditarLancamentoRequest.cs, MyFinances/MyFinances/Domain/Lancamento.cs
+ESCOPO: Devolver esqueleto com: `Domain/LancamentoVinculoResolver` estatico (`EhAvulso(Lancamento)` = Manual e todos vinculos nulos; `ResolverOrigem(Lancamento)` -> enum OrigemVinculoLancamento {Avulso, ContaFixa, CompraParcelada, Cartao, ContaReceber, Transferencia, Conciliado, NaoManual} com precedencia documentada; storage AVULSO|CONTA_FIXA|COMPRA_PARCELADA|CARTAO|CONTA_RECEBER|TRANSFERENCIA|CONCILIADO|NAO_MANUAL), `Exceptions/LancamentoNaoAvulsoException(origem)`, campos novos em `LancamentoResponseDto` (Avulso, OrigemVinculo, CompraParceladaId, ParcelaNumero, TotalParcelas) e `EditarLancamentoRequest.ContaId` opcional; novas dependencias de `LancamentoManualService` (ICategoriaRepository); regra de erro HTTP (409 com `{ erro, origemVinculo }`).
+CRITERIO DE ACEITE: 1) esqueleto compila (corpo NotImplementedException) com assinaturas finais; 2) documenta a regra de troca de tipo (categoria incompativel -> 400, UI envia null) e troca de conta (so conta manual ativa nao-Cartao); 3) lista de casos de teste para mike.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/LancamentoVinculoResolver.cs (novo), MyFinances/MyFinances/Domain/OrigemVinculoLancamento.cs (novo), MyFinances/MyFinances/Exceptions/LancamentoNaoAvulsoException.cs (novo), MyFinances/MyFinances/DTOs/LancamentoResponseDto.cs, MyFinances/MyFinances/DTOs/EditarLancamentoRequest.cs, MyFinances/MyFinances/Services/ILancamentoManualService.cs
+NAO FAZER: nao implementar logica; nao alterar LancamentoManualService.cs nesta task; nao editar .claude/tasks.md.
+RETORNO ESPERADO: texto dos esqueletos + contrato de erros + casos de teste.
+HISTORICO: Esqueleto gravado (LancamentoVinculoResolver, OrigemVinculoLancamento, LancamentoNaoAvulsoException, campos novos em LancamentoResponseDto/EditarLancamentoRequest). Decisao usuario: categoria x tipo tambem na criacao. Levi precisa ICategoriaRepository no construtor de LancamentoManualService.
+
+---
+
+## TASK-179 — Testes RED: guard de avulso, editar e excluir lancamento (mike)
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-178
+FLUXO: Implementacao (rodada RED)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 5, 17 e 18), MyFinances/MyFinances/Domain/LancamentoVinculoResolver.cs, MyFinances/MyFinances/Services/LancamentoManualService.cs, MyFinances/MyFinances.Tests/Services/LancamentoManualServiceTests.cs, MyFinances/MyFinances.Tests/DTOs/LancamentoResponseDtoTests.cs
+ESCOPO: Cobrir: resolver (um caso por vinculo: transferencia, fatura, conta_fixa, compra_parcelada, conta_receber, assinatura_cartao, conciliado_com; Manual=false -> nao avulso; precedencia com varios vinculos); EditarAsync/RemoverAsync com nao-avulso lancam LancamentoNaoAvulsoException sem persistir; avulso edita todos os campos; troca DEBIT->CREDIT com categoria DESPESA rejeitada e com null aceita; CREDIT so RECEITA; troca de conta para Cartao/inativa/inexistente rejeitada; Pago<->Pendente nos dois sentidos; Sugerido rejeitado; editar/excluir NAO altera Conta.SaldoManual; mapeamento dos campos novos do DTO.
+CRITERIO DE ACEITE: 1) RED por NotImplementedException; 2) um teste nomeado por caso; 3) suite legada verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Domain/LancamentoVinculoResolverTests.cs (novo), MyFinances/MyFinances.Tests/Services/LancamentoAvulsoGuardServiceTests.cs (novo), MyFinances/MyFinances.Tests/DTOs/LancamentoResponseDtoVinculoTests.cs (novo)
+NAO FAZER: nao implementar; nao editar testes existentes; nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista de testes + saida RED.
+HISTORICO: mike RED: 80 testes (61 RED, 19 guardas). Casos categoria x tipo dependiam do construtor (PENDENTE-CONSTRUTOR). 2 testes legados com setup sem Manual=true: correcao autorizada ao levi na 180.
+
+---
+
+## TASK-180 — GREEN: guard de avulso e edicao completa de lancamento (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-179
+FLUXO: Implementacao (rodada GREEN)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 5 e 18), .claude/context/clean-code.md, MyFinances/MyFinances.Tests/Domain/LancamentoVinculoResolverTests.cs, MyFinances/MyFinances.Tests/Services/LancamentoAvulsoGuardServiceTests.cs, MyFinances/MyFinances.Tests/DTOs/LancamentoResponseDtoVinculoTests.cs, MyFinances/MyFinances/Services/LancamentoManualService.cs, MyFinances/MyFinances/Repositories/LancamentoRepository.cs
+ESCOPO: Implementar resolver, DTO e LancamentoManualService.EditarAsync/RemoverAsync (guard, troca de conta e de tipo, validacao categoria x tipo); garantir Include de CompraParcelada para TotalParcelas.
+CRITERIO DE ACEITE: 1) testes da TASK-179 GREEN; 2) MarcarComoPagoAsync continua permitido para lancamento vinculado (conta fixa pendente); 3) suite verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/LancamentoVinculoResolver.cs, MyFinances/MyFinances/DTOs/LancamentoResponseDto.cs, MyFinances/MyFinances/Services/LancamentoManualService.cs, MyFinances/MyFinances/Repositories/ILancamentoRepository.cs, MyFinances/MyFinances/Repositories/LancamentoRepository.cs
+NAO FAZER: nao alterar testes da TASK-179; nao mexer no controller; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos tocados + `dotnet test` verde.
+HISTORICO: levi implementou guard de avulso + edicao completa (ValidadorLancamentoManual). Commit 1cf674a.
+
+---
+
+## TASK-181 — Controller: 409 para lancamento nao avulso e ContaId na edicao (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-180
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 18), MyFinances/MyFinances/Controllers/LancamentosController.cs, MyFinances/MyFinances/Exceptions/LancamentoNaoAvulsoException.cs
+ESCOPO: PUT e DELETE de `/api/contas/{contaId}/lancamentos/{lancamentoId}` retornam 409 `{ erro, origemVinculo }` ao capturar LancamentoNaoAvulsoException; PUT aceita `contaId` opcional no corpo; fluxo-caixa expoe os campos novos do DTO.
+CRITERIO DE ACEITE: 1) nao avulso -> 409 com origemVinculo; 2) avulso -> 200/200; 3) demais erros seguem 400 `{ erro }`.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Controllers/LancamentosController.cs
+NAO FAZER: nao alterar service; nao editar .claude/tasks.md.
+RETORNO ESPERADO: diff + build limpo.
+HISTORICO: levi: PUT/DELETE -> 409 { erro, origemVinculo }. Build ok.
+
+---
+
+## TASK-182 — Mike GREEN + testes HTTP: guard de avulso
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-181
+FLUXO: Implementacao (rodada GREEN + HTTP)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 18), MyFinances/MyFinances.Tests/Controllers/LancamentosControllerTests.cs, MyFinances/MyFinances/Controllers/LancamentosController.cs
+ESCOPO: Rodar testes da TASK-179 (GREEN) e escrever testes HTTP: editar/excluir lancamento de conta fixa, transferencia, fatura e conta a receber -> 409 com origemVinculo; avulso edita (incluindo trocar conta) e exclui; GET fluxo-caixa traz Avulso/OrigemVinculo/ParcelaNumero/TotalParcelas.
+CRITERIO DE ACEITE: 1) TASK-179 GREEN; 2) testes HTTP GREEN; 3) suite completa verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Controllers/LancamentosAvulsoControllerTests.cs (novo)
+NAO FAZER: nao alterar producao (reportar bug); nao editar .claude/tasks.md.
+RETORNO ESPERADO: saida `dotnet test` + relatorio de bug se houver.
+HISTORICO: mike GREEN + testes HTTP do guard de avulso. Commit 1cf674a.
+
+---
+
+## TASK-183 — Style review: guard de avulso (style)
+
+STATUS: CONCLUIDA
+AGENT: style
+DEPENDENCIAS: TASK-182
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 5 e 18), .claude/context/clean-code.md, .claude/context/stack.md, MyFinances/MyFinances/Domain/LancamentoVinculoResolver.cs, MyFinances/MyFinances/Services/LancamentoManualService.cs, MyFinances/MyFinances/Controllers/LancamentosController.cs, MyFinances/MyFinances/DTOs/LancamentoResponseDto.cs
+ESCOPO: Revisar regra (so avulso edita/exclui; categoria x tipo; conta destino; saldo_manual intocado) e clean-code (resolver unico, sem duplicar a checagem de vinculo).
+CRITERIO DE ACEITE: veredito APROVADO ou tarefa(s) de correcao.
+ARQUIVOS PERMITIDOS: nenhum (somente leitura)
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+HISTORICO: style aprovou na 2a rodada. Commit 1cf674a.
+
+---
+
+## TASK-184 — Esqueleto: lancamento parcelado em conta banco (item 17)
+
+STATUS: CONCLUIDA
+AGENT: killua
+DEPENDENCIAS: TASK-178
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 5, 6, 12 subsecao Parcelamento, 17 e 18), .claude/context/stack.md, .claude/context/clean-code.md, .claude/context/schema.dbml, MyFinances/MyFinances/Services/ParcelamentoCalculator.cs, MyFinances/MyFinances/Services/ComprasParceladasService.cs, MyFinances/MyFinances/Domain/CompraParcelada.cs, MyFinances/MyFinances/Repositories/ICompraParceladaRepository.cs, MyFinances/MyFinances/Controllers/CartaoComprasParceladasController.cs
+ESCOPO: Devolver esqueleto compilavel de `ILancamentoParceladoService/LancamentoParceladoService` (`CriarAsync(Guid contaId, CriarLancamentoParceladoRequest) -> (bool, LancamentoParceladoResponse?, string?)`; `CancelarAsync(Guid contaId, Guid compraParceladaId) -> (bool, int Excluidas, int Mantidas, string?)`), calculo puro de datas `Domain/ParcelamentoContaBancoDatas.Calcular(DateOnly primeira, int quantidade)` (dia da 1a parcela com clamp ao ultimo dia do mes, sem deriva: 31/jan -> 28/fev -> 31/mar), DTOs (CriarLancamentoParceladoRequest{Descricao, ValorTotal, QuantidadeParcelas, DataPrimeiraParcela, CategoriaId?, Status da 1a}, LancamentoParceladoResponse{CompraParceladaId, Parcelas[]}), rotas `POST /api/contas/{contaId}/lancamentos-parcelados` e `DELETE /api/contas/{contaId}/lancamentos-parcelados/{compraParceladaId}`, regra de transacao (BeginTransactionAsync do repositorio) e DI em Program.cs.
+CRITERIO DE ACEITE: 1) esqueleto compila; 2) contrato cobre: so DEBIT, quantidade>=2, conta manual ativa nao-Cartao, 1a parcela com status do formulario (PENDENTE|PAGO) e demais PENDENTE, fatura_id null, reuso de ParcelamentoCalculator; 3) cancelamento exclui so Pendente, nao exclui parcela isolada, recusa compra de cartao (parcelas com fatura_id) e erro se nao ha Pendente.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/ILancamentoParceladoService.cs (novo), MyFinances/MyFinances/Services/LancamentoParceladoService.cs (novo), MyFinances/MyFinances/Domain/ParcelamentoContaBancoDatas.cs (novo), MyFinances/MyFinances/DTOs/CriarLancamentoParceladoRequest.cs (novo), MyFinances/MyFinances/DTOs/LancamentoParceladoResponse.cs (novo), MyFinances/MyFinances/Controllers/LancamentosParceladosController.cs (novo, so assinatura), MyFinances/MyFinances/Program.cs
+NAO FAZER: nao implementar logica; nao mudar CriarLancamentoRequest; nao editar .claude/tasks.md.
+RETORNO ESPERADO: texto dos esqueletos + casos de teste.
+HISTORICO: Esqueleto gravado pelo Kira (ParcelamentoContaBancoDatas, ILancamentoParceladoService/LancamentoParceladoService, DTOs, LancamentosParceladosController, DI). Build ok. Ponto aberto: extrair validacao conta/categoria compartilhada com LancamentoManualService (decidir na 186).
+
+---
+
+## TASK-185 — Testes RED: lancamento parcelado em conta banco (mike)
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-184
+FLUXO: Implementacao (rodada RED)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 12 subsecao Parcelamento e 17), MyFinances/MyFinances/Services/LancamentoParceladoService.cs, MyFinances/MyFinances/Domain/ParcelamentoContaBancoDatas.cs, MyFinances/MyFinances.Tests/Services/ParcelamentoCalculatorTests.cs, MyFinances/MyFinances.Tests/Services/ComprasParceladasServiceIntegrationTests.cs
+ESCOPO: Cobrir: datas (31/jan -> 28/fev -> 31/mar; 29/fev em ano bissexto; mesmo dia nos demais); criar N lancamentos DEBIT Manual fatura_id null, mesmo compra_parcelada_id, parcela_numero 1..N, descricao/categoria/conta iguais; R$100 em 3x = 33,33+33,33+33,34; 1a parcela com status pedido e demais Pendente; CompraParcelada com metadados; quantidade<2, valor<=0, descricao vazia, conta Cartao/inativa/inexistente rejeitadas; Sugerido rejeitado; falha no meio faz rollback; cancelar exclui so Pendente e mantem Pago; sem Pendente -> erro; compra de cartao (fatura_id) rejeitada; compra de outra conta -> nao encontrada.
+CRITERIO DE ACEITE: 1) RED por NotImplementedException; 2) um teste por caso; 3) suite legada verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Domain/ParcelamentoContaBancoDatasTests.cs (novo), MyFinances/MyFinances.Tests/Services/LancamentoParceladoServiceTests.cs (novo)
+NAO FAZER: nao implementar; nao editar testes existentes; nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista de testes + saida RED.
+HISTORICO: mike RED do LancamentoParceladoService + ParcelamentoContaBancoDatas. Commit 1cf674a.
+
+---
+
+## TASK-186 — GREEN: LancamentoParceladoService (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-185, TASK-180
+FLUXO: Implementacao (rodada GREEN)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 12 subsecao Parcelamento e 17), .claude/context/clean-code.md, MyFinances/MyFinances.Tests/Domain/ParcelamentoContaBancoDatasTests.cs, MyFinances/MyFinances.Tests/Services/LancamentoParceladoServiceTests.cs, MyFinances/MyFinances/Services/ComprasParceladasService.cs, MyFinances/MyFinances/Services/ParcelamentoCalculator.cs, MyFinances/MyFinances/Repositories/ILancamentoRepository.cs, MyFinances/MyFinances/Repositories/ICompraParceladaRepository.cs
+ESCOPO: Implementar ParcelamentoContaBancoDatas e LancamentoParceladoService (criar com transacao, cancelar so Pendente); adicionar a LancamentoRepository o que faltar (listar parcelas por compra_parcelada_id) e a CompraParceladaRepository (obter com lancamentos).
+CRITERIO DE ACEITE: 1) testes da TASK-185 GREEN; 2) lancamento com compra_parcelada_id segue recusado por editar/excluir isolado (guard da TASK-180); 3) suite verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/ParcelamentoContaBancoDatas.cs, MyFinances/MyFinances/Services/LancamentoParceladoService.cs, MyFinances/MyFinances/Services/ILancamentoParceladoService.cs, MyFinances/MyFinances/Repositories/ILancamentoRepository.cs, MyFinances/MyFinances/Repositories/LancamentoRepository.cs, MyFinances/MyFinances/Repositories/ICompraParceladaRepository.cs, MyFinances/MyFinances/Repositories/CompraParceladaRepository.cs
+NAO FAZER: nao alterar testes da TASK-185; nao implementar controller; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos tocados + `dotnet test` verde.
+HISTORICO: levi GREEN do service. Commit 1cf674a.
+
+---
+
+## TASK-187 — Controller: lancamentos parcelados (criar e cancelar) (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-186, TASK-181
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 17), MyFinances/MyFinances/Controllers/LancamentosParceladosController.cs, MyFinances/MyFinances/Services/ILancamentoParceladoService.cs
+ESCOPO: Implementar `POST /api/contas/{contaId}/lancamentos-parcelados` (201 com LancamentoParceladoResponse; 400 `{ erro }`) e `DELETE /api/contas/{contaId}/lancamentos-parcelados/{compraParceladaId}` (200 `{ excluidas, mantidas }`; 400 `{ erro }`).
+CRITERIO DE ACEITE: 1) contratos acima; 2) controller sem logica; 3) Program.cs registra o service (se ainda nao).
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Controllers/LancamentosParceladosController.cs, MyFinances/MyFinances/Program.cs
+NAO FAZER: nao alterar service; nao editar .claude/tasks.md.
+RETORNO ESPERADO: diff + build limpo.
+HISTORICO: levi: POST 201/400, DELETE 200 {excluidas, mantidas}/404/400. Bug de mantidas negativo corrigido (calculado antes do Remover). Commit 946b4e7.
+
+---
+
+## TASK-188 — Mike GREEN + testes HTTP: lancamentos parcelados
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-187
+FLUXO: Implementacao (rodada GREEN + HTTP)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 17), MyFinances/MyFinances.Tests/Controllers/CartaoComprasParceladasControllerTests.cs, MyFinances/MyFinances/Controllers/LancamentosParceladosController.cs
+ESCOPO: Rodar testes da TASK-185 (GREEN) e escrever testes HTTP: POST cria N lancamentos visiveis no fluxo-caixa com ParcelaNumero/TotalParcelas; validacoes -> 400; DELETE cancela so Pendente; DELETE de uma parcela isolada pelo endpoint de lancamento -> 409; compra de cartao -> 400.
+CRITERIO DE ACEITE: 1) TASK-185 GREEN; 2) HTTP GREEN; 3) suite verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Controllers/LancamentosParceladosControllerTests.cs (novo)
+NAO FAZER: nao alterar producao (reportar bug); nao editar .claude/tasks.md.
+RETORNO ESPERADO: saida `dotnet test` + relatorio de bug se houver.
+HISTORICO: mike: LancamentosParceladosControllerTests (15) verdes. Commit 946b4e7.
+
+---
+
+## TASK-189 — Style review: lancamento parcelado em conta banco (style)
+
+STATUS: CONCLUIDA
+AGENT: style
+DEPENDENCIAS: TASK-188
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 12 subsecao Parcelamento e 17), .claude/context/clean-code.md, .claude/context/stack.md, MyFinances/MyFinances/Services/LancamentoParceladoService.cs, MyFinances/MyFinances/Domain/ParcelamentoContaBancoDatas.cs, MyFinances/MyFinances/Controllers/LancamentosParceladosController.cs
+ESCOPO: Revisar regra (sem edicao de valor/quantidade, cancelar so Pendente, sem antecipacao em banco, reuso de ParcelamentoCalculator, transacao) e clean-code.
+CRITERIO DE ACEITE: veredito APROVADO ou tarefa(s) de correcao.
+ARQUIVOS PERMITIDOS: nenhum (somente leitura)
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+HISTORICO: style APROVADO (ressalva: Created aponta para rota sem GET, padrao ja existente). Junto foi aprovado e commitado o GET /faturas/{faturaId}/compras (57cd3a7; ressalva: [FromServices] no FaturasController, migrar ao construtor quando mexer de novo).
+
+---
+
+## TASK-190 — Front: camada de dados de lancamentos (vinculo, editar conta, parcelado) (hanzo)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-181, TASK-187
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/stack.md ("Frontend (React)"), MyFinanceFrontEnd/src/features/lancamentos/types.ts, MyFinanceFrontEnd/src/features/lancamentos/api.ts, MyFinanceFrontEnd/src/features/lancamentos/query-keys.ts, MyFinanceFrontEnd/src/features/lancamentos/hooks/useEditarLancamento.ts, MyFinanceFrontEnd/src/features/lancamentos/hooks/useRemoverLancamento.ts, MyFinanceFrontEnd/src/features/lancamentos/hooks/useCriarLancamento.ts
+ESCOPO: Em types.ts adicionar Avulso, OrigemVinculo, CompraParceladaId, ParcelaNumero, TotalParcelas ao lancamento e `contaId?` ao request de edicao; em api.ts adicionar `criarLancamentoParcelado` e `cancelarLancamentoParcelado`; hooks `useCriarLancamentoParcelado` e `useCancelarLancamentoParcelado` (invalidam fluxo de caixa, dashboard e limites); mapear 409 de editar/remover num erro tipado com `origemVinculo`; helper puro em lib/ que traduz origemVinculo em rotulo+rota de destino (ex.: CONTA_FIXA -> "Contas fixas", /contas-fixas).
+CRITERIO DE ACEITE: 1) tipos sem any; 2) invalidacao de cache correta; 3) typecheck limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/lancamentos/types.ts, MyFinanceFrontEnd/src/features/lancamentos/api.ts, MyFinanceFrontEnd/src/features/lancamentos/query-keys.ts, MyFinanceFrontEnd/src/features/lancamentos/hooks/useEditarLancamento.ts, MyFinanceFrontEnd/src/features/lancamentos/hooks/useRemoverLancamento.ts, MyFinanceFrontEnd/src/features/lancamentos/hooks/useCriarLancamentoParcelado.ts (novo), MyFinanceFrontEnd/src/features/lancamentos/hooks/useCancelarLancamentoParcelado.ts (novo), MyFinanceFrontEnd/src/features/lancamentos/lib/destinoDeEdicao.ts (novo)
+NAO FAZER: nao renderizar UI; nao editar .claude/tasks.md.
+RETORNO ESPERADO: tipos/hooks prontos + typecheck.
+HISTORICO:
+
+---
+
+## TASK-191 — Esqueleto: ativo vinculado a conta de investimento (item 8.5)
+
+STATUS: CONCLUIDA
+AGENT: killua
+DEPENDENCIAS: vazio
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 8, 8.1 a 8.5 e 10), .claude/context/stack.md, .claude/context/clean-code.md, .claude/context/schema.dbml, MyFinances/MyFinances/Domain/Ativo.cs, MyFinances/MyFinances/Domain/Conta.cs, MyFinances/MyFinances/Services/AtivoService.cs, MyFinances/MyFinances/Services/IAtivoService.cs, MyFinances/MyFinances/Services/ContaService.cs, MyFinances/MyFinances/Services/IContaService.cs, MyFinances/MyFinances/Repositories/IAtivoRepository.cs, MyFinances/MyFinances/Controllers/AtivosController.cs, MyFinances/MyFinances/Controllers/ContasController.cs, MyFinances/MyFinances/DTOs/Conta/ContaResponse.cs, MyFinances/MyFinances/DTOs/Ativo/CriarAtivoRequest.cs, MyFinances/MyFinances/DTOs/Ativo/AtivoResponse.cs
+ESCOPO: Devolver esqueleto e modelagem: `Ativo.ContaId` (Guid?) + `Conta`, `Instituicao` anulavel; `Domain/ContaInvestimentoSaldoCalculator` (`CalcularSaldo(Conta, IEnumerable<Ativo> ativosDaConta)` = soma valor_atual dos ativos ativos vinculados, senao saldo_manual; `PossuiAtivoAtivoVinculado`; `CalcularTotalInvestido(contasInvestimentoAtivas, ativosAtivos)` = saldos das contas + valor_atual dos ativos ativos SEM conta); metodos em IAtivoService (`CriarAtivo` com contaId obrigatorio sem instituicao; `VincularConta(ativoId, contaId)` nunca volta a null) e IContaService (saldo calculado, `DesativarConta` recusa, `AtualizarSaldoManual` recusa); excecoes (`ContaInvestimentoInvalidaParaAtivoException`, `ContaPossuiAtivoAtivoException` -> 409, `SaldoCalculadoNaoEditavelException` -> 422); IAtivoRepository (ListarAtivosPorConta, ExisteAtivoAtivoVinculado); DTOs (CriarAtivoRequest.ContaId sem Instituicao; AtivoResponse ContaId/ContaNome/SemConta; ContaResponse.Saldo calculado + SaldoCalculado bool; `PATCH /api/ativos/{id}/conta`); spec da migration (ativo.conta_id uuid null FK conta ON DELETE RESTRICT + indice; ativo.instituicao nullable); schema.dbml via skill alterar-context.
+CRITERIO DE ACEITE: 1) esqueleto compila (NotImplementedException; FakeAtivoRepository ajustado so para compilar); 2) contrato cobre todas as frases do 8.5 (obrigatorio so em ativo novo, antigo fica sem conta, trocar nunca null, aporte nao mexe em conta); 3) lista de casos de teste.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/Ativo.cs, MyFinances/MyFinances/Domain/ContaInvestimentoSaldoCalculator.cs (novo), MyFinances/MyFinances/Exceptions/ContaInvestimentoInvalidaParaAtivoException.cs (novo), MyFinances/MyFinances/Exceptions/ContaPossuiAtivoAtivoException.cs (novo), MyFinances/MyFinances/Exceptions/SaldoCalculadoNaoEditavelException.cs (novo), MyFinances/MyFinances/Services/IAtivoService.cs, MyFinances/MyFinances/Services/AtivoService.cs, MyFinances/MyFinances/Services/IContaService.cs, MyFinances/MyFinances/Services/ContaService.cs, MyFinances/MyFinances/Repositories/IAtivoRepository.cs, MyFinances/MyFinances/Repositories/AtivoRepository.cs, MyFinances/MyFinances/DTOs/Ativo/CriarAtivoRequest.cs, MyFinances/MyFinances/DTOs/Ativo/AtivoResponse.cs, MyFinances/MyFinances/DTOs/Conta/ContaResponse.cs, MyFinances/MyFinances.Tests/Helpers/FakeAtivoRepository.cs, .claude/context/schema.dbml
+NAO FAZER: nao implementar logica real; nao criar migration; nao mexer em Controllers; nao editar .claude/tasks.md.
+RETORNO ESPERADO: texto dos esqueletos + spec da migration + casos de teste.
+HISTORICO: Esqueleto gravado (Ativo.ContaId/Conta, Instituicao nullable, ContaInvestimentoSaldoCalculator, 3 excecoes, repo, overload CriarAtivo por contaId + antigo Obsolete, VincularConta, ObterSaldo, ContaResponse.SaldoCalculado). Construtores antigos mantidos (transitorio). schema.dbml pendente (via alterar-context). Levi: AtivoConfiguration sem IsRequired em Instituicao, FK/indice, Include Conta, migration.
+
+---
+
+## TASK-192 — Testes RED: saldo calculado, totais e travas de conta de investimento (mike)
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-191
+FLUXO: Implementacao (rodada RED)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 8, 8.5 e 10), MyFinances/MyFinances/Domain/ContaInvestimentoSaldoCalculator.cs, MyFinances/MyFinances/Services/AtivoService.cs, MyFinances/MyFinances/Services/ContaService.cs, MyFinances/MyFinances.Tests/Services/AtivoServiceTests.cs, MyFinances/MyFinances.Tests/Services/ContaServiceTests.cs, MyFinances/MyFinances.Tests/Helpers/FakeAtivoRepository.cs
+ESCOPO: Cobrir: calculador (com ativo ativo vinculado = soma de valor_atual; so inativos = ultimo saldo_manual; nenhum = saldo_manual (null -> 0); varios ativos; total = contas investimento + ativos ativos sem conta, sem somar vinculado duas vezes; conta inativa fora); service (criar ativo exige conta -> campo obrigatorio; conta inexistente/inativa/nao-investimento rejeitada; instituicao nao pedida; vincular ativo antigo; trocar de conta preserva aportes e rendimentos; nunca null); ContaService (desativar conta com ativo ativo vinculado -> ContaPossuiAtivoAtivoException; com ativos so inativos -> permitido; AtualizarSaldoManual com ativo ativo -> SaldoCalculadoNaoEditavelException; sem ativo -> permitido; aporte nao altera saldo da conta; AtualizarValorAtual altera saldo calculado).
+CRITERIO DE ACEITE: 1) RED por NotImplementedException; 2) um teste por caso; 3) suite legada verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Domain/ContaInvestimentoSaldoCalculatorTests.cs (novo), MyFinances/MyFinances.Tests/Services/AtivoContaVinculoServiceTests.cs (novo), MyFinances/MyFinances.Tests/Services/ContaInvestimentoTravasServiceTests.cs (novo)
+NAO FAZER: nao implementar; nao editar testes existentes (se testes legados de CriarAtivo quebrarem pela nova assinatura, reportar); nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista de testes + saida RED + testes legados afetados.
+HISTORICO: mike RED: 48 testes (44 RED, 4 guardas do lado negativo).
+
+---
+
+## TASK-193 — GREEN: ativo vinculado a conta, saldo calculado e travas + migration (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-192
+FLUXO: Implementacao (rodada GREEN)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 8.5 e 10), .claude/context/clean-code.md, .claude/context/stack.md, MyFinances/MyFinances.Tests/Domain/ContaInvestimentoSaldoCalculatorTests.cs, MyFinances/MyFinances.Tests/Services/AtivoContaVinculoServiceTests.cs, MyFinances/MyFinances.Tests/Services/ContaInvestimentoTravasServiceTests.cs, MyFinances/MyFinances/Infrastructure/Configurations/AtivoConfiguration.cs, MyFinances/MyFinances/Repositories/AtivoRepository.cs
+ESCOPO: Implementar calculador, AtivoService (criar com conta, vincular/trocar), ContaService (saldo calculado, recusas, total sem dupla contagem), repositorio, AtivoConfiguration (FK conta_id, instituicao nullable) e a migration EF aditiva.
+CRITERIO DE ACEITE: 1) testes da TASK-192 GREEN; 2) migration aditiva e reversivel, ativos existentes ficam com conta_id null; 3) suite verde (ajustar testes legados de CriarAtivo para a nova assinatura, reportando).
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/ContaInvestimentoSaldoCalculator.cs, MyFinances/MyFinances/Services/AtivoService.cs, MyFinances/MyFinances/Services/ContaService.cs, MyFinances/MyFinances/Repositories/AtivoRepository.cs, MyFinances/MyFinances/Repositories/ContaRepository.cs, MyFinances/MyFinances/Repositories/IContaRepository.cs, MyFinances/MyFinances/Infrastructure/Configurations/AtivoConfiguration.cs, MyFinances/MyFinances/Migrations/ (arquivos novos da migration + MyFinancesDbContextModelSnapshot.cs), MyFinances/MyFinances.Tests/Services/AtivoServiceTests.cs, MyFinances/MyFinances.Tests/Helpers/FakeAtivoRepository.cs
+NAO FAZER: nao alterar testes da TASK-192; nao tocar controllers; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + `dotnet test` verde + nome da migration.
+HISTORICO: levi: ContaInvestimentoSaldoCalculator, AtivoService por contaId, ContaService ObterSaldo + travas, AtivoConfiguration, 3 migrations (AddContaIdToAtivo, AddAssinaturaCartao - lacuna PR #72, AddLancamentoAntecipada). Commit 7e3e071.
+
+---
+
+## TASK-194 — Controllers/DTOs: ativo com conta, vincular conta, saldo calculado e total (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-193
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 8.5 e 10), MyFinances/MyFinances/Controllers/AtivosController.cs, MyFinances/MyFinances/Controllers/ContasController.cs, MyFinances/MyFinances/DTOs/Ativo/CriarAtivoRequest.cs, MyFinances/MyFinances/DTOs/Ativo/AtivoResponse.cs, MyFinances/MyFinances/DTOs/Conta/ContaResponse.cs
+ESCOPO: POST /api/ativos com contaId (sem instituicao); GET ativos/contas expondo ContaId, ContaNome, SemConta, Saldo calculado e SaldoCalculado; `PATCH /api/ativos/{id}/conta` (200/404/400); `PATCH /api/contas/{id}/desativar` -> 409 se ContaPossuiAtivoAtivoException; `PATCH /api/contas/{id}/saldo` -> 422 se SaldoCalculadoNaoEditavelException; `GET /api/contas/investimentos/total` retorna o total do item 8.5.
+CRITERIO DE ACEITE: 1) cada status acima; 2) ContaResponse.Saldo de conta com ativo vinculado = soma valor_atual; 3) controllers sem logica.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Controllers/AtivosController.cs, MyFinances/MyFinances/Controllers/ContasController.cs, MyFinances/MyFinances/DTOs/Ativo/CriarAtivoRequest.cs, MyFinances/MyFinances/DTOs/Ativo/AtivoResponse.cs, MyFinances/MyFinances/DTOs/Ativo/VincularContaAtivoRequest.cs (novo), MyFinances/MyFinances/DTOs/Conta/ContaResponse.cs
+NAO FAZER: nao alterar services; listar (sem alterar) impacto em mcp-server; nao editar .claude/tasks.md.
+RETORNO ESPERADO: diff + build limpo + lista de impactos no mcp-server.
+HISTORICO: levi: PATCH /api/ativos/{id}/conta, 409 ao desativar conta com ativo, 422 ao editar saldo calculado, ContaResponse com saldo calculado. Commit 7e3e071.
+
+---
+
+## TASK-195 — Mike GREEN + testes HTTP: ativo vinculado a conta
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-194
+FLUXO: Implementacao (rodada GREEN + HTTP)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 8.5 e 10), MyFinances/MyFinances.Tests/Controllers/AtivosControllerTests.cs, MyFinances/MyFinances.Tests/Controllers/ContasControllerTests.cs, MyFinances/MyFinances/Controllers/AtivosController.cs, MyFinances/MyFinances/Controllers/ContasController.cs
+ESCOPO: Rodar testes da TASK-192 (GREEN) e escrever HTTP: criar ativo sem contaId -> 400; com conta valida -> 201 e conta mostra saldo = valor_atual; desativar conta com ativo ativo -> 409; PATCH saldo nessa conta -> 422; PATCH ativos/{id}/conta move e recalcula ambas as contas; total/investimentos nao soma ativo vinculado duas vezes; ativo antigo (conta_id null) aparece SemConta.
+CRITERIO DE ACEITE: 1) TASK-192 GREEN; 2) HTTP GREEN; 3) suite verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Controllers/AtivoContaVinculoControllerTests.cs (novo)
+NAO FAZER: nao alterar producao (reportar bug); nao editar .claude/tasks.md.
+RETORNO ESPERADO: saida `dotnet test` + relatorio de bug se houver.
+HISTORICO: mike migrou AtivosControllerTests/AtivoServiceTests para contaId e cobriu os endpoints novos por HTTP. Achou bug: PATCH com ContaId vazio -> 500; Kira adicionou catch CampoObrigatorioException -> 400. Overload [Obsolete] por instituicao e CriarAtivoRequest.Instituicao removidos. Suite 1048/1048. Commit 7e3e071.
+
+---
+
+## TASK-196 — Style review: ativo vinculado a conta de investimento (style)
+
+STATUS: CONCLUIDA
+AGENT: style
+DEPENDENCIAS: TASK-195
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 8.5 e 10), .claude/context/clean-code.md, .claude/context/stack.md, MyFinances/MyFinances/Domain/ContaInvestimentoSaldoCalculator.cs, MyFinances/MyFinances/Services/AtivoService.cs, MyFinances/MyFinances/Services/ContaService.cs, MyFinances/MyFinances/Controllers/AtivosController.cs, MyFinances/MyFinances/Controllers/ContasController.cs
+ESCOPO: Revisar: calculo unico de saldo (sem duplicar), nenhuma dupla contagem em total/patrimonio, migration aditiva, ativo antigo preservado, DTOs sem vazar entity.
+CRITERIO DE ACEITE: veredito APROVADO ou tarefa(s) de correcao.
+ARQUIVOS PERMITIDOS: nenhum (somente leitura)
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+HISTORICO: style 1a rodada: PRECISA CORRIGIR (construtores transitorios com null! em AtivoService/ContaService). Kira removeu inline (mecanico), 1048/1048. Ressalvas: N+1 em ListarContas (ObterSaldo por conta), dois overloads de ContaResponse.FromConta. Commit 7e3e071.
+
+---
+
+## TASK-197 — Front: camada de dados de investimentos e contas (conta do ativo, vincular, saldo calculado) (hanzo)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-194
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/stack.md ("Frontend (React)"), MyFinanceFrontEnd/src/features/investimentos/types.ts, MyFinanceFrontEnd/src/features/investimentos/api.ts, MyFinanceFrontEnd/src/features/investimentos/query-keys.ts, MyFinanceFrontEnd/src/features/investimentos/hooks/useCriarAtivo.ts, MyFinanceFrontEnd/src/features/contas/types.ts, MyFinanceFrontEnd/src/features/contas/api.ts, MyFinanceFrontEnd/src/features/contas/hooks/useDesativarConta.ts, MyFinanceFrontEnd/src/features/contas/hooks/useAtualizarSaldoConta.ts, MyFinanceFrontEnd/src/features/contas/lib/calcularPatrimonioTotal.ts
+ESCOPO: Tipos (AtivoResponse com contaId/contaNome/semConta; ContaResponse com saldoCalculado; CriarAtivoRequest com contaId e sem instituicao), api `vincularContaAtivo` e `buscarTotalInvestido`, hook `useVincularContaAtivo` (invalida ativos, contas e total), `useTotalInvestido`; hooks de desativar conta e atualizar saldo tratam 409/422 com mensagem tipada; `calcularPatrimonioTotal` passa a somar saldos Banco + totalInvestido do backend (sem somar contas investimento e ativos de novo).
+CRITERIO DE ACEITE: 1) sem any; 2) invalidacao cruzada ativos<->contas; 3) typecheck limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/investimentos/types.ts, MyFinanceFrontEnd/src/features/investimentos/api.ts, MyFinanceFrontEnd/src/features/investimentos/query-keys.ts, MyFinanceFrontEnd/src/features/investimentos/hooks/useCriarAtivo.ts, MyFinanceFrontEnd/src/features/investimentos/hooks/useVincularContaAtivo.ts (novo), MyFinanceFrontEnd/src/features/investimentos/hooks/useTotalInvestido.ts (novo), MyFinanceFrontEnd/src/features/contas/types.ts, MyFinanceFrontEnd/src/features/contas/api.ts, MyFinanceFrontEnd/src/features/contas/hooks/useDesativarConta.ts, MyFinanceFrontEnd/src/features/contas/hooks/useAtualizarSaldoConta.ts, MyFinanceFrontEnd/src/features/contas/lib/calcularPatrimonioTotal.ts
+NAO FAZER: nao renderizar UI; nao editar .claude/tasks.md.
+RETORNO ESPERADO: tipos/hooks prontos + typecheck.
+HISTORICO:
+
+---
+
+## TASK-198 — Esqueleto: antecipacao de parcelas no cartao + marca "antecipada" (item 12)
+
+STATUS: CONCLUIDA
+AGENT: killua
+DEPENDENCIAS: vazio
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 12 inteiro, subsecoes Parcelamento, Estorno de compra parcelada e Antecipacao de parcelas; itens 9 e 14), .claude/context/stack.md, .claude/context/clean-code.md, .claude/context/schema.dbml, MyFinances/MyFinances/Services/FaturaCicloService.cs, MyFinances/MyFinances/Services/ComprasParceladasService.cs, MyFinances/MyFinances/Services/EstornoCompraParceladaService.cs, MyFinances/MyFinances/Domain/Lancamento.cs, MyFinances/MyFinances/Domain/Fatura.cs, MyFinances/MyFinances/DTOs/CompraResponse.cs, MyFinances/MyFinances/Controllers/CartaoComprasParceladasController.cs
+ESCOPO: Decidir e devolver esqueleto da persistencia da marca: coluna `lancamento.antecipada boolean not null default false` (alternativa `fatura_original_id` descartada por YAGNI, sem desfazer na v1), registrada com tradeoff; `Domain/AntecipacaoParcelasSelector.Selecionar(parcelasDaCompra, faturaAbertaAtual, quantidade)` puro (elegiveis = parcelas em fatura POSTERIOR a aberta atual; maiores parcela_numero primeiro; quantidade > elegiveis -> rejeita inteiro); `IAntecipacaoParcelasService` (`ObterElegiveisAsync(contaId, compraParceladaId)`, `AnteciparAsync(contaId, compraParceladaId, quantidade, dataAntecipacao)`); efeito = mover o proprio Lancamento (fatura_id -> aberta atual, data -> data da antecipacao, antecipada=true; valor/parcela_numero/compra_parcelada_id/categoria intactos; nada criado nem removido); DTOs (AnteciparParcelasRequest, AnteciparParcelasResponse, ParcelaElegivelResponse) e `CompraResponse` + TotalParcelas + Antecipada; rotas `POST /api/contas/{contaId}/compras-parceladas/{compraParceladaId}/antecipacoes` e `GET .../antecipacoes/elegiveis`; spec da migration; schema.dbml via alterar-context; DI.
+CRITERIO DE ACEITE: 1) esqueleto compila; 2) contrato cobre: sem pagamento/transferencia, sem desconto, repetivel, conta nao-Cartao e compra sem fatura rejeitadas; 3) lista de casos de teste (exemplo 10x com 3/10 na aberta: antecipar 2 move 10/10 e 9/10).
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/Lancamento.cs, MyFinances/MyFinances/Domain/AntecipacaoParcelasSelector.cs (novo), MyFinances/MyFinances/Services/IAntecipacaoParcelasService.cs (novo), MyFinances/MyFinances/Services/AntecipacaoParcelasService.cs (novo), MyFinances/MyFinances/DTOs/AnteciparParcelasRequest.cs (novo), MyFinances/MyFinances/DTOs/AnteciparParcelasResponse.cs (novo), MyFinances/MyFinances/DTOs/ParcelaElegivelResponse.cs (novo), MyFinances/MyFinances/DTOs/CompraResponse.cs, MyFinances/MyFinances/Controllers/CartaoComprasParceladasController.cs (so assinaturas), MyFinances/MyFinances/Program.cs, .claude/context/schema.dbml
+NAO FAZER: nao implementar logica; nao criar migration; nao editar .claude/tasks.md.
+RETORNO ESPERADO: texto dos esqueletos + decisao da marca com tradeoff + spec da migration + casos de teste.
+HISTORICO: Esqueleto gravado (Lancamento.Antecipada, AntecipacaoParcelasSelector, IAntecipacaoParcelasService, DTOs, CompraResponse.TotalParcelas/Antecipada, rotas no controller, DI). Marca = boolean (confirmado). schema.dbml pendente. Pergunta aberta: GET elegiveis sem data pode divergir do POST se o ciclo virou.
+
+---
+
+## TASK-199 — Testes RED: antecipacao de parcelas (mike)
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-198
+FLUXO: Implementacao (rodada RED)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 12 subsecoes Parcelamento e Antecipacao de parcelas), MyFinances/MyFinances/Domain/AntecipacaoParcelasSelector.cs, MyFinances/MyFinances/Services/AntecipacaoParcelasService.cs, MyFinances/MyFinances.Tests/Services/EstornoCompraParceladaServiceTests.cs, MyFinances/MyFinances.Tests/Services/ComprasParceladasServiceIntegrationTests.cs
+ESCOPO: Cobrir: elegiveis (so fatura posterior a aberta atual; parcela na aberta, fechada ou paga nao elegivel); ordem das ultimas para tras (10x, 3/10 na aberta, antecipar 2 -> 10/10 e 9/10; 4/10 a 8/10 ficam); quantidade > elegiveis rejeita inteiro sem mudar nada; quantidade < 1 rejeitada; efeito (fatura_id aberta atual, data = data da antecipacao, Antecipada=true; valor, parcela_numero, compra_parcelada_id, categoria intactos); soma das N parcelas continua = valor_total; nenhum lancamento criado/removido; total da fatura atual sobe e o das futuras cai; nao gera pagamento nem transferencia; repetivel enquanto houver elegivel; compra de banco (sem fatura), conta nao-Cartao e compra inexistente rejeitadas; gasto por categoria no mes da nova data.
+CRITERIO DE ACEITE: 1) RED por NotImplementedException; 2) um teste por caso; 3) suite legada verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Domain/AntecipacaoParcelasSelectorTests.cs (novo), MyFinances/MyFinances.Tests/Services/AntecipacaoParcelasServiceTests.cs (novo)
+NAO FAZER: nao implementar; nao editar testes existentes; nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista de testes + saida RED.
+HISTORICO: mike RED: 24 testes (selector + servico em SQLite em memoria).
+
+---
+
+## TASK-200 — GREEN: antecipacao de parcelas + coluna antecipada + migration (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-199, TASK-193
+FLUXO: Implementacao (rodada GREEN)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 12 subsecoes Parcelamento e Antecipacao de parcelas), .claude/context/clean-code.md, .claude/context/stack.md, MyFinances/MyFinances.Tests/Domain/AntecipacaoParcelasSelectorTests.cs, MyFinances/MyFinances.Tests/Services/AntecipacaoParcelasServiceTests.cs, MyFinances/MyFinances/Services/FaturaCicloService.cs, MyFinances/MyFinances/Infrastructure/Configurations/LancamentoConfiguration.cs, MyFinances/MyFinances/Repositories/LancamentoRepository.cs, MyFinances/MyFinances/Repositories/FaturaRepository.cs
+ESCOPO: Implementar Selector e AntecipacaoParcelasService (transacao; fatura aberta atual via FaturaCicloService), coluna `antecipada` em LancamentoConfiguration, repositorio (parcelas da compra com Fatura incluida), CompraResponse.FromLancamento com TotalParcelas/Antecipada, e a migration EF aditiva (rodar depois da migration da TASK-193).
+CRITERIO DE ACEITE: 1) testes da TASK-199 GREEN; 2) migration aditiva (default false para lancamentos existentes); 3) suite verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/AntecipacaoParcelasSelector.cs, MyFinances/MyFinances/Services/AntecipacaoParcelasService.cs, MyFinances/MyFinances/Services/IAntecipacaoParcelasService.cs, MyFinances/MyFinances/Infrastructure/Configurations/LancamentoConfiguration.cs, MyFinances/MyFinances/Repositories/ILancamentoRepository.cs, MyFinances/MyFinances/Repositories/LancamentoRepository.cs, MyFinances/MyFinances/Repositories/IFaturaRepository.cs, MyFinances/MyFinances/Repositories/FaturaRepository.cs, MyFinances/MyFinances/DTOs/CompraResponse.cs, MyFinances/MyFinances/Migrations/ (arquivos novos + MyFinancesDbContextModelSnapshot.cs)
+NAO FAZER: nao alterar testes da TASK-199; nao implementar controller; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + `dotnet test` verde + nome da migration.
+HISTORICO: levi GREEN 24/24, commit a474748. Mapeamento antecipada pronto; migration AddLancamentoAntecipada pendente (apos AddContaIdToAtivo). Selector roda antes de resolver fatura destino (rejeicao sem efeito colateral). catch amplo no rollback.
+
+---
+
+## TASK-201 — Controller: antecipar parcelas e listar elegiveis (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-200
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 12 subsecao Antecipacao de parcelas), MyFinances/MyFinances/Controllers/CartaoComprasParceladasController.cs, MyFinances/MyFinances/Services/IAntecipacaoParcelasService.cs
+ESCOPO: `GET /api/contas/{contaId}/compras-parceladas/{compraParceladaId}/antecipacoes/elegiveis` (200 lista com numero, valor, faturaOrigem) e `POST .../antecipacoes` com `{ quantidade }` (200 parcelas movidas; 400 `{ erro }` se quantidade > elegiveis ou invalida; 404 se compra nao existe).
+CRITERIO DE ACEITE: 1) contratos acima; 2) controller sem logica; 3) FaturasController lista a compra com antecipada=true e totalParcelas.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Controllers/CartaoComprasParceladasController.cs
+NAO FAZER: nao alterar service; nao editar .claude/tasks.md.
+RETORNO ESPERADO: diff + build limpo.
+HISTORICO: levi: GET elegiveis e POST antecipacoes (404 por mensagem, demais 400; dataAntecipacao opcional = hoje).
+
+---
+
+## TASK-202 — Mike GREEN + testes HTTP: antecipacao de parcelas
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-201
+FLUXO: Implementacao (rodada GREEN + HTTP)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 12 subsecao Antecipacao de parcelas), MyFinances/MyFinances.Tests/Controllers/CartaoComprasParceladasControllerTests.cs, MyFinances/MyFinances.Tests/Controllers/FaturasControllerTests.cs, MyFinances/MyFinances/Controllers/CartaoComprasParceladasController.cs
+ESCOPO: Rodar testes da TASK-199 (GREEN) e escrever HTTP: GET elegiveis; POST move parcelas e GET faturas mostra total da atual maior, total das futuras menor, parcelas com antecipada=true; quantidade acima do disponivel -> 400 sem alterar nada; repetir antecipacao; compra inexistente -> 404.
+CRITERIO DE ACEITE: 1) TASK-199 GREEN; 2) HTTP GREEN; 3) suite verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Controllers/CartaoAntecipacaoControllerTests.cs (novo)
+NAO FAZER: nao alterar producao (reportar bug); nao editar .claude/tasks.md.
+RETORNO ESPERADO: saida `dotnet test` + relatorio de bug se houver.
+HISTORICO: mike: 24 GREEN + 9 HTTP GREEN. NRE suspeito nao confirmado (EF fixup). Lacuna: nenhum endpoint lista parcelas da fatura com antecipada=true.
+
+---
+
+## TASK-203 — Style review: antecipacao de parcelas (style)
+
+STATUS: CONCLUIDA
+AGENT: style
+DEPENDENCIAS: TASK-202
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 12), .claude/context/clean-code.md, .claude/context/stack.md, MyFinances/MyFinances/Domain/AntecipacaoParcelasSelector.cs, MyFinances/MyFinances/Services/AntecipacaoParcelasService.cs, MyFinances/MyFinances/Controllers/CartaoComprasParceladasController.cs
+ESCOPO: Revisar: antecipar nao paga nem cria transferencia, valor/parcela intactos, sem desconto, selecao das ultimas para tras, migration aditiva, estorno posterior coerente com a regra existente.
+CRITERIO DE ACEITE: veredito APROVADO ou tarefa(s) de correcao.
+ARQUIVOS PERMITIDOS: nenhum (somente leitura)
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+HISTORICO: style aprovou back e controller da antecipacao na 2a rodada. Commit 525d9a5.
+
+---
+
+## TASK-204 — Front: camada de dados de antecipacao de parcelas (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-201
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/stack.md ("Frontend (React)"), MyFinanceFrontEnd/src/features/cartao/types.ts, MyFinanceFrontEnd/src/features/cartao/api.ts, MyFinanceFrontEnd/src/features/cartao/query-keys.ts, MyFinanceFrontEnd/src/features/cartao/hooks/useFaturas.ts, MyFinanceFrontEnd/src/features/cartao/hooks/usePagarFatura.ts
+ESCOPO: Tipos (compra com totalParcelas e antecipada; ParcelaElegivel; AnteciparRequest), api `listarParcelasElegiveis` e `anteciparParcelas`, hooks `useParcelasElegiveis(contaId, compraParceladaId)` e `useAnteciparParcelas` (invalida faturas, saldo do cartao e projecao do dashboard); helper puro em lib/ para o texto de pre-visualizacao (parcelas que vao para a fatura atual) usando so dados do backend.
+CRITERIO DE ACEITE: 1) sem any; 2) invalidacao correta; 3) typecheck limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/cartao/types.ts, MyFinanceFrontEnd/src/features/cartao/api.ts, MyFinanceFrontEnd/src/features/cartao/query-keys.ts, MyFinanceFrontEnd/src/features/cartao/hooks/useParcelasElegiveis.ts (novo), MyFinanceFrontEnd/src/features/cartao/hooks/useAnteciparParcelas.ts (novo), MyFinanceFrontEnd/src/features/cartao/lib/montarPreviaAntecipacao.ts (novo)
+NAO FAZER: nao renderizar UI; nao recalcular fatura no front; nao editar .claude/tasks.md.
+RETORNO ESPERADO: tipos/hooks prontos + typecheck.
+HISTORICO: hanzo: tipos/api/hooks de antecipacao; previa corrigida para ultimas para tras. Commit 3bf2a23.
+
+---
+
+## TASK-205 — Esqueleto: edicao de conta a receber (item 13)
+
+STATUS: CONCLUIDA
+AGENT: killua
+DEPENDENCIAS: vazio
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 9, 13 e 15), .claude/context/stack.md, .claude/context/clean-code.md, MyFinances/MyFinances/Services/ContaReceberService.cs, MyFinances/MyFinances/Services/IContaReceberService.cs, MyFinances/MyFinances/Domain/ContaReceber.cs, MyFinances/MyFinances/Domain/ContaReceberSaldoCalculator.cs, MyFinances/MyFinances/Controllers/ContasReceberController.cs, MyFinances/MyFinances/DTOs/ContaReceber/ContaReceberResponse.cs, MyFinances/MyFinances/Exceptions/PessoaObrigatoriaParaEmprestimoException.cs
+ESCOPO: Devolver esqueleto de `IContaReceberService.EditarAsync(Guid id, string descricao, string? pessoa, DateOnly? dataPrevista, decimal? valorTotal) -> Task<ContaReceber>`, `EditarContaReceberRequest` (DTO), excecoes (`ValorTotalNaoEditavelException`, `ContaReceberRecorrenteNaoEditavelException`), rota `PUT /api/contas-receber/{id}` e mapeamento de erros (404/400/409); regras: editaveis em qualquer status descricao, pessoa (so EMPRESTIMO, obrigatoria nele; ignorada em RECEBIVEL) e data_prevista; valor_total so em RECEBIVEL Pendente (EMPRESTIMO nunca; valor igual ao atual e no-op); tipo nunca muda; ocorrencia de recebivel recorrente (recebivel_recorrente_id) e recusada ("edite o molde").
+CRITERIO DE ACEITE: 1) esqueleto compila; 2) contrato cobre tipo imutavel, saldo_pendente continua = valor_total apos editar valor em Pendente, e efeito de data_prevista na projecao do item 9; 3) lista de casos de teste.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/IContaReceberService.cs, MyFinances/MyFinances/Services/ContaReceberService.cs, MyFinances/MyFinances/DTOs/ContaReceber/EditarContaReceberRequest.cs (novo), MyFinances/MyFinances/Exceptions/ValorTotalNaoEditavelException.cs (novo), MyFinances/MyFinances/Exceptions/ContaReceberRecorrenteNaoEditavelException.cs (novo)
+NAO FAZER: nao implementar logica; nao tocar controller; nao editar .claude/tasks.md.
+RETORNO ESPERADO: texto dos esqueletos + casos de teste.
+HISTORICO: Esqueleto gravado (EditarAsync, EditarContaReceberRequest, ValorTotalNaoEditavelException, ContaReceberRecorrenteNaoEditavelException). Build ok.
+
+---
+
+## TASK-206 — Testes RED: edicao de conta a receber (mike)
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-205
+FLUXO: Implementacao (rodada RED)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 9, 13 e 15), MyFinances/MyFinances/Services/ContaReceberService.cs, MyFinances/MyFinances.Tests/Services/ContaReceberServiceTests.cs, MyFinances/MyFinances.Tests/Services/ContaReceberIntegrationTests.cs
+ESCOPO: Cobrir: descricao/pessoa/data_prevista editaveis em PENDENTE, PARCIAL e RECEBIDO; valor_total editavel so em RECEBIVEL PENDENTE (saldo_pendente = novo valor); em PARCIAL/RECEBIDO com valor diferente -> ValorTotalNaoEditavelException; valor igual -> ok; EMPRESTIMO com valor diferente -> excecao; valor <= 0 rejeitado; descricao vazia rejeitada; EMPRESTIMO sem pessoa -> PessoaObrigatoriaParaEmprestimoException; pessoa em RECEBIVEL ignorada; tipo inalterado; ocorrencia recorrente -> ContaReceberRecorrenteNaoEditavelException; inexistente -> ContaReceberNaoEncontradaException; mudar data_prevista para outro mes move o saldo na projecao do mes.
+CRITERIO DE ACEITE: 1) RED por NotImplementedException; 2) um teste por caso; 3) suite legada verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Services/ContaReceberEditarServiceTests.cs (novo)
+NAO FAZER: nao implementar; nao editar testes existentes; nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista de testes + saida RED.
+HISTORICO: mike RED: 28 testes (27 unit + 1 integracao projecao).
+
+---
+
+## TASK-207 — GREEN: ContaReceberService.EditarAsync (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-206
+FLUXO: Implementacao (rodada GREEN)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 13 e 15), .claude/context/clean-code.md, MyFinances/MyFinances.Tests/Services/ContaReceberEditarServiceTests.cs, MyFinances/MyFinances/Services/ContaReceberService.cs, MyFinances/MyFinances/Domain/ContaReceberSaldoCalculator.cs, MyFinances/MyFinances/Repositories/ContaReceberRepository.cs
+ESCOPO: Implementar EditarAsync conforme o contrato da TASK-205, reutilizando ContaReceberSaldoCalculator para decidir o estado.
+CRITERIO DE ACEITE: 1) testes da TASK-206 GREEN; 2) suite verde; 3) sem logica duplicada de estado.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/ContaReceberService.cs, MyFinances/MyFinances/Services/IContaReceberService.cs
+NAO FAZER: nao alterar testes da TASK-206; nao tocar controller; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + `dotnet test` verde.
+HISTORICO: levi GREEN 28/28, commit 16d8285. valor<=0 e descricao vazia recusados (suposicao do Kira).
+
+---
+
+## TASK-208 — Controller: PUT /api/contas-receber/{id} (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-207
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 13), MyFinances/MyFinances/Controllers/ContasReceberController.cs, MyFinances/MyFinances/DTOs/ContaReceber/EditarContaReceberRequest.cs, MyFinances/MyFinances/DTOs/ContaReceber/ContaReceberResponse.cs
+ESCOPO: Implementar `[HttpPut("api/contas-receber/{id}")]`: 200 com ContaReceberResponse; 404 inexistente; 409 `{ erro }` para valor_total nao editavel ou ocorrencia recorrente; 400 para validacao.
+CRITERIO DE ACEITE: 1) cada status acima; 2) controller sem logica.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Controllers/ContasReceberController.cs
+NAO FAZER: nao alterar service; nao editar .claude/tasks.md.
+RETORNO ESPERADO: diff + build limpo.
+HISTORICO: levi: PUT /api/contas-receber/{id} (200/404/409/400). Commit 89f41ef.
+
+---
+
+## TASK-209 — Mike GREEN + testes HTTP: edicao de conta a receber
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-208
+FLUXO: Implementacao (rodada GREEN + HTTP)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 13), MyFinances/MyFinances.Tests/Controllers/ContaReceberControllerTests.cs, MyFinances/MyFinances/Controllers/ContasReceberController.cs
+ESCOPO: Rodar testes da TASK-206 (GREEN) e escrever HTTP: PUT em recebivel pendente altera valor; apos um recebimento, valor diferente -> 409; emprestimo valor diferente -> 409; descricao/pessoa/data editaveis em qualquer status; ocorrencia recorrente -> 409; 404.
+CRITERIO DE ACEITE: 1) TASK-206 GREEN; 2) HTTP GREEN; 3) suite verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Controllers/ContaReceberEditarControllerTests.cs (novo)
+NAO FAZER: nao alterar producao (reportar bug); nao editar .claude/tasks.md.
+RETORNO ESPERADO: saida `dotnet test` + relatorio de bug se houver.
+HISTORICO: mike: 28 unit GREEN + 8 HTTP GREEN. Commit 89f41ef.
+
+---
+
+## TASK-210 — Style review: edicao de conta a receber (style)
+
+STATUS: CONCLUIDA
+AGENT: style
+DEPENDENCIAS: TASK-209
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 13 e 15), .claude/context/clean-code.md, .claude/context/stack.md, MyFinances/MyFinances/Services/ContaReceberService.cs, MyFinances/MyFinances/Controllers/ContasReceberController.cs
+ESCOPO: Revisar: valor fixo apos primeiro recebimento, tipo imutavel, emprestimo intocavel, ocorrencia recorrente recusada, controller magro.
+CRITERIO DE ACEITE: veredito APROVADO ou tarefa(s) de correcao.
+ARQUIVOS PERMITIDOS: nenhum (somente leitura)
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+HISTORICO: style: APROVADO, sem correcao.
+
+---
+
+## TASK-211 — Front: camada de dados de edicao de conta a receber (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-208
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/stack.md ("Frontend (React)"), MyFinanceFrontEnd/src/features/contas-receber/types.ts, MyFinanceFrontEnd/src/features/contas-receber/query-keys.ts, MyFinanceFrontEnd/src/features/contas-receber/hooks/useExcluirContaReceber.ts, MyFinanceFrontEnd/src/features/contas-receber/lib/validarContaReceber.ts
+ESCOPO: Criar `contas-receber/api.ts` se nao existir (conferir onde as chamadas vivem hoje e manter o padrao) com `editarContaReceber(id, req)`; tipo `EditarContaReceberRequest`; hook `useEditarContaReceber` (invalida lista, item e total-esperado-mes); helper puro `podeEditarValorTotal(conta)` (RECEBIVEL com status PENDENTE) so para habilitar o campo (backend continua validando).
+CRITERIO DE ACEITE: 1) sem any; 2) 409 tratado como erro tipado; 3) typecheck limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/contas-receber/api.ts, MyFinanceFrontEnd/src/features/contas-receber/types.ts, MyFinanceFrontEnd/src/features/contas-receber/hooks/useEditarContaReceber.ts (novo), MyFinanceFrontEnd/src/features/contas-receber/lib/podeEditarValorTotal.ts (novo)
+NAO FAZER: nao renderizar UI; nao editar .claude/tasks.md.
+RETORNO ESPERADO: hook pronto + typecheck.
+HISTORICO: hanzo: editarContaReceber, useEditarContaReceber, podeEditarValorTotal. Commit 89f41ef.
+
+---
+
+## TASK-212 — Esqueleto: relatorio por categoria (item 19)
+
+STATUS: CONCLUIDA
+AGENT: killua
+DEPENDENCIAS: vazio
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 3, 7, 12, 14 e 19), .claude/context/stack.md, .claude/context/clean-code.md, MyFinances/MyFinances/Domain/LimiteGastoCalculator.cs, MyFinances/MyFinances/Domain/ClassificacaoLancamentoService.cs, MyFinances/MyFinances/Services/LimiteGastoService.cs, MyFinances/MyFinances/Repositories/ILancamentoRepository.cs, MyFinances/MyFinances/Repositories/LancamentoRepository.cs, MyFinances/MyFinances/Domain/Categoria.cs, MyFinances/MyFinances/Controllers/LimitesGastoController.cs
+ESCOPO: Devolver esqueleto de `Domain/GastoPorCategoriaCalculator` (puro: lancamentos do mes + categorias -> linhas de primeiro nivel somando subcategorias diretas, mais linha "Sem categoria"; so Tipo=Debit, Oculto=false, TransferenciaId=null; PENDENTE e PAGO; gasto>0; ordem desc; percentual 0-100 com 2 casas calculado no backend), `VariacaoMensalCalculator` (nulo se mes anterior zero), `IRelatorioCategoriaService/RelatorioCategoriaService` (`ObterResumoAsync(ano, mes)`, `ObterDetalheAsync(ano, mes, Guid? categoriaId)`), DTOs (RelatorioGastoPorCategoriaResponse{ano, mes, totalGasto, totalMesAnterior, variacaoPercentual?, linhas[]}; RelatorioCategoriaDetalheResponse{categoriaId?, nome, icone, total, percentualDoTotal, limite?{valorLimite, gastoRealizado}, lancamentos[]{id, descricao, data, contaId, contaNome, contaTipo, subcategoriaNome?, valor} em data crescente}), rotas `GET /api/relatorios/gasto-por-categoria?ano&mes` e `GET /api/relatorios/gasto-por-categoria/detalhe?ano&mes&categoriaId` (sem categoriaId = Sem categoria; subcategoria como id -> 400), metodo de repositorio `ListarDebitosParaRelatorioAsync(ano, mes)` e DI.
+CRITERIO DE ACEITE: 1) esqueleto compila; 2) contrato prova que soma do detalhe = valor da linha e que transferencia/pagamento de fatura nunca entram (nota: LimiteGastoCalculator nao filtra transferencia); 3) lista de casos de teste.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/GastoPorCategoriaCalculator.cs (novo), MyFinances/MyFinances/Domain/VariacaoMensalCalculator.cs (novo), MyFinances/MyFinances/Services/IRelatorioCategoriaService.cs (novo), MyFinances/MyFinances/Services/RelatorioCategoriaService.cs (novo), MyFinances/MyFinances/DTOs/Relatorio/RelatorioGastoPorCategoriaResponse.cs (novo), MyFinances/MyFinances/DTOs/Relatorio/RelatorioCategoriaDetalheResponse.cs (novo), MyFinances/MyFinances/Repositories/ILancamentoRepository.cs, MyFinances/MyFinances/Repositories/LancamentoRepository.cs, MyFinances/MyFinances/Controllers/RelatoriosController.cs (novo, so assinaturas), MyFinances/MyFinances/Program.cs
+NAO FAZER: nao implementar logica; nao alterar LimiteGastoCalculator; nao editar .claude/tasks.md.
+RETORNO ESPERADO: texto dos esqueletos + casos de teste.
+HISTORICO: Esqueleto gravado (GastoPorCategoriaCalculator, VariacaoMensalCalculator, RelatorioCategoriaService, DTOs, RelatoriosController, ListarDebitosParaRelatorioAsync, DI). Arquivo extra autorizado pelo Kira: CategoriaNaoEhPrimeiroNivelException. So DEBIT (confirmado).
+
+---
+
+## TASK-213 — Testes RED: relatorio por categoria (mike)
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-212
+FLUXO: Implementacao (rodada RED)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 3, 12, 14 e 19), MyFinances/MyFinances/Domain/GastoPorCategoriaCalculator.cs, MyFinances/MyFinances/Services/RelatorioCategoriaService.cs, MyFinances/MyFinances.Tests/Domain/LimiteGastoCalculatorTests.cs, MyFinances/MyFinances.Tests/Services/LimiteGastoServiceTests.cs
+ESCOPO: Cobrir: so DEBIT (CREDIT/estorno fora); oculto fora; transferencia, pagamento de fatura e emprestimo (perna unica) fora; PENDENTE e PAGO entram; compra de cartao entra pela propria data; parcela antecipada conta no mes da nova data; subcategorias somam na categoria de primeiro nivel; categoria sem gasto nao aparece; DEBIT sem categoria vira "Sem categoria"; ordem maior gasto primeiro; percentuais; limite mes (bordas do mes); variacao (mes anterior zero -> nula; (atual-anterior)/anterior); detalhe: lancamentos em data crescente, soma = valor da linha, conta de cartao identificada pelo contaTipo, subcategoria preenchida, barra limite x realizado quando ha limite, categoria passada que e subcategoria -> erro.
+CRITERIO DE ACEITE: 1) RED por NotImplementedException; 2) um teste por caso; 3) suite legada verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Domain/GastoPorCategoriaCalculatorTests.cs (novo), MyFinances/MyFinances.Tests/Domain/VariacaoMensalCalculatorTests.cs (novo), MyFinances/MyFinances.Tests/Services/RelatorioCategoriaServiceTests.cs (novo)
+NAO FAZER: nao implementar; nao editar testes existentes; nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista de testes + saida RED.
+HISTORICO: mike RED: 57 testes.
+
+---
+
+## TASK-214 — GREEN: calculos e RelatorioCategoriaService (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-213
+FLUXO: Implementacao (rodada GREEN)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 14 e 19), .claude/context/clean-code.md, MyFinances/MyFinances.Tests/Domain/GastoPorCategoriaCalculatorTests.cs, MyFinances/MyFinances.Tests/Domain/VariacaoMensalCalculatorTests.cs, MyFinances/MyFinances.Tests/Services/RelatorioCategoriaServiceTests.cs, MyFinances/MyFinances/Repositories/LancamentoRepository.cs, MyFinances/MyFinances/Repositories/ICategoriaRepository.cs, MyFinances/MyFinances/Repositories/ILimiteGastoRepository.cs
+ESCOPO: Implementar calculadores, ListarDebitosParaRelatorioAsync (Include Conta, Categoria; filtros Debit, !Oculto, TransferenciaId null, mes) e o service.
+CRITERIO DE ACEITE: 1) testes da TASK-213 GREEN; 2) suite verde; 3) service sem DbContext direto.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/GastoPorCategoriaCalculator.cs, MyFinances/MyFinances/Domain/VariacaoMensalCalculator.cs, MyFinances/MyFinances/Services/RelatorioCategoriaService.cs, MyFinances/MyFinances/Services/IRelatorioCategoriaService.cs, MyFinances/MyFinances/Repositories/ILancamentoRepository.cs, MyFinances/MyFinances/Repositories/LancamentoRepository.cs
+NAO FAZER: nao alterar testes da TASK-213; nao implementar controller; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + `dotnet test` verde.
+HISTORICO: levi GREEN 57/57, commit b0ab0fd. PercentualDoTotal sobre total do mes (pergunta aberta). Mensagem de ValorInvalidoException para mes 13 fica enganosa.
+
+---
+
+## TASK-215 — Controller: RelatoriosController (resumo e detalhe) (levi)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-214
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 19), MyFinances/MyFinances/Controllers/RelatoriosController.cs, MyFinances/MyFinances/Controllers/LimitesGastoController.cs, MyFinances/MyFinances/Services/IRelatorioCategoriaService.cs
+ESCOPO: Implementar `GET /api/relatorios/gasto-por-categoria?ano&mes` (default mes corrente quando omitidos) e `GET /api/relatorios/gasto-por-categoria/detalhe?ano&mes&categoriaId`: 200; 400 mes invalido ou categoria que e subcategoria; 404 categoria inexistente.
+CRITERIO DE ACEITE: 1) contratos acima; 2) controller sem logica; 3) DI registrada.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Controllers/RelatoriosController.cs, MyFinances/MyFinances/Program.cs
+NAO FAZER: nao alterar service; nao editar .claude/tasks.md.
+RETORNO ESPERADO: diff + build limpo.
+HISTORICO: levi: GET /api/relatorios/gasto-por-categoria e /detalhe (ano/mes default hoje). Commit a3aa0b6.
+
+---
+
+## TASK-216 — Mike GREEN + testes HTTP: relatorio por categoria
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-215
+FLUXO: Implementacao (rodada GREEN + HTTP)
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 19), MyFinances/MyFinances.Tests/Controllers/LimitesGastoControllerTests.cs, MyFinances/MyFinances/Controllers/RelatoriosController.cs
+ESCOPO: Rodar testes da TASK-213 (GREEN) e escrever HTTP: massa com banco+cartao+transferencia+oculto; resumo com linhas, total e variacao; detalhe com soma = linha; Sem categoria; mes sem dados -> total 0 e linhas vazias; categoria inexistente -> 404; subcategoria -> 400.
+CRITERIO DE ACEITE: 1) TASK-213 GREEN; 2) HTTP GREEN; 3) suite verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Controllers/RelatoriosControllerTests.cs (novo)
+NAO FAZER: nao alterar producao (reportar bug); nao editar .claude/tasks.md.
+RETORNO ESPERADO: saida `dotnet test` + relatorio de bug se houver.
+HISTORICO: mike: 57 GREEN + 15 HTTP GREEN. Commit a3aa0b6.
+
+---
+
+## TASK-217 — Style review: relatorio por categoria (style)
+
+STATUS: CONCLUIDA
+AGENT: style
+DEPENDENCIAS: TASK-216
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 3, 12, 14 e 19), .claude/context/clean-code.md, .claude/context/stack.md, MyFinances/MyFinances/Domain/GastoPorCategoriaCalculator.cs, MyFinances/MyFinances/Services/RelatorioCategoriaService.cs, MyFinances/MyFinances/Controllers/RelatoriosController.cs
+ESCOPO: Revisar: competencia, exclusao de transferencia/oculto, agregacao por subcategoria igual a do item 14 (sem divergir), percentuais e arredondamento, detalhe = linha, sem logica no controller.
+CRITERIO DE ACEITE: veredito APROVADO ou tarefa(s) de correcao.
+ARQUIVOS PERMITIDOS: nenhum (somente leitura)
+NAO FAZER: nao editar codigo.
+RETORNO ESPERADO: veredito + achados.
+HISTORICO: style: APROVADO com ressalvas menores (mensagem mes 13, StatusElegiveis mutavel, Include Categoria desnecessario) — despachadas ao levi.
+
+---
+
+## TASK-218 — Front: camada de dados de relatorio por categoria (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-215
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/stack.md ("Frontend (React)"), MyFinanceFrontEnd/src/features/limite-gasto/api.ts, MyFinanceFrontEnd/src/features/limite-gasto/types.ts, MyFinanceFrontEnd/src/features/limite-gasto/query-keys.ts, MyFinanceFrontEnd/src/features/limite-gasto/hooks/useGastoVsLimiteTodasCategorias.ts, MyFinanceFrontEnd/src/shared/api/client.ts
+ESCOPO: Criar feature `relatorios` (types.ts, api.ts, query-keys.ts) e hooks `useRelatorioGastoPorCategoria(ano, mes)` e `useRelatorioCategoriaDetalhe(ano, mes, categoriaId?)`; lib pura para navegacao de mes (reaproveitar o padrao de NavegadorMes sem importar de outra feature: se necessario mover para shared/lib).
+CRITERIO DE ACEITE: 1) sem any; 2) front nao recalcula totais nem percentuais; 3) typecheck limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/relatorios/types.ts (novo), MyFinanceFrontEnd/src/features/relatorios/api.ts (novo), MyFinanceFrontEnd/src/features/relatorios/query-keys.ts (novo), MyFinanceFrontEnd/src/features/relatorios/hooks/useRelatorioGastoPorCategoria.ts (novo), MyFinanceFrontEnd/src/features/relatorios/hooks/useRelatorioCategoriaDetalhe.ts (novo), MyFinanceFrontEnd/src/features/relatorios/lib/navegarMes.ts (novo)
+NAO FAZER: nao renderizar UI; nao editar .claude/tasks.md.
+RETORNO ESPERADO: tipos/hooks prontos + typecheck.
+HISTORICO: hanzo: feature relatorios (types/api/query-keys/hooks/navegarMes). Commit 3bf2a23.
+
+---
+
+## TASK-219 — Front: camada de dados de de-para de categoria (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: vazio
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/stack.md ("Frontend (React)"), .claude/context/regra-de-negocio.md (item 7 De-para), MyFinances/MyFinances/Controllers/DeParaCategoriasController.cs, MyFinances/MyFinances/DTOs/DeParaCategoria/DeParaCategoriaResponse.cs, MyFinances/MyFinances/DTOs/DeParaCategoria/CriarDeParaCategoriaRequest.cs, MyFinances/MyFinances/DTOs/DeParaCategoria/EditarDeParaCategoriaRequest.cs, MyFinanceFrontEnd/src/features/categorias/api.ts, MyFinanceFrontEnd/src/features/categorias/query-keys.ts
+ESCOPO: Criar feature `de-para` (types.ts, api.ts, query-keys.ts, hooks useDeParaCategorias, useCriarDePara, useEditarDePara, useRemoverDePara) para GET/POST/PUT/DELETE `/api/deparacategorias` (conferir a rota real no controller).
+CRITERIO DE ACEITE: 1) sem any; 2) invalidacao da lista nas mutations; 3) typecheck limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/de-para/types.ts (novo), MyFinanceFrontEnd/src/features/de-para/api.ts (novo), MyFinanceFrontEnd/src/features/de-para/query-keys.ts (novo), MyFinanceFrontEnd/src/features/de-para/hooks/useDeParaCategorias.ts (novo), MyFinanceFrontEnd/src/features/de-para/hooks/useCriarDePara.ts (novo), MyFinanceFrontEnd/src/features/de-para/hooks/useEditarDePara.ts (novo), MyFinanceFrontEnd/src/features/de-para/hooks/useRemoverDePara.ts (novo)
+NAO FAZER: nao renderizar UI; nao inventar endpoint de "pendentes" ou "sugerido" (depende de import/Open Finance, v2); nao editar .claude/tasks.md.
+RETORNO ESPERADO: hooks prontos + typecheck.
+HISTORICO: hanzo: feature de-para (types, api, query-keys, 4 hooks). Rota real /api/deparacategorias. Typecheck ok. Achado: Location do Created no controller aponta /api/de-para-categorias (nao bate com a rota).
+
+---
+
+## TASK-220 — Primitivos shared/ui (1/2): Badge, Chip, IconTile, ProgressBar, PageHeader e tokens (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: vazio
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/stack.md ("shared/ui"), .claude/context/clean-code.md, MyFinanceFrontEnd/src/index.css, MyFinanceFrontEnd/src/shared/ui/card.tsx, MyFinanceFrontEnd/src/shared/ui/button.tsx, MyFinanceFrontEnd/src/shared/lib/utils.ts, mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (badges Pago/Pendente/Manual/Sugerido/antecipada, chips Todos/Entradas/Saidas, icone-tile 34px, barras de limite)
+ESCOPO: Criar em shared/ui: `badge.tsx` (variantes pago, pendente, atrasado, manual, sugerido, antecipada, parcela; raio 5px), `chip.tsx` (pilula selecionavel), `icon-tile.tsx` (quadrado arredondado 34px accent-deep + icone), `progress-bar.tsx` (variantes normal/estourado), `page-header.tsx` (titulo 19px + slot de acao); conferir tokens de index.css contra identidade-visual.md e ajustar so se divergirem.
+CRITERIO DE ACEITE: 1) componentes sem fetch nem regra de dominio; 2) cores via tokens (nao hex solto), funcionam em tema claro e escuro; 3) typecheck/build limpos.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/shared/ui/badge.tsx (novo), MyFinanceFrontEnd/src/shared/ui/chip.tsx (novo), MyFinanceFrontEnd/src/shared/ui/icon-tile.tsx (novo), MyFinanceFrontEnd/src/shared/ui/progress-bar.tsx (novo), MyFinanceFrontEnd/src/shared/ui/page-header.tsx (novo), MyFinanceFrontEnd/src/index.css
+NAO FAZER: nao migrar telas existentes; nao importar tipos de feature; nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista de componentes e props + build limpo.
+HISTORICO: hanzo: badge, chip, icon-tile, progress-bar, page-header. Tokens de index.css ja batiam com identidade-visual. Build ok.
+
+---
+
+## TASK-221 — Primitivos shared/ui (2/2): Switch, SegmentedTabs, SelectField, Stepper, ConfirmDialog, BottomSheet (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-220
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/stack.md ("shared/ui"), .claude/context/clean-code.md, MyFinanceFrontEnd/src/shared/ui/Modal.tsx, MyFinanceFrontEnd/src/shared/ui/input.tsx, mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (toggle Parcelar, tabs Despesas/Receitas, dropdown de tipo de conta, stepper de quantidade, dialogo "Cancelar Notebook Dell?") e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (menu de acoes em folha: `lmenu`, `sheet:*`)
+ESCOPO: Criar em shared/ui: `switch.tsx`, `segmented-tabs.tsx`, `select-field.tsx` (campo + lista), `stepper.tsx` (- N +, min/max), `confirm-dialog.tsx` (icone, titulo, corpo, Voltar/Confirmar, variante destrutiva; base no Modal), `bottom-sheet.tsx` (folha inferior mobile, no desktop vira Modal centralizado).
+CRITERIO DE ACEITE: 1) acessiveis (teclado, aria, fecha com Esc/clique fora); 2) sem fetch/regra de dominio; 3) typecheck/build limpos.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/shared/ui/switch.tsx (novo), MyFinanceFrontEnd/src/shared/ui/segmented-tabs.tsx (novo), MyFinanceFrontEnd/src/shared/ui/select-field.tsx (novo), MyFinanceFrontEnd/src/shared/ui/stepper.tsx (novo), MyFinanceFrontEnd/src/shared/ui/confirm-dialog.tsx (novo), MyFinanceFrontEnd/src/shared/ui/bottom-sheet.tsx (novo)
+NAO FAZER: nao alterar Modal.tsx; nao migrar telas; nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista de componentes e props + build limpo.
+HISTORICO: hanzo: switch, segmented-tabs, select-field, stepper, confirm-dialog (base BottomSheet center), bottom-sheet. Build ok.
+
+---
+
+## TASK-222 — Shell desktop: sidebar agrupada e area de conteudo (mockup s_dashboard, sidebar de todas as telas) (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-220
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/stack.md, .claude/context/clean-code.md, mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (sidebar 232px, linhas 57-59: Inicio/Lancamentos/Cartao/Contas; grupo Organizacao: Categorias, De-para de categoria, Contas fixas; grupo Acompanhamento: Conciliacao, Contas a receber, Investimentos, Relatorio por categoria; rodape Sair), MyFinanceFrontEnd/src/app/AppShell.tsx, MyFinanceFrontEnd/src/app/AuthenticatedLayout.tsx, MyFinanceFrontEnd/src/app/components/ThemeToggle.tsx
+ESCOPO: Extrair a navegacao para `app/navigation.ts` (grupos NAV_GROUPS, destinos primarios mobile, mantendo Limites de gasto em Organizacao e Recebiveis recorrentes em Acompanhamento para nao orfanar rotas) e reescrever a sidebar de AppShell no padrao do mockup (largura 232px, rotulos de grupo, item ativo accent-deep, marca "Financeiro", rodape Sair + ThemeToggle); liberar a largura do conteudo (hoje max-w-2xl) para as telas de grade do mockup.
+CRITERIO DE ACEITE: 1) sidebar identica em estrutura ao mockup (grupos, ordem, estados ativo/hover); 2) itens para rotas ainda inexistentes (/depara, /conciliacao, /relatorio) existem no nav e levam ao redirect padrao ate as telas chegarem; 3) mobile (<md) nao regride (BottomTabBar continua funcionando) e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/app/AppShell.tsx, MyFinanceFrontEnd/src/app/navigation.ts (novo)
+NAO FAZER: nao mexer em BottomTabBar nem em routes.tsx; nao criar telas; nao incluir busca nem avatar (sem regra); nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + captura/descricao do resultado em 1280px e 390px + build limpo.
+HISTORICO: hanzo: navigation.ts + sidebar 232px agrupada. Commit d412c4f.
+
+---
+
+## TASK-223 — Shell mobile: bottom tab bar (5 abas) e tela "Mais" (mockup mobile s_mais) (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-222, TASK-221
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/stack.md, mockup mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (tela s_mais linhas 1018 em diante: cartao do usuario, grupos Organizacao e Acompanhamento, Sair; barra Inicio/Lancamentos/Cartao/Contas/Mais), MyFinanceFrontEnd/src/app/components/BottomTabBar.tsx, MyFinanceFrontEnd/src/app/navigation.ts, MyFinanceFrontEnd/src/app/routes.tsx, MyFinanceFrontEnd/src/features/auth/useAuth.ts
+ESCOPO: Trocar a folha "Mais" por rota `/mais` com `MaisPage` (cartao com inicial/nome/email do usuario, listas agrupadas vindas de NAV_GROUPS, Sair + ThemeToggle) e ajustar BottomTabBar para 5 abas fixas, "Mais" ativa quando a rota atual e /mais ou qualquer destino secundario.
+CRITERIO DE ACEITE: 1) tela /mais conforme o mockup mobile; 2) todos os destinos secundarios alcancaveis a partir de /mais; 3) desktop (>=md) sem mudanca e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/app/components/BottomTabBar.tsx, MyFinanceFrontEnd/src/app/MaisPage.tsx (novo), MyFinanceFrontEnd/src/app/routes.tsx, MyFinanceFrontEnd/src/app/navigation.ts
+NAO FAZER: nao registrar rotas de outras telas; nao tocar AppShell.tsx; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + descricao em 390px + build limpo.
+HISTORICO: hanzo: /mais (MaisPage) + BottomTabBar 5 abas. Commit d412c4f. BrandTitle/UserFooter sem uso no AppShell (limpeza pendente).
+
+---
+
+## TASK-224 — Tela Login (mockup s_login desktop e mobile) (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-220
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/clean-code.md, mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (s_login, linhas 19-54: painel de marca 50% #26215C + formulario 360px) e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (s_login, linhas 18-57), MyFinanceFrontEnd/src/features/auth/LoginPage.tsx, MyFinanceFrontEnd/src/features/auth/components/LoginBrandPanel.tsx, MyFinanceFrontEnd/src/features/auth/components/LoginForm.tsx, MyFinanceFrontEnd/src/features/auth/components/RegisterForm.tsx
+ESCOPO: Alinhar LoginPage/LoginBrandPanel/LoginForm/RegisterForm ao mockup (desktop em duas colunas; mobile em coluna unica com marca no topo), usando primitivos de shared/ui.
+CRITERIO DE ACEITE: 1) layout fiel nas duas larguras; 2) fluxo de login e registro inalterado; 3) elementos sem regra de negocio ("Esqueci minha senha", "Entrar com codigo de acesso") NAO renderizados.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/auth/LoginPage.tsx, MyFinanceFrontEnd/src/features/auth/components/LoginBrandPanel.tsx, MyFinanceFrontEnd/src/features/auth/components/LoginForm.tsx, MyFinanceFrontEnd/src/features/auth/components/RegisterForm.tsx
+NAO FAZER: nao alterar AuthContext nem api de auth; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + build limpo.
+HISTORICO: hanzo: login/registro alinhados ao mockup; Esqueci senha e codigo de acesso removidos (sem regra). Build ok.
+
+---
+
+## TASK-225 — Tela Dashboard (mockup s_dashboard desktop e mobile) (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-222, TASK-223, TASK-221
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/clean-code.md, .claude/context/regra-de-negocio.md (itens 2, 9, 10, 12 e 14), mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (s_dashboard linhas 55-164) e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (s_dashboard linhas 58-167: saldo, acoes Novo lancamento/Transferir/Pagar conta, Resumo do mes), MyFinanceFrontEnd/src/features/dashboard/DashboardPage.tsx, MyFinanceFrontEnd/src/features/dashboard/components/AcoesRapidas.tsx, MyFinanceFrontEnd/src/features/dashboard/components/CardSaldoProjetado.tsx, MyFinanceFrontEnd/src/features/dashboard/components/UltimosLancamentos.tsx, MyFinanceFrontEnd/src/features/dashboard/components/GraficoEntradasSaidas.tsx, MyFinanceFrontEnd/src/features/dashboard/components/LimiteGastoIndicador.tsx, MyFinanceFrontEnd/src/features/dashboard/components/SeletorWidgets.tsx, MyFinanceFrontEnd/src/features/dashboard/hooks/useProjecaoMes.ts
+ESCOPO: Desktop: saudacao + 3 cards (Saldo total, Entradas, Saidas) + grade 1.6fr/1fr com Ultimos lancamentos, Contas a pagar (clique leva a /conciliacao) e Contas (saldos, clique leva a /contas). Mobile: saldo, acoes rapidas (Novo lancamento, Transferir abre o fluxo de transferencia de /lancamentos, Pagar conta -> /conciliacao), Resumo do mes, Ultimos lancamentos. Usar so hooks existentes; widgets que o mockup nao mostra (GraficoEntradasSaidas, LimiteGastoIndicador, SeletorWidgets) ficam abaixo da grade do mockup, sem remover funcionalidade.
+CRITERIO DE ACEITE: 1) valores vindos do backend (ProjecaoMes/lista de contas), nunca recalculados no front; 2) badges Pago/Pendente/Manual corretos; 3) responsivo e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/dashboard/DashboardPage.tsx, MyFinanceFrontEnd/src/features/dashboard/components/AcoesRapidas.tsx, MyFinanceFrontEnd/src/features/dashboard/components/CardSaldoProjetado.tsx, MyFinanceFrontEnd/src/features/dashboard/components/UltimosLancamentos.tsx, MyFinanceFrontEnd/src/features/dashboard/components/GraficoEntradasSaidas.tsx, MyFinanceFrontEnd/src/features/dashboard/components/LimiteGastoIndicador.tsx, MyFinanceFrontEnd/src/features/dashboard/components/SeletorWidgets.tsx, MyFinanceFrontEnd/src/features/dashboard/components/ContasAPagarResumo.tsx (novo), MyFinanceFrontEnd/src/features/dashboard/components/ContasResumo.tsx (novo)
+NAO FAZER: nao criar endpoint nem recalcular saldos; nao incluir "Buscar..." nem avatar; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + build limpo.
+HISTORICO: hanzo: dashboard conforme mockup; widgets extras abaixo da grade. Commit d412c4f. Pendente: LancamentosPage ler ?novo=transferencia; contas a pagar so do primeiro cartao; saldo total so contas Banco.
+
+---
+
+## TASK-226 — Tela Contas (mockup s_contas + modal Nova conta, desktop e mobile) (hanzo)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-197, TASK-222, TASK-221
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/clean-code.md, .claude/context/regra-de-negocio.md (itens 8.5, 10 e 10.1), mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (s_contas linhas 165-248, m_contas linhas 249-288) e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (linhas 168-283), MyFinanceFrontEnd/src/features/contas/ContasPage.tsx, MyFinanceFrontEnd/src/features/contas/components/ContaCard.tsx, MyFinanceFrontEnd/src/features/contas/components/ContaItem.tsx, MyFinanceFrontEnd/src/features/contas/components/ContaBadgeOrigem.tsx, MyFinanceFrontEnd/src/features/contas/components/ContaIcone.tsx, MyFinanceFrontEnd/src/features/contas/components/FormNovaConta.tsx, MyFinanceFrontEnd/src/features/contas/components/PatrimonioTotalResumo.tsx
+ESCOPO: Card de patrimonio total + grade 2 colunas de contas (mobile 1 coluna) no mockup; contas de investimento com ativo vinculado mostram saldo calculado e saldo nao editavel; desativar conta com ativo ativo mostra o erro 409 do backend; modal Nova conta (nome, tipo, saldo inicial, origem Manual).
+CRITERIO DE ACEITE: 1) patrimonio = valor do hook da TASK-197 (sem soma dupla); 2) conta com SaldoCalculado exibe saldo calculado e bloqueia edicao; 3) responsivo e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/contas/ContasPage.tsx, MyFinanceFrontEnd/src/features/contas/components/ContaCard.tsx, MyFinanceFrontEnd/src/features/contas/components/ContaItem.tsx, MyFinanceFrontEnd/src/features/contas/components/ContaBadgeOrigem.tsx, MyFinanceFrontEnd/src/features/contas/components/ContaIcone.tsx, MyFinanceFrontEnd/src/features/contas/components/FormNovaConta.tsx, MyFinanceFrontEnd/src/features/contas/components/PatrimonioTotalResumo.tsx
+NAO FAZER: nao renderizar badge "OFX" nem "Conectar via OFX" (Open Finance e v2); nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + build limpo.
+HISTORICO:
+
+---
+
+## TASK-227 — Tela Lancamentos (mockup s_lancamentos + modais Novo/Editar/Cancelar parcelado, desktop e mobile) (hanzo)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-190, TASK-183, TASK-189, TASK-221, TASK-222
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/clean-code.md, .claude/context/regra-de-negocio.md (itens 5, 14, 17 e 18), mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (s_lancamentos linhas 289-376, m_lancamentos 377-385, lConfirm 386-389, xe_lanc 499-507) e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (linhas 285-402: lista por dia, folha de acoes `sheet:lanc:*`, `lmenu`), MyFinanceFrontEnd/src/features/lancamentos/LancamentosPage.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FormLancamento.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/LancamentoItem.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FiltroTipoLancamento.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/NavegadorMes.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/AvisoLimiteGasto.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/TransferenciaFluxoCaixaItem.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FormTransferencia.tsx
+ESCOPO: Tabela desktop (descricao, categoria, data, valor+badge, acoes) e lista por dia no mobile com folha de acoes; seletor de mes, chips Todos/Entradas/Saidas e totais; Novo lancamento com Despesa/Receita, toggle "Parcelar" (so despesa; N parcelas, Resumo, "Vale para a 1a parcela") chamando o endpoint de parcelado; Editar lancamento (tipo, valor, data, categoria, conta, status); Editar/Excluir DESABILITADOS quando `avulso=false`, com dica "edite em <destino>" (helper da TASK-190); lancamento parcelado mostra badge "3/10" e acao "Cancelar compra parcelada" com dialogo (N pendentes excluidas, pagas continuam); trocar tipo zera a categoria.
+CRITERIO DE ACEITE: 1) regras de habilitacao vem de `avulso`/`origemVinculo` do backend; 2) badge Sugerido apenas se o backend enviar (nunca criado pelo front); 3) responsivo e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/lancamentos/LancamentosPage.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FormLancamento.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/LancamentoItem.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FiltroTipoLancamento.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/NavegadorMes.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/AvisoLimiteGasto.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/TransferenciaFluxoCaixaItem.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FormTransferencia.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FormLancamentoParcelado.tsx (novo), MyFinanceFrontEnd/src/features/lancamentos/components/CancelarCompraParceladaDialog.tsx (novo)
+NAO FAZER: nao calcular valor de parcela no front como fonte de verdade (resumo e so previa; backend define); nao permitir edicao de parcela isolada; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + build limpo.
+HISTORICO:
+
+---
+
+## TASK-228 — Tela Cartao (mockup s_cartao + Nova compra + Antecipar parcelas, desktop e mobile) (hanzo)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-204, TASK-203, TASK-221, TASK-222
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/clean-code.md, .claude/context/regra-de-negocio.md (item 12), mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (s_cartao linhas 390-486, m_cartao Nova compra 487-492, antecipar `cAnt` 493-498) e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (linhas 403-495: `cmenu`, "Antecipar parcelas"), MyFinanceFrontEnd/src/features/cartao/ContaCartaoPage.tsx, MyFinanceFrontEnd/src/features/cartao/components/CartaoVisual.tsx, MyFinanceFrontEnd/src/features/cartao/components/FaturasSection.tsx, MyFinanceFrontEnd/src/features/cartao/components/FaturaItem.tsx, MyFinanceFrontEnd/src/features/cartao/components/LancarCompraForm.tsx, MyFinanceFrontEnd/src/features/cartao/components/PagarFaturaModal.tsx, MyFinanceFrontEnd/src/features/cartao/components/StatusFaturaBadge.tsx, MyFinanceFrontEnd/src/features/assinaturas-cartao/AssinaturasCartaoSection.tsx
+ESCOPO: Coluna esquerda (CartaoVisual, fatura atual/status/vencimento, limite usado) e direita (abas de mes, Nova compra, lista de compras da fatura); parcela antecipada com badge "antecipada"; compra parcelada abre acao "Antecipar parcelas" (menu no mobile) com modal: Stepper de quantidade (max = elegiveis do backend), previa "Vao para a fatura atual", texto "Antecipar nao paga a fatura, so traz as parcelas para ela. Se o banco der desconto, lance um estorno na fatura."; Nova compra com parcelas opcional e Resumo; manter pagar fatura e a secao de assinaturas acessiveis.
+CRITERIO DE ACEITE: 1) quantidade limitada ao numero de elegiveis do backend e erro 400 exibido; 2) apos antecipar, faturas atualizam (cache invalidado); 3) responsivo e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/cartao/ContaCartaoPage.tsx, MyFinanceFrontEnd/src/features/cartao/components/CartaoVisual.tsx, MyFinanceFrontEnd/src/features/cartao/components/FaturasSection.tsx, MyFinanceFrontEnd/src/features/cartao/components/FaturaItem.tsx, MyFinanceFrontEnd/src/features/cartao/components/LancarCompraForm.tsx, MyFinanceFrontEnd/src/features/cartao/components/PagarFaturaModal.tsx, MyFinanceFrontEnd/src/features/cartao/components/StatusFaturaBadge.tsx, MyFinanceFrontEnd/src/features/cartao/components/AnteciparParcelasModal.tsx (novo), MyFinanceFrontEnd/src/features/assinaturas-cartao/AssinaturasCartaoSection.tsx
+NAO FAZER: nao recalcular fatura nem decidir elegibilidade no front; nao oferecer "desfazer antecipacao" nem campo de desconto; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + build limpo.
+HISTORICO:
+
+---
+
+## TASK-229 — Tela Categorias (mockup s_categorias + Nova/Editar categoria com limite, desktop e mobile) (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-221, TASK-222
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/clean-code.md, .claude/context/regra-de-negocio.md (itens 7 e 14), mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (s_categorias linhas 508-531, xe_cat Editar categoria linha 507) e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (linhas 505-525, `sheet:cat:*`, `catlimrm`), MyFinanceFrontEnd/src/features/categorias/CategoriasPage.tsx, MyFinanceFrontEnd/src/features/categorias/FormCategoria.tsx, MyFinanceFrontEnd/src/features/categorias/components/CategoriaItem.tsx, MyFinanceFrontEnd/src/features/categorias/components/CampoLimiteGasto.tsx, MyFinanceFrontEnd/src/features/categorias/components/CategoriaSelect.tsx
+ESCOPO: Abas Despesas/Receitas; linhas com icone, nome, "R$ gasto / limite" com barra (estourado em destaque) e acoes editar/arquivar (folha de acoes no mobile); modal Nova/Editar categoria com Despesa/Receita (tipo travado na edicao, item 7), Nome, Icone, Limite de gasto mensal (opcional, so despesa) e "Remover limite"; salvar categoria e limite no mesmo formulario (sequencia editar categoria -> definir/remover limite, com tratamento de falha parcial).
+CRITERIO DE ACEITE: 1) edicao nao altera tipo; 2) "Remover limite" chama o endpoint existente; 3) responsivo e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/categorias/CategoriasPage.tsx, MyFinanceFrontEnd/src/features/categorias/FormCategoria.tsx, MyFinanceFrontEnd/src/features/categorias/components/CategoriaItem.tsx, MyFinanceFrontEnd/src/features/categorias/components/CampoLimiteGasto.tsx, MyFinanceFrontEnd/src/features/categorias/components/CategoriaSelect.tsx
+NAO FAZER: nao criar endpoint (backend do item 7 ja existe); nao hard-delete (arquivar e a unica exclusao); nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + build limpo.
+HISTORICO: hanzo: categorias conforme mockup, commit 85ef501. Campo Categoria-pai mantido; Remover limite age na hora.
+
+---
+
+## TASK-230 — Tela De-para de categoria (mockup s_depara desktop e mobile) (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-219, TASK-221, TASK-222, TASK-223
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/clean-code.md, .claude/context/regra-de-negocio.md (item 7 De-para e "Escopo: v1 vs v2"), mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (s_depara linhas 532-601) e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (linhas 526-604: "vira"), MyFinanceFrontEnd/src/features/de-para/hooks/useDeParaCategorias.ts, MyFinanceFrontEnd/src/features/categorias/components/CategoriaSelect.tsx, MyFinanceFrontEnd/src/app/routes.tsx
+ESCOPO: Criar `features/de-para/DeParaPage.tsx` e componentes: lista de vinculos (categoria importada -> categoria do app, badge Mapeado), criar vinculo ("Aplicar e lembrar para futuras"), editar e remover; registrar a rota `/depara`.
+CRITERIO DE ACEITE: 1) CRUD funcional contra o endpoint existente; 2) abas/estados "Pendentes" e "Sugerido" NAO renderizados (dependem de import, v2); 3) responsivo (mobile com "vira") e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/de-para/DeParaPage.tsx (novo), MyFinanceFrontEnd/src/features/de-para/components/DeParaItem.tsx (novo), MyFinanceFrontEnd/src/features/de-para/components/FormDePara.tsx (novo), MyFinanceFrontEnd/src/app/routes.tsx
+NAO FAZER: nao criar endpoint de pendentes; nao implementar import; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + build limpo.
+HISTORICO: hanzo: DeParaPage + rota /de-para. Commit d412c4f. Select inline do mockup trocado por editar/remover.
+
+---
+
+## TASK-231 — Tela Conciliacao / contas a pagar (mockup s_conciliacao, caminho v1 manual, desktop e mobile) (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-230, TASK-221, TASK-222
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/clean-code.md, .claude/context/regra-de-negocio.md (itens 5, 9, 12, 13 e "Escopo: v1 vs v2"), mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (s_conciliacao linhas 602-676) e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (linhas 608-684), MyFinanceFrontEnd/src/features/lancamentos/hooks/useFluxoCaixaTodasContas.ts, MyFinanceFrontEnd/src/features/lancamentos/hooks/useMarcarComoPago.ts, MyFinanceFrontEnd/src/features/contas-receber/hooks/useContasReceber.ts, MyFinanceFrontEnd/src/app/routes.tsx
+ESCOPO: Criar `features/conciliacao/ConciliacaoPage.tsx`: abas A pagar / A receber / Conciliado; "A pagar" lista lancamentos DEBIT PENDENTE (fluxo de caixa de todas as contas) com situacao Atrasado / Vence em N dias e botao Pagar (marcar como pago); a linha do Cartao de credito leva a /cartao (nao reimplementa pagamento de fatura); "A receber" lista contas a receber nao recebidas; "Conciliado" lista PAGOS do mes; resumo Em aberto / Atrasado; registrar a rota `/conciliacao` (serializar apos TASK-230 por causa de routes.tsx).
+CRITERIO DE ACEITE: 1) Pagar usa o endpoint de marcar como pago existente; 2) linha "Sugerido / Sugestao de conciliacao / Revisar" NAO renderizada (conciliacao com extrato e Open Finance, v2); 3) responsivo e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/conciliacao/ConciliacaoPage.tsx (novo), MyFinanceFrontEnd/src/features/conciliacao/components/ItemContaAPagar.tsx (novo), MyFinanceFrontEnd/src/features/conciliacao/lib/situacaoDoVencimento.ts (novo), MyFinanceFrontEnd/src/app/routes.tsx
+NAO FAZER: nao criar endpoint; nao criar status SUGERIDO; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + build limpo.
+HISTORICO: hanzo: ConciliacaoPage + rota /conciliacao. Commit d412c4f. Linha do cartao soma COMPETENCIA_CARTAO pendente (nao conferido com backend).
+
+---
+
+## TASK-232 — Tela Contas fixas (mockup s_fixa + Nova/Editar/Apagar, desktop e mobile) (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-177, TASK-176, TASK-221, TASK-222
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/clean-code.md, .claude/context/regra-de-negocio.md (item 6), mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (s_fixa linhas 677-753, xe_fixa Editar conta fixa linha 507, dialogo `xDlg`) e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (linhas 687-757), MyFinanceFrontEnd/src/features/contas-fixas/ListaContasFixas.tsx, MyFinanceFrontEnd/src/features/contas-fixas/FormContaFixa.tsx, MyFinanceFrontEnd/src/features/contas-fixas/components/ContaFixaItem.tsx
+ESCOPO: Cabecalho com Total fixo mensal; tabela Descricao / Recorrencia ("Mensal - dia 5", "Anual - marco") / Valor / Ativa (switch) / editar / apagar; modal Nova e Editar conta fixa (nome, valor, dia, categoria, conta de pagamento, Mensal/Anual, aviso "Mudar valor, dia ou categoria atualiza os lancamentos pendentes ja gerados. Os pagos nao mudam."); apagar com ConfirmDialog destrutivo explicando: pendentes sao excluidos, pagos permanecem como lancamentos avulsos, sem desfazer.
+CRITERIO DE ACEITE: 1) apagar usa useApagarContaFixa; 2) texto do dialogo bate com o item 6; 3) responsivo e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/contas-fixas/ListaContasFixas.tsx, MyFinanceFrontEnd/src/features/contas-fixas/FormContaFixa.tsx, MyFinanceFrontEnd/src/features/contas-fixas/components/ContaFixaItem.tsx
+NAO FAZER: nao permitir parcelamento em conta fixa; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + build limpo.
+HISTORICO: hanzo: contas fixas conforme mockup; total fixo mensal somado no front (sem endpoint); anual sem mes (DTO nao traz). Commit 3bf2a23.
+
+---
+
+## TASK-233 — Tela Contas a receber (mockup s_receber + Registrar recebimento + Editar, desktop e mobile) (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-211, TASK-210, TASK-221, TASK-222
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/clean-code.md, .claude/context/regra-de-negocio.md (itens 9 e 13), mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (s_receber linhas 978-1065, xe_rec Editar conta a receber linha 507) e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (linhas 942-1017, `sheet:rec:*`), MyFinanceFrontEnd/src/features/contas-receber/ListaContasReceber.tsx, MyFinanceFrontEnd/src/features/contas-receber/FormRegistrarContaReceber.tsx, MyFinanceFrontEnd/src/features/contas-receber/FormRegistrarRecebimento.tsx, MyFinanceFrontEnd/src/features/contas-receber/components/ContaReceberItem.tsx
+ESCOPO: Cartoes A receber / Ja recebido / Atrasado, abas Todos/Emprestimos/Recebiveis, linhas com vencimento, progresso "R$ 300 de R$ 900", valor total, status e acoes Receber / Editar / Excluir (folha de acoes no mobile); modal Registrar recebimento (Parcial/Total, valor, data, conta de destino); novo modal Editar conta a receber (descricao, pessoa so em emprestimo, data prevista, valor total desabilitado com ajuda quando nao editavel, via `podeEditarValorTotal`).
+CRITERIO DE ACEITE: 1) valores e saldos vem do backend; 2) 409 do PUT exibido como mensagem; 3) responsivo e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/contas-receber/ListaContasReceber.tsx, MyFinanceFrontEnd/src/features/contas-receber/FormRegistrarContaReceber.tsx, MyFinanceFrontEnd/src/features/contas-receber/FormRegistrarRecebimento.tsx, MyFinanceFrontEnd/src/features/contas-receber/FormEditarContaReceber.tsx (novo), MyFinanceFrontEnd/src/features/contas-receber/components/ContaReceberItem.tsx
+NAO FAZER: nao editar ocorrencia de recebivel recorrente (edita-se o molde); nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + build limpo.
+HISTORICO: hanzo: contas a receber conforme mockup + modal Editar; resumo somado no front; import de conciliacao/lib. Commit 3bf2a23.
+
+---
+
+## TASK-234 — Tela Investimentos (mockup s_investimentos + Novo ativo com conta, desktop e mobile) (hanzo)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS: TASK-197, TASK-196, TASK-221, TASK-222
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/clean-code.md, .claude/context/regra-de-negocio.md (itens 8, 8.1, 8.2, 8.4 e 8.5), mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (s_investimentos linhas 831-931, m_investimentos 932-977) e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (linhas 793-940), MyFinanceFrontEnd/src/features/investimentos/ListaAtivosPage.tsx, MyFinanceFrontEnd/src/features/investimentos/components/ResumoAtivosCards.tsx, MyFinanceFrontEnd/src/features/investimentos/components/GraficoConsolidadoAtivos.tsx, MyFinanceFrontEnd/src/features/investimentos/components/AtivoCard.tsx, MyFinanceFrontEnd/src/features/investimentos/components/AtivoItem.tsx, MyFinanceFrontEnd/src/features/investimentos/components/FiltroTipoAtivo.tsx, MyFinanceFrontEnd/src/features/investimentos/components/ModalNovoAtivo.tsx, MyFinanceFrontEnd/src/features/investimentos/components/FormRegistrarAporte.tsx
+ESCOPO: Total investido (item 8.5, hook `useTotalInvestido`), tiles Renda fixa / Renda variavel com % da carteira, bloco Carteira (donut + legenda), tabela Ativo / Tipo / Conta / Valor / Evolucao (mobile: lista com filtro Todos/Renda fixa/Variavel); coluna Conta com "Sem conta" + acao "Vincular conta" para ativo antigo; Novo ativo com nome, tipo, quantidade + preco unitario (item 8.1), data da compra, seletor de conta de investimento e atalho "Nova conta de investimento"; manter aporte, dividendo, valor atual e desativar acessiveis.
+CRITERIO DE ACEITE: 1) conta obrigatoria no cadastro; 2) "Vincular conta" troca/define a conta e nunca volta para null; 3) responsivo e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/investimentos/ListaAtivosPage.tsx, MyFinanceFrontEnd/src/features/investimentos/components/ResumoAtivosCards.tsx, MyFinanceFrontEnd/src/features/investimentos/components/GraficoConsolidadoAtivos.tsx, MyFinanceFrontEnd/src/features/investimentos/components/AtivoCard.tsx, MyFinanceFrontEnd/src/features/investimentos/components/AtivoItem.tsx, MyFinanceFrontEnd/src/features/investimentos/components/FiltroTipoAtivo.tsx, MyFinanceFrontEnd/src/features/investimentos/components/ModalNovoAtivo.tsx, MyFinanceFrontEnd/src/features/investimentos/components/FormRegistrarAporte.tsx, MyFinanceFrontEnd/src/features/investimentos/components/VincularContaAtivoModal.tsx (novo)
+NAO FAZER: nao renderizar "+4,2% no mes" (sem historico mensal na v1); nao usar campo "Valor investido" direto no cadastro (a regra e quantidade x preco unitario); nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + build limpo.
+HISTORICO:
+
+---
+
+## TASK-235 — Tela Relatorio por categoria (mockup s_relatorio, desktop e mobile) (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-231, TASK-218, TASK-217, TASK-221, TASK-222
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/clean-code.md, .claude/context/regra-de-negocio.md (item 19), mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (s_relatorio linhas 754-827) e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (linhas 759-791), MyFinanceFrontEnd/src/features/relatorios/hooks/useRelatorioGastoPorCategoria.ts, MyFinanceFrontEnd/src/features/relatorios/lib/navegarMes.ts, MyFinanceFrontEnd/src/app/routes.tsx
+ESCOPO: Criar `features/relatorios/RelatorioCategoriaPage.tsx`: seletor de mes, cartao Total gasto com variacao "+8% vs mes anterior" (oculta quando o backend manda variacao nula), lista de categorias com valor, % do total e barra, ordenada como vem do backend (inclui "Sem categoria"), clique leva a `/relatorio/:categoriaId`; registrar a rota `/relatorio` (serializar apos TASK-231 por causa de routes.tsx).
+CRITERIO DE ACEITE: 1) nenhum total/percentual calculado no front; 2) mes sem dados mostra estado vazio; 3) responsivo e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/relatorios/RelatorioCategoriaPage.tsx (novo), MyFinanceFrontEnd/src/features/relatorios/components/LinhaCategoriaRelatorio.tsx (novo), MyFinanceFrontEnd/src/features/relatorios/components/ResumoTotalGasto.tsx (novo), MyFinanceFrontEnd/src/app/routes.tsx
+NAO FAZER: nao criar endpoint; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + build limpo.
+HISTORICO: hanzo: RelatorioCategoriaPage + rota /relatorio. Donut do mockup omitido (sem paleta). Commit 470b13b.
+
+---
+
+## TASK-236 — Tela Detalhe da categoria no relatorio (mockup s_relcat, desktop e mobile) (hanzo)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-235
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/identidade-visual.md, .claude/context/clean-code.md, .claude/context/regra-de-negocio.md (itens 14, 18 e 19), mockup desktop `.claude/context/mockups/Prototipo Desktop.dc.html` (s_relcat linhas 828-830) e mobile `.claude/context/mockups/Prototipo Mobile.dc.html` (linhas 792), MyFinanceFrontEnd/src/features/relatorios/hooks/useRelatorioCategoriaDetalhe.ts, MyFinanceFrontEnd/src/features/relatorios/RelatorioCategoriaPage.tsx, MyFinanceFrontEnd/src/app/routes.tsx
+ESCOPO: Criar `RelatorioCategoriaDetalhePage.tsx` (rota `/relatorio/:categoriaId`, e `/relatorio/sem-categoria`): cabecalho "Alimentacao - Julho 2026", Total na categoria, "16% do total gasto", barra "Limite de gasto R$ 620 de R$ 900" (so se houver limite), tabela Descricao / Data / Conta / Valor (cartao identificado como tal, subcategoria quando houver) em data crescente, voltar para /relatorio.
+CRITERIO DE ACEITE: 1) somente leitura (sem editar/excluir; edicao e pela tela de origem, item 18); 2) soma exibida = total do backend; 3) responsivo e build limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/relatorios/RelatorioCategoriaDetalhePage.tsx (novo), MyFinanceFrontEnd/src/features/relatorios/components/TabelaLancamentosCategoria.tsx (novo), MyFinanceFrontEnd/src/app/routes.tsx
+NAO FAZER: nao calcular percentuais; nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos + build limpo.
+HISTORICO: hanzo: RelatorioCategoriaDetalhePage + rotas /relatorio/sem-categoria e /relatorio/:id. Largura da barra de limite calculada no front. Commit 470b13b.
+
