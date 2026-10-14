@@ -132,3 +132,14 @@ calculada pelo backend — nenhum split de valor no cliente). Revisado por
   task, em vez de acumular. Todos os subagents subsequentes foram
   instruídos explicitamente a nunca usar `git add -A`/`git checkout`/`git reset`
   amplos, só `git add` nos arquivos exatos permitidos pela task.
+
+## PR #73 — ajuste ao novo mockup e regras novas (2026-10-14)
+
+**Antecipacao de parcelas (item 12):**
+- O destino e sempre a fatura ATUAL. A data vem do servidor; `DataAntecipacao` saiu do request.
+- Se a atual estiver PAGA antes do fechamento, ela e reaberta.
+- Sao elegiveis so as parcelas em fatura posterior a atual e NAO PAGA (`AntecipacaoParcelasSelector`,
+  `Status != Paga`).
+- Ao lancar a compra parcelada, as faturas das parcelas futuras nascem FUTURA e nao fecham mais as
+  intermediarias (TASK-238, ver `modulo-cartao-credito.md`).
+- O lancamento antecipado tem a marca boolean `antecipada` (migration `AddLancamentoAntecipada`).

@@ -72,3 +72,18 @@ PR: https://github.com/fellps-fontana/FinancesMy/pull/50 (mergeado)
 `recharts` e `es-toolkit` (`GraficoEntradasSaidas.tsx`, modulo dashboard) —
 confirmado via `git stash` que ja ocorria antes desta leva. `tsc -b` e
 `oxlint` passam limpos em todos os arquivos deste bloco.
+
+## PR #73 — ajuste ao novo mockup e regras novas (2026-10-14)
+
+**UI no padrao do novo mockup:**
+- `AppShell` com `<main>` em `min-w-0`, o que corrigiu a rolagem horizontal.
+- Telas em largura total.
+- `shared/ui/FormModal` com as classes `CLASSE_*`.
+- `shared/lib/datas`.
+- `shared/lib/situacaoDoVencimento`.
+- `ApiError.body` em `shared/api/client`.
+
+O trabalho anterior do Gemini ficou na branch `gemini-ui-wip`.
+
+**Cadeia de migrations:** `20260713214053_AddContaReceberEntity` vem antes de `InitialCreate`, entao um banco zerado
+nao sobe por `database update` (problema pre-existente). O preview foi criado por `dbcontext script`.

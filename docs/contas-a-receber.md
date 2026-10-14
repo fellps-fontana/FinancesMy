@@ -132,3 +132,16 @@ de uma coleção de navegação (`ContaReceber.Recebimentos`), vale desconfiar d
 métodos de repository que ainda não foram auditados — o mesmo bug já se
 repetiu 2x neste módulo (`ObterPorId`, depois `Listar`) antes de virar hábito
 conferir todos os métodos de uma vez.
+
+## PR #73 — ajuste ao novo mockup e regras novas (2026-10-14)
+
+**Edicao de conta a receber (item 13):** `PUT /api/contas-receber/{id}`. Recusa valor menor ou igual a 0 e
+descricao vazia (suposicao ainda nao confirmada).
+
+**Tela refeita no mockup:**
+- cards A receber / Ja recebido / Atrasado (`lib/resumirContasReceber.ts`);
+- filtros Todos / Emprestimos / Recebiveis;
+- tabela com progresso;
+- modal Registrar recebimento com Parcial / Total.
+
+"Atrasado" e so uma sobreposicao visual por data, `shared/lib/situacaoDoVencimento.ts`.

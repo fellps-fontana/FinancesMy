@@ -421,3 +421,24 @@ completo. Resumo:
   implementacao ("session limit resets 9pm") — resumido pelo mesmo agentId
   depois, sem perda de trabalho (o estado parcial ja escrito no disco foi
   preservado e retomado).
+
+## PR #73 — ajuste ao novo mockup e regras novas (2026-10-14)
+
+**Ativo vinculado a conta de investimento (item 8.5):**
+- `contaId` e obrigatorio no cadastro.
+- `PATCH /api/ativos/{id}/conta` serve para ativo antigo sem conta e nunca volta a null.
+- `instituicao` virou opcional.
+- Migration `AddContaIdToAtivo`.
+- Total investido: `GET /api/contas/investimentos/total`.
+
+**Tela Investimentos** refeita no mockup:
+- total investido;
+- cards de Renda fixa e Renda variavel com % da carteira;
+- donut da carteira;
+- tabela Ativo / Tipo / Conta / Valor / Evolucao;
+- "Vincular conta";
+- Novo ativo com quantidade x preco unitario e conta obrigatoria.
+
+Desvios: sem sparkline e sem "+4,2% no mes", porque nao ha historico de valor.
+
+**Lacuna:** o `criar_ativo` do mcp-server ainda envia `instituicao` sem `contaId`.
