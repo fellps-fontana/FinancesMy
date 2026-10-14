@@ -508,6 +508,39 @@ refletido no mockup `03 Contas.dc.html`; este item so
 formaliza na fonte da verdade o que ja estava em codigo/mockup e nunca
 tinha sido escrito aqui.
 
+### 10.2 Edicao de conta — DECISAO CONFIRMADA COM O USUARIO EM 2026-10-13
+
+O usuario pode editar uma conta ja criada. Campos editaveis: `nome`,
+`icone`, `cor` e `subtipo`.
+
+**O tipo principal da conta e IMUTAVEL.** `Conta.Tipo` (Banco | Cartao |
+Investimento) e definido na criacao e nunca muda depois. Nao existe
+caminho de edicao (API ou tela) que altere o tipo. Converter uma conta
+exigiria reinterpretar saldo, lancamentos, faturas e ativos vinculados
+(itens 8.5, 10 e 12). Quem errou o tipo cria uma conta nova e desativa a
+antiga.
+
+**Subtipo** segue o 10.1. So vale para Tipo = Banco. Nos outros tipos e
+IGNORADO silenciosamente e a conta fica com `Subtipo = null`. Em conta
+Banco, editar sem informar subtipo limpa o campo (a edicao substitui os
+campos editaveis). Subtipo informado e nao reconhecido e recusado (400).
+
+**Nome** e obrigatorio: vazio ou so espacos e recusado (400).
+
+**Campos fora da edicao** (nao mudam por este fluxo): `tipo`, `origem`,
+`saldo_manual` (tem fluxo proprio, item 10), `ativa` (tem fluxo proprio de
+desativar, item 8.5), `dia_fechamento` e `dia_vencimento`, `pierre_account_id`.
+
+**Conta inativa nao pode ser editada** (409). A regra era omissa sobre editar
+conta inativa. A decisao segue a regra existente: conta desativada sai das
+listagens (item 8.5 e 10), entao nao ha tela de onde editar, e o sistema nao
+tem reativacao. SUPOSICAO a confirmar com o usuario.
+
+**Pendencia:** editar `dia_fechamento` e `dia_vencimento` do cartao esta
+FORA desta decisao. Mudar esses dias afeta a competencia de compras e
+faturas ja lancadas (item 12) e precisa de regra propria. Nao implementar
+ate o usuario decidir.
+
 ---
 
 ## 11. Sincronizacao (sync)

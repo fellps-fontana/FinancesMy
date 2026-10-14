@@ -117,6 +117,32 @@ public class ContasController : ControllerBase
         }
     }
 
+    [HttpPut("{id}")]
+    public async Task<ActionResult<ContaResponse>> EditarConta(Guid id, [FromBody] EditarContaRequest request)
+    {
+        try
+        {
+            var conta = await _contaService.EditarConta(id, request);
+            return Ok(await MontarResponse(conta));
+        }
+        catch (ContaNaoEncontradaException ex)
+        {
+            return NotFound(new { erro = ex.Message });
+        }
+        catch (ContaInativaException ex)
+        {
+            return Conflict(new { erro = ex.Message });
+        }
+        catch (CampoObrigatorioException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+        catch (SubtipoContaInvalidoException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+    }
+
     [HttpPatch("{id}/desativar")]
     public async Task<IActionResult> DesativarConta(Guid id)
     {

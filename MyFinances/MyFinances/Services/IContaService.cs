@@ -19,4 +19,9 @@ public interface IContaService
     Task AtualizarSaldoManual(Guid contaId, decimal novoSaldo);
     // Guard novo: conta com ativo ativo vinculado -> ContaPossuiAtivoAtivoException (409).
     Task DesativarConta(Guid contaId);
+
+    // Item 10.2. Edita Nome/Icone/Cor/Subtipo. Tipo imutavel. Subtipo so vale p/ Banco (outros -> null).
+    // ContaNaoEncontradaException (404), ContaInativaException (409),
+    // CampoObrigatorioException("Nome") (400), SubtipoContaInvalidoException (400).
+    Task<Conta> EditarConta(Guid id, EditarContaRequest request);
 }

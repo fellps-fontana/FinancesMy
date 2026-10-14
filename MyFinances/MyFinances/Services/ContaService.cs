@@ -8,6 +8,8 @@ namespace MyFinances.Services;
 
 public class ContaService : IContaService
 {
+    private const string CampoNome = "Nome";
+
     private readonly IContaRepository _contaRepository;
     private readonly ILogger<ContaService> _logger;
     private readonly IAtivoRepository _ativoRepository;
@@ -155,6 +157,32 @@ public class ContaService : IContaService
         await _contaRepository.Salvar();
     }
 
+    public async Task<Conta> EditarConta(Guid id, EditarContaRequest request)
+    {
+        var conta = await ObterContaOuFalhar(id);
+
+        if (!conta.Ativa)
+        {
+            throw new ContaInativaException(id);
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Nome))
+        {
+            throw new CampoObrigatorioException(CampoNome);
+        }
+
+        var subtipo = ResolverSubtipoEdicao(conta.Tipo, request.Subtipo);
+
+        conta.Nome = request.Nome;
+        conta.Icone = request.Icone;
+        conta.Cor = request.Cor;
+        conta.Subtipo = subtipo;
+
+        await _contaRepository.Salvar();
+
+        return conta;
+    }
+
     private async Task<Conta> ObterContaOuFalhar(Guid contaId)
     {
         var conta = await _contaRepository.ObterPorId(contaId);
@@ -194,6 +222,23 @@ public class ContaService : IContaService
         {
             return null;
         }
+    }
+
+    // Item 10.1/10.2: subtipo so vale para Banco; nos demais tipos e ignorado silenciosamente.
+    private static SubtipoConta? ResolverSubtipoEdicao(TipoConta? tipo, string? subtipoInformado)
+    {
+        if (tipo != TipoConta.Banco)
+        {
+            return null;
+        }
+
+        var subtipo = ConverterSubtipoConta(subtipoInformado);
+        if (!string.IsNullOrWhiteSpace(subtipoInformado) && subtipo == null)
+        {
+            throw new SubtipoContaInvalidoException(subtipoInformado);
+        }
+
+        return subtipo;
     }
 
     private static (bool Valido, string? Erro) ValidarCartao(CriarContaRequest request)
