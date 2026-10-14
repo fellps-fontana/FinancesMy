@@ -278,3 +278,11 @@ novos).
 - Processo zumbi (`MyFinances.exe`) travando o build do worktree durante a
   execução das tasks — resolvido matando o processo pelo PID; não afetou
   outros worktrees porque o lock era num `bin/` específico deste worktree.
+
+## PR #73 — ajuste ao novo mockup e regras novas (2026-10-14)
+
+**Apagar conta fixa (item 6):** DELETE. As ocorrencias SUGERIDO ficam desvinculadas (SetNull). Falta
+confirmar com o usuario se devem ser apagadas.
+
+**Tela refeita no mockup:** card "Total fixo mensal" (`lib/somarTotalFixoMensal.ts`, so MENSAL ativas) e tabela com
+modal `FormModal`.

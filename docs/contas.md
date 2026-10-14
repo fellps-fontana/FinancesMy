@@ -108,3 +108,36 @@ foi descontinuado e consolidado:
   app reclamar de coluna faltando (`column ... does not exist`), o schema
   local está desalinhado das migrations — ver nota equivalente em
   `docs/projecao-do-mes.md`.
+
+## PR #73 — ajuste ao novo mockup e regras novas (2026-10-14)
+
+**Edicao de conta (item 10.2, decisoes do usuario em 2026-10-13):**
+- `PUT /api/contas/{id}` edita nome, icone, cor e subtipo (o subtipo so vale em Banco).
+- Em Cartao, edita tambem o dia de fechamento e de vencimento:
+  - os dois sao obrigatorios, de 1 a 31;
+  - valem so para faturas criadas depois; as faturas existentes e o `fatura_id` das compras nao mudam.
+- O tipo e imutavel.
+- O PUT substitui: campo vazio apaga.
+- Conta inativa pode ser editada, e a edicao nao a reativa.
+- Conta Open Finance pode ser renomeada.
+- `ContaInativaException` foi removida.
+
+**Saldo (item 8.5):**
+- Conta de investimento com ativo ativo tem saldo calculado (`ContaResponse.saldoCalculado: bool`).
+- A tela esconde "Atualizar saldo" quando o saldo e calculado.
+- Desativar conta com ativo devolve 409; editar saldo calculado devolve 422.
+- O patrimonio e a soma de Banco com `GET /api/contas/investimentos/total`.
+
+**Tela Contas:**
+- Contas agrupadas por tipo; `useContas` inclui cartoes (so para exibicao).
+- Modal Editar conta com os dias do cartao.
+- `SeletorIconeCor` e compartilhado entre os modais de nova conta e de edicao.
+
+**Agents:**
+- killua: regra 10.2 (o Kira gravou o texto).
+- mike: 23 testes, mais 31 na revisao dos dias.
+- levi: implementacao.
+- hanzo: front.
+- style: APROVADO.
+
+**Lacuna:** a criacao grava os dias em qualquer tipo de conta; a edicao os ignora fora de Cartao.

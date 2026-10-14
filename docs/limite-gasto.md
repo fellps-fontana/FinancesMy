@@ -137,3 +137,9 @@ independente; regime de competência vs caixa) foram trazidas ao usuário antes
 da implementação começar, e uma delas (hierarquia) foi invertida — se tivesse
 sido codada como suposição, teria exigido retrabalho em repository, service e
 testes.
+
+## PR #73 — ajuste ao novo mockup e regras novas (2026-10-14)
+
+**Tela refeita** com largura total: tabela Categoria / Gasto / Limite / Uso / %, com estados em
+`lib/estadoLimite.ts`. Ela e a dona de `LIMIAR_PERTO_DO_LIMITE`; a consolidacao das outras copias fica na
+TASK-237.

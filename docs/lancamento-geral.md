@@ -193,3 +193,26 @@ Lição: quando dois módulos alteram nullability de um campo compartilhado
 (`Transferencia` é usada por Cartão, Lançamento Geral e Contas a Receber),
 vale conferir DTOs que espelham a entidade em TODOS os módulos consumidores
 antes de considerar o merge seguro, não só o módulo que fez a mudança.
+
+## PR #73 — ajuste ao novo mockup e regras novas (2026-10-14)
+
+**Parcelado em conta banco (item 17):** `POST` e `DELETE /api/contas/{id}/lancamentos-parcelados`.
+- Cria N parcelas.
+- O status do formulario vale so para a parcela 1.
+- Cancelar exclui so as PENDENTE e mantem `compra_parcelada` como historico.
+
+**So avulso edita ou exclui (item 18):** a API devolve 409 com `origemVinculo`. A tela desabilita os botoes e
+indica onde editar (`destinoDeEdicao`).
+
+**Tela Lancamentos** refeita no mockup:
+- largura total;
+- tabela no desktop e lista por dia no mobile;
+- toggle Parcelar;
+- parametros `?novo=transferencia|lancamento`.
+
+**Helpers compartilhados criados neste PR:**
+- `shared/lib/datas.ts`;
+- `shared/ui/FormModal.tsx`;
+- `features/categorias/components/CategoriaCampoSelect.tsx`.
+
+**Pendencia:** TASK-237 (duplicacoes residuais).

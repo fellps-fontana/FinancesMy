@@ -155,3 +155,11 @@ código.
   financeiro, não deste item.
 - **Categoria tipo `DESPESA` num molde de recebível:** não é bloqueado
   (consistente com o `conta_receber` avulso do item 13).
+
+## PR #73 — ajuste ao novo mockup e regras novas (2026-10-14)
+
+**Tela refeita** no padrao de Contas fixas (nao tem mockup proprio):
+- card "Total recorrente mensal", que soma so os MENSAIS ativos;
+- tabela;
+- modal `FormModal`;
+- campo de categoria de Receita unificado.

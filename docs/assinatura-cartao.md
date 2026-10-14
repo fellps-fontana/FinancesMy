@@ -52,3 +52,15 @@ Entrada na regra de negócio: **Item 16 da regra-de-negocio.md** (decisões regi
 - `editar_assinatura_cartao`
 - `desativar_assinatura_cartao`
 - `reativar_assinatura_cartao`
+
+## PR #73 — ajuste ao novo mockup e regras novas (2026-10-14)
+
+**Assinatura de cartao:**
+- Migration `AddAssinaturaCartao` (cobre a lacuna do PR #72).
+- Pela TASK-238, a edicao propaga para faturas ABERTA e FUTURA, com reconciliacao antes; FECHADA e PAGA nunca
+  mudam.
+- A geracao automatica pula, sem erro e com log, o ciclo PAGO encerrado. Criacao, edicao e reativacao manual
+  continuam rejeitando.
+
+**Pendencia:** TASK-239. Quando o `dia_referencia` muda e a nova data cruza o fechamento, a compra nao e movida de
+fatura.

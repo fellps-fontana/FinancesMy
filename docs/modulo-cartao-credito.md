@@ -129,3 +129,52 @@ comparar contra um commit anterior) atropelou uma edição não commitada do
 `hanzo`. Nada foi perdido (recuperado via `git stash`), mas a partir daí os
 agents que escrevem arquivo passaram a rodar serializados, não mais em
 paralelo, na mesma worktree.
+
+## PR #73 — ajuste ao novo mockup e regras novas (2026-10-14)
+
+**Ciclo e status da fatura (TASK-238, regra 12 "Ciclo e status da fatura").**
+O bug antigo: um lancamento com data >= fechamento fechava a fatura ABERTA. Por isso, uma compra parcelada
+fechava todas as faturas intermediarias. O modelo novo:
+- Estados `FUTURA -> ABERTA -> FECHADA -> PAGA`, com uma unica ABERTA por cartao (indice
+  `IX_fatura_conta_aberta` mantido).
+- Fechamento automatico pelo calendario (`hoje > data_fechamento`), aplicado de forma preguicosa ao resolver
+  lancamento, ao listar ou obter faturas, na antecipacao e na edicao de assinatura. Nao ha job. O dia de
+  fechamento e inclusivo.
+- O destino de um lancamento e a fatura do ciclo da data:
+  - fatura inexistente: e criada;
+  - FUTURA ou ABERTA: o lancamento entra;
+  - FECHADA (retroativa): entra;
+  - PAGA encerrada: rejeita;
+  - PAGA nao encerrada: reabre a fatura.
+- FUTURA pode ser paga. O dashboard "contas a pagar" so lista ABERTA e FECHADA.
+- Codigo:
+  - `Domain/FaturaCicloPolitica.cs` (regra pura);
+  - `FaturaCicloService` (com `TimeProvider`, `ReconciliarAsync`, `ObterFaturaAtualAsync` e resolver por ciclo);
+  - `FaturaRepository.ObterPorContaEDataFechamento` e `ListarParaReconciliacao`.
+- Migration de dados `ReclassificarStatusFaturaPorCalendario`:
+  - consolida duplicatas de ciclo e aborta se houver duas PAGA;
+  - reclassifica as faturas por data;
+  - foi aplicada so no banco de preview.
+
+**Endpoint novo:** `GET /api/contas/{contaId}/faturas/{faturaId}/compras` (lista as compras da fatura na tela).
+
+**Tela Cartao** foi refeita no mockup:
+- compras da fatura;
+- modais de Nova compra, Antecipar e Pagar com `FormModal`;
+- badge FUTURA;
+- `selecionarFaturaAtual` (ABERTA; senao, a nao FECHADA de menor vencimento).
+
+**Pendencias novas:**
+- TASK-239: revalidar a fatura quando a assinatura muda de dia (lacuna pre-existente).
+- TASK-240: indice unico `(conta_id, data_fechamento)` contra corrida.
+- A migration usa `CURRENT_DATE` do banco, enquanto o app usa a data local do servidor. A reconciliacao preguicosa
+  corrige a diferenca no primeiro acesso.
+
+**Agents:**
+- killua: diagnostico com 2 bugs extras (ciclo duplicado no dia do fechamento e compra de hoje caindo na ultima
+  ABERTA) e o desenho da opcao B (FUTURA).
+- mike: 50 testes antes do codigo.
+- levi: implementacao e migration.
+- hanzo: front.
+- style: 1 rodada de correcao (parcela em fatura PAGA posterior era elegivel a antecipacao) e depois APROVADO.
+- Suite: 1157/1157.
