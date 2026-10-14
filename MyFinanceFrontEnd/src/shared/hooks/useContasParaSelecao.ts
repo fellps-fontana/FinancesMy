@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { apiClient } from "@/shared/api/client"
-import { contasReceberKeys } from "@/features/contas-receber/query-keys"
-import type { ContaResponse } from "@/features/investimentos/types"
+import { contasKeys } from "@/features/contas/query-keys"
+import type { ContaResponse } from "@/features/contas/types"
 
 // Nao ha endpoint que liste contas de TODOS os tipos combinados (o back so
 // aceita um `?tipo=` por chamada). Busca banco + investimento em paralelo e
@@ -25,15 +25,16 @@ type UseContasParaSelecaoOptions = {
   enabled?: boolean
 }
 
-// Hook compartilhado por FormRegistrarContaReceber (conta de origem do
-// emprestimo) e FormRegistrarRecebimento (conta de destino do recebimento) -
-// mesma chamada combinada, extraida daqui pra nao duplicar a logica de
-// buscarContasParaSelecao nos dois formularios.
+// Hook compartilhado pelos formularios que escolhem conta de origem/destino:
+// FormRegistrarContaReceber (origem do emprestimo), FormRegistrarRecebimento
+// (destino do recebimento), FormContaFixa (origem da conta fixa), FormLancamento
+// e FormTransferencia - mesma chamada combinada, extraida pra nao duplicar a
+// logica de buscarContasParaSelecao.
 export function useContasParaSelecao(options: UseContasParaSelecaoOptions = {}) {
   const { enabled = true } = options
 
   return useQuery({
-    queryKey: contasReceberKeys.contasParaSelecao(),
+    queryKey: contasKeys.contasParaSelecao(),
     queryFn: buscarContasParaSelecao,
     enabled,
   })

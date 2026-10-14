@@ -8,7 +8,7 @@ import {
   YAxis,
 } from "recharts"
 import { Card, CardContent } from "@/shared/ui/card"
-import { formatarData } from "@/features/cartao/lib/formatarData"
+import { formatarData } from "@/shared/lib/datas"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
 import { calcularSerieHistoricoAportes } from "@/features/investimentos/lib/calcularSerieHistoricoAportes"
 import { useHistoricoAportes } from "@/features/investimentos/hooks/useHistoricoAportes"

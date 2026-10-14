@@ -19,7 +19,7 @@ import { useEditarLancamento } from "@/features/lancamentos/hooks/useEditarLanca
 // Contas MANUAL banco/investimento, sem cartao (item 12: compra de cartao tem
 // fluxo proprio e nunca e lancamento avulso; item 18 repete a restricao na
 // troca de conta). Mesmo hook reaproveitado por FormContaFixa.
-import { useContasParaSelecao } from "@/features/contas-receber/hooks/useContasParaSelecao"
+import { useContasParaSelecao } from "@/shared/hooks/useContasParaSelecao"
 import {
   converterValorParaNumero,
   validarValor,

@@ -4,7 +4,7 @@ import { cn } from "@/shared/lib/utils"
 import { Badge, type BadgeVariant } from "@/shared/ui/badge"
 import { IconTile } from "@/shared/ui/icon-tile"
 import { descreverVencimento } from "@/features/contas-receber/lib/resumirContasReceber"
-import { formatarData } from "@/features/cartao/lib/formatarData"
+import { formatarData } from "@/shared/lib/datas"
 import {
   STATUS_CONTA_RECEBER,
   type ContaReceberResponse,

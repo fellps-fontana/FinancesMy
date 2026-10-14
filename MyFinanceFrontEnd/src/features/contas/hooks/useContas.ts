@@ -6,7 +6,7 @@ import type { ContaResponse } from "@/features/contas/types"
 // Nao ha endpoint que liste contas de TODOS os tipos combinados (o back so
 // aceita um `?tipo=` por chamada, ver Controllers/ContasController.cs). Busca
 // banco + investimento em paralelo e combina num unico array - mesmo padrao
-// ja usado por useContasParaSelecao (features/contas-receber). CARTAO entra
+// ja usado por useContasParaSelecao (shared/hooks). CARTAO entra
 // na lista para ser exibido (com atalho para /cartao), mas nao conta no
 // patrimonio: calcularPatrimonioTotal considera so Banco + total investido.
 async function buscarTodasContas(): Promise<ContaResponse[]> {

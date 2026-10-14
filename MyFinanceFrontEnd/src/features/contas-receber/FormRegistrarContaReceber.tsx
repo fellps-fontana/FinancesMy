@@ -7,10 +7,10 @@ import { Label } from "@/shared/ui/label"
 import { CLASSE_BOTAO_CANCELAR, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO } from "@/shared/ui/FormModal"
 import { SegmentedTabs } from "@/shared/ui/segmented-tabs"
 import { SelectField } from "@/shared/ui/select-field"
-import { dataDeHoje } from "@/features/cartao/lib/formatarData"
+import { dataDeHoje } from "@/shared/lib/datas"
 import { useCriarEmprestimo } from "@/features/contas-receber/hooks/useCriarEmprestimo"
 import { useCriarRecebivel } from "@/features/contas-receber/hooks/useCriarRecebivel"
-import { useContasParaSelecao } from "@/features/contas-receber/hooks/useContasParaSelecao"
+import { useContasParaSelecao } from "@/shared/hooks/useContasParaSelecao"
 import {
   converterValorTotalParaNumero,
   validarEmprestimo,

@@ -4,6 +4,8 @@ export type OpcaoCategoria = {
   id: string
   label: string
   icone?: string
+  // true para subcategoria (permite ao consumidor indentar sem parsear o label).
+  subcategoria?: boolean
 }
 
 // Achata categoria + subcategorias (regra-de-negocio.md item 7); arquivada
@@ -20,7 +22,7 @@ export function montarOpcoesCategoria(categorias: CategoriaResponse[]): OpcaoCat
     }
     for (const sub of categoria.subcategorias) {
       if (!sub.arquivada) {
-        opcoes.push({ id: sub.id, label: `${categoria.nome} > ${sub.nome}`, icone: sub.icone })
+        opcoes.push({ id: sub.id, label: `${categoria.nome} > ${sub.nome}`, icone: sub.icone, subcategoria: true })
       }
     }
   }

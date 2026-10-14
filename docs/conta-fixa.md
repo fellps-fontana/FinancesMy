@@ -145,9 +145,8 @@ novos).
   como lacuna de cobertura não-bloqueante (a lógica depende de
   `DateOnly.AddMonths` do framework, não de código customizado).
 - `useContasParaSelecao` (busca contas de origem combinando banco+investimento)
-  segue morando em `features/contas-receber/hooks/` e foi reaproveitado via
-  import cross-feature — candidato a promover para `shared/hooks/` numa task
-  futura que toque em qualquer um dos dois módulos.
+  foi promovido para `shared/hooks/useContasParaSelecao.ts` (TASK-237, 2026-10-14),
+  com a chave de cache em `contasKeys`.
 - Form de criar/editar não foi integrado em `ListaContasFixas.tsx` ainda
   (decisão deliberada, mesmo padrão que Contas a Receber deixou em aberto).
 
@@ -281,8 +280,18 @@ novos).
 
 ## PR #73 — ajuste ao novo mockup e regras novas (2026-10-14)
 
-**Apagar conta fixa (item 6):** DELETE. As ocorrencias SUGERIDO ficam desvinculadas (SetNull). Falta
-confirmar com o usuario se devem ser apagadas.
+**Apagar conta fixa (item 6):** DELETE. Ocorrencias nao confirmadas (banco `Status != Pago`, incluindo
+`Sugerido`; cartao fatura nao PAGA) sao apagadas; confirmadas ficam desvinculadas (confirmado em 2026-10-14,
+TASK-241).
 
 **Tela refeita no mockup:** card "Total fixo mensal" (`lib/somarTotalFixoMensal.ts`, so MENSAL ativas) e tabela com
 modal `FormModal`.
+
+## Pendencias pos-PR #73 (2026-10-14)
+
+**TASK-241:** o criterio de "nao confirmada" passou a ser unico, em
+`Domain/OcorrenciaContaFixaPolitica.cs`, e vale para apagar, desativar e limpeza de periodicidade:
+- banco: tudo que nao esta `Pago` sai, inclusive `Sugerido`;
+- cartao: tudo cuja fatura nao esta `Paga` sai, inclusive FECHADA.
+
+A regra do item 6 foi confirmada pelo usuario em 2026-10-14.

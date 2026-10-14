@@ -59,8 +59,8 @@ Endpoints (`LimitesGastoController`, rota `api/limites-gasto`):
 Frontend em `MyFinanceFrontEnd/src/features/limite-gasto/` (camada de dados +
 página de comparativo) e componentes espalhados por onde cada superfície
 pediu: `features/dashboard/components/LimiteGastoIndicador.tsx`,
-`features/lancamentos/components/AvisoLimiteGasto.tsx` (+
-`lib/limiarAlertaLimite.ts`), `features/categorias/components/
+`features/lancamentos/components/AvisoLimiteGasto.tsx` (o limiar vinha de
+`lib/limiarAlertaLimite.ts`; desde a TASK-237 vem de `limite-gasto/lib/estadoLimite.ts`), `features/categorias/components/
 CampoLimiteGasto.tsx`. Rota nova `/limites-gasto`.
 
 ## Lacunas conhecidas

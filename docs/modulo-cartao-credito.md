@@ -178,3 +178,31 @@ fechava todas as faturas intermediarias. O modelo novo:
 - hanzo: front.
 - style: 1 rodada de correcao (parcela em fatura PAGA posterior era elegivel a antecipacao) e depois APROVADO.
 - Suite: 1157/1157.
+
+## Pendencias pos-PR #73 (2026-10-14)
+
+**TASK-240, indice unico de fatura.** O indice `IX_fatura_conta_data_fechamento` impede duas faturas
+do mesmo ciclo. Ele vem da migration `AddIndiceUnicoFaturaContaDataFechamento`, que aborta se ja existir duplicata
+e roda depois da consolidacao `ReclassificarStatusFaturaPorCalendario`. Em corrida, `CriarFaturaAsync` captura a
+violacao, descarta a fatura nova e devolve a vencedora.
+
+**Divida tecnica (aceita pelo style):** no Postgres, dentro de `BeginTransactionAsync`, a recuperacao nao funciona.
+- A violacao aborta a transacao (25P02), entao o erro sobe e a operacao inteira e desfeita, sem duplicata.
+- Fluxos afetados: compra parcelada, antecipacao, estorno de parcelada e parcelado em banco.
+- O SQLite dos testes nao reproduz o problema.
+- Solucao futura: savepoint ou excecao de dominio no repositorio. Hoje o servico captura `DbUpdateException`, como
+  `AuthService` ja fazia.
+
+**TASK-239, mover a compra da assinatura.** Quando o `dia_referencia` muda e a nova data cai em outro ciclo, a
+compra e movida para a fatura desse ciclo, que e criada se nao existir:
+- So move se o destino for ABERTA ou FUTURA (`FaturaCicloPolitica.PodeReceberCompraMovida`,
+  `FaturaCicloService.ResolverFaturaParaCompraMovidaAsync`).
+- Se o destino for FECHADA ou PAGA, a compra fica onde esta e o novo dia vale dali para frente. Valor, descricao e
+  categoria continuam propagando.
+
+**Agents:**
+- killua: desenho.
+- mike: 35 testes RED e o ajuste de 1 cenario que contradizia a regra.
+- levi: implementacao.
+- style: 1 rodada de correcao (honestidade sobre o Postgres no teste e no comentario), depois APROVADO.
+- Suite: 1199/1199.

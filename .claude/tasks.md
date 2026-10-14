@@ -4303,7 +4303,7 @@ HISTORICO: hanzo: RelatorioCategoriaDetalhePage + rotas /relatorio/sem-categoria
 
 ## TASK-237 — Front: consolidar duplicacoes residuais apontadas pelo style (hanzo)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS:
 FLUXO: Melhoria
@@ -4313,7 +4313,7 @@ CRITERIO DE ACEITE: 1) cada helper existe em um unico lugar; 2) comportamento vi
 ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/{dashboard,lancamentos,limite-gasto,categorias,assinaturas-cartao,investimentos,cartao,contas-receber,contas-fixas}/**, MyFinanceFrontEnd/src/shared/{lib,hooks}/**
 NAO FAZER: nao mudar regra nem visual; nao editar .claude/tasks.md; nao commitar.
 RETORNO ESPERADO: arquivos tocados + tsc.
-HISTORICO:
+HISTORICO: 2026-10-14 (hanzo). LIMIAR via limite-gasto/lib/estadoLimite (dashboard e AvisoLimiteGasto; limiarAlertaLimite.ts removido), CategoriaSelect sobre montarOpcoesCategoria (campo subcategoria?), AssinaturasCartaoSection com construirMapaCategorias, datas so em shared/lib/datas (shim cartao/lib/formatarData e investimentos/lib/dataDeHoje removidos; dataDeHoje passa a usar data local), useContasParaSelecao em shared/hooks. Style rodada 1 PRECISA CORRIGIR (shared dependia de contas-receber via contasReceberKeys) -> chave movida para contasKeys -> reconferido pelo Kira. tsc limpo.
 
 ## TASK-238 — Back: FaturaCicloService fecha faturas futuras ao lancar compra parcelada (diagnostico)
 
@@ -4331,7 +4331,7 @@ HISTORICO: 2026-10-14. Diagnostico killua (bug + 2 extras: duplicata de ciclo no
 
 ## TASK-239 — Back: revalidar fatura ao editar dia_referencia da assinatura de cartao
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: killua
 DEPENDENCIAS: TASK-238
 FLUXO: Correcao
@@ -4341,11 +4341,11 @@ CRITERIO DE ACEITE: 1) nova data fora do ciclo move a compra para a fatura do ci
 ARQUIVOS PERMITIDOS: definidos pelo killua.
 NAO FAZER: nao editar .claude/tasks.md; nao commitar.
 RETORNO ESPERADO: desenho + esqueleto para TDD.
-HISTORICO:
+HISTORICO: 2026-10-14. Decisao do usuario: destino FECHADA/PAGA nao move (novo dia vale dali pra frente). killua desenho; mike 15 testes; levi FaturaCicloPolitica.PodeReceberCompraMovida, FaturaCicloService.ResolverFaturaParaCompraMovidaAsync, AssinaturaCartaoService.MoverCompraParaNovoDiaAsync; mike corrigiu cenario DestinoFechada (FECHADA com fechamento futuro nao existe pela regra). Style APROVADO. Suite 1199/1199.
 
 ## TASK-240 — Back: indice unico (conta_id, data_fechamento) em fatura
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: killua
 DEPENDENCIAS: TASK-238
 FLUXO: Melhoria
@@ -4355,4 +4355,18 @@ CRITERIO DE ACEITE: 1) indice unico criado; 2) criacao concorrente reaproveita a
 ARQUIVOS PERMITIDOS: definidos pelo killua.
 NAO FAZER: nao editar .claude/tasks.md; nao commitar.
 RETORNO ESPERADO: desenho + esqueleto.
-HISTORICO:
+HISTORICO: 2026-10-14. killua desenho; mike testes de conflito (SQLite + decorator de corrida); levi indice IX_fatura_conta_data_fechamento, migration AddIndiceUnicoFaturaContaDataFechamento (guard aborta se houver duplicata), FaturaRepository.Descartar, CriarFaturaAsync recupera a vencedora. Style rodada 1 PRECISA CORRIGIR (teste/comentario prometiam recuperacao dentro de transacao no Postgres, que aborta com 25P02) -> comentario LIMITACAO + teste renomeado -> reconferido. Divida aceita: savepoint/excecao de dominio (docs/modulo-cartao-credito.md).
+
+## TASK-241 — Back: criterio unico de ocorrencia nao confirmada da conta fixa (item 6)
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS:
+FLUXO: Correcao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 6, Apagar conta fixa e periodicidade/desativar)
+ESCOPO: Ao apagar/desativar/limpar periodicidade, ocorrencia nao confirmada (banco Status != Pago, inclusive Sugerido; cartao fatura != Paga) sai junto; confirmada fica desvinculada.
+CRITERIO DE ACEITE: 1) Sugerido tratado como nao confirmado nos 3 caminhos; 2) predicado unico; 3) suite verde.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/OcorrenciaContaFixaPolitica.cs, Services/RecorrenciaGeradorService.cs, Services/IRecorrenciaGeradorService.cs
+NAO FAZER: mudar o criterio do cartao (FECHADA continua apagavel).
+RETORNO ESPERADO: politica + testes.
+HISTORICO: 2026-10-14. Decisoes do usuario: SUGERIDO = nao confirmado; FECHADA no cartao continua apagavel. killua achou que apagar pendentes ja estava implementado e que restava so o Sugerido; mike 13 testes; levi OcorrenciaContaFixaPolitica substituindo os privados do RecorrenciaGeradorService. Style APROVADO. Regra item 6 atualizada; percentual do relatorio (item 19) e validacao da edicao de conta a receber (item 13) confirmados na mesma rodada.

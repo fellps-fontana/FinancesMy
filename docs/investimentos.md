@@ -442,3 +442,9 @@ completo. Resumo:
 Desvios: sem sparkline e sem "+4,2% no mes", porque nao ha historico de valor.
 
 **Lacuna:** o `criar_ativo` do mcp-server ainda envia `instituicao` sem `contaId`.
+
+## Pendencias pos-PR #73 (2026-10-14)
+
+**TASK-237:** `dataDeHoje` agora vem de `shared/lib/datas.ts` e usa a data LOCAL. Antes usava
+`toISOString`, em UTC, e devolvia o dia seguinte depois das 21h no Brasil. A mudanca e intencional e corrige
+datas de aporte e dividendo lancados a noite.

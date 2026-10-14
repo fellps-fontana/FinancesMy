@@ -3,7 +3,7 @@ import { apiClient } from "@/shared/api/client"
 import { lancamentosKeys } from "@/features/lancamentos/query-keys"
 import type { ContaParaExibicao } from "@/features/lancamentos/types"
 
-// Diferente de useContasParaSelecao (features/contas-receber/hooks), que
+// Diferente de useContasParaSelecao (shared/hooks), que
 // exclui cartao de proposito (cartao nao e origem/destino de emprestimo ou
 // recebimento) - aqui o cartao PRECISA aparecer, porque pagamento de fatura
 // (regra-de-negocio.md item 12) tem destino = conta CARTAO, e a UI de

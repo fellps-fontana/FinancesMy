@@ -136,7 +136,7 @@ conferir todos os métodos de uma vez.
 ## PR #73 — ajuste ao novo mockup e regras novas (2026-10-14)
 
 **Edicao de conta a receber (item 13):** `PUT /api/contas-receber/{id}`. Recusa valor menor ou igual a 0 e
-descricao vazia (suposicao ainda nao confirmada).
+descricao vazia (confirmado pelo usuario em 2026-10-14).
 
 **Tela refeita no mockup:**
 - cards A receber / Ja recebido / Atrasado (`lib/resumirContasReceber.ts`);

@@ -44,5 +44,10 @@ public class FaturaConfiguration : IEntityTypeConfiguration<Fatura>
             .HasFilter("status = 'ABERTA'")
             .IsUnique()
             .HasDatabaseName("IX_fatura_conta_aberta");
+
+        // TASK-240: uma fatura por conta e data de fechamento (recuperacao de corrida no Resolver).
+        builder.HasIndex(f => new { f.ContaId, f.DataFechamento })
+            .IsUnique()
+            .HasDatabaseName("IX_fatura_conta_data_fechamento");
     }
 }

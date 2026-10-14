@@ -27,7 +27,7 @@ import {
   filtrarAtivosPorTipo,
   type FiltroTipoAtivo as FiltroTipoAtivoValue,
 } from "@/features/investimentos/lib/filtrarAtivosPorTipo"
-import { dataDeHoje } from "@/features/investimentos/lib/dataDeHoje"
+import { dataDeHoje } from "@/shared/lib/datas"
 import { ApiError } from "@/shared/api/client"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"

@@ -3,27 +3,10 @@ import { useAssinaturasCartao } from "@/features/assinaturas-cartao/hooks/useAss
 import { AssinaturaCartaoItem } from "@/features/assinaturas-cartao/components/AssinaturaCartaoItem"
 import { FormAssinaturaCartao } from "@/features/assinaturas-cartao/FormAssinaturaCartao"
 import { useCategorias } from "@/features/categorias/hooks/useCategorias"
+import { construirMapaCategorias } from "@/features/categorias/lib/construirMapaCategorias"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Modal } from "@/shared/ui/Modal"
-import type { CategoriaResponse } from "@/features/categorias/types"
-
-// Mesmo achatamento categoria + subcategorias de ListaContasFixas.tsx
-// (features/contas-fixas/ListaContasFixas.tsx) - duplicado aqui em vez de
-// promovido a helper compartilhado pelo mesmo motivo: cada feature resolve
-// esse lookup de forma isolada hoje, mover para shared/ e uma task a parte.
-function construirMapaNomeCategoria(categorias: CategoriaResponse[]): Record<string, string> {
-  const mapa: Record<string, string> = {}
-
-  for (const categoria of categorias) {
-    mapa[categoria.id] = categoria.nome
-    for (const subcategoria of categoria.subcategorias) {
-      mapa[subcategoria.id] = subcategoria.nome
-    }
-  }
-
-  return mapa
-}
 
 type AssinaturasCartaoSectionProps = {
   contaId: string
@@ -41,7 +24,7 @@ export function AssinaturasCartaoSection({ contaId }: AssinaturasCartaoSectionPr
 
   const mapaNomeCategoria = useMemo(
     () =>
-      construirMapaNomeCategoria([
+      construirMapaCategorias([
         ...(categoriasNaoArquivadas ?? []),
         ...(categoriasArquivadas ?? []),
       ]),
@@ -88,7 +71,7 @@ export function AssinaturasCartaoSection({ contaId }: AssinaturasCartaoSectionPr
               key={assinatura.id}
               assinatura={assinatura}
               categoriaNome={
-                assinatura.categoriaId ? (mapaNomeCategoria[assinatura.categoriaId] ?? null) : null
+                assinatura.categoriaId ? (mapaNomeCategoria[assinatura.categoriaId]?.nome ?? null) : null
               }
             />
           ))}

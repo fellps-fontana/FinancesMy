@@ -7,7 +7,7 @@ import { useRendimentosResumo } from "@/features/investimentos/hooks/useRendimen
 const formatadorMesCurto = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit" })
 
 // Rotulo de eixo curto ("jul/26") a partir de "AAAA-MM". Parse manual dos
-// componentes (mesmo motivo de features/cartao/lib/formatarData.ts: evita o
+// componentes (mesmo motivo de shared/lib/datas.ts: evita o
 // deslocamento de fuso que `new Date(iso)` aplicaria) -- formatacao pura de
 // apresentacao, nao calculo de dominio, por isso fica local ao componente em
 // vez de lib/ (nao ha outro consumidor deste rotulo curto no projeto).

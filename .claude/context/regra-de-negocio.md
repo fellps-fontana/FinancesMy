@@ -165,7 +165,7 @@ sistema recalcula o conjunto correto de ocorrencias (atual + proxima) sob a
 configuracao nova, a partir da mesma data-base (`dia_vencimento`, hoje).
 Qualquer ocorrencia ja gerada cuja data nao bate com esse conjunto
 recalculado e excluida (hard delete):
-- destino **BANCO**: elegivel so se `Lancamento.Status = Pendente`.
+- destino **BANCO**: elegivel so se `Lancamento.Status != Pago` (Pendente ou Sugerido).
 - destino **CARTAO** (ver abaixo): elegivel so se `Fatura.Status != Paga`
   (mesma trava ja usada para editar uma compra — fatura paga e fato
   consumado).
@@ -225,8 +225,8 @@ no-op no motor de geracao.
 
 **Desativar cancela as ocorrencias PENDENTE/nao consumadas ja geradas.** Ao
 desativar (`ativa = true -> false`) uma ContaFixa, as ocorrencias vinculadas
-ainda nao consumadas sao excluidas (hard delete): `Lancamento.Status =
-Pendente` para destino banco, Compra com `Fatura.Status != Paga` para
+ainda nao consumadas sao excluidas (hard delete): `Lancamento.Status !=
+Pago` (Pendente ou Sugerido) para destino banco, Compra com `Fatura.Status != Paga` para
 destino cartao (mesma regra de exclusao de lancamento manual do item
 5/12). Ocorrencias ja consumadas (`Pago` / fatura `Paga`) permanecem
 intocadas. Reativar volta a gerar as 2 ocorrencias (atual + proxima,
@@ -235,14 +235,18 @@ DECISOES CONFIRMADAS COM O USUARIO EM 2026-07-20 (regra original), 2026-07-27
 (periodicidade) e 2026-08-26 (limpeza de periodicidade, destino cartao,
 geracao sob demanda).
 
-**Apagar conta fixa (decisao confirmada com o usuario em 2026-10-08).**
-Alem de desativar, a conta fixa pode ser APAGADA: hard delete do molde. Na
-mesma acao, as ocorrencias nao consumadas sao excluidas, com o mesmo
-criterio do desativar (`Status = Pendente` no destino banco; compra com
-`Fatura.Status != Paga` no destino cartao). As ocorrencias consumadas
-(`Pago` / fatura `Paga`) PERMANECEM como lancamentos avulsos:
-`conta_fixa_id` vira `null`, valor, data e categoria nao mudam. Nao existe
-desfazer. Desativar continua existindo para pausar sem perder o molde.
+**Apagar conta fixa (decisao confirmada com o usuario em 2026-10-08; criterio de
+"nao confirmada" fechado em 2026-10-14).** Alem de desativar, a conta fixa pode
+ser APAGADA: hard delete do molde. Na mesma acao, as ocorrencias NAO
+CONFIRMADAS sao excluidas junto: no destino banco, todo lancamento vinculado
+com `Status != Pago` (`Pendente` e, por seguranca, `Sugerido`, que na v1 nao
+nasce — item 5); no destino cartao, a compra com `Fatura.Status != Paga`
+(inclusive em fatura FECHADA, decisao de 2026-10-08 mantida em 2026-10-14). As
+ocorrencias CONFIRMADAS (`Pago` / fatura `Paga`) PERMANECEM como lancamentos
+avulsos: `conta_fixa_id` vira `null`, valor, data e categoria nao mudam.
+Nenhuma ocorrencia fica apontando para um molde inexistente. Nao existe
+desfazer. Desativar continua existindo para pausar sem perder o molde e usa
+o mesmo criterio de "nao confirmada".
 
 ---
 
@@ -892,6 +896,10 @@ nunca muda. Ocorrencia gerada por recebivel recorrente (item 15) nao e
 editada individualmente — edita-se o molde (mesmo principio de "editar na
 origem" do item 18).
 
+**Validacao na edicao (confirmado com o usuario em 2026-10-14).** `descricao`
+vazia ou so com espacos e recusada; `valor_total`, quando informado, precisa
+ser maior que zero. Edicao recusada nao altera nada (400).
+
 **Emprestimo: saida como transferencia de perna unica.** Ao registrar um
 EMPRESTIMO, o valor sai da conta de origem escolhida pelo usuario. Usa a
 MESMA tabela de transferencia do item 3, mas com UMA perna so — nao ha
@@ -1192,7 +1200,7 @@ Apenas soft-delete via `ativa = false` (mesmo padrao de `recebivel_recorrente`, 
 Ao editar `valor`, `descricao` ou `categoria_id` de uma `assinatura_cartao`:
 - A alteracao propaga para a compra vinculada na fatura corrente SE E SOMENTE SE a fatura estiver com `status = ABERTA` ou `status = FUTURA`.
 - Compras vinculadas em faturas com `status = FECHADA` ou `status = PAGA` NUNCA sao alteradas (fato consumado e auditado no cartao).
-- Se o `dia_referencia` for alterado, a data da compra vinculada na fatura `ABERTA` ou `FUTURA` e recalculada para o novo dia (com clamp) e a fatura e revalidada.
+- Se o `dia_referencia` for alterado, a data da compra vinculada na fatura `ABERTA` ou `FUTURA` e recalculada para o novo dia (com clamp) e a fatura e revalidada: se a nova data cai em outro ciclo, a compra e MOVIDA para a fatura desse ciclo (criada se nao existir). O destino precisa ser `ABERTA` ou `FUTURA`. Se o ciclo destino for `FECHADA` ou `PAGA` (ou, inexistente, ja encerrado pelo calendario), a compra NAO e movida: mantem data e fatura originais, valor/descricao/categoria continuam propagando, e o novo dia vale a partir das proximas geracoes (confirmado com o usuario em 2026-10-14).
 
 **Sem fim definido em v1 (DECISAO DO PO CONFIRMADA EM 2026-09-08).**
 Na v1, a assinatura e indeterminada, gerando ocorrencias a cada ciclo ate que o usuario a desative explicitamente (`ativa = false`). Campos como `quantidade_ciclos` ou `data_fim` ficam fora de escopo na v1 (YAGNI); extensao com prazo determinado fica reservada para v2 se surgir demanda real.
@@ -1333,7 +1341,8 @@ anterior for zero, nao exibe a variacao.
 **Detalhe (clique na categoria):** lista os lancamentos que compoem o valor
 da linha — descricao, data, conta (ou cartao, identificado como tal),
 subcategoria quando houver, e valor — em ordem crescente de data. No topo:
-total da categoria, % do total gasto e, se a categoria tiver limite, a
+total da categoria, % do total gasto do mes (mesmo denominador da lista,
+confirmado pelo usuario em 2026-10-14) e, se a categoria tiver limite, a
 barra limite x realizado (item 14). A soma do detalhe e sempre igual ao
 valor da linha. So leitura: editar ou excluir e pela tela de origem (item
 18).

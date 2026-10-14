@@ -5,7 +5,7 @@ import {
   validarValorPositivo,
 } from "@/features/investimentos/lib/validarValorPositivo"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
-import { dataDeHoje } from "@/features/investimentos/lib/dataDeHoje"
+import { dataDeHoje } from "@/shared/lib/datas"
 import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"

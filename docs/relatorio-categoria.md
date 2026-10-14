@@ -6,11 +6,11 @@ detalhe por categoria com os lancamentos e o limite de gasto, se houver. Regras:
 `regra-de-negocio.md`.
 
 ## Regras de negocio implementadas
-- Conta so lancamentos DEBIT (suposicao adotada).
+- Conta so lancamentos DEBIT (item 19).
 - Percentuais (0-100) e variacao vem prontos do backend; o front nao recalcula.
 - A variacao e `null` quando o mes anterior e zero.
 - Existe a linha "Sem categoria".
-- No detalhe, o percentual e sobre o total do mes (suposicao ainda nao confirmada).
+- No detalhe, o percentual e sobre o total do mes (confirmado pelo usuario em 2026-10-14).
 
 ## Endpoints e telas
 - `GET /api/relatorios/gasto-por-categoria?ano=&mes=`
