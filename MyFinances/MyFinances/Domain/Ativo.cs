@@ -8,7 +8,12 @@ public class Ativo
 
     public TipoAtivo Tipo { get; set; }
 
-    public string Instituicao { get; set; } = string.Empty;
+    // Legado: so ativos cadastrados antes de 2026-10-08. Ativo novo nao preenche (item 8.5).
+    public string? Instituicao { get; set; }
+
+    // Conta de investimento dona do ativo (item 8.5). Null so em ativo antigo ainda
+    // nao vinculado; obrigatorio no cadastro de ativo novo. Definido, nunca volta a null.
+    public Guid? ContaId { get; set; }
 
     // Total de unidades/cotas em carteira, soma de todos os aportes
     // (regra-de-negocio.md item 8.1). Incrementado a cada RegistrarAporte.
@@ -27,5 +32,7 @@ public class Ativo
     public DateTime? AtualizadoEm { get; set; }
 
     // Navegacao
+    public Conta? Conta { get; set; }
+
     public ICollection<Rendimento> Rendimentos { get; set; } = [];
 }

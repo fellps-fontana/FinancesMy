@@ -1,5 +1,44 @@
-import { apiClient } from "@/shared/api/client"
-import type { AtualizarSaldoRequest, ContaResponse, CriarContaRequest } from "@/features/contas/types"
+import { ApiError, apiClient } from "@/shared/api/client"
+import type {
+  AtualizarSaldoRequest,
+  ContaResponse,
+  CriarContaRequest,
+  EditarContaRequest,
+} from "@/features/contas/types"
+
+// Erros de regra conhecidos de PATCH /desativar (409: conta tem ativo ativo) e
+// PATCH /saldo (422: saldo invalido). Estendem ApiError para continuar
+// compativeis com quem trata `instanceof ApiError`; `tipo` permite a UI
+// distinguir o caso e `message` e o texto `erro` vindo do backend.
+export type TipoErroContaOperacao = "CONTA_COM_ATIVO_ATIVO" | "SALDO_INVALIDO"
+
+export class ContaOperacaoError extends ApiError {
+  readonly tipo: TipoErroContaOperacao
+
+  constructor(tipo: TipoErroContaOperacao, original: ApiError) {
+    super(original.status, original.message, original.body)
+    this.name = "ContaOperacaoError"
+    this.tipo = tipo
+  }
+}
+
+function lerMensagemDoCorpo(erro: ApiError): string {
+  const corpo = erro.body
+  if (typeof corpo === "object" && corpo !== null && "erro" in corpo) {
+    const mensagem = (corpo as { erro: unknown }).erro
+    if (typeof mensagem === "string" && mensagem.length > 0) return mensagem
+  }
+  return erro.message
+}
+
+// Converte 409/422 em erro tipado com a mensagem de body.erro; outros erros
+// seguem como vieram.
+export function tipificarErroConta(erro: unknown, tipo: TipoErroContaOperacao, status: number): unknown {
+  if (erro instanceof ApiError && erro.status === status) {
+    return new ContaOperacaoError(tipo, new ApiError(erro.status, lerMensagemDoCorpo(erro), erro.body))
+  }
+  return erro
+}
 
 // GET /api/contas so aceita UM `?tipo=` por chamada (Controllers/ContasController.cs,
 // ListarContas) - nao ha endpoint que combine tipos num unico request. Cada
@@ -11,6 +50,10 @@ export function listarContasBanco(): Promise<ContaResponse[]> {
   return apiClient.get<ContaResponse[]>("/api/contas?tipo=banco")
 }
 
+export function listarContasCartao(): Promise<ContaResponse[]> {
+  return apiClient.get<ContaResponse[]>("/api/contas?tipo=cartao")
+}
+
 export function listarContasInvestimento(): Promise<ContaResponse[]> {
   return apiClient.get<ContaResponse[]>("/api/contas?tipo=investimento")
 }
@@ -20,6 +63,12 @@ export function listarContasInvestimento(): Promise<ContaResponse[]> {
 // types.ts CriarContaRequest).
 export function criarConta(request: CriarContaRequest): Promise<ContaResponse> {
   return apiClient.post<ContaResponse>("/api/contas", request)
+}
+
+// PUT /api/contas/{id} - edita nome, subtipo (Banco), icone e cor. 400: nome
+// vazio/subtipo invalido; 404: conta inexistente; 409: conta inativa.
+export function editarConta(id: string, request: EditarContaRequest): Promise<ContaResponse> {
+  return apiClient.put<ContaResponse>(`/api/contas/${id}`, request)
 }
 
 // PATCH /api/contas/{id}/saldo (Controllers/ContasController.cs,

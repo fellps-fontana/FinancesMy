@@ -48,6 +48,11 @@ public class ContaFixaRepository : IContaFixaRepository
         _context.ContasFixas.Update(contaFixa);
     }
 
+    public async Task Remover(ContaFixa contaFixa)
+    {
+        _context.ContasFixas.Remove(contaFixa);
+    }
+
     public async Task<bool> ExisteLancamentoGerado(Guid contaFixaId, int ano, int mes)
     {
         return await _context.Lancamentos

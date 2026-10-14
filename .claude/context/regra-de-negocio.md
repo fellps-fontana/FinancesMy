@@ -508,6 +508,63 @@ refletido no mockup `03 Contas.dc.html`; este item so
 formaliza na fonte da verdade o que ja estava em codigo/mockup e nunca
 tinha sido escrito aqui.
 
+### 10.2 Edicao de conta — DECISAO CONFIRMADA COM O USUARIO EM 2026-10-13
+
+O usuario pode editar uma conta ja criada. Campos editaveis: `nome`,
+`icone`, `cor`, `subtipo` e, so em conta CARTAO, `dia_fechamento` e
+`dia_vencimento`.
+
+**O tipo principal da conta e IMUTAVEL.** `Conta.Tipo` (Banco | Cartao |
+Investimento) e definido na criacao e nunca muda depois. Nao existe
+caminho de edicao (API ou tela) que altere o tipo. Converter uma conta
+exigiria reinterpretar saldo, lancamentos, faturas e ativos vinculados
+(itens 8.5, 10 e 12). Quem errou o tipo cria uma conta nova e desativa a
+antiga.
+
+**A edicao substitui os campos editaveis.** O PUT grava `icone`, `cor` e
+`subtipo` exatamente como vieram: campo vazio/ausente APAGA o valor atual.
+Nao e merge parcial. (Confirmado em 2026-10-13.)
+
+**Nome** e obrigatorio: vazio ou so espacos e recusado (400). Vale para
+qualquer origem: conta Open Finance tambem pode ser renomeada (confirmado
+em 2026-10-13).
+
+**Subtipo** segue o 10.1. So vale para Tipo = Banco. Nos outros tipos e
+IGNORADO silenciosamente e a conta fica com `Subtipo = null`. Em conta
+Banco, editar sem informar subtipo limpa o campo. Subtipo informado e nao
+reconhecido e recusado (400).
+
+**Conta inativa PODE ser editada** (confirmado em 2026-10-13). A edicao
+nao reativa a conta: `ativa` continua sendo alterada so pelo fluxo de
+desativar (item 8.5). Todas as demais regras da edicao valem igual.
+
+**Dias do cartao (`dia_fechamento` e `dia_vencimento`).** Em conta CARTAO
+a edicao exige os DOIS dias, com a mesma validacao da criacao: cada um
+inteiro entre 1 e 31. Dia ausente (null) em cartao e recusado (400): a
+edicao substitui, entao o cartao nunca fica sem dia. Dia fora de 1..31 e
+recusado (400). Nos tipos Banco e Investimento os dias informados sao
+IGNORADOS silenciosamente, sem validar e sem gravar (mesmo padrao do
+subtipo, 10.1): essas contas nao tem ciclo de fatura.
+
+**Efeito dos novos dias — so para frente (confirmado em 2026-10-13):**
+- os novos dias valem SO para faturas criadas DEPOIS da edicao (a fatura
+  nova nasce de `dia_fechamento`/`dia_vencimento` lidos da conta no momento
+  em que e criada, item 12);
+- fatura FECHADA ou PAGA nao muda;
+- a fatura ABERTA atual mantem as datas dela (`data_fechamento` e
+  `data_vencimento` ja gravadas);
+- fatura futura que ja existe no banco (status FUTURA, por exemplo criada
+  antecipadamente por parcela futura) tambem mantem as datas dela: nenhuma fatura existente
+  e recalculada;
+- compras ja lancadas nao trocam de fatura (`fatura_id` nao muda).
+Consequencia aceita: durante a transicao o cartao pode ter faturas com
+ciclos diferentes (a antiga com os dias velhos, as novas com os novos).
+Isso e esperado; nao ha acao de "recalcular faturas".
+
+**Campos fora da edicao** (nao mudam por este fluxo): `tipo`, `origem`,
+`saldo_manual` (tem fluxo proprio, item 10), `ativa` (tem fluxo proprio de
+desativar, item 8.5), `pierre_account_id`.
+
 ---
 
 ## 11. Sincronizacao (sync)
@@ -552,13 +609,18 @@ dupla contagem.
 **Fatura:** recorte das compras por ciclo (`data_fechamento` -> `data_vencimento`).
 Serve para agrupar as compras e para casar com o pagamento.
 
+**Dias do cartao mudam (item 10.2):** a fatura guarda `data_fechamento` e
+`data_vencimento` ao ser criada. Editar `dia_fechamento`/`dia_vencimento` da
+conta so afeta faturas criadas depois; faturas existentes (aberta, futura,
+fechada ou paga) e o `fatura_id` das compras ja lancadas nao mudam.
+
 **Saldo do cartao** = compras - pagamentos - estornos. CALCULADO, nao armazenado
 (mesma logica do item 10).
 
 **Pagamento x fatura:** o pagamento pode ser PARCIAL (nao precisa quitar o
 saldo pendente de uma vez — podem existir varios pagamentos ate a fatura ser
 quitada) e ANTECIPADO (pode ocorrer antes do fechamento do ciclo ou do
-vencimento, com a fatura ainda ABERTA). Cada pagamento continua fechando saldo
+vencimento, com a fatura ainda ABERTA ou FUTURA). Cada pagamento continua fechando saldo
 da fatura como um todo, NUNCA compra a compra especifica (igual Organizze) —
 so que agora em incrementos. A fatura so recebe status PAGA quando o saldo
 pendente (total das compras da fatura menos a soma dos pagamentos ja feitos)
@@ -579,6 +641,71 @@ resolucao de fatura, categoria e regime de competencia de uma compra
 manual — a unica diferenca e a origem (`lancamento.conta_fixa_id`
 preenchido) e a ausencia de parcelamento (nao se mistura com
 `compra_parcelada`, abaixo).
+
+### Ciclo e status da fatura — decisao confirmada com o usuario em 2026-10-13
+
+Resolve a pendencia de quando a fatura fecha. A regra era omissa e o codigo
+fechava a fatura aberta quando um lancamento tinha data >= fechamento, o que
+fechava faturas intermediarias de compras parceladas e deixava a "atual" na
+ultima parcela (TASK-238).
+
+**Ciclo de estados:** `FUTURA -> ABERTA -> FECHADA -> PAGA`.
+- `FUTURA`: ciclo que ainda nao e o atual (por exemplo, criada por parcela
+  futura). Recebe lancamentos e pagamentos.
+- `ABERTA`: a fatura ATUAL do cartao. No maximo UMA por conta (indice unico
+  `IX_fatura_conta_aberta`, que permanece).
+- `FECHADA`: ciclo encerrado pelo calendario, ainda nao quitada.
+- `PAGA`: saldo pendente zerado (regra de "Pagamento x fatura"). Nunca e
+  alterada por reclassificacao de calendario.
+
+**O fechamento e AUTOMATICO e vem do calendario, nunca de um lancamento.**
+Uma fatura nao paga com `data_fechamento < hoje` e FECHADA. O dia de
+fechamento e INCLUSIVO: compra datada exatamente em `data_fechamento`
+pertence a essa fatura, que so fecha no dia seguinte. Um lancamento (compra,
+parcela, estorno, assinatura, antecipacao) NUNCA muda o status de OUTRA
+fatura. "Hoje" e a data do servidor.
+
+**Fatura atual.** E a de menor `data_fechamento` tal que
+`hoje <= data_fechamento <=` fechamento do ciclo corrente calculado a partir
+de `dia_fechamento` da conta. Ela e ABERTA; todas as posteriores nao pagas
+sao FUTURA. Quando a atual passa da data de fechamento, ela vira FECHADA (se
+PAGA, continua PAGA) e a proxima FUTURA vira ABERTA.
+
+**Reclassificacao preguicosa (sem job).** O sistema reaplica a regra acima
+quando o cartao e consultado: ao resolver a fatura de um lancamento, ao
+listar/obter faturas, na antecipacao e na edicao de assinatura. Nao existe
+processo agendado.
+
+**Destino de um lancamento.** A fatura e a do CICLO da data do lancamento
+(ciclo calculado dos dias do cartao). Se nao existe, e criada com o status
+que o calendario determina (FECHADA, ABERTA ou FUTURA). Se existe:
+- FUTURA ou ABERTA: o lancamento entra.
+- FECHADA (compra retroativa): ENTRA nessa fatura fechada; o total dela
+  muda. A fatura continua FECHADA.
+- PAGA com ciclo ja encerrado (`data_fechamento < hoje`): o lancamento e
+  REJEITADO com erro de validacao.
+- PAGA com ciclo ainda nao encerrado (`data_fechamento >= hoje`; fatura paga
+  antecipadamente): o lancamento entra e a fatura e REABERTA (volta a ABERTA
+  se e a atual, senao FUTURA), porque uma fatura PAGA nao pode ter saldo
+  pendente.
+
+**Pagamento de FUTURA.** Fatura FUTURA pode ser paga, total ou
+parcialmente, com as mesmas regras de pagamento. Vira PAGA se quitar o
+saldo.
+
+**Fatura atual paga antes do fechamento.** Continua sendo a atual ate a data
+de fechamento; a proxima FUTURA so vira ABERTA depois. Nesse intervalo nao
+existe fatura ABERTA; compras do ciclo e a antecipacao reabrem a atual.
+
+**Contas a pagar (dashboard)** lista so faturas ABERTA e FECHADA com saldo
+pendente; FUTURA aparece apenas na tela do cartao.
+
+**Dados existentes.** Faturas gravadas com a logica antiga sao
+reclassificadas pela data por migration de dados (ciclo atual -> ABERTA,
+posteriores -> FUTURA, passadas -> FECHADA, PAGA intacta). Faturas
+duplicadas para o mesmo cartao e `data_fechamento` sao consolidadas,
+movendo lancamentos e pagamentos para a que permanece; se as duas
+duplicatas estiverem PAGA, a migration para com erro (decisao manual).
 
 ### Parcelamento (compra parcelada) — decisao registrada em 2026-07-12
 
@@ -672,7 +799,8 @@ favor do usuario relativo a essa fatura.
 **Credito abate a proxima fatura — decidido em 2026-07-20.** A fatura
 estornada MANTEM o status PAGA (nao existe estado "PAGA com credito"). O
 saldo negativo gerado pelo estorno retroativo e automaticamente descontado
-do total da PROXIMA fatura em aberto do mesmo cartao, reduzindo o valor que
+do total da PROXIMA fatura do mesmo cartao (a de vencimento imediatamente
+posterior, ABERTA ou FUTURA), reduzindo o valor que
 o usuario precisa pagar naquele ciclo seguinte. Nao ha acao manual do
 usuario nem mudanca de status na fatura ja paga.
 
@@ -686,9 +814,10 @@ a fatura atual, pra quitar a compra antes do prazo.
 disparada sobre `compra_parcelada_id` informando `quantidade` (inteiro >=
 1). O usuario escolhe QUANTAS parcelas antecipa, nao QUAIS.
 
-**Parcelas elegiveis:** so as que estao em fatura POSTERIOR a fatura ABERTA
-do ciclo corrente do cartao. Parcela que ja esta na fatura aberta atual, em
-fatura FECHADA ou em fatura PAGA nao e elegivel (ja esta no ciclo corrente
+**Parcelas elegiveis:** so as que estao em fatura POSTERIOR a fatura ATUAL
+do cartao (ver "Ciclo e status da fatura"), isto e, em fatura FUTURA.
+Parcela que ja esta na fatura atual, em fatura FECHADA ou em fatura PAGA nao
+e elegivel (ja esta no ciclo corrente
 ou ja venceu). Se `quantidade` for maior que o numero de parcelas
 elegiveis, a acao e REJEITADA inteira (erro de validacao) — nao antecipa
 parcialmente.
@@ -699,7 +828,8 @@ aberta atual, elegiveis 4/10 a 10/10. Antecipar 2 move a 10/10 e a 9/10;
 as parcelas 4/10 a 8/10 continuam nas faturas originais.
 
 **Efeito em cada parcela antecipada:** o proprio Lancamento-parcela e
-movido — `fatura_id` passa a apontar para a fatura ABERTA atual e `data`
+movido — `fatura_id` passa a apontar para a fatura ATUAL (se ela estiver
+PAGA antes do fechamento, e REABERTA) e `data`
 passa a ser a data da antecipacao. `valor`, `parcela_numero`,
 `compra_parcelada_id` e categoria NAO mudam. Nenhum lancamento e criado
 nem removido, entao a soma das N parcelas continua batendo exatamente com
@@ -1060,9 +1190,9 @@ Apenas soft-delete via `ativa = false` (mesmo padrao de `recebivel_recorrente`, 
 
 **Edicao e propagacao (DECISAO DO PO CONFIRMADA EM 2026-09-08).**
 Ao editar `valor`, `descricao` ou `categoria_id` de uma `assinatura_cartao`:
-- A alteracao propaga para a compra vinculada na fatura corrente SE E SOMENTE SE a fatura estiver com `status = ABERTA`.
+- A alteracao propaga para a compra vinculada na fatura corrente SE E SOMENTE SE a fatura estiver com `status = ABERTA` ou `status = FUTURA`.
 - Compras vinculadas em faturas com `status = FECHADA` ou `status = PAGA` NUNCA sao alteradas (fato consumado e auditado no cartao).
-- Se o `dia_referencia` for alterado, a data da compra vinculada na fatura `ABERTA` e recalculada para o novo dia (com clamp) e a fatura e revalidada.
+- Se o `dia_referencia` for alterado, a data da compra vinculada na fatura `ABERTA` ou `FUTURA` e recalculada para o novo dia (com clamp) e a fatura e revalidada.
 
 **Sem fim definido em v1 (DECISAO DO PO CONFIRMADA EM 2026-09-08).**
 Na v1, a assinatura e indeterminada, gerando ocorrencias a cada ciclo ate que o usuario a desative explicitamente (`ativa = false`). Campos como `quantidade_ciclos` ou `data_fim` ficam fora de escopo na v1 (YAGNI); extensao com prazo determinado fica reservada para v2 se surgir demanda real.
@@ -1282,6 +1412,9 @@ passa a pertencer a uma conta de investimento (item 8.5).
 ---
 
 ## Pendencias a definir
+
+- RESOLVIDO em 2026-10-13: quando a fatura fecha e como funcionam faturas
+  futuras — ver item 12, "Ciclo e status da fatura".
 
 - (v2) Rate limit dos endpoints do Pierre (testar com a key real).
 - (v2) Paginacao do get-transactions (confirmar se ha cursor ou se vem tudo).

@@ -89,6 +89,19 @@ public class ContaFixaController : ControllerBase
         return NoContent();
     }
 
+    [HttpDelete("api/contas-fixas/{id}")]
+    public async Task<IActionResult> Apagar(Guid id)
+    {
+        var (sucesso, erro) = await _contaFixaService.ApagarAsync(id);
+
+        if (!sucesso)
+        {
+            return NotFound(new { erro });
+        }
+
+        return NoContent();
+    }
+
     [HttpGet("api/contas-fixas")]
     public async Task<ActionResult<IEnumerable<ContaFixaResponse>>> Listar([FromQuery] bool? ativa)
     {

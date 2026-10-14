@@ -1,12 +1,27 @@
-import { apiClient } from "@/shared/api/client"
-import type {
-  CriarLancamentoRequest,
-  CriarTransferenciaRequest,
-  EditarLancamentoRequest,
-  FluxoCaixaItem,
-  LancamentoResponse,
-  TransferenciaResponse,
+import { ApiError, apiClient } from "@/shared/api/client"
+import {
+  LancamentoNaoAvulsoError,
+  type CancelarLancamentoParceladoResponse,
+  type CriarLancamentoParceladoRequest,
+  type CriarLancamentoRequest,
+  type CriarTransferenciaRequest,
+  type EditarLancamentoRequest,
+  type FluxoCaixaItem,
+  type LancamentoParceladoResponse,
+  type LancamentoResponse,
+  type OrigemVinculo,
+  type TransferenciaResponse,
 } from "@/features/lancamentos/types"
+
+// 409 de PUT/DELETE de lancamento nao avulso (item 18) traz
+// { erro, origemVinculo }; vira erro tipado, demais erros sobem intactos.
+function converterConflitoNaoAvulso(erro: unknown): unknown {
+  if (erro instanceof ApiError && erro.status === 409) {
+    const origem = (erro.body as { origemVinculo?: OrigemVinculo } | null)?.origemVinculo
+    if (origem) return new LancamentoNaoAvulsoError(erro.message, origem)
+  }
+  return erro
+}
 
 // Uma funcao por endpoint real de LancamentosController.cs
 // (rota base: /api/contas/{contaId}/lancamentos).
@@ -23,10 +38,11 @@ export function editarLancamento(
   lancamentoId: string,
   request: EditarLancamentoRequest,
 ): Promise<LancamentoResponse> {
-  return apiClient.put<LancamentoResponse>(
-    `/api/contas/${contaId}/lancamentos/${lancamentoId}`,
-    request,
-  )
+  return apiClient
+    .put<LancamentoResponse>(`/api/contas/${contaId}/lancamentos/${lancamentoId}`, request)
+    .catch((erro: unknown) => {
+      throw converterConflitoNaoAvulso(erro)
+    })
 }
 
 // Conciliacao manual (regra-de-negocio.md item 5, "Conta de pagamento
@@ -37,7 +53,33 @@ export function marcarLancamentoComoPago(contaId: string, lancamentoId: string):
 }
 
 export function removerLancamento(contaId: string, lancamentoId: string): Promise<void> {
-  return apiClient.delete<void>(`/api/contas/${contaId}/lancamentos/${lancamentoId}`)
+  return apiClient
+    .delete<void>(`/api/contas/${contaId}/lancamentos/${lancamentoId}`)
+    .catch((erro: unknown) => {
+      throw converterConflitoNaoAvulso(erro)
+    })
+}
+
+// Item 17: POST /api/contas/{contaId}/lancamentos-parcelados (201).
+export function criarLancamentoParcelado(
+  contaId: string,
+  request: CriarLancamentoParceladoRequest,
+): Promise<LancamentoParceladoResponse> {
+  return apiClient.post<LancamentoParceladoResponse>(
+    `/api/contas/${contaId}/lancamentos-parcelados`,
+    request,
+  )
+}
+
+// DELETE /api/contas/{contaId}/lancamentos-parcelados/{compraParceladaId}:
+// devolve quantas parcelas foram excluidas e quantas mantidas.
+export function cancelarLancamentoParcelado(
+  contaId: string,
+  compraParceladaId: string,
+): Promise<CancelarLancamentoParceladoResponse> {
+  return apiClient.delete<CancelarLancamentoParceladoResponse>(
+    `/api/contas/${contaId}/lancamentos-parcelados/${compraParceladaId}`,
+  )
 }
 
 // NAO REMOVIDO nesta tarefa apesar de LancamentosPage.tsx ter migrado para

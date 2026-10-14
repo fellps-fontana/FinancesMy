@@ -1,8 +1,9 @@
 import { useSearchParams } from "react-router-dom"
 import { useGastoVsLimiteTodasCategorias } from "@/features/limite-gasto/hooks/useGastoVsLimiteTodasCategorias"
-import { ItemComparativoLimite } from "@/features/limite-gasto/components/ItemComparativoLimite"
+import { GRADE_COLUNAS_LIMITE, ItemComparativoLimite } from "@/features/limite-gasto/components/ItemComparativoLimite"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
-import { Card, CardContent } from "@/shared/ui/card"
+import { PageHeader } from "@/shared/ui/page-header"
+import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 
 // Mes calendario corrente (regra-de-negocio.md item 9) - sem seletor de
@@ -69,15 +70,15 @@ export function ComparativoLimiteGastoPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-svh max-w-2xl flex-col gap-6 px-4 py-8">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-[19px] font-medium text-text-primary">Limite de gasto por categoria</h1>
-        <p className="text-sm text-text-muted">
+    <div className="flex flex-col gap-4 md:gap-5">
+      <div className="flex flex-col gap-1">
+        <PageHeader title="Limite de gasto por categoria" />
+        <p className="text-[13px] text-text-muted">
           Quanto voce ja gastou neste mes em cada categoria com limite cadastrado, comparado ao
           orcamento definido. So alerta visual - nenhum lancamento e bloqueado por estourar o
           limite.
         </p>
-      </header>
+      </div>
 
       {categoriaIdFiltro && (
         <div className="flex items-center justify-between gap-3 rounded-[10px] border border-accent-deep bg-accent-deep/20 px-3 py-2">
@@ -99,19 +100,29 @@ export function ComparativoLimiteGastoPage() {
         <p className="text-sm text-text-muted">Carregando...</p>
       ) : itens && itens.length > 0 ? (
         itensExibidos && itensExibidos.length > 0 ? (
-          <Card>
-            <CardContent>
-              <ul className="flex flex-col gap-1">
-                {itensExibidos.map((item) => (
-                  <ItemComparativoLimite
-                    key={item.categoriaId}
-                    item={item}
-                    destacado={item.categoriaId === categoriaIdFiltro}
-                  />
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+          <div className="md:overflow-hidden md:rounded-2xl md:border-[0.5px] md:border-border md:bg-card">
+            <div
+              className={cn(
+                "hidden gap-4 border-b-[0.5px] border-border px-[22px] py-3.5 text-xs text-text-muted md:grid",
+                GRADE_COLUNAS_LIMITE,
+              )}
+            >
+              <span>Categoria</span>
+              <span className="text-right">Gasto</span>
+              <span className="text-right">Limite</span>
+              <span>Uso</span>
+              <span className="text-right">%</span>
+            </div>
+            <ul className="flex flex-col gap-2.5 md:block">
+              {itensExibidos.map((item) => (
+                <ItemComparativoLimite
+                  key={item.categoriaId}
+                  item={item}
+                  destacado={item.categoriaId === categoriaIdFiltro}
+                />
+              ))}
+            </ul>
+          </div>
         ) : (
           <p className="text-sm text-text-muted">
             Essa categoria nao tem limite cadastrado neste mes.

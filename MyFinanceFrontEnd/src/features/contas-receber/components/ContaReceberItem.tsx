@@ -1,191 +1,220 @@
-import { useState } from "react"
-import { Card, CardContent } from "@/shared/ui/card"
-import { Button } from "@/shared/ui/button"
-import { Modal } from "@/shared/ui/Modal"
+import { Pencil, Receipt, Trash2, UserRound } from "lucide-react"
+import { formatarMoeda } from "@/shared/lib/formatarMoeda"
 import { cn } from "@/shared/lib/utils"
-import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
+import { Badge, type BadgeVariant } from "@/shared/ui/badge"
+import { IconTile } from "@/shared/ui/icon-tile"
+import { descreverVencimento } from "@/features/contas-receber/lib/resumirContasReceber"
 import { formatarData } from "@/features/cartao/lib/formatarData"
-import { FormRegistrarRecebimento } from "@/features/contas-receber/FormRegistrarRecebimento"
-import { useExcluirContaReceber } from "@/features/contas-receber/hooks/useExcluirContaReceber"
-import type { ContaReceberResponse } from "@/features/contas-receber/types"
+import {
+  STATUS_CONTA_RECEBER,
+  type ContaReceberResponse,
+  type StatusContaReceber,
+} from "@/features/contas-receber/types"
 
+// Grade unica da tabela desktop (mockup s_receber): descricao, vencimento,
+// progresso, valor total, status, Receber, acoes. Cabecalho e linhas dividem
+// a mesma string para as colunas nunca desalinharem.
+const GRADE_DESKTOP = "md:grid md:grid-cols-[2fr_1fr_1.4fr_1fr_0.8fr_0.8fr_64px] md:items-center"
 
-type StatusContaReceber = "PENDENTE" | "PARCIAL" | "RECEBIDO"
-type TipoContaReceber = "RECEBIVEL" | "EMPRESTIMO"
-
-// Mapeamento de cor por status (regra-de-negocio.md item 13, formula do
-// saldo_pendente/estados). Segue o mesmo espirito de StatusFaturaBadge
-// (identidade-visual.md: "pago -> positivo; pendente -> alerta"): PENDENTE e
-// PARCIAL ainda aguardam recebimento (alerta), RECEBIDO e o estado final
-// positivo. PARCIAL nao tem cor semantica reservada propria no documento de
-// identidade - usamos --primary (o roxo real de acao/destaque do tema; o
-// token shadcn "accent" NAO e o roxo neste projeto, e sim uma superficie
-// neutra escura, ver src/index.css) para marcar "em andamento" sem inventar
-// cor nova.
-const CONFIG_POR_STATUS: Record<StatusContaReceber, { label: string; className: string }> = {
-  PENDENTE: { label: "Pendente", className: "bg-alerta/15 text-alerta" },
-  PARCIAL: { label: "Parcial", className: "bg-primary/15 text-primary" },
-  RECEBIDO: { label: "Recebido", className: "bg-positivo/15 text-positivo" },
+// Cor de status carrega o dominio (item 13): PENDENTE e PARCIAL ainda aguardam
+// recebimento (alerta/accent), RECEBIDO e final (positivo). "Atrasado" nao e
+// status do backend: e o vencimento de uma conta ainda em aberto, derivado da
+// data prevista e exibido como estado proprio (coral).
+const BADGE_POR_STATUS: Record<StatusContaReceber, { rotulo: string; variante: BadgeVariant }> = {
+  [STATUS_CONTA_RECEBER.PENDENTE]: { rotulo: "Pendente", variante: "pendente" },
+  [STATUS_CONTA_RECEBER.PARCIAL]: { rotulo: "Parcial", variante: "sugerido" },
+  [STATUS_CONTA_RECEBER.RECEBIDO]: { rotulo: "Recebido", variante: "pago" },
 }
 
-// Badge de tipo e neutro (sem semantica de estado) - mesmo tratamento dado a
-// origem "manual" em identidade-visual.md ("manual -> neutro: text-muted
-// sobre bg-surface-alt").
-const LABEL_POR_TIPO: Record<TipoContaReceber, string> = {
-  RECEBIVEL: "Recebivel",
-  EMPRESTIMO: "Emprestimo",
-}
+const BADGES_POR_STATUS_API: Record<string, { rotulo: string; variante: BadgeVariant } | undefined> = BADGE_POR_STATUS
 
 type ContaReceberItemProps = {
   contaReceber: ContaReceberResponse
+  onReceber: (conta: ContaReceberResponse) => void
+  onEditar: (conta: ContaReceberResponse) => void
+  onExcluir: (conta: ContaReceberResponse) => void
+  /** Mobile: toque no card abre a folha de acoes. */
+  onAbrirAcoes: (conta: ContaReceberResponse) => void
+  /** Preenchida quando Editar esta bloqueado (ocorrencia de recebivel recorrente). */
+  dicaEdicaoBloqueada: string | null
 }
 
-// Componente de apresentacao que tambem guarda o toggle de acao "Registrar
-// recebimento" (mesmo espirito de ContaInvestimentoItem/editandoSaldo, ver
-// features/investimentos). saldoPendente/status continuam vindo prontos do
-// backend (regra-de-negocio.md item 13) e nenhum calculo de saldo ou
-// transicao de status mora aqui - o formulario (FormRegistrarRecebimento) e
-// quem guarda o estado dos campos e aciona a mutation; este componente so
-// decide QUANDO exibi-lo.
-export function ContaReceberItem({ contaReceber }: ContaReceberItemProps) {
-  const [registrandoRecebimento, setRegistrandoRecebimento] = useState(false)
-  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
-  const { mutate: excluir, isPending: excluindo } = useExcluirContaReceber()
+type BarraRecebidoProps = {
+  valorTotal: number
+  saldoPendente: number
+  className?: string
+}
 
-  const status = contaReceber.status as StatusContaReceber
-  const statusConfig = CONFIG_POR_STATUS[status]
-
-  const tipo = contaReceber.tipo as TipoContaReceber
-  const tipoLabel = LABEL_POR_TIPO[tipo] ?? contaReceber.tipo
-
-  const mostrarPessoa = tipo === "EMPRESTIMO" && Boolean(contaReceber.pessoa)
-  // RECEBIDO e o estado final (saldo_pendente == 0, item 13): usado tanto pra
-  // cor do saldo pendente (positivo quando quitado) quanto pra decidir se a
-  // acao "Registrar recebimento" ainda faz sentido - conta ja quitada nao
-  // recebe mais nenhum lancamento novo.
-  const saldoPendenteEmAberto = status !== "RECEBIDO"
+// Barra de progresso do recebimento. valorTotal e saldoPendente chegam do
+// backend (item 13); "recebido" e a mesma subtracao que define o saldo, so
+// invertida para exibir "R$ 300 de R$ 900". O percentual e clamp visual.
+export function BarraRecebido({ valorTotal, saldoPendente, className }: BarraRecebidoProps) {
+  const valorRecebido = valorTotal - saldoPendente
+  const percentual = valorTotal > 0 ? Math.min(100, Math.max(0, (valorRecebido / valorTotal) * 100)) : 0
 
   return (
-    <Card size="sm">
-      <CardContent className="flex flex-col gap-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-col gap-1">
-            <span className="text-[19px] font-medium text-text-primary">{contaReceber.descricao}</span>
-            <span className="inline-flex w-fit items-center rounded-[5px] bg-muted px-2 py-0.5 text-[12px] font-medium text-text-muted">
-              {tipoLabel}
-            </span>
-          </div>
+    <div
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(percentual)}
+      aria-label="Progresso do recebimento"
+      className={cn("h-[5px] overflow-hidden rounded-[5px] bg-muted", className)}
+    >
+      <div className="h-full bg-positivo" style={{ width: `${percentual}%` }} />
+    </div>
+  )
+}
 
-          {statusConfig && (
-            <span
-              className={cn(
-                "inline-flex items-center rounded-[5px] px-2 py-0.5 text-[12px] font-medium",
-                statusConfig.className,
-              )}
-            >
-              {statusConfig.label}
-            </span>
-          )}
-        </div>
+export function CabecalhoTabelaContasReceber() {
+  return (
+    <div
+      className={cn(
+        "hidden border-b-[0.5px] border-border px-[22px] py-3.5 text-xs text-text-muted",
+        GRADE_DESKTOP,
+      )}
+    >
+      <span>Descricao</span>
+      <span>Vencimento</span>
+      <span>Progresso</span>
+      <span className="text-right">Valor total</span>
+      <span className="text-right">Status</span>
+      <span />
+      <span />
+    </div>
+  )
+}
 
-        {mostrarPessoa && (
-          <span className="text-[13px] text-text-muted">Emprestado a {contaReceber.pessoa}</span>
-        )}
+// Apresentacao pura (regra-de-negocio.md item 13): valorTotal, saldoPendente e
+// status vem prontos do backend; aqui so se exibe. Desktop: linha de tabela com
+// "Receber" em texto e icones Editar/Excluir; mobile: card inteiro e alvo de
+// toque que abre a folha de acoes.
+export function ContaReceberItem({
+  contaReceber,
+  onReceber,
+  onEditar,
+  onExcluir,
+  onAbrirAcoes,
+  dicaEdicaoBloqueada,
+}: ContaReceberItemProps) {
+  const emAberto = contaReceber.status !== STATUS_CONTA_RECEBER.RECEBIDO
+  const vencimento = descreverVencimento(contaReceber, formatarData)
+  const badge: { rotulo: string; variante: BadgeVariant } = vencimento.atrasada
+    ? { rotulo: "Atrasado", variante: "atrasado" }
+    : (BADGES_POR_STATUS_API[contaReceber.status] ?? { rotulo: contaReceber.status, variante: "manual" })
+  const emprestimo = contaReceber.tipo === "EMPRESTIMO"
+  const Icone = emprestimo ? UserRound : Receipt
+  const valorRecebido = contaReceber.valorTotal - contaReceber.saldoPendente
+  const textoProgresso = `${formatarMoeda(valorRecebido)} de ${formatarMoeda(contaReceber.valorTotal)}`
+  const edicaoBloqueada = dicaEdicaoBloqueada !== null
 
-        <div className="flex items-center justify-between text-[13px] text-text-muted">
-          <span>
-            Valor total{" "}
-            <span className="font-medium text-text-body">{formatarMoeda(contaReceber.valorTotal)}</span>
-          </span>
-          <span>
-            Saldo pendente{" "}
-            <span
-              className={cn(
-                "font-medium",
-                saldoPendenteEmAberto ? "text-alerta" : "text-positivo",
-              )}
-            >
-              {formatarMoeda(contaReceber.saldoPendente)}
-            </span>
-          </span>
-        </div>
+  return (
+    <div
+      className={cn(
+        "relative rounded-[14px] border-[0.5px] border-border bg-card p-3.5",
+        "md:rounded-none md:border-0 md:border-b-[0.5px] md:bg-transparent md:px-[22px] md:py-3.5 md:last:border-b-0",
+        GRADE_DESKTOP,
+      )}
+    >
+      <button
+        type="button"
+        aria-label={`Acoes de ${contaReceber.descricao}`}
+        onClick={() => onAbrirAcoes(contaReceber)}
+        className="absolute inset-0 rounded-[14px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:hidden"
+      />
 
-        {contaReceber.dataPrevista && (
-          <span className="text-[12px] text-text-faint">
-            Previsto para {formatarData(contaReceber.dataPrevista)}
-          </span>
-        )}
-
-        {confirmandoExclusao ? (
-          <div className="flex flex-wrap items-center justify-end gap-2 pt-1 text-[12px] text-text-muted">
-            <span className="text-alerta">
-              {contaReceber.recebivelRecorrenteId
-                ? "Excluir esta e as próximas parcelas pendentes?"
-                : "Excluir esta conta a receber?"}
-            </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={excluindo}
-              onClick={() => setConfirmandoExclusao(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              disabled={excluindo}
-              onClick={() => {
-                excluir(contaReceber.id, {
-                  onSuccess: () => setConfirmandoExclusao(false),
-                })
-              }}
-            >
-              {excluindo ? "Excluindo..." : "Sim, excluir"}
-            </Button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-text-muted hover:text-alerta"
-              onClick={() => setConfirmandoExclusao(true)}
-            >
-              Excluir
-            </Button>
-
-            {saldoPendenteEmAberto && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setRegistrandoRecebimento(true)}
-              >
-                Registrar recebimento
-              </Button>
+      <div className="flex items-center gap-3">
+        <IconTile>
+          <Icone strokeWidth={1.6} aria-hidden="true" />
+        </IconTile>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm text-text-body">{contaReceber.descricao}</div>
+          {emprestimo && contaReceber.pessoa ? (
+            <div className="truncate text-xs text-text-faint max-md:hidden">
+              Emprestado a {contaReceber.pessoa}
+            </div>
+          ) : null}
+          <div
+            className={cn(
+              "mt-0.5 text-xs md:hidden",
+              vencimento.atrasada ? "text-negativo" : "text-text-faint",
             )}
+          >
+            {vencimento.rotulo}
           </div>
+        </div>
+        <div className="shrink-0 text-right md:hidden">
+          <div className="text-sm text-text-primary">{formatarMoeda(contaReceber.valorTotal)}</div>
+          <Badge variant={badge.variante} className="mt-1">
+            {badge.rotulo}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="mt-2.5 md:hidden">
+        <div className="mb-1.5 flex justify-between text-xs text-text-muted">
+          <span>Recebido</span>
+          <span>{textoProgresso}</span>
+        </div>
+        <BarraRecebido valorTotal={contaReceber.valorTotal} saldoPendente={contaReceber.saldoPendente} />
+      </div>
+
+      <span
+        className={cn(
+          "hidden text-[13px] md:inline",
+          vencimento.atrasada ? "text-negativo" : "text-text-muted",
         )}
-      </CardContent>
-
-
-      <Modal
-        open={registrandoRecebimento}
-        onClose={() => setRegistrandoRecebimento(false)}
-        title="Registrar recebimento"
       >
-        <FormRegistrarRecebimento
-          contaReceberId={contaReceber.id}
-          valorTotal={contaReceber.valorTotal}
-          saldoPendente={contaReceber.saldoPendente}
-          onRegistrado={() => setRegistrandoRecebimento(false)}
-          onCancelar={() => setRegistrandoRecebimento(false)}
-        />
-      </Modal>
-    </Card>
+        {vencimento.rotulo}
+      </span>
+
+      <div className="hidden pr-4 md:block">
+        <BarraRecebido valorTotal={contaReceber.valorTotal} saldoPendente={contaReceber.saldoPendente} />
+        <div className="mt-1.5 text-xs text-text-muted">{textoProgresso}</div>
+      </div>
+
+      <span className="hidden text-right text-sm text-text-primary md:inline">
+        {formatarMoeda(contaReceber.valorTotal)}
+      </span>
+
+      <div className="hidden justify-end md:flex">
+        <Badge variant={badge.variante}>{badge.rotulo}</Badge>
+      </div>
+
+      <div className="hidden justify-end md:flex">
+        {emAberto ? (
+          <button
+            type="button"
+            onClick={() => onReceber(contaReceber)}
+            className="rounded-md px-1 text-[13px] text-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            Receber
+          </button>
+        ) : null}
+      </div>
+
+      <div className="hidden items-center justify-end gap-2 md:flex">
+        <span title={dicaEdicaoBloqueada ?? "Editar"}>
+          <button
+            type="button"
+            aria-label={`Editar ${contaReceber.descricao}`}
+            disabled={edicaoBloqueada}
+            onClick={() => onEditar(contaReceber)}
+            className="flex size-7 items-center justify-center rounded-[7px] text-text-muted outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+          >
+            <Pencil className="size-4" aria-hidden="true" />
+          </button>
+        </span>
+        <button
+          type="button"
+          title="Excluir"
+          aria-label={`Excluir ${contaReceber.descricao}`}
+          onClick={() => onExcluir(contaReceber)}
+          className="flex size-7 items-center justify-center rounded-[7px] text-negativo outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <Trash2 className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
   )
 }

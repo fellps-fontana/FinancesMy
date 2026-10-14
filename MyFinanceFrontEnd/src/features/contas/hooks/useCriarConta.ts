@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { criarConta } from "@/features/contas/api"
 import { contasKeys } from "@/features/contas/query-keys"
+import { investimentosKeys } from "@/features/investimentos/query-keys"
 import type { CriarContaRequest } from "@/features/contas/types"
 
 // Estado de servidor da mutation "Nova conta" (clean-code.md "Organizacao
@@ -14,6 +15,7 @@ export function useCriarConta() {
     mutationFn: (request: CriarContaRequest) => criarConta(request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: contasKeys.lista() })
+      queryClient.invalidateQueries({ queryKey: investimentosKeys.total() })
     },
   })
 }

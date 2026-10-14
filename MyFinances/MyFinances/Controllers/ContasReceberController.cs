@@ -121,6 +121,48 @@ public class ContasReceberController : ControllerBase
         }
     }
 
+    [HttpPut("api/contas-receber/{id}")]
+    public async Task<ActionResult<ContaReceberResponse>> Editar(Guid id, EditarContaReceberRequest request)
+    {
+        try
+        {
+            var contaReceber = await _contaReceberService.EditarAsync(
+                id,
+                request.Descricao,
+                request.Pessoa,
+                request.DataPrevista,
+                request.ValorTotal
+            );
+
+            var response = ContaReceberResponse.FromContaReceber(contaReceber);
+            return Ok(response);
+        }
+        catch (ContaReceberNaoEncontradaException ex)
+        {
+            return NotFound(new { erro = ex.Message });
+        }
+        catch (ValorTotalNaoEditavelException ex)
+        {
+            return Conflict(new { erro = ex.Message });
+        }
+        catch (ContaReceberRecorrenteNaoEditavelException ex)
+        {
+            return Conflict(new { erro = ex.Message });
+        }
+        catch (PessoaObrigatoriaParaEmprestimoException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+        catch (CampoObrigatorioException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+        catch (ValorInvalidoException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+    }
+
     [HttpGet("api/contas-receber/total-esperado-mes")]
     public async Task<ActionResult<TotalAReceberEsperadoResponse>> CalcularTotalAReceberEsperadoNoMes(int ano, int mes)
     {

@@ -1,10 +1,15 @@
 import type { FormEvent } from "react"
-import { X } from "lucide-react"
 import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
-import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
+import {
+  CLASSE_BOTAO_CANCELAR,
+  CLASSE_BOTAO_PRIMARIO,
+  CLASSE_CAMPO,
+  FormModal,
+} from "@/shared/ui/FormModal"
+import { formatarMoeda } from "@/shared/lib/formatarMoeda"
 import type { ContaResponse } from "@/features/cartao/types"
 
 type PagarFaturaModalProps = {
@@ -25,7 +30,7 @@ type PagarFaturaModalProps = {
 
 /**
  * Formulario de pagamento de fatura (regra de negocio item 12: o pagamento
- * pode ser ANTECIPADO - fatura ainda ABERTA - e PARCIAL, varios pagamentos
+ * pode ser ANTECIPADO - fatura ABERTA ou FUTURA - e PARCIAL, varios pagamentos
  * ate quitar o saldo pendente). O saldo pendente fica visivel no topo e o
  * campo "Valor a pagar" vem pre-preenchido com ele mas continua editavel
  * para um valor MENOR - e essa a UX que deixa claro que pagamento parcial e
@@ -51,34 +56,10 @@ export function PagarFaturaModal({
   onFechar,
 }: PagarFaturaModalProps) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 px-4"
-      role="presentation"
-      onClick={onFechar}
-    >
-      <form
-        role="dialog"
-        aria-modal="true"
-        aria-label="Pagar fatura"
-        onClick={(event) => event.stopPropagation()}
-        onSubmit={onSubmit}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-border bg-card px-5 py-5"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-[19px] font-medium text-text-primary">Pagar fatura</h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={onFechar}
-            aria-label="Fechar formulario"
-          >
-            <X className="size-4" aria-hidden="true" />
-          </Button>
-        </div>
-
-        <div className="flex flex-col gap-1 rounded-lg bg-accent px-3 py-2">
-          <span className="text-[12px] text-text-muted">Saldo pendente</span>
+    <FormModal title="Pagar fatura" onClose={onFechar}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1 rounded-[10px] border-[0.5px] border-border bg-background px-3.5 py-2.5">
+          <span className="text-[11px] text-text-faint">Saldo pendente</span>
           <span className="text-[19px] font-medium text-alerta">{formatarMoeda(valorPendente)}</span>
         </div>
 
@@ -100,7 +81,7 @@ export function PagarFaturaModal({
               required
               value={contaOrigemId}
               onChange={(event) => onContaOrigemIdChange(event.target.value)}
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-text-body outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="w-full rounded-[10px] border border-border bg-accent px-3.5 py-3 text-sm text-text-body outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               <option value="" disabled>
                 Selecione a conta
@@ -120,6 +101,7 @@ export function PagarFaturaModal({
             id="dataPagamento"
             type="date"
             required
+            className={CLASSE_CAMPO}
             value={data}
             onChange={(event) => onDataChange(event.target.value)}
           />
@@ -135,6 +117,7 @@ export function PagarFaturaModal({
             max={valorPendente}
             inputMode="decimal"
             required
+            className={CLASSE_CAMPO}
             value={valor}
             onChange={(event) => onValorChange(event.target.value)}
           />
@@ -144,10 +127,19 @@ export function PagarFaturaModal({
           </span>
         </div>
 
-        <Button type="submit" disabled={isSubmitting || contasBanco.length === 0}>
-          {isSubmitting ? "Pagando..." : "Pagar fatura"}
-        </Button>
+        <div className="mt-1 flex justify-end gap-2.5">
+          <Button type="button" variant="outline" onClick={onFechar} className={CLASSE_BOTAO_CANCELAR}>
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting || contasBanco.length === 0}
+            className={CLASSE_BOTAO_PRIMARIO}
+          >
+            {isSubmitting ? "Pagando..." : "Pagar fatura"}
+          </Button>
+        </div>
       </form>
-    </div>
+    </FormModal>
   )
 }

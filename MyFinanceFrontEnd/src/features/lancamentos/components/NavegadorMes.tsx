@@ -7,14 +7,12 @@ type NavegadorMesProps = {
   onProximoMes: () => void
 }
 
-// Componente de apresentacao (burro): so recebe o mes referencia ja pronto
-// ("yyyy-MM") e dispara os callbacks de navegacao - nenhuma logica de soma de
-// mes mora aqui (isso e `somarMeses`, lib/filtrarPeriodo.ts). Rotulo
-// formatado por `formatarRotuloMes` (mesma lib), nao calculado inline no JSX
-// (clean-code.md, "Organizacao (React)": calculo nao vive no componente).
+// Apresentacao pura: recebe o mes ("yyyy-MM") e dispara os callbacks. Mobile:
+// barra cheia com setas nas pontas (mockup mobile); desktop: pilula compacta
+// do mockup (9px, 13px) com as mesmas setas.
 export function NavegadorMes({ mesReferencia, onMesAnterior, onProximoMes }: NavegadorMesProps) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 md:w-fit md:px-3.5 md:py-2.5">
+    <div className="flex items-center justify-between gap-3 rounded-xl border-[0.5px] border-border bg-card px-4 py-3 md:w-fit md:rounded-[9px] md:px-3.5 md:py-2">
       <button
         type="button"
         aria-label="Mes anterior"
@@ -23,7 +21,9 @@ export function NavegadorMes({ mesReferencia, onMesAnterior, onProximoMes }: Nav
       >
         <ChevronLeft className="size-4" strokeWidth={1.8} />
       </button>
-      <span className="text-[13px] text-text-body">{formatarRotuloMes(mesReferencia)}</span>
+      <span className="text-sm text-text-body md:min-w-24 md:text-center md:text-[13px]">
+        {formatarRotuloMes(mesReferencia)}
+      </span>
       <button
         type="button"
         aria-label="Proximo mes"

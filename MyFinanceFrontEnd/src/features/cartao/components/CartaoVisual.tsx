@@ -24,7 +24,7 @@ export function CartaoVisual({ nome, selecionado = false, onSelecionar }: Cartao
   return (
     <Card
       className={cn(
-        "flex w-56 shrink-0 flex-col gap-6 bg-accent-deep px-5 py-5 text-accent-soft ring-0 transition-opacity",
+        "flex w-64 max-w-full shrink-0 flex-col gap-6 bg-accent-deep px-5 py-5 text-accent-soft ring-0 transition-opacity",
         onSelecionar && "cursor-pointer",
         onSelecionar && (selecionado ? "opacity-100 ring-2 ring-primary" : "opacity-60 hover:opacity-90"),
       )}
@@ -47,7 +47,7 @@ export function CartaoVisual({ nome, selecionado = false, onSelecionar }: Cartao
         <span className="text-[13px] font-medium">{nome}</span>
         <CreditCard className="size-5" strokeWidth={1.6} aria-hidden="true" />
       </div>
-      <span className="text-sm tracking-[0.2em] text-text-primary">•••• •••• •••• ••••</span>
+      <span className="text-sm tracking-[0.2em] whitespace-nowrap text-text-primary">•••• •••• •••• ••••</span>
     </Card>
   )
 }
@@ -67,10 +67,10 @@ export function CartaoVisualNovo({ onClick }: CartaoVisualNovoProps) {
     <button
       type="button"
       onClick={onClick}
-      className="flex w-56 shrink-0 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/40 px-5 py-5 text-text-muted transition-colors hover:bg-card/70 hover:text-text-body"
+      className="flex w-40 max-w-full shrink-0 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/40 px-5 py-5 text-text-muted transition-colors hover:bg-card/70 hover:text-text-body"
     >
       <Plus className="size-5" strokeWidth={1.6} aria-hidden="true" />
-      <span className="text-[13px] font-medium">Novo cartao</span>
+      <span className="text-[13px] font-medium whitespace-nowrap">Novo cartao</span>
     </button>
   )
 }

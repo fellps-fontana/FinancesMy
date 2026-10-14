@@ -50,6 +50,7 @@ export function useLancarCompra() {
     onSuccess: (_resultado, variaveis) => {
       queryClient.invalidateQueries({ queryKey: cartaoKeys.saldo(variaveis.contaId) })
       queryClient.invalidateQueries({ queryKey: cartaoKeys.faturas(variaveis.contaId) })
+      queryClient.invalidateQueries({ queryKey: cartaoKeys.comprasDaConta(variaveis.contaId) })
     },
   })
 }

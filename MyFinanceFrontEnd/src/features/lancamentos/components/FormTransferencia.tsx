@@ -4,8 +4,9 @@ import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
-import { cn } from "@/shared/lib/utils"
-import { dataDeHoje } from "@/features/cartao/lib/formatarData"
+import { SelectField } from "@/shared/ui/select-field"
+import { dataDeHoje } from "@/shared/lib/datas"
+import { CLASSE_CAMPO } from "@/shared/ui/FormModal"
 // Nao ha hook de "listar contas" combinado dentro de features/lancamentos
 // (mesma situacao ja registrada em FormContaFixa.tsx). useContasParaSelecao
 // ja resolve exatamente "contas MANUAL disponiveis pra origem/destino,
@@ -56,6 +57,7 @@ function validarFormulario(
 
 type FormTransferenciaProps = {
   onSalvar?: () => void
+  onCancelar?: () => void
 }
 
 // Transferencia entre contas de mesma titularidade (regra-de-negocio.md item
@@ -63,7 +65,7 @@ type FormTransferenciaProps = {
 // origem, entrada no destino, ambas fora do calculo de gasto/receita) e
 // resolvida inteiramente pelo backend a partir de contaOrigemId/
 // contaDestinoId. O front so coleta os dados da movimentacao.
-export function FormTransferencia({ onSalvar }: FormTransferenciaProps) {
+export function FormTransferencia({ onSalvar, onCancelar }: FormTransferenciaProps) {
   const [contaOrigemId, setContaOrigemId] = useState("")
   const [contaDestinoId, setContaDestinoId] = useState("")
   const [valor, setValor] = useState("")
@@ -128,64 +130,33 @@ export function FormTransferencia({ onSalvar }: FormTransferenciaProps) {
     )
   }
 
+  const opcoesConta = (contas ?? []).map((conta) => ({ value: conta.id, label: conta.nome }))
+
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-4 rounded-xl border border-border bg-card px-4 py-4"
-    >
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {erroFormulario && (
         <Alert variant="destructive">
           <AlertDescription>{erroFormulario}</AlertDescription>
         </Alert>
       )}
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="contaOrigemTransferencia">Conta de origem</Label>
-        <select
-          id="contaOrigemTransferencia"
-          name="contaOrigemId"
-          required
-          disabled={carregandoContas}
-          value={contaOrigemId}
-          onChange={(event) => setContaOrigemId(event.target.value)}
-          className={cn(
-            "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
-          )}
-        >
-          <option value="" disabled>
-            {carregandoContas ? "Carregando contas..." : "Selecione a conta de origem"}
-          </option>
-          {contas?.map((conta) => (
-            <option key={conta.id} value={conta.id}>
-              {conta.nome}
-            </option>
-          ))}
-        </select>
-      </div>
+      <SelectField
+        label="Conta de origem"
+        options={opcoesConta}
+        value={contaOrigemId || null}
+        onChange={setContaOrigemId}
+        disabled={carregandoContas || isSubmitting}
+        placeholder={carregandoContas ? "Carregando contas..." : "Selecione a conta de origem"}
+      />
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="contaDestinoTransferencia">Conta de destino</Label>
-        <select
-          id="contaDestinoTransferencia"
-          name="contaDestinoId"
-          required
-          disabled={carregandoContas}
-          value={contaDestinoId}
-          onChange={(event) => setContaDestinoId(event.target.value)}
-          className={cn(
-            "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
-          )}
-        >
-          <option value="" disabled>
-            {carregandoContas ? "Carregando contas..." : "Selecione a conta de destino"}
-          </option>
-          {contas?.map((conta) => (
-            <option key={conta.id} value={conta.id}>
-              {conta.nome}
-            </option>
-          ))}
-        </select>
-      </div>
+      <SelectField
+        label="Conta de destino"
+        options={opcoesConta}
+        value={contaDestinoId || null}
+        onChange={setContaDestinoId}
+        disabled={carregandoContas || isSubmitting}
+        placeholder={carregandoContas ? "Carregando contas..." : "Selecione a conta de destino"}
+      />
 
       {erroContas && (
         <span className="text-[12px] text-alerta">
@@ -193,8 +164,8 @@ export function FormTransferencia({ onSalvar }: FormTransferenciaProps) {
         </span>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <Label htmlFor="valorTransferencia">Valor</Label>
           <Input
             id="valorTransferencia"
@@ -206,10 +177,11 @@ export function FormTransferencia({ onSalvar }: FormTransferenciaProps) {
             required
             value={valor}
             onChange={(event) => setValor(event.target.value)}
+            className={CLASSE_CAMPO}
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <Label htmlFor="dataTransferencia">Data</Label>
           <Input
             id="dataTransferencia"
@@ -218,6 +190,7 @@ export function FormTransferencia({ onSalvar }: FormTransferenciaProps) {
             required
             value={data}
             onChange={(event) => setData(event.target.value)}
+            className={CLASSE_CAMPO}
           />
         </div>
       </div>
@@ -230,15 +203,16 @@ export function FormTransferencia({ onSalvar }: FormTransferenciaProps) {
           placeholder="Ex: Reserva para viagem"
           value={descricao}
           onChange={(event) => setDescricao(event.target.value)}
+          className={CLASSE_CAMPO}
         />
       </div>
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={limparFormulario} disabled={isSubmitting}>
-          Limpar
+      <div className="mt-1 flex justify-end gap-2.5">
+        <Button type="button" variant="outline" size="lg" onClick={onCancelar} disabled={isSubmitting}>
+          Cancelar
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando..." : "Salvar"}
+        <Button type="submit" size="lg" disabled={isSubmitting}>
+          {isSubmitting ? "Salvando..." : "Salvar transferencia"}
         </Button>
       </div>
     </form>

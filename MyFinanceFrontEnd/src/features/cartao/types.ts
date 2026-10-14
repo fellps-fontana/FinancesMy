@@ -9,13 +9,15 @@
 // (Program.cs) usando o NOME do membro C# (ex: "Cartao", "Manual") - NAO o
 // ToStorageValue() customizado ("CARTAO", "MANUAL"), que so e usado onde o
 // backend converte manualmente pra string antes de montar o DTO (StatusFatura
-// em FaturaResponse, que sai como "ABERTA"/"FECHADA"/"PAGA").
+// em FaturaResponse, que sai como "ABERTA"/"FECHADA"/"FUTURA"/"PAGA").
 
 export type TipoConta = "Banco" | "Cartao" | "Investimento"
 export type OrigemConta = "Manual" | "OpenFinance"
-export type StatusFatura = "ABERTA" | "FECHADA" | "PAGA"
-export type TipoLancamento = "Debit" | "Credit"
-export type StatusLancamento = "Pendente" | "Sugerido" | "Pago"
+// FUTURA: ciclo ainda nao iniciado (item 12, ciclo e status da fatura). Aceita
+// pagamento antecipado, mas nao e a fatura "atual" nem entra em contas a pagar.
+export type StatusFatura = "ABERTA" | "FECHADA" | "FUTURA" | "PAGA"
+export type TipoLancamento = "DEBIT" | "CREDIT"
+export type StatusLancamento = "PENDENTE" | "SUGERIDO" | "PAGO"
 
 export type ContaResponse = {
   id: string
@@ -75,6 +77,10 @@ export type CompraResponse = {
   faturaId: string | null
   compraParceladaId: string | null
   parcelaNumero: number | null
+  // DTOs/CompraResponse.cs: total de parcelas da compra (null se nao e
+  // parcela) e flag de parcela ja antecipada.
+  totalParcelas: number | null
+  antecipada: boolean
 }
 
 // POST /api/contas/{contaId}/compras-parceladas (DTOs/CriarCompraParceladaRequest.cs).
@@ -141,4 +147,31 @@ export type PagamentoFaturaResponse = {
   contaDestinoId: string
   faturaId: string | null
   descricao: string | null
+}
+
+// GET /api/contas/{contaId}/compras-parceladas/{compraParceladaId}/antecipacoes/elegiveis
+// (DTOs ParcelaElegivelResponse). Parcelas que ainda podem ser antecipadas.
+export type ParcelaElegivelResponse = {
+  lancamentoId: string
+  parcelaNumero: number
+  totalParcelas: number
+  valor: number
+  data: string
+  faturaId: string
+  faturaDataVencimento: string
+}
+
+// POST .../antecipacoes (AnteciparParcelasRequest). Destino e sempre a fatura
+// aberta e a data da antecipacao e a do servidor: so a quantidade e enviada.
+export type AnteciparParcelasRequest = {
+  quantidade: number
+}
+
+// AnteciparParcelasResponse - parcelas ja movidas para a fatura de destino.
+export type AnteciparParcelasResponse = {
+  compraParceladaId: string
+  faturaDestinoId: string
+  quantidadeAntecipada: number
+  valorAntecipado: number
+  parcelas: CompraResponse[]
 }

@@ -11,7 +11,16 @@ public class AtivoResponse
 
     public TipoAtivo Tipo { get; set; }
 
-    public string Instituicao { get; set; } = string.Empty;
+    // Legado: so ativo antigo (item 8.5).
+    public string? Instituicao { get; set; }
+
+    public Guid? ContaId { get; set; }
+
+    // Exige ativo.Conta carregado (Include no repository); senao vem null.
+    public string? ContaNome { get; set; }
+
+    // true = ativo antigo sem conta; a tela mostra "Sem conta" + "Vincular conta".
+    public bool SemConta { get; set; }
 
     public decimal Quantidade { get; set; }
 
@@ -37,6 +46,9 @@ public class AtivoResponse
             Nome = ativo.Nome,
             Tipo = ativo.Tipo,
             Instituicao = ativo.Instituicao,
+            ContaId = ativo.ContaId,
+            ContaNome = ativo.Conta?.Nome,
+            SemConta = ativo.ContaId == null,
             Quantidade = ativo.Quantidade,
             ValorInvestido = ativo.ValorInvestido,
             ValorAtual = ativo.ValorAtual,

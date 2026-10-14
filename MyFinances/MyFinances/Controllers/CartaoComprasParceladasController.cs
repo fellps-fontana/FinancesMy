@@ -10,11 +10,14 @@ public class CartaoComprasParceladasController : ControllerBase
 {
     private readonly ComprasParceladasService _comprasParceladasService;
     private readonly EstornoCompraParceladaService _estornoCompraParceladaService;
+    private readonly IAntecipacaoParcelasService _antecipacaoParcelasService;
 
     public CartaoComprasParceladasController(
         ComprasParceladasService comprasParceladasService,
-        EstornoCompraParceladaService estornoCompraParceladaService)
+        EstornoCompraParceladaService estornoCompraParceladaService,
+        IAntecipacaoParcelasService antecipacaoParcelasService)
     {
+        _antecipacaoParcelasService = antecipacaoParcelasService;
         _comprasParceladasService = comprasParceladasService;
         _estornoCompraParceladaService = estornoCompraParceladaService;
     }
@@ -51,5 +54,50 @@ public class CartaoComprasParceladasController : ControllerBase
 
         var response = EstornoCompraParceladaResponse.FromDomain(canceladas!, estornos!);
         return Ok(response);
+    }
+
+    [HttpPost("{compraParceladaId}/antecipacoes")]
+    public async Task<IActionResult> AnteciparParcelas(
+        Guid contaId,
+        Guid compraParceladaId,
+        [FromBody] AnteciparParcelasRequest request)
+    {
+        var (sucesso, faturaDestino, parcelas, erro) = await _antecipacaoParcelasService.AnteciparAsync(
+            contaId,
+            compraParceladaId,
+            request.Quantidade,
+            DateOnly.FromDateTime(DateTime.Today));
+
+        if (!sucesso)
+        {
+            return ErroAntecipacao(erro);
+        }
+
+        var response = AnteciparParcelasResponse.FromDomain(compraParceladaId, faturaDestino!, parcelas!);
+        return Ok(response);
+    }
+
+    [HttpGet("{compraParceladaId}/antecipacoes/elegiveis")]
+    public async Task<IActionResult> ObterParcelasElegiveis(
+        Guid contaId,
+        Guid compraParceladaId)
+    {
+        var (sucesso, compra, parcelas, erro) = await _antecipacaoParcelasService.ObterElegiveisAsync(contaId, compraParceladaId);
+
+        if (!sucesso)
+        {
+            return ErroAntecipacao(erro);
+        }
+
+        var totalParcelas = compra!.QuantidadeParcelas;
+        var response = parcelas!
+            .Select(parcela => ParcelaElegivelResponse.FromLancamento(parcela, totalParcelas))
+            .ToList();
+        return Ok(response);
+    }
+
+    private IActionResult ErroAntecipacao(string? erro)
+    {
+        return erro == AntecipacaoParcelasService.ErroCompraNaoEncontrada ? NotFound(new { erro }) : BadRequest(new { erro });
     }
 }

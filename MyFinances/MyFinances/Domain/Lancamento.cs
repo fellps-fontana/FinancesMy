@@ -40,6 +40,9 @@ public class Lancamento
 
     public Guid? AssinaturaCartaoId { get; set; }
 
+    // Marca de parcela antecipada (item 12). So exibicao: nunca entra em calculo.
+    public bool Antecipada { get; set; } = false;
+
     // Relacionamentos
     public Conta? Conta { get; set; }
 

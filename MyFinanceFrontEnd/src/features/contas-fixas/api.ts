@@ -32,3 +32,7 @@ export function desativarContaFixa(id: string): Promise<void> {
 export function reativarContaFixa(id: string): Promise<void> {
   return apiClient.post<void>(`/api/contas-fixas/${id}/reativar`)
 }
+
+export function apagarContaFixa(id: string): Promise<void> {
+  return apiClient.delete<void>(`/api/contas-fixas/${id}`)
+}

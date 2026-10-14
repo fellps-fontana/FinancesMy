@@ -11,4 +11,11 @@ public class ValorInvalidoException : Exception
         NomeCampo = nomeCampo;
         Valor = valor;
     }
+
+    public ValorInvalidoException(string nomeCampo, decimal valor, int minimo, int maximo)
+        : base($"{nomeCampo} deve estar entre {minimo} e {maximo}. Valor recebido: {valor}.")
+    {
+        NomeCampo = nomeCampo;
+        Valor = valor;
+    }
 }

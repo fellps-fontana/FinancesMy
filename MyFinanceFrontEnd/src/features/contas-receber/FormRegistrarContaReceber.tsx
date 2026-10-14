@@ -4,7 +4,9 @@ import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
-import { cn } from "@/shared/lib/utils"
+import { CLASSE_BOTAO_CANCELAR, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO } from "@/shared/ui/FormModal"
+import { SegmentedTabs } from "@/shared/ui/segmented-tabs"
+import { SelectField } from "@/shared/ui/select-field"
 import { dataDeHoje } from "@/features/cartao/lib/formatarData"
 import { useCriarEmprestimo } from "@/features/contas-receber/hooks/useCriarEmprestimo"
 import { useCriarRecebivel } from "@/features/contas-receber/hooks/useCriarRecebivel"
@@ -16,6 +18,17 @@ import {
 } from "@/features/contas-receber/lib/validarContaReceber"
 
 type TipoContaReceber = "RECEBIVEL" | "EMPRESTIMO"
+
+const OPCOES_TIPO: ReadonlyArray<{ value: TipoContaReceber; label: string }> = [
+  { value: "RECEBIVEL", label: "Recebivel" },
+  { value: "EMPRESTIMO", label: "Emprestimo" },
+]
+
+
+type FormRegistrarContaReceberProps = {
+  onRegistrado: () => void
+  onCancelar: () => void
+}
 
 // Estado deste formulario (inputs + qual toggle esta ativo) vive dentro do
 // proprio componente: e um formulario auto-contido, sem tela intermediaria
@@ -29,7 +42,7 @@ type TipoContaReceber = "RECEBIVEL" | "EMPRESTIMO"
 // (useCriarRecebivel/useCriarEmprestimo) e useContasParaSelecao (compartilhado
 // com FormRegistrarRecebimento) para a lista de contas de origem; nenhum
 // fetch cru dentro de handlers.
-export function FormRegistrarContaReceber() {
+export function FormRegistrarContaReceber({ onRegistrado, onCancelar }: FormRegistrarContaReceberProps) {
   const [tipo, setTipo] = useState<TipoContaReceber>("RECEBIVEL")
   const [descricao, setDescricao] = useState("")
   const [valorTotal, setValorTotal] = useState("")
@@ -64,6 +77,11 @@ export function FormRegistrarContaReceber() {
     setErroFormulario(null)
   }
 
+  function concluirRegistro() {
+    limparFormulario()
+    onRegistrado()
+  }
+
   function handleTrocarTipo(novoTipo: TipoContaReceber) {
     setTipo(novoTipo)
     setErroFormulario(null)
@@ -87,7 +105,7 @@ export function FormRegistrarContaReceber() {
           dataPrevista: dataPrevista || undefined,
         },
         {
-          onSuccess: limparFormulario,
+          onSuccess: concluirRegistro,
           onError: (error) => {
             console.error("Falha ao registrar recebivel", error)
             setErroFormulario(
@@ -117,7 +135,7 @@ export function FormRegistrarContaReceber() {
         dataPrevista: dataPrevista || undefined,
       },
       {
-        onSuccess: limparFormulario,
+        onSuccess: concluirRegistro,
         onError: (error) => {
           console.error("Falha ao registrar emprestimo", error)
           setErroFormulario(
@@ -133,7 +151,7 @@ export function FormRegistrarContaReceber() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-4 rounded-xl border border-border bg-card px-4 py-4"
+      className="flex flex-col gap-4"
     >
       {erroFormulario && (
         <Alert variant="destructive">
@@ -141,35 +159,18 @@ export function FormRegistrarContaReceber() {
         </Alert>
       )}
 
-      {/* Segmented control: nao ha Tabs/Toggle pronto no projeto, dois Button
-          com variant condicional (default = ativo, outline = inativo) cobre
-          o mesmo proposito sem introduzir componente novo - ver
-          shared/ui/button.tsx pras variantes disponiveis. */}
-      <div className="flex gap-2" role="group" aria-label="Tipo de conta a receber">
-        <Button
-          type="button"
-          variant={tipo === "RECEBIVEL" ? "default" : "outline"}
-          onClick={() => handleTrocarTipo("RECEBIVEL")}
-          disabled={isSubmitting}
-          className="flex-1"
-        >
-          Recebivel
-        </Button>
-        <Button
-          type="button"
-          variant={tipo === "EMPRESTIMO" ? "default" : "outline"}
-          onClick={() => handleTrocarTipo("EMPRESTIMO")}
-          disabled={isSubmitting}
-          className="flex-1"
-        >
-          Emprestimo
-        </Button>
-      </div>
+      <SegmentedTabs
+        options={OPCOES_TIPO}
+        value={tipo}
+        onChange={handleTrocarTipo}
+        ariaLabel="Tipo de conta a receber"
+      />
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="descricaoContaReceber">Descricao</Label>
         <Input
           id="descricaoContaReceber"
+          className={CLASSE_CAMPO}
           name="descricao"
           placeholder={tipo === "RECEBIVEL" ? "Ex: Reembolso da viagem" : "Ex: Emprestimo para o carro"}
           autoFocus
@@ -184,6 +185,7 @@ export function FormRegistrarContaReceber() {
           <Label htmlFor="pessoaContaReceber">Pessoa</Label>
           <Input
             id="pessoaContaReceber"
+          className={CLASSE_CAMPO}
             name="pessoa"
             placeholder="Nome de quem recebeu o emprestimo"
             required
@@ -198,6 +200,7 @@ export function FormRegistrarContaReceber() {
           <Label htmlFor="valorTotalContaReceber">Valor total</Label>
           <Input
             id="valorTotalContaReceber"
+          className={CLASSE_CAMPO}
             name="valorTotal"
             type="number"
             step="0.01"
@@ -213,6 +216,7 @@ export function FormRegistrarContaReceber() {
           <Label htmlFor="dataRegistroContaReceber">Data de registro</Label>
           <Input
             id="dataRegistroContaReceber"
+          className={CLASSE_CAMPO}
             name="dataRegistro"
             type="date"
             required
@@ -224,27 +228,14 @@ export function FormRegistrarContaReceber() {
 
       {tipo === "EMPRESTIMO" && (
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="contaOrigemContaReceber">Conta de origem</Label>
-          <select
-            id="contaOrigemContaReceber"
-            name="contaOrigemId"
-            required
+          <SelectField
+            label="Conta de origem"
+            placeholder={carregandoContasOrigem ? "Carregando contas..." : "Selecione a conta de origem"}
             disabled={carregandoContasOrigem}
-            value={contaOrigemId}
-            onChange={(event) => setContaOrigemId(event.target.value)}
-            className={cn(
-              "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
-            )}
-          >
-            <option value="" disabled>
-              {carregandoContasOrigem ? "Carregando contas..." : "Selecione a conta de origem"}
-            </option>
-            {contasOrigem?.map((conta) => (
-              <option key={conta.id} value={conta.id}>
-                {conta.nome}
-              </option>
-            ))}
-          </select>
+            options={(contasOrigem ?? []).map((conta) => ({ value: conta.id, label: conta.nome }))}
+            value={contaOrigemId || null}
+            onChange={setContaOrigemId}
+          />
           {erroContasOrigem && (
             <span className="text-[12px] text-alerta">
               Nao foi possivel carregar as contas de origem. Tente novamente.
@@ -257,6 +248,7 @@ export function FormRegistrarContaReceber() {
         <Label htmlFor="dataPrevistaContaReceber">Data prevista (opcional)</Label>
         <Input
           id="dataPrevistaContaReceber"
+          className={CLASSE_CAMPO}
           name="dataPrevista"
           type="date"
           value={dataPrevista}
@@ -264,11 +256,17 @@ export function FormRegistrarContaReceber() {
         />
       </div>
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={limparFormulario} disabled={isSubmitting}>
-          Limpar
+      <div className="mt-1.5 flex justify-end gap-2.5">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancelar}
+          disabled={isSubmitting}
+          className={CLASSE_BOTAO_CANCELAR}
+        >
+          Cancelar
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} className={CLASSE_BOTAO_PRIMARIO}>
           {isSubmitting ? "Salvando..." : "Salvar"}
         </Button>
       </div>

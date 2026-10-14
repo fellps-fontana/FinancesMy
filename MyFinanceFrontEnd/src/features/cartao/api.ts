@@ -1,5 +1,8 @@
 import { apiClient } from "@/shared/api/client"
 import type {
+  AnteciparParcelasRequest,
+  AnteciparParcelasResponse,
+  ParcelaElegivelResponse,
   CompraParceladaResponse,
   CompraResponse,
   ContaResponse,
@@ -65,6 +68,13 @@ export function listarFaturas(contaId: string): Promise<FaturaResponse[]> {
   return apiClient.get<FaturaResponse[]>(`/api/contas/${contaId}/faturas`)
 }
 
+// GET /api/contas/{contaId}/faturas/{faturaId}/compras
+// (FaturasController.ListarComprasDaFatura) - lancamentos da fatura; 404
+// { erro } se a fatura nao pertence a conta.
+export function listarComprasDaFatura(contaId: string, faturaId: string): Promise<CompraResponse[]> {
+  return apiClient.get<CompraResponse[]>(`/api/contas/${contaId}/faturas/${faturaId}/compras`)
+}
+
 // POST /api/contas/{contaId}/faturas/{faturaId}/pagamentos
 // (FaturasController.PagarFatura). Registra o pagamento (parcial ou total,
 // regra de negocio item 12) e devolve a Transferencia criada - NAO a fatura
@@ -76,6 +86,30 @@ export function pagarFatura(
 ): Promise<PagamentoFaturaResponse> {
   return apiClient.post<PagamentoFaturaResponse>(
     `/api/contas/${contaId}/faturas/${faturaId}/pagamentos`,
+    request,
+  )
+}
+
+// GET .../compras-parceladas/{compraParceladaId}/antecipacoes/elegiveis
+// (CartaoComprasParceladasController.ObterParcelasElegiveis).
+export function listarParcelasElegiveis(
+  contaId: string,
+  compraParceladaId: string,
+): Promise<ParcelaElegivelResponse[]> {
+  return apiClient.get<ParcelaElegivelResponse[]>(
+    `/api/contas/${contaId}/compras-parceladas/${compraParceladaId}/antecipacoes/elegiveis`,
+  )
+}
+
+// POST .../compras-parceladas/{compraParceladaId}/antecipacoes
+// (CartaoComprasParceladasController.AnteciparParcelas).
+export function anteciparParcelas(
+  contaId: string,
+  compraParceladaId: string,
+  request: AnteciparParcelasRequest,
+): Promise<AnteciparParcelasResponse> {
+  return apiClient.post<AnteciparParcelasResponse>(
+    `/api/contas/${contaId}/compras-parceladas/${compraParceladaId}/antecipacoes`,
     request,
   )
 }

@@ -1,33 +1,18 @@
 import { useMemo, useState } from "react"
+import { Plus } from "lucide-react"
 import { useContasFixas } from "@/features/contas-fixas/hooks/useContasFixas"
-import { ContaFixaItem } from "@/features/contas-fixas/components/ContaFixaItem"
+import { ContaFixaItem, GRADE_COLUNAS_CONTA_FIXA } from "@/features/contas-fixas/components/ContaFixaItem"
 import { FormContaFixa } from "@/features/contas-fixas/FormContaFixa"
 import { useCategorias } from "@/features/categorias/hooks/useCategorias"
+import { construirMapaCategorias } from "@/features/categorias/lib/construirMapaCategorias"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
+import { FormModal } from "@/shared/ui/FormModal"
 import { Button } from "@/shared/ui/button"
-import { Modal } from "@/shared/ui/Modal"
-import type { CategoriaResponse } from "@/features/categorias/types"
-
-// Achata categoria + subcategorias (regra-de-negocio.md item 7) num mapa
-// id -> nome, mesmo espirito de achatarCategorias em CategoriaSelect.tsx -
-// so que aqui o resultado e um lookup, nao uma lista de opcoes de form.
-// Duplicado em vez de importado porque ARQUIVOS PERMITIDOS desta task
-// restringe a escrita a ListaContasFixas.tsx e ContaFixaItem.tsx (nao ha
-// como promover isso para um lib/ compartilhado sem sair do escopo
-// autorizado); ambas as funcoes fazem exatamente a mesma travessia da
-// arvore vinda de GET /api/categorias.
-function construirMapaNomeCategoria(categorias: CategoriaResponse[]): Record<string, string> {
-  const mapa: Record<string, string> = {}
-
-  for (const categoria of categorias) {
-    mapa[categoria.id] = categoria.nome
-    for (const subcategoria of categoria.subcategorias) {
-      mapa[subcategoria.id] = subcategoria.nome
-    }
-  }
-
-  return mapa
-}
+import { Card, CardContent } from "@/shared/ui/card"
+import { PageHeader } from "@/shared/ui/page-header"
+import { cn } from "@/shared/lib/utils"
+import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
+import { somarTotalFixoMensal } from "@/features/contas-fixas/lib/somarTotalFixoMensal"
 
 // Container: le o estado de servidor (React Query, via useContasFixas e
 // useCategorias) e decide qual estado exibir (carregando/erro/vazio/lista).
@@ -42,16 +27,10 @@ function construirMapaNomeCategoria(categorias: CategoriaResponse[]): Record<str
 // relevante) e repassado pronto para ContaFixaItem, que so exibe (sem fazer
 // fetch nem lookup - permanece componente de apresentacao).
 //
-// Correcao de achado do style (revisao Bloco E / TASK-114): omitir o
-// parametro `arquivada` NAO traz categorias arquivadas - CategoriaRepository.
-// Listar (backend), quando `arquivada` nao e informado, aplica
-// `query.Where(c => !c.Arquivada)` por default (so retorna as NAO
-// arquivadas). Uma ContaFixa antiga pode apontar para uma categoria
-// ja arquivada (regra-de-negocio.md item 7 - "arquivar nao apaga o vinculo
-// existente") e o nome precisa continuar resolvivel mesmo assim - por isso
-// duas chamadas, arquivada=false e arquivada=true (o backend so aceita um
-// booleano por vez, nunca "os dois estados"), com os resultados mesclados
-// no mesmo mapa antes de repassar para ContaFixaItem.
+// Duas chamadas (arquivada=false e arquivada=true; o backend so aceita um
+// booleano por vez): uma ContaFixa antiga pode apontar para categoria ja
+// arquivada (item 7 - "arquivar nao apaga o vinculo") e o nome precisa
+// continuar resolvivel. Os resultados sao mesclados no mesmo mapa.
 //
 // Criacao: FormContaFixa (sem `contaFixaParaEditar`) e exibido dentro do
 // Modal compartilhado (shared/ui/Modal.tsx) atras de um toggle - o
@@ -70,9 +49,9 @@ export function ListaContasFixas() {
   )
   const [criandoContaFixa, setCriandoContaFixa] = useState(false)
 
-  const mapaNomeCategoria = useMemo(
+  const mapaCategorias = useMemo(
     () =>
-      construirMapaNomeCategoria([
+      construirMapaCategorias([
         ...(categoriasNaoArquivadas ?? []),
         ...(categoriasArquivadas ?? []),
       ]),
@@ -102,25 +81,53 @@ export function ListaContasFixas() {
     )
   }
 
-  return (
-    <div className="mx-auto flex min-h-svh max-w-2xl flex-col gap-6 px-4 py-8">
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-[19px] font-medium text-text-primary">Contas Fixas</h1>
-          <p className="text-sm text-text-muted">Despesas recorrentes geradas automaticamente todo mes.</p>
-        </div>
-        <Button type="button" onClick={() => setCriandoContaFixa((aberto) => !aberto)}>
-          {criandoContaFixa ? "Cancelar" : "Nova conta fixa"}
-        </Button>
-      </header>
+  const totalFixoMensal = somarTotalFixoMensal(contasFixas ?? [])
 
-      <Modal
+  return (
+    <div className="flex flex-col gap-4 md:gap-5">
+      <PageHeader
+        title="Contas fixas"
+        action={
+          <>
+            <Button
+              type="button"
+              onClick={() => setCriandoContaFixa(true)}
+              className="hidden h-auto gap-1.5 rounded-[9px] px-4 py-2.5 text-[13px] md:inline-flex"
+            >
+              <Plus className="size-3.5" strokeWidth={2} aria-hidden="true" />
+              Nova conta fixa
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setCriandoContaFixa(true)}
+              aria-label="Nova conta fixa"
+              className="size-8 rounded-[9px] p-0 md:hidden"
+            >
+              <Plus className="size-4" strokeWidth={2} aria-hidden="true" />
+            </Button>
+          </>
+        }
+      />
+
+      <Card>
+        <CardContent className="flex flex-col gap-1.5">
+          <span className="text-[13px] text-text-muted">Total fixo mensal</span>
+          <span className="text-[28px] leading-tight font-medium text-text-primary">
+            {formatarMoeda(totalFixoMensal)}
+          </span>
+        </CardContent>
+      </Card>
+
+      <FormModal
         open={criandoContaFixa}
         onClose={() => setCriandoContaFixa(false)}
         title="Nova conta fixa"
       >
-        <FormContaFixa onSalvar={() => setCriandoContaFixa(false)} />
-      </Modal>
+        <FormContaFixa
+          onSalvar={() => setCriandoContaFixa(false)}
+          onCancelar={() => setCriandoContaFixa(false)}
+        />
+      </FormModal>
 
       {error ? (
         <Alert variant="destructive">
@@ -130,16 +137,30 @@ export function ListaContasFixas() {
       ) : isLoading ? (
         <p className="text-sm text-text-muted">Carregando...</p>
       ) : contasFixas && contasFixas.length > 0 ? (
-        <div className="flex flex-col gap-3">
-          {contasFixas.map((contaFixa) => (
-            <ContaFixaItem
-              key={contaFixa.id}
-              contaFixa={contaFixa}
-              categoriaNome={
-                contaFixa.categoriaId ? (mapaNomeCategoria[contaFixa.categoriaId] ?? null) : null
-              }
-            />
-          ))}
+        <div className="md:overflow-hidden md:rounded-2xl md:border-[0.5px] md:border-border md:bg-card">
+          <div
+            className={cn(
+              "hidden border-b-[0.5px] border-border px-[22px] py-3.5 text-xs text-text-muted md:grid",
+              GRADE_COLUNAS_CONTA_FIXA,
+            )}
+          >
+            <span>Descricao</span>
+            <span>Recorrencia</span>
+            <span className="text-right">Valor</span>
+            <span className="text-right">Ativa</span>
+            <span />
+          </div>
+          <ul className="flex flex-col gap-2.5 md:block">
+            {contasFixas.map((contaFixa) => (
+              <ContaFixaItem
+                key={contaFixa.id}
+                contaFixa={contaFixa}
+                categoriaNome={
+                  contaFixa.categoriaId ? (mapaCategorias[contaFixa.categoriaId]?.nome ?? null) : null
+                }
+              />
+            ))}
+          </ul>
         </div>
       ) : (
         <p className="text-sm text-text-muted">Nenhuma conta fixa cadastrada ainda.</p>

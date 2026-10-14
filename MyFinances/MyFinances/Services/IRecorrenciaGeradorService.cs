@@ -32,4 +32,19 @@ public interface IRecorrenciaGeradorService
         Guid contaFixaId,
         PeriodicidadeContaFixa periodicidadeNova,
         int? mesReferenciaNovo);
+
+    // Desativar/Apagar (item 6): exclui (hard delete) TODAS as ocorrencias
+    // nao consumadas da ContaFixa, sem recalcular periodicidade.
+    // Banco (Fatura == null): Lancamento.Status = Pendente.
+    // Cartao (Fatura != null): Fatura.Status != Paga.
+    // Mesmo criterio de "nao consumada" da limpeza de periodicidade (predicado compartilhado).
+    // Retorna a quantidade removida; ContaFixa inexistente -> 0. Salva.
+    Task<int> RemoverOcorrenciasNaoConsumadasAsync(Guid contaFixaId);
+
+    // Apagar (item 6): nas ocorrencias consumadas (banco: Status = Pago;
+    // cartao: Fatura.Status = Paga) seta ContaFixaId = null. Valor, data,
+    // categoria, descricao, status e fatura permanecem intactos.
+    // Retorna a quantidade desvinculada; ContaFixa inexistente -> 0. Salva.
+    // Roda DEPOIS de RemoverOcorrenciasNaoConsumadasAsync e ANTES de remover o molde.
+    Task<int> DesvincularOcorrenciasConsumadasAsync(Guid contaFixaId);
 }

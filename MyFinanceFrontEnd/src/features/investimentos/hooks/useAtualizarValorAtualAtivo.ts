@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { atualizarValorAtualAtivo } from "@/features/investimentos/api"
 import { investimentosKeys } from "@/features/investimentos/query-keys"
+import { contasKeys } from "@/features/contas/query-keys"
 import type { AtualizarValorAtualRequest } from "@/features/investimentos/types"
 
 type AtualizarValorAtualVariables = {
@@ -17,6 +18,8 @@ export function useAtualizarValorAtualAtivo() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: investimentosKeys.ativos() })
       queryClient.invalidateQueries({ queryKey: investimentosKeys.resumoAtivos() })
+      queryClient.invalidateQueries({ queryKey: investimentosKeys.total() })
+      queryClient.invalidateQueries({ queryKey: contasKeys.all })
     },
   })
 }

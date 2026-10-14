@@ -77,6 +77,7 @@ builder.Services.AddScoped<IDeParaCategoriaService, DeParaCategoriaService>();
 
 // Services - Cartao
 builder.Services.AddScoped<ValidacaoCartaoService>();
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<FaturaCicloService>();
 builder.Services.AddScoped<CompraCartaoService>();
 builder.Services.AddScoped<ComprasParceladasService>();
@@ -87,9 +88,13 @@ builder.Services.AddScoped<EstornoCompraParceladaService>();
 builder.Services.AddScoped<SaldoCartaoService>();
 builder.Services.AddScoped<IRecorrenciaGeradorService, RecorrenciaGeradorService>();
 builder.Services.AddScoped<IAssinaturaCartaoService, AssinaturaCartaoService>();
+builder.Services.AddScoped<IAntecipacaoParcelasService, AntecipacaoParcelasService>();
+builder.Services.AddScoped<IRelatorioCategoriaService, RelatorioCategoriaService>();
+builder.Services.AddScoped<IFaturaComprasService, FaturaComprasService>();
 
 // Services - Lancamentos
 builder.Services.AddScoped<ILancamentoManualService, LancamentoManualService>();
+builder.Services.AddScoped<ILancamentoParceladoService, LancamentoParceladoService>();
 builder.Services.AddScoped<ITransferenciaService, TransferenciaService>();
 builder.Services.AddScoped<IFluxoCaixaService, FluxoCaixaService>();
 

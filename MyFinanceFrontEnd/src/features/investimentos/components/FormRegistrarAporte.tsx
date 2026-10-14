@@ -10,6 +10,12 @@ import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
+import {
+  CLASSE_BOTAO_CANCELAR,
+  CLASSE_BOTAO_PRIMARIO,
+  CLASSE_CAMPO,
+  FormModal,
+} from "@/shared/ui/FormModal"
 import { ApiError } from "@/shared/api/client"
 import type { AtivoResponse } from "@/features/investimentos/types"
 
@@ -90,7 +96,7 @@ export function FormRegistrarAporte({ ativo, onFechar }: FormRegistrarAporteProp
   // re-renderiza sozinho com o novo preco medio, sem calculo local.
   if (aporteRegistrado) {
     return (
-      <div className="flex flex-col gap-2">
+      <FormModal title={`Novo aporte - ${ativo.nome}`} onClose={onFechar}>
         <Alert>
           <AlertDescription>
             Aporte registrado. Preco medio atualizado:{" "}
@@ -98,23 +104,24 @@ export function FormRegistrarAporte({ ativo, onFechar }: FormRegistrarAporteProp
           </AlertDescription>
         </Alert>
         <div className="flex justify-end">
-          <Button type="button" variant="ghost" size="sm" onClick={onFechar}>
+          <Button type="button" onClick={onFechar} className={CLASSE_BOTAO_PRIMARIO}>
             Fechar
           </Button>
         </div>
-      </div>
+      </FormModal>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+    <FormModal title={`Novo aporte - ${ativo.nome}`} onClose={onFechar}>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {erro && (
         <Alert variant="destructive">
           <AlertDescription>{erro}</AlertDescription>
         </Alert>
       )}
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2.5">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={`quantidadeAporte-${ativo.id}`}>Quantidade</Label>
           <Input
@@ -125,6 +132,7 @@ export function FormRegistrarAporte({ ativo, onFechar }: FormRegistrarAporteProp
             inputMode="decimal"
             autoFocus
             required
+            className={CLASSE_CAMPO}
             value={quantidade}
             onChange={(event) => setQuantidade(event.target.value)}
           />
@@ -139,6 +147,7 @@ export function FormRegistrarAporte({ ativo, onFechar }: FormRegistrarAporteProp
             min="0.01"
             inputMode="decimal"
             required
+            className={CLASSE_CAMPO}
             value={precoUnitario}
             onChange={(event) => setPrecoUnitario(event.target.value)}
           />
@@ -151,19 +160,27 @@ export function FormRegistrarAporte({ ativo, onFechar }: FormRegistrarAporteProp
           id={`dataAporte-${ativo.id}`}
           type="date"
           required
+          className={CLASSE_CAMPO}
           value={data}
           onChange={(event) => setData(event.target.value)}
         />
       </div>
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onFechar} disabled={isPending}>
+      <div className="mt-1 flex justify-end gap-2.5">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onFechar}
+          disabled={isPending}
+          className={CLASSE_BOTAO_CANCELAR}
+        >
           Cancelar
         </Button>
-        <Button type="submit" size="sm" disabled={isPending}>
+        <Button type="submit" disabled={isPending} className={CLASSE_BOTAO_PRIMARIO}>
           {isPending ? "Registrando..." : "Registrar aporte"}
         </Button>
       </div>
     </form>
+    </FormModal>
   )
 }

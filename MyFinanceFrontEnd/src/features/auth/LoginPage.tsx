@@ -94,10 +94,10 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps) {
     <div className="flex min-h-svh flex-col bg-background lg:flex-row">
       <LoginBrandPanel />
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-10 px-6 py-16 lg:px-16">
+      <div className="flex flex-1 flex-col items-center justify-center gap-12 px-7 pt-16 pb-10 lg:gap-10 lg:px-16 lg:py-16">
         {/* cabecalho do frame MOBILE: no desktop o LoginBrandPanel cumpre esse papel */}
         <div className="flex flex-col items-center gap-4 text-center lg:hidden">
-          <div className="flex size-14 items-center justify-center rounded-xl bg-accent-deep">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-accent-deep">
             <Wallet className="size-6 text-accent-soft" strokeWidth={1.6} />
           </div>
           <div>
@@ -108,7 +108,7 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps) {
           </div>
         </div>
 
-        <div className="flex w-full max-w-[360px] flex-col gap-4">
+        <div className="flex w-full max-w-[360px] flex-col gap-3.5 lg:gap-4">
           {/* titulo do frame DESKTOP: no mobile o cabecalho acima ja cumpre esse papel */}
           <div className="hidden lg:block">
             <h1 className="text-[19px] font-medium text-text-primary">
@@ -141,25 +141,6 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps) {
               onSenhaChange={setSenhaLogin}
               onSubmit={handleLoginSubmit}
             />
-          )}
-
-          {/* divisor + login alternativo: so existem no modo login do frame MOBILE */}
-          {!isRegister && (
-            <>
-              <div className="flex items-center gap-2.5 lg:hidden">
-                <div className="h-px flex-1 bg-border" />
-                <span className="text-xs text-text-faint">ou</span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-
-              <button
-                type="button"
-                aria-disabled="true"
-                className="rounded-lg border border-border bg-card p-3.5 text-sm font-medium text-text-body lg:hidden"
-              >
-                Entrar com código de acesso
-              </button>
-            </>
           )}
 
           {/* Alternancia entre login e criacao de conta */}

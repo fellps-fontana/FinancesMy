@@ -134,7 +134,8 @@ public class FaturasControllerTests
             estornoCartaoService,
             faturaCreditoService,
             mockRecorrenciaGeradorService.Object,
-            contaFixaRepository);
+            contaFixaRepository,
+            faturaCicloService);
 
         // Act - abrir fatura da conta X apenas
         await controller.ListarFaturas(contaXId);

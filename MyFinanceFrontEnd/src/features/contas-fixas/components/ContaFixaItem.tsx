@@ -1,223 +1,206 @@
 import { useState } from "react"
-import { Repeat } from "lucide-react"
+import { Pencil, Repeat, Trash2 } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
 import { ApiError } from "@/shared/api/client"
-import { Card, CardContent } from "@/shared/ui/card"
-import { Button } from "@/shared/ui/button"
 import { Alert, AlertDescription } from "@/shared/ui/alert"
+import { FormModal } from "@/shared/ui/FormModal"
+import { Button } from "@/shared/ui/button"
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog"
+import { IconTile } from "@/shared/ui/icon-tile"
+import { Switch } from "@/shared/ui/switch"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
+import { FormContaFixa } from "@/features/contas-fixas/FormContaFixa"
+import { useApagarContaFixa } from "@/features/contas-fixas/hooks/useApagarContaFixa"
 import { useDesativarContaFixa } from "@/features/contas-fixas/hooks/useDesativarContaFixa"
 import { useReativarContaFixa } from "@/features/contas-fixas/hooks/useReativarContaFixa"
 import type { ContaFixaResponse, PeriodicidadeContaFixa } from "@/features/contas-fixas/types"
 
-type StatusContaFixa = "ATIVA" | "INATIVA"
+// Colunas da tabela no desktop (mockup s_fixa: Descricao / Recorrencia /
+// Valor / Ativa / acoes). Exportado para o cabecalho da lista usar a mesma
+// grade e as colunas ficarem alinhadas.
+export const GRADE_COLUNAS_CONTA_FIXA = "md:grid-cols-[2.4fr_1fr_1fr_0.6fr_64px]"
 
-// Mapeamento de cor por status ativa/inativa (regra-de-negocio.md item 6).
-// Nao ha token proprio para este estado em identidade-visual.md (o
-// documento cobre pago/pendente/manual/sugerido), entao seguimos o mesmo
-// espirito ja aplicado em ContaReceberItem: ATIVA e o estado "em vigor" da
-// conta fixa (gera Lancamento PENDENTE todo mes - positivo, mesma familia
-// semantica de "recebido"/"pago" no documento), INATIVA e tratada como
-// origem/estado neutro (bg-muted + text-muted), o mesmo par de classes que
-// identidade-visual.md reserva para "manual -> neutro". Nao usamos "alerta"
-// porque inativa e um estado intencional do usuario, nao uma pendencia.
-const CONFIG_POR_STATUS: Record<StatusContaFixa, { label: string; className: string }> = {
-  ATIVA: { label: "Ativa", className: "bg-positivo/15 text-positivo" },
-  INATIVA: { label: "Inativa", className: "bg-muted text-text-muted" },
-}
-
-// Periodicidade (regra-de-negocio.md item 6, revisao 2026-07-27) e
-// informativa, nao um estado com conotacao positiva/negativa como
-// pago/pendente - por isso o badge fica neutro (bg-muted + text-muted),
-// mesmo par ja usado para o simbolo "Manual" em LancamentoItem.
 const LABEL_POR_PERIODICIDADE: Record<PeriodicidadeContaFixa, string> = {
   MENSAL: "Mensal",
   ANUAL: "Anual",
 }
 
+// Texto "Mensal - dia 5" (mockup). O backend nao devolve o mes da conta fixa
+// anual (types.ts so tem diaVencimento), entao "Anual" mostra so o dia.
+function formatarRecorrencia(contaFixa: ContaFixaResponse): string {
+  return `${LABEL_POR_PERIODICIDADE[contaFixa.periodicidade]} - dia ${contaFixa.diaVencimento}`
+}
+
+type AcaoPendente = "desativar" | "apagar" | null
+
 type ContaFixaItemProps = {
   contaFixa: ContaFixaResponse
-  // Nome resolvido pelo container (ListaContasFixas) a partir de
-  // categoriaId - ver comentario la para o motivo do lookup viver no
-  // container. null quando a ContaFixa nao tem categoria vinculada (FK
-  // opcional, regra-de-negocio.md item 6) - a categoria some da UI nesse
-  // caso, sem "dado cru" nem texto placeholder.
+  // Nome da categoria resolvido pelo container; null sem categoria vinculada.
   categoriaNome: string | null
 }
 
-// Componente de apresentacao (burro): so exibe o que ja vem pronto do
-// backend (descricao, valor, diaVencimento, periodicidade, ativa) mais o
-// nome de categoria ja resolvido via prop. Nenhum calculo de regra de
-// negocio mora aqui - formatarMoeda e a unica funcao aplicada, e e
-// puramente de apresentacao (locale), nao regra de dominio - ver
-// clean-code.md "Organizacao (React)". Layout segue o mockup "09 Conta
-// Fixa.dc.html" (icone quadrado 34px + bloco descricao/periodicidade/
-// categoria + valor em destaque), adaptado ao par de acoes ja existente
-// (desativar com confirmacao inline / reativar).
-export function ContaFixaItem({ contaFixa, categoriaNome }: ContaFixaItemProps) {
-  const status: StatusContaFixa = contaFixa.ativa ? "ATIVA" : "INATIVA"
-  const statusConfig = CONFIG_POR_STATUS[status]
+function mensagemDeErro(error: unknown, fallback: string): string {
+  return error instanceof ApiError ? error.message : fallback
+}
 
-  // Desativar excluir os Lancamentos PENDENTE ja gerados (regra-de-negocio.md
-  // item 6) - acao destrutiva, entao exige uma confirmacao inline antes de
-  // acionar a mutation (mesmo espirito de toggle usado em
-  // ContaReceberItem/registrandoRecebimento, so que aqui com dois botoes
-  // sim/nao em vez de formulario). Reativar nao apaga nada - so gera
-  // Lancamento novo - por isso segue com clique direto, so avisando via
-  // texto/title o que vai acontecer.
-  const [confirmandoDesativacao, setConfirmandoDesativacao] = useState(false)
+// Linha da tabela de contas fixas (regra-de-negocio.md item 6). Estado
+// ativa/inativa vem do backend; o switch dispara desativar (com confirmacao,
+// pois exclui lancamentos pendentes) ou reativar. Apagar e hard delete do
+// molde, sem desfazer. Nenhum calculo de dominio mora aqui.
+export function ContaFixaItem({ contaFixa, categoriaNome }: ContaFixaItemProps) {
+  const [acaoPendente, setAcaoPendente] = useState<AcaoPendente>(null)
+  const [editando, setEditando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
   const { mutate: desativar, isPending: desativando } = useDesativarContaFixa()
   const { mutate: reativar, isPending: reativando } = useReativarContaFixa()
+  const { mutate: apagar, isPending: apagando } = useApagarContaFixa()
+
+  function handleAlternarAtiva(ativa: boolean) {
+    if (!ativa) {
+      setAcaoPendente("desativar")
+      return
+    }
+    reativar(contaFixa.id, {
+      onSuccess: () => setErro(null),
+      onError: (error) => {
+        console.error("Falha ao reativar conta fixa", error)
+        setErro(mensagemDeErro(error, "Nao foi possivel reativar a conta fixa. Tente novamente."))
+      },
+    })
+  }
 
   function confirmarDesativacao() {
     desativar(contaFixa.id, {
       onSuccess: () => {
         setErro(null)
-        setConfirmandoDesativacao(false)
+        setAcaoPendente(null)
       },
       onError: (error) => {
         console.error("Falha ao desativar conta fixa", error)
-        setErro(
-          error instanceof ApiError
-            ? error.message
-            : "Nao foi possivel desativar a conta fixa. Tente novamente.",
-        )
-        setConfirmandoDesativacao(false)
+        setErro(mensagemDeErro(error, "Nao foi possivel desativar a conta fixa. Tente novamente."))
+        setAcaoPendente(null)
       },
     })
   }
 
-  function handleReativar() {
-    reativar(contaFixa.id, {
-      onSuccess: () => setErro(null),
+  function confirmarApagar() {
+    apagar(contaFixa.id, {
+      onSuccess: () => {
+        setErro(null)
+        setAcaoPendente(null)
+      },
       onError: (error) => {
-        console.error("Falha ao reativar conta fixa", error)
-        setErro(
-          error instanceof ApiError
-            ? error.message
-            : "Nao foi possivel reativar a conta fixa. Tente novamente.",
-        )
+        console.error("Falha ao apagar conta fixa", error)
+        setErro(mensagemDeErro(error, "Nao foi possivel apagar a conta fixa. Tente novamente."))
+        setAcaoPendente(null)
       },
     })
   }
 
   return (
-    <Card size="sm">
-      <CardContent className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            {/* Icone de recorrencia (identidade-visual.md: "quadrado
-                arredondado 34px com icone Tabler dentro"). Um unico icone
-                para todas as contas fixas - a variacao por descricao do
-                mockup (casa, tv, halteres...) nao tem lastro em nenhum
-                campo de dominio (ContaFixa nao tem "tipo"/icone
-                cadastravel), so criaria decoracao sem significado
-                (identidade-visual.md "Principios"). A cor do quadrado
-                reflete `ativa`, que e dado real. */}
-            <div
-              className={cn(
-                "flex size-[34px] shrink-0 items-center justify-center rounded-[10px]",
-                contaFixa.ativa ? "bg-accent-deep" : "bg-muted",
-              )}
-            >
-              <Repeat
-                className={cn("size-4", contaFixa.ativa ? "text-accent-soft" : "text-text-muted")}
-                strokeWidth={1.6}
-                aria-hidden="true"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-[19px] font-medium text-text-primary">{contaFixa.descricao}</span>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="inline-flex items-center rounded-[5px] bg-muted px-2 py-0.5 text-[12px] font-medium text-text-muted">
-                  {LABEL_POR_PERIODICIDADE[contaFixa.periodicidade]}
-                </span>
-                {categoriaNome && (
-                  <span className="text-[12px] text-text-muted">{categoriaNome}</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <span
-            className={cn(
-              "inline-flex shrink-0 items-center rounded-[5px] px-2 py-0.5 text-[12px] font-medium",
-              statusConfig.className,
+    <li className="flex flex-col gap-2 rounded-[14px] border-[0.5px] border-border bg-card p-3.5 md:rounded-none md:border-0 md:border-b-[0.5px] md:bg-transparent md:px-[22px] md:last:border-b-0">
+      <div className={cn("flex items-center gap-3 md:grid", GRADE_COLUNAS_CONTA_FIXA)}>
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <IconTile className={cn(!contaFixa.ativa && "bg-muted text-text-muted")}>
+            <Repeat className="size-4" strokeWidth={1.6} aria-hidden="true" />
+          </IconTile>
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate text-sm text-text-body">{contaFixa.descricao}</span>
+            <span className="truncate text-xs text-text-faint md:hidden">
+              {formatarRecorrencia(contaFixa)}
+              {categoriaNome ? ` - ${categoriaNome}` : ""}
+            </span>
+            {categoriaNome && (
+              <span className="hidden truncate text-xs text-text-faint md:block">{categoriaNome}</span>
             )}
-          >
-            {statusConfig.label}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between text-[13px] text-text-muted">
-          <span className="text-[19px] font-medium text-text-primary">
-            {formatarMoeda(contaFixa.valor)}
-          </span>
-          <span>Vence todo dia {contaFixa.diaVencimento}</span>
-        </div>
-
-        {erro && (
-          <Alert variant="destructive">
-            <AlertDescription>{erro}</AlertDescription>
-          </Alert>
-        )}
-
-        {contaFixa.ativa ? (
-          confirmandoDesativacao ? (
-            <div className="flex items-center justify-end gap-2 text-[12px] text-text-muted">
-              <span className="text-alerta">
-                Desativar exclui os lancamentos pendentes ja gerados. Confirma?
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={desativando}
-                onClick={() => setConfirmandoDesativacao(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                disabled={desativando}
-                onClick={confirmarDesativacao}
-              >
-                {desativando ? "Desativando..." : "Sim, desativar"}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={desativando}
-                onClick={() => setConfirmandoDesativacao(true)}
-              >
-                Desativar
-              </Button>
-            </div>
-          )
-        ) : (
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={reativando}
-              title="Reativar gera novos lancamentos pendentes para o mes corrente e o proximo"
-              onClick={handleReativar}
-            >
-              {reativando ? "Reativando..." : "Reativar"}
-            </Button>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+
+        <span className="hidden text-[13px] whitespace-nowrap text-text-muted md:block">
+          {formatarRecorrencia(contaFixa)}
+        </span>
+
+        <span
+          className={cn(
+            "text-sm whitespace-nowrap md:text-right",
+            contaFixa.ativa ? "text-text-primary" : "text-text-faint",
+          )}
+        >
+          {formatarMoeda(contaFixa.valor)}
+        </span>
+
+        <div className="flex justify-end">
+          <Switch
+            checked={contaFixa.ativa}
+            onCheckedChange={handleAlternarAtiva}
+            disabled={desativando || reativando}
+            label={contaFixa.ativa ? "Desativar conta fixa" : "Reativar conta fixa"}
+            className="w-auto [&>span:first-child]:sr-only"
+          />
+        </div>
+
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Editar ${contaFixa.descricao}`}
+            title="Editar"
+            onClick={() => setEditando(true)}
+          >
+            <Pencil className="size-4 text-text-muted" aria-hidden="true" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Apagar ${contaFixa.descricao}`}
+            title="Apagar"
+            onClick={() => setAcaoPendente("apagar")}
+          >
+            <Trash2 className="size-4 text-negativo" aria-hidden="true" />
+          </Button>
+        </div>
+      </div>
+
+      {erro && (
+        <Alert variant="destructive">
+          <AlertDescription>{erro}</AlertDescription>
+        </Alert>
+      )}
+
+      <FormModal open={editando} onClose={() => setEditando(false)} title="Editar conta fixa">
+        <FormContaFixa
+          contaFixaParaEditar={contaFixa}
+          onSalvar={() => setEditando(false)}
+          onCancelar={() => setEditando(false)}
+        />
+      </FormModal>
+
+      <ConfirmDialog
+        open={acaoPendente === "desativar"}
+        title={`Desativar ${contaFixa.descricao}?`}
+        description="Desativar exclui os lancamentos pendentes ja gerados. Os pagos permanecem. Voce pode reativar depois."
+        icon={<Repeat className="size-4" strokeWidth={1.6} />}
+        confirmLabel="Desativar"
+        destructive
+        loading={desativando}
+        onConfirm={confirmarDesativacao}
+        onCancel={() => setAcaoPendente(null)}
+      />
+
+      <ConfirmDialog
+        open={acaoPendente === "apagar"}
+        title={`Apagar ${contaFixa.descricao}?`}
+        description="Os lancamentos pendentes serao excluidos. Os ja pagos permanecem como lancamentos avulsos. Nao e possivel desfazer."
+        icon={<Trash2 className="size-4" strokeWidth={1.6} />}
+        confirmLabel="Apagar"
+        destructive
+        loading={apagando}
+        onConfirm={confirmarApagar}
+        onCancel={() => setAcaoPendente(null)}
+      />
+    </li>
   )
 }

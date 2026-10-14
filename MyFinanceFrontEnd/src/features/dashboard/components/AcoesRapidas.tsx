@@ -20,15 +20,20 @@ type AcaoRapida = {
 // handleAlternarNovo/handleTrocarTipoNovo fica para task seguinte que toque
 // aquele arquivo.
 //
-// "Pagar conta" vai direto pra /cartao (fluxo de pagamento de fatura ja
-// existe la via PagarFaturaModal) - decisao ja confirmada com o usuario, sem
-// fluxo novo de pagamento no backend e sem menu intermediario com duas
-// opcoes.
+// "Transferir" abre o fluxo de transferencia de /lancamentos (decisao do
+// usuario, substitui o destino /contas do mockup mobile).
+//
+// "Pagar conta" vai para /conciliacao (conta a pagar -> pagamento real,
+// regra-de-negocio.md item 5), destino do mockup mobile.
 const ACOES: AcaoRapida[] = [
   { label: "Novo lancamento", to: "/lancamentos?novo=lancamento", icon: Plus },
   { label: "Transferir", to: "/lancamentos?novo=transferencia", icon: ArrowLeftRight },
-  { label: "Pagar conta", to: "/cartao", icon: CreditCard },
+  { label: "Pagar conta", to: "/conciliacao", icon: CreditCard },
 ]
+
+type AcoesRapidasProps = {
+  className?: string
+}
 
 /**
  * Acoes rapidas do topo do dashboard. Componente de apresentacao puro: cada
@@ -36,16 +41,16 @@ const ACOES: AcaoRapida[] = [
  * preservar comportamento nativo de link (abrir em nova aba, foco por
  * teclado, prefetch de rota) - nenhum estado nem fetch mora aqui.
  */
-export function AcoesRapidas() {
+export function AcoesRapidas({ className }: AcoesRapidasProps) {
   return (
-    <div className="grid grid-cols-3 gap-2.5" role="group" aria-label="Acoes rapidas">
+    <div className={cn("grid grid-cols-3 gap-2.5", className)} role="group" aria-label="Acoes rapidas">
       {ACOES.map(({ label, to, icon: Icon }) => (
         <Link
           key={label}
           to={to}
           className={cn(
-            "flex flex-col items-center gap-1.5 rounded-xl bg-card px-2 py-3 text-center",
-            "text-[12px] text-text-body ring-1 ring-foreground/10 transition-colors",
+            "flex flex-col items-center gap-1.5 rounded-xl border-[0.5px] border-border bg-card px-2 py-3 text-center",
+            "text-[12px] text-text-body transition-colors",
             "hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
           )}
         >

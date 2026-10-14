@@ -15,6 +15,10 @@ const SUBTITULO_POR_SUBTIPO: Record<NonNullable<ContaResponse["subtipo"]>, strin
 export function obterSubtituloConta(
   conta: Pick<ContaResponse, "tipo" | "subtipo">,
 ): string {
+  if (conta.tipo === "Cartao") {
+    return "Cartao de credito"
+  }
+
   if (conta.tipo === "Investimento") {
     return "Investimento"
   }

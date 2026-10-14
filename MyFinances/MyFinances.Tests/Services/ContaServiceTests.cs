@@ -4,6 +4,7 @@ using MyFinances.Exceptions;
 using MyFinances.Domain;
 using MyFinances.Repositories;
 using MyFinances.Services;
+using MyFinances.Tests.Helpers;
 using Xunit;
 
 namespace MyFinances.Tests.Services;
@@ -16,7 +17,7 @@ public class ContaServiceTests
     public ContaServiceTests()
     {
         _mockRepository = new Mock<IContaRepository>();
-        _service = new ContaService(_mockRepository.Object, NullLogger<ContaService>.Instance);
+        _service = new ContaService(_mockRepository.Object, new FakeAtivoRepository(), NullLogger<ContaService>.Instance);
     }
 
     #region Regra 1: CriarContaInvestimento sempre cria com Origem = Manual e Tipo = Investimento

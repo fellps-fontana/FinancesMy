@@ -1,29 +1,17 @@
 import { useMemo, useState } from "react"
+import { Plus } from "lucide-react"
 import { useRecebiveisRecorrentes } from "@/features/recebiveis-recorrentes/hooks/useRecebiveisRecorrentes"
-import { RecebivelRecorrenteItem } from "@/features/recebiveis-recorrentes/components/RecebivelRecorrenteItem"
+import { GRADE_COLUNAS_RECEBIVEL, RecebivelRecorrenteItem } from "@/features/recebiveis-recorrentes/components/RecebivelRecorrenteItem"
 import { FormRecebivelRecorrente } from "@/features/recebiveis-recorrentes/FormRecebivelRecorrente"
 import { useCategorias } from "@/features/categorias/hooks/useCategorias"
+import { construirMapaCategorias } from "@/features/categorias/lib/construirMapaCategorias"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
-import { Modal } from "@/shared/ui/Modal"
-import type { CategoriaResponse } from "@/features/categorias/types"
-
-// Achata categoria + subcategorias (regra-de-negocio.md item 7) num mapa
-// id -> nome. Mesmo helper de ListaContasFixas (duplicado, nao importado,
-// porque ARQUIVOS PERMITIDOS restringe a escrita a esta feature) - a
-// travessia da arvore vinda de GET /api/categorias e identica.
-function construirMapaNomeCategoria(categorias: CategoriaResponse[]): Record<string, string> {
-  const mapa: Record<string, string> = {}
-
-  for (const categoria of categorias) {
-    mapa[categoria.id] = categoria.nome
-    for (const subcategoria of categoria.subcategorias) {
-      mapa[subcategoria.id] = subcategoria.nome
-    }
-  }
-
-  return mapa
-}
+import { FormModal } from "@/shared/ui/FormModal"
+import { PageHeader } from "@/shared/ui/page-header"
+import { cn } from "@/shared/lib/utils"
+import { formatarMoeda } from "@/shared/lib/formatarMoeda"
+import { somarTotalRecorrenteMensal } from "@/features/recebiveis-recorrentes/lib/somarTotalRecorrenteMensal"
 
 // Container: le o estado de servidor (React Query) e decide qual estado
 // exibir (carregando/erro/vazio/lista). Renderizacao pura de cada item fica
@@ -50,9 +38,9 @@ export function ListaRecebiveisRecorrentes() {
   )
   const [criandoRecebivel, setCriandoRecebivel] = useState(false)
 
-  const mapaNomeCategoria = useMemo(
+  const mapaCategorias = useMemo(
     () =>
-      construirMapaNomeCategoria([
+      construirMapaCategorias([
         ...(categoriasNaoArquivadas ?? []),
         ...(categoriasArquivadas ?? []),
       ]),
@@ -79,27 +67,54 @@ export function ListaRecebiveisRecorrentes() {
     )
   }
 
-  return (
-    <div className="mx-auto flex min-h-svh max-w-2xl flex-col gap-6 px-4 py-8">
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-[19px] font-medium text-text-primary">Recebíveis Recorrentes</h1>
-          <p className="text-sm text-text-muted">
-            Moldes de entrada que geram contas a receber automaticamente.
-          </p>
-        </div>
-        <Button type="button" onClick={() => setCriandoRecebivel((aberto) => !aberto)}>
-          {criandoRecebivel ? "Cancelar" : "Novo recebível recorrente"}
-        </Button>
-      </header>
+  const totalRecorrenteMensal = somarTotalRecorrenteMensal(recebiveis ?? [])
 
-      <Modal
+  return (
+    <div className="flex flex-col gap-4 md:gap-5">
+      <PageHeader
+        title="Recebiveis recorrentes"
+        action={
+          <>
+            <Button
+              type="button"
+              onClick={() => setCriandoRecebivel(true)}
+              className="hidden h-auto gap-1.5 rounded-[9px] px-4 py-2.5 text-[13px] md:inline-flex"
+            >
+              <Plus className="size-3.5" strokeWidth={2} aria-hidden="true" />
+              Novo recebível recorrente
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setCriandoRecebivel(true)}
+              aria-label="Novo recebível recorrente"
+              className="size-8 rounded-[9px] p-0 md:hidden"
+            >
+              <Plus className="size-4" strokeWidth={2} aria-hidden="true" />
+            </Button>
+          </>
+        }
+      />
+
+      <div className="rounded-2xl border-[0.5px] border-border bg-card p-5 md:p-[22px]">
+        <span className="text-[13px] text-text-muted">Total recorrente mensal</span>
+        <div className="mt-1.5 text-[28px] leading-tight font-medium text-text-primary">
+          {formatarMoeda(totalRecorrenteMensal)}
+        </div>
+        <p className="mt-1 text-xs text-text-faint">
+          Soma os recebiveis mensais ativos; anuais e semanais nao entram.
+        </p>
+      </div>
+
+      <FormModal
         open={criandoRecebivel}
         onClose={() => setCriandoRecebivel(false)}
         title="Novo recebível recorrente"
       >
-        <FormRecebivelRecorrente onSalvar={() => setCriandoRecebivel(false)} />
-      </Modal>
+        <FormRecebivelRecorrente
+          onSalvar={() => setCriandoRecebivel(false)}
+          onCancelar={() => setCriandoRecebivel(false)}
+        />
+      </FormModal>
 
       {error ? (
         <Alert variant="destructive">
@@ -109,18 +124,30 @@ export function ListaRecebiveisRecorrentes() {
       ) : isLoading ? (
         <p className="text-sm text-text-muted">Carregando...</p>
       ) : recebiveis && recebiveis.length > 0 ? (
-        <div className="flex flex-col gap-3">
-          {recebiveis.map((recebivel) => (
-            <RecebivelRecorrenteItem
-              key={recebivel.id}
-              recebivel={recebivel}
-              categoriaNome={
-                recebivel.categoriaId
-                  ? (mapaNomeCategoria[recebivel.categoriaId] ?? null)
-                  : null
-              }
-            />
-          ))}
+        <div className="min-w-0 md:overflow-hidden md:rounded-2xl md:border-[0.5px] md:border-border md:bg-card">
+          <div
+            className={cn(
+              "hidden border-b-[0.5px] border-border px-[22px] py-3.5 text-xs text-text-muted md:grid",
+              GRADE_COLUNAS_RECEBIVEL,
+            )}
+          >
+            <span>Descricao</span>
+            <span>Recorrencia</span>
+            <span className="text-right">Valor</span>
+            <span className="text-right">Ativa</span>
+            <span />
+          </div>
+          <ul className="flex flex-col gap-2.5 md:block">
+            {recebiveis.map((recebivel) => (
+              <RecebivelRecorrenteItem
+                key={recebivel.id}
+                recebivel={recebivel}
+                categoriaNome={
+                  recebivel.categoriaId ? (mapaCategorias[recebivel.categoriaId]?.nome ?? null) : null
+                }
+              />
+            ))}
+          </ul>
         </div>
       ) : (
         <p className="text-sm text-text-muted">Nenhum recebível recorrente cadastrado ainda.</p>

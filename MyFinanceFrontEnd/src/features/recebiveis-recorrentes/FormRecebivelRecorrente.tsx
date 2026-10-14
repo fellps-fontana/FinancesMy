@@ -4,8 +4,9 @@ import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
-import { cn } from "@/shared/lib/utils"
-import { CategoriaSelect } from "@/features/categorias/components/CategoriaSelect"
+import { CLASSE_BOTAO_CANCELAR, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO } from "@/shared/ui/FormModal"
+import { SegmentedTabs } from "@/shared/ui/segmented-tabs"
+import { CategoriaCampoSelect } from "@/features/categorias/components/CategoriaCampoSelect"
 import { useCriarRecebivelRecorrente } from "@/features/recebiveis-recorrentes/hooks/useCriarRecebivelRecorrente"
 import { useEditarRecebivelRecorrente } from "@/features/recebiveis-recorrentes/hooks/useEditarRecebivelRecorrente"
 import {
@@ -36,7 +37,7 @@ const PERIODICIDADES: ReadonlyArray<{ valor: PeriodicidadeRecebivelRecorrente; l
 const DIAS_DA_SEMANA: readonly DiaDaSemana[] = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"]
 
 const CLASSE_SELECT =
-  "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30"
+  "w-full min-w-0 rounded-[10px] border border-border bg-accent px-3.5 py-3 text-sm text-text-body transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
 
 type FormRecebivelRecorrenteProps = {
   // Presenca de `recebivelParaEditar` define o modo: ausente -> CRIAR;
@@ -45,6 +46,7 @@ type FormRecebivelRecorrenteProps = {
   // nunca reenviada.
   recebivelParaEditar?: RecebivelRecorrenteResponse
   onSalvar?: () => void
+  onCancelar?: () => void
 }
 
 // Recebivel recorrente e sempre entrada/receita (item 15, familia CREDIT do
@@ -52,6 +54,7 @@ type FormRecebivelRecorrenteProps = {
 export function FormRecebivelRecorrente({
   recebivelParaEditar,
   onSalvar,
+  onCancelar,
 }: FormRecebivelRecorrenteProps) {
   const modoEdicao = recebivelParaEditar !== undefined
 
@@ -193,10 +196,7 @@ export function FormRecebivelRecorrente({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-4 rounded-xl border border-border bg-card px-4 py-4"
-    >
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {erroFormulario && (
         <Alert variant="destructive">
           <AlertDescription>{erroFormulario}</AlertDescription>
@@ -214,28 +214,21 @@ export function FormRecebivelRecorrente({
           disabled={modoEdicao}
           value={descricao}
           onChange={(event) => setDescricao(event.target.value)}
+          className={CLASSE_CAMPO}
         />
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label>Periodicidade</Label>
-        <div className="flex gap-2" role="group" aria-label="Periodicidade do recebível recorrente">
-          {PERIODICIDADES.map(({ valor: opcao, label }) => (
-            <Button
-              key={opcao}
-              type="button"
-              variant={periodicidade === opcao ? "default" : "outline"}
-              onClick={() => setPeriodicidade(opcao)}
-              disabled={isSubmitting}
-              className="flex-1"
-            >
-              {label}
-            </Button>
-          ))}
-        </div>
+        <SegmentedTabs
+          ariaLabel="Periodicidade do recebível recorrente"
+          options={PERIODICIDADES.map(({ valor: opcao, label }) => ({ value: opcao, label }))}
+          value={periodicidade}
+          onChange={setPeriodicidade}
+        />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2.5">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="valorRecebivelRecorrente">Valor</Label>
           <Input
@@ -248,6 +241,7 @@ export function FormRecebivelRecorrente({
             required
             value={valor}
             onChange={(event) => setValor(event.target.value)}
+            className={CLASSE_CAMPO}
           />
         </div>
 
@@ -266,6 +260,7 @@ export function FormRecebivelRecorrente({
               required
               value={diaVencimento}
               onChange={(event) => setDiaVencimento(event.target.value)}
+              className={CLASSE_CAMPO}
             />
           </div>
         )}
@@ -281,7 +276,7 @@ export function FormRecebivelRecorrente({
             required
             value={mesReferencia}
             onChange={(event) => setMesReferencia(event.target.value)}
-            className={cn(CLASSE_SELECT)}
+            className={CLASSE_SELECT}
           >
             <option value="" disabled>
               Selecione o mês
@@ -305,7 +300,7 @@ export function FormRecebivelRecorrente({
             required
             value={diaDaSemana}
             onChange={(event) => setDiaDaSemana(event.target.value)}
-            className={cn(CLASSE_SELECT)}
+            className={CLASSE_SELECT}
           >
             <option value="" disabled>
               Selecione o dia da semana
@@ -319,22 +314,20 @@ export function FormRecebivelRecorrente({
         </div>
       )}
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="categoriaRecebivelRecorrente">Categoria</Label>
-        <CategoriaSelect tipo="Receita" value={categoriaId} onChange={setCategoriaId} />
-      </div>
+      <CategoriaCampoSelect tipo="Receita" value={categoriaId} onChange={setCategoriaId} />
 
-      <div className="flex justify-end gap-2">
+      <div className="mt-1 flex justify-end gap-2.5">
         <Button
           type="button"
-          variant="ghost"
-          onClick={restaurarValoresIniciais}
+          variant="outline"
+          onClick={onCancelar}
           disabled={isSubmitting}
+          className={CLASSE_BOTAO_CANCELAR}
         >
-          {modoEdicao ? "Desfazer" : "Limpar"}
+          Cancelar
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando..." : "Salvar"}
+        <Button type="submit" disabled={isSubmitting} className={CLASSE_BOTAO_PRIMARIO}>
+          {isSubmitting ? "Salvando..." : "Salvar recebível"}
         </Button>
       </div>
     </form>

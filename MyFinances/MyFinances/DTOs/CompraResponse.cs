@@ -26,6 +26,11 @@ public class CompraResponse
 
     public int? ParcelaNumero { get; set; }
 
+    // CompraParcelada.QuantidadeParcelas. Null se nao e parcela ou se a navegacao nao foi carregada.
+    public int? TotalParcelas { get; set; }
+
+    public bool Antecipada { get; set; }
+
     public static CompraResponse FromLancamento(Lancamento lancamento)
     {
         return new()
@@ -40,7 +45,9 @@ public class CompraResponse
             Status = lancamento.Status.ToStorageValue(),
             FaturaId = lancamento.FaturaId,
             CompraParceladaId = lancamento.CompraParceladaId,
-            ParcelaNumero = lancamento.ParcelaNumero
+            ParcelaNumero = lancamento.ParcelaNumero,
+            TotalParcelas = lancamento.CompraParcelada?.QuantidadeParcelas,
+            Antecipada = lancamento.Antecipada
         };
     }
 }

@@ -30,7 +30,7 @@ export function RegisterForm({
   onSubmit,
 }: RegisterFormProps) {
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3.5">
+    <form onSubmit={onSubmit} className="flex flex-col gap-3.5 lg:gap-4">
       {errorMessage && (
         <Alert variant="destructive">
           <AlertDescription>{errorMessage}</AlertDescription>
@@ -48,7 +48,7 @@ export function RegisterForm({
           minLength={3}
           value={username}
           onChange={(event) => onUsernameChange(event.target.value)}
-          className="h-auto rounded-lg bg-card px-3.5 py-3.5"
+          className="h-auto rounded-[10px] bg-card px-3.5 py-3.5 text-sm md:text-sm lg:py-[13px]"
         />
       </div>
 
@@ -62,7 +62,7 @@ export function RegisterForm({
           required
           value={email}
           onChange={(event) => onEmailChange(event.target.value)}
-          className="h-auto rounded-lg bg-card px-3.5 py-3.5"
+          className="h-auto rounded-[10px] bg-card px-3.5 py-3.5 text-sm md:text-sm lg:py-[13px]"
         />
       </div>
 
@@ -77,7 +77,7 @@ export function RegisterForm({
           minLength={8}
           value={senha}
           onChange={(event) => onSenhaChange(event.target.value)}
-          className="h-auto rounded-lg bg-card px-3.5 py-3.5"
+          className="h-auto rounded-[10px] bg-card px-3.5 py-3.5 text-sm md:text-sm lg:py-[13px]"
         />
         <span className="text-[12px] text-text-faint">Mínimo de 8 caracteres</span>
       </div>
@@ -85,7 +85,7 @@ export function RegisterForm({
       <Button
         type="submit"
         disabled={isSubmitting}
-        className="mt-2 h-auto w-full rounded-lg bg-primary p-3.5 text-sm font-medium text-background hover:bg-primary/80"
+        className="mt-2 h-auto w-full rounded-[10px] bg-primary p-3.5 text-sm font-medium text-background hover:bg-primary/80"
       >
         {isSubmitting ? "Criando conta..." : "Criar conta"}
       </Button>

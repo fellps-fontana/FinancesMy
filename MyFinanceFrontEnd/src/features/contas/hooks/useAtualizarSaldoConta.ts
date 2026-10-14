@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { atualizarSaldoConta } from "@/features/contas/api"
+import { atualizarSaldoConta, tipificarErroConta } from "@/features/contas/api"
 import { contasKeys } from "@/features/contas/query-keys"
+import { investimentosKeys } from "@/features/investimentos/query-keys"
 import type { AtualizarSaldoRequest } from "@/features/contas/types"
 
 type AtualizarSaldoVariables = {
@@ -16,9 +17,14 @@ export function useAtualizarSaldoConta() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, request }: AtualizarSaldoVariables) => atualizarSaldoConta(id, request),
+    // 422 { erro }: saldo rejeitado pelo backend.
+    mutationFn: ({ id, request }: AtualizarSaldoVariables) =>
+      atualizarSaldoConta(id, request).catch((erro: unknown) => {
+        throw tipificarErroConta(erro, "SALDO_INVALIDO", 422)
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: contasKeys.lista() })
+      queryClient.invalidateQueries({ queryKey: investimentosKeys.total() })
     },
   })
 }

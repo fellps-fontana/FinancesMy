@@ -9,9 +9,10 @@ import type {
   RegistrarDividendoRequest,
   RendimentoResponse,
   RendimentosResumoResponse,
+  TotalInvestidoResponse,
 } from "@/features/investimentos/types"
 
-// --- Ativo (regra-de-negocio.md item 8) - standalone, sem vinculo com Conta.
+// --- Ativo (regra-de-negocio.md item 8) - sempre vinculado a uma conta de investimento (item 8.5).
 export function listarAtivos(): Promise<AtivoResponse[]> {
   return apiClient.get<AtivoResponse[]>("/api/ativos")
 }
@@ -59,4 +60,17 @@ export function registrarAporte(
 
 export function listarAportes(ativoId: string): Promise<AtivoAporteResponse[]> {
   return apiClient.get<AtivoAporteResponse[]>(`/api/ativos/${ativoId}/aportes`)
+}
+
+// PATCH /api/ativos/{id}/conta - define ou troca a conta de investimento do
+// ativo. 400: conta nao e de investimento ou id vazio; 404: ativo/conta
+// inexistente. O ativo nunca volta a ficar sem conta (contaId obrigatorio).
+export function vincularContaAtivo(ativoId: string, contaId: string): Promise<AtivoResponse> {
+  return apiClient.patch<AtivoResponse>(`/api/ativos/${ativoId}/conta`, { contaId })
+}
+
+// GET /api/contas/investimentos/total - total investido consolidado
+// (contas de investimento + ativos), calculado no backend.
+export function buscarTotalInvestido(): Promise<TotalInvestidoResponse> {
+  return apiClient.get<TotalInvestidoResponse>("/api/contas/investimentos/total")
 }

@@ -19,7 +19,11 @@ public class ContaResponse
 
     public OrigemConta Origem { get; set; }
 
+    // Saldo exibido: calculado dos ativos vinculados quando SaldoCalculado (itens 8.5/10).
     public decimal Saldo { get; set; }
+
+    // true = Saldo vem da soma dos ativos; a tela nao permite editar saldo manual.
+    public bool SaldoCalculado { get; set; }
 
     public decimal? SaldoManual { get; set; }
 
@@ -31,7 +35,14 @@ public class ContaResponse
 
     public string? PierreAccountId { get; set; }
 
+    // Sem saldo calculado (mantem chamadores atuais): Saldo = SaldoManual ?? 0.
     public static ContaResponse FromConta(ContaDomain conta)
+    {
+        return FromConta(conta, conta.SaldoManual ?? 0m, false);
+    }
+
+    // saldo/saldoCalculado vem de IContaService.ObterSaldo (regra nao mora em DTO).
+    public static ContaResponse FromConta(ContaDomain conta, decimal saldo, bool saldoCalculado)
     {
         if (conta.Tipo == null)
         {
@@ -47,7 +58,8 @@ public class ContaResponse
             Icone = conta.Icone,
             Cor = conta.Cor,
             Origem = conta.Origem,
-            Saldo = conta.SaldoManual ?? 0m,
+            Saldo = saldo,
+            SaldoCalculado = saldoCalculado,
             SaldoManual = conta.SaldoManual,
             Ativa = conta.Ativa,
             DiaFechamento = conta.DiaFechamento,

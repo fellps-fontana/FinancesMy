@@ -1,6 +1,11 @@
 import type { FormEvent } from "react"
-import { X } from "lucide-react"
-import { CategoriaSelect } from "@/features/categorias/components/CategoriaSelect"
+import { CategoriaCampoSelect } from "@/features/categorias/components/CategoriaCampoSelect"
+import {
+  CLASSE_BOTAO_CANCELAR,
+  CLASSE_BOTAO_PRIMARIO,
+  CLASSE_CAMPO,
+  FormModal,
+} from "@/shared/ui/FormModal"
 import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -30,8 +35,8 @@ type LancarCompraFormProps = {
  * so o estado transiente dos campos; a mutation, o estado de envio e o erro
  * vem do container (ContaCartaoPage) - mesmo padrao de PagarFaturaModal.
  *
- * Categoria (regra de negocio item 7) usa o mesmo CategoriaSelect do modulo
- * categorias, tipo DESPESA - compra de cartao e sempre gasto (item 12).
+ * Categoria (regra de negocio item 7) usa o CategoriaCampoSelect do modulo
+ * categorias, tipo Despesa - compra de cartao e sempre gasto (item 12).
  * Selecionar categoria e opcional: nao selecionar mantem `categoriaId: null`
  * no request (container decide isso, este componente so repassa o valor
  * transiente do select).
@@ -42,6 +47,15 @@ type LancarCompraFormProps = {
  * valor de cada parcela e responsabilidade do backend - este form so coleta
  * a quantidade.
  */
+// Resumo textual (sem calculo): o valor de cada parcela e definido pelo backend.
+function montarResumo(numeroParcelas: string): string {
+  const n = Number(numeroParcelas.trim())
+  if (numeroParcelas.trim().length > 0 && Number.isInteger(n) && n >= 2) {
+    return `Compra parcelada em ${n}x. O valor de cada parcela e calculado ao salvar e cada uma entra na fatura do seu vencimento.`
+  }
+  return "Compra a vista: entra inteira na fatura do periodo da data informada."
+}
+
 export function LancarCompraForm({
   descricao,
   valor,
@@ -59,32 +73,8 @@ export function LancarCompraForm({
   onFechar,
 }: LancarCompraFormProps) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 px-4"
-      role="presentation"
-      onClick={onFechar}
-    >
-      <form
-        role="dialog"
-        aria-modal="true"
-        aria-label="Lancar compra"
-        onClick={(event) => event.stopPropagation()}
-        onSubmit={onSubmit}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-border bg-card px-5 py-5"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-[19px] font-medium text-text-primary">Lancar compra</h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={onFechar}
-            aria-label="Fechar formulario"
-          >
-            <X className="size-4" aria-hidden="true" />
-          </Button>
-        </div>
-
+    <FormModal title="Nova compra" onClose={onFechar}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
         {errorMessage && (
           <Alert variant="destructive">
             <AlertDescription>{errorMessage}</AlertDescription>
@@ -98,64 +88,77 @@ export function LancarCompraForm({
             placeholder="Ex: Restaurante"
             required
             autoFocus
+            className={CLASSE_CAMPO}
             value={descricao}
             onChange={(event) => onDescricaoChange(event.target.value)}
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="valorCompra">Valor</Label>
-          <Input
-            id="valorCompra"
-            type="number"
-            step="0.01"
-            min="0.01"
-            inputMode="decimal"
-            placeholder="0,00"
-            required
-            value={valor}
-            onChange={(event) => onValorChange(event.target.value)}
-          />
+        <div className="flex gap-2.5">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <Label htmlFor="valorCompra">Valor total</Label>
+            <Input
+              id="valorCompra"
+              type="number"
+              step="0.01"
+              min="0.01"
+              inputMode="decimal"
+              placeholder="0,00"
+              required
+              className={CLASSE_CAMPO}
+              value={valor}
+              onChange={(event) => onValorChange(event.target.value)}
+            />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <Label htmlFor="dataCompra">Data</Label>
+            <Input
+              id="dataCompra"
+              type="date"
+              required
+              className={CLASSE_CAMPO}
+              value={data}
+              onChange={(event) => onDataChange(event.target.value)}
+            />
+          </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="dataCompra">Data da compra</Label>
-          <Input
-            id="dataCompra"
-            type="date"
-            required
-            value={data}
-            onChange={(event) => onDataChange(event.target.value)}
-          />
+        <div className="flex gap-2.5">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <CategoriaCampoSelect tipo="Despesa" value={categoriaId || undefined} onChange={onCategoriaIdChange} />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <Label htmlFor="numeroParcelasCompra">
+              Parcelas <span className="text-text-faint">· opcional</span>
+            </Label>
+            <Input
+              id="numeroParcelasCompra"
+              type="number"
+              step="1"
+              min="2"
+              inputMode="numeric"
+              placeholder="A vista"
+              className={CLASSE_CAMPO}
+              value={numeroParcelas}
+              onChange={(event) => onNumeroParcelasChange(event.target.value)}
+            />
+          </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="categoriaCompra">Categoria</Label>
-          <CategoriaSelect
-            tipo="Despesa"
-            value={categoriaId || undefined}
-            onChange={onCategoriaIdChange}
-          />
+        <div className="rounded-[10px] border-[0.5px] border-border bg-background px-3.5 py-2.5">
+          <div className="text-[11px] text-text-faint">Resumo</div>
+          <div className="mt-0.5 text-[13px] text-text-body">{montarResumo(numeroParcelas)}</div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="numeroParcelasCompra">Numero de parcelas (opcional)</Label>
-          <Input
-            id="numeroParcelasCompra"
-            type="number"
-            step="1"
-            min="2"
-            inputMode="numeric"
-            placeholder="Deixe em branco para compra a vista"
-            value={numeroParcelas}
-            onChange={(event) => onNumeroParcelasChange(event.target.value)}
-          />
+        <div className="mt-1 flex justify-end gap-2.5">
+          <Button type="button" variant="outline" onClick={onFechar} className={CLASSE_BOTAO_CANCELAR}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={isSubmitting} className={CLASSE_BOTAO_PRIMARIO}>
+            {isSubmitting ? "Salvando..." : "Salvar compra"}
+          </Button>
         </div>
-
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Lancando..." : "Lancar compra"}
-        </Button>
       </form>
-    </div>
+    </FormModal>
   )
 }

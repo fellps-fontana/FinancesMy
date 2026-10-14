@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { skipToken, useQuery } from "@tanstack/react-query"
 import { listarFaturas } from "@/features/cartao/api"
 import { cartaoKeys } from "@/features/cartao/query-keys"
 
@@ -9,10 +9,12 @@ import { cartaoKeys } from "@/features/cartao/query-keys"
 export function useFaturas(contaId: string | null) {
   return useQuery({
     queryKey: cartaoKeys.faturas(contaId ?? ""),
-    queryFn: async () => {
-      const faturas = await listarFaturas(contaId as string)
-      return [...faturas].sort((a, b) => b.dataVencimento.localeCompare(a.dataVencimento))
-    },
-    enabled: contaId !== null,
+    queryFn:
+      contaId === null
+        ? skipToken
+        : async () => {
+            const faturas = await listarFaturas(contaId)
+            return [...faturas].sort((a, b) => b.dataVencimento.localeCompare(a.dataVencimento))
+          },
   })
 }

@@ -29,8 +29,17 @@ public class AtivoConfiguration : IEntityTypeConfiguration<Ativo>
 
         builder.Property(a => a.Instituicao)
             .HasColumnName("instituicao")
-            .IsRequired()
             .HasMaxLength(255);
+
+        builder.Property(a => a.ContaId)
+            .HasColumnName("conta_id");
+
+        builder.HasOne(a => a.Conta)
+            .WithMany()
+            .HasForeignKey(a => a.ContaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(a => a.ContaId);
 
         builder.Property(a => a.Quantidade)
             .HasColumnName("quantidade")

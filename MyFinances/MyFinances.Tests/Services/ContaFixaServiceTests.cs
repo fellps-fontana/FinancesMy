@@ -209,8 +209,27 @@ public class ContaFixaServiceTests
             .Setup(r => r.ObterPorId(contaFixaId))
             .ReturnsAsync(contaFixa);
 
+        // DesativarAsync delega a limpeza ao motor (regra item 6). Aqui o motor e REAL
+        // (RecorrenciaGeradorService) sobre os repositorios mockados, para observar a
+        // exclusao no nivel de Lancamento, como em ContaFixaApagarServiceTests.
+        var motor = new RecorrenciaGeradorService(
+            _mockContaFixaRepository.Object,
+            _mockLancamentoRepository.Object,
+            new Mock<CompraCartaoService>(
+                new Mock<ILancamentoRepository>().Object,
+                new Mock<FaturaCicloService>(
+                    new Mock<IFaturaRepository>().Object,
+                    new Mock<IContaRepository>().Object).Object,
+                new Mock<ValidacaoCartaoService>(
+                    new Mock<IContaRepository>().Object).Object).Object);
+        var service = new ContaFixaService(
+            _mockContaFixaRepository.Object,
+            _mockContaRepository.Object,
+            _mockLancamentoRepository.Object,
+            motor);
+
         // Act
-        var resultado = await _service.DesativarAsync(contaFixaId);
+        var resultado = await service.DesativarAsync(contaFixaId);
 
         // Assert - retorna sucesso
         Assert.True(resultado.Sucesso);

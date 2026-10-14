@@ -46,6 +46,28 @@ public class FaturaRepository : IFaturaRepository
             .FirstOrDefaultAsync(f => f.ContaId == contaId && f.Status == StatusFatura.Aberta);
     }
 
+    public async Task<Fatura?> ObterPorContaEDataFechamento(Guid contaId, DateOnly dataFechamento)
+    {
+        return await _context.Faturas
+            .Include(f => f.Conta)
+            .Include(f => f.Transferencias)
+            .Include(f => f.Lancamentos)
+            .FirstOrDefaultAsync(f => f.ContaId == contaId && f.DataFechamento == dataFechamento);
+    }
+
+    // Fechada com fechamento ja passado nao muda na reconciliacao, entao fica de fora.
+    public async Task<IReadOnlyList<Fatura>> ListarParaReconciliacao(Guid contaId, DateOnly hoje)
+    {
+        return await _context.Faturas
+            .Include(f => f.Conta)
+            .Include(f => f.Transferencias)
+            .Include(f => f.Lancamentos)
+            .Where(f => f.ContaId == contaId &&
+                        (f.Status != StatusFatura.Fechada || f.DataFechamento >= hoje))
+            .OrderBy(f => f.DataFechamento)
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<Fatura>> ListarFaturasCartaoPorVencimentoNoMes(int ano, int mes)
     {
         return await _context.Faturas

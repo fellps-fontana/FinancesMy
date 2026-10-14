@@ -1,192 +1,148 @@
-import { useState } from "react"
-import { cn } from "@/shared/lib/utils"
-import { ApiError } from "@/shared/api/client"
-import { Card, CardContent } from "@/shared/ui/card"
-import { Button } from "@/shared/ui/button"
-import { Alert, AlertDescription } from "@/shared/ui/alert"
-import { CampoLimiteGasto } from "@/features/categorias/components/CampoLimiteGasto"
-import { useArquivarCategoria } from "@/features/categorias/hooks/useArquivarCategoria"
-import { useReativarCategoria } from "@/features/categorias/hooks/useReativarCategoria"
+import { Pencil, Archive, RotateCcw } from "lucide-react"
+import { formatarMoeda } from "@/shared/lib/formatarMoeda"
 import { obterIconeCatalogo } from "@/shared/lib/catalogoIcones"
-import type { CategoriaResponse, TipoCategoria } from "@/features/categorias/types"
-import type { LimiteGastoResponse } from "@/features/limite-gasto/types"
-
-// CampoLimiteGasto (ver comentario em types.ts) espera "DESPESA"/"RECEITA"
-// em caixa alta, mas o backend serializa TipoCategoria em PascalCase
-// ("Despesa"/"Receita" — Program.cs registra JsonStringEnumConverter sem
-// naming policy). Conversao explicita e tipada em vez de `.toUpperCase()`
-// solto, pra nao depender de cast e deixar o de-para visivel.
-const TIPO_CATEGORIA_MAIUSCULO: Record<TipoCategoria, "DESPESA" | "RECEITA"> = {
-  Despesa: "DESPESA",
-  Receita: "RECEITA",
-}
-
-// Arquivada e estado intencional do usuario (soft-delete, regra-de-negocio.md
-// item 7), nao uma pendencia — por isso segue o mesmo par neutro (bg-muted +
-// text-text-muted) que identidade-visual.md reserva para "manual -> neutro",
-// mesmo espirito ja usado em ContaFixaItem para o par ativa/inativa.
-const BADGE_ARQUIVADA_CLASSNAME = "bg-muted text-text-muted"
+import { cn } from "@/shared/lib/utils"
+import { Badge } from "@/shared/ui/badge"
+import { Button } from "@/shared/ui/button"
+import { IconTile } from "@/shared/ui/icon-tile"
+import { ProgressBar } from "@/shared/ui/progress-bar"
+import type { CategoriaResponse } from "@/features/categorias/types"
+import type { GastoVsLimiteResponse } from "@/features/limite-gasto/types"
 
 type CategoriaItemProps = {
   categoria: CategoriaResponse
-  limitesPorCategoriaId: Record<string, LimiteGastoResponse>
+  gastoVsLimitePorCategoriaId: Record<string, GastoVsLimiteResponse>
   onEditar: (categoria: CategoriaResponse) => void
-  // Id da categoria com o FormCategoria aberto em modo edicao (CategoriasPage),
-  // ou null se nenhum formulario de edicao esta aberto. Usado so para
-  // desabilitar o botao "Editar" deste mesmo item enquanto seu proprio form
-  // ja esta aberto acima da lista - evita 2 pontos de entrada simultaneos
-  // para a edicao da mesma categoria (form aberto + botao "Editar" ainda
-  // clicavel na lista).
-  categoriaEmEdicaoId: string | null
+  onArquivar: (categoria: CategoriaResponse) => void
+  onReativar: (categoria: CategoriaResponse) => void
+  /** Mobile: toque na linha abre a folha de acoes. */
+  onAbrirAcoes: (categoria: CategoriaResponse) => void
+  /** Subcategoria nao ganha card proprio: ja esta dentro do card do pai. */
+  aninhada?: boolean
 }
 
-// Componente recursivo: renderiza a categoria e, logo abaixo, suas
-// subcategorias (regra-de-negocio.md item 7 — auto-relacionamento via
-// parentId). A indentacao por nivel nasce da propria recursao (cada chamada
-// aninhada ja vem envolvida no wrapper com `pl-4 border-l` do nivel pai) —
-// nao precisa de um prop `nivel` nem calculo de profundidade aqui.
-//
-// Arquivar/Reativar sao MUTUAMENTE EXCLUSIVOS (nunca os dois ao mesmo
-// tempo): dependem so de `categoria.arquivada`, mesmo par de acoes/estado ja
-// usado em ContaFixaItem para ativa/inativa (regra-de-negocio.md item 6).
-//
-// Editar: este componente so dispara o gatilho via `onEditar`, sem importar
-// formulario nenhum - quem decide renderizar o FormCategoria (TASK-102, ja
-// existente e em uso via onEditar em CategoriasPage) e o componente pai. O
-// botao "Editar" fica desabilitado quando `categoria.id === categoriaEmEdicaoId`
-// (form ja aberto acima da lista para esta mesma categoria) - um unico ponto
-// de entrada ativo por categoria visivel na tela.
+// Apresentacao pura (regra-de-negocio.md item 7: categoria/subcategoria via
+// parentId, arquivar e a unica exclusao; item 14: limite mensal). Gasto,
+// percentual e `estourado` chegam prontos do backend (GastoVsLimiteResponse) -
+// aqui so se exibe: a barra recebe o percentual (fracao -> escala 0-100 da
+// barra) e `estourado` decide a cor (coral = gasto acima do limite).
+// Categoria sem limite nao tem barra. Desktop: icones de acao na linha;
+// mobile: a linha inteira e um alvo de toque que abre a folha de acoes.
 export function CategoriaItem({
   categoria,
-  limitesPorCategoriaId,
+  gastoVsLimitePorCategoriaId,
   onEditar,
-  categoriaEmEdicaoId,
+  onArquivar,
+  onReativar,
+  onAbrirAcoes,
+  aninhada = false,
 }: CategoriaItemProps) {
-  const [erro, setErro] = useState<string | null>(null)
-
-  const emEdicao = categoria.id === categoriaEmEdicaoId
-
-  // Icone escolhido no cadastro (FormCategoria.tsx), do catalogo fixo
-  // (shared/lib/catalogoIcones.ts). Sem icone salvo (ou id fora do catalogo)
-  // cai no icone padrao - obterIconeCatalogo nunca quebra o render.
   const Icone = obterIconeCatalogo(categoria.icone)
-
-  const { mutate: arquivar, isPending: arquivando } = useArquivarCategoria()
-  const { mutate: reativar, isPending: reativando } = useReativarCategoria()
-
-  function handleArquivar() {
-    setErro(null)
-    arquivar(categoria.id, {
-      onError: (error) => {
-        console.error("Falha ao arquivar categoria", error)
-        setErro(
-          error instanceof ApiError
-            ? error.message
-            : "Nao foi possivel arquivar a categoria. Tente novamente.",
-        )
-      },
-    })
-  }
-
-  function handleReativar() {
-    setErro(null)
-    reativar(categoria.id, {
-      onError: (error) => {
-        console.error("Falha ao reativar categoria", error)
-        setErro(
-          error instanceof ApiError
-            ? error.message
-            : "Nao foi possivel reativar a categoria. Tente novamente.",
-        )
-      },
-    })
-  }
-
-  const limiteAtual = limitesPorCategoriaId[categoria.id] ?? null
+  const comparativo = gastoVsLimitePorCategoriaId[categoria.id]
+  const estourado = comparativo?.estourado ?? false
 
   return (
-    <div className="flex flex-col gap-2">
-      <Card size="sm">
-        <CardContent className="flex flex-col gap-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-3">
-              <div className="flex size-[34px] shrink-0 items-center justify-center rounded-lg bg-accent-deep">
-                <Icone className="size-4 text-accent-soft" strokeWidth={1.6} aria-hidden="true" />
-              </div>
-              <span className="text-[14px] font-medium text-text-primary">{categoria.nome}</span>
-            </div>
+    <div
+      className={cn(
+        "flex flex-col gap-3",
+        !aninhada && "md:rounded-[14px] md:border-[0.5px] md:border-border md:bg-card md:p-4",
+      )}
+    >
+      <div className="relative flex items-center gap-3 md:gap-3.5">
+        <button
+          type="button"
+          aria-label={`Acoes de ${categoria.nome}`}
+          onClick={() => onAbrirAcoes(categoria)}
+          className="absolute inset-0 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:hidden"
+        />
 
-            {categoria.arquivada && (
+        <IconTile>
+          <Icone strokeWidth={1.6} aria-hidden="true" />
+        </IconTile>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex min-w-0 items-center gap-2">
               <span
                 className={cn(
-                  "inline-flex items-center rounded-[5px] px-2 py-0.5 text-[12px] font-medium",
-                  BADGE_ARQUIVADA_CLASSNAME,
+                  "truncate text-sm",
+                  categoria.arquivada ? "text-text-muted" : "text-text-body",
                 )}
               >
-                Arquivada
+                {categoria.nome}
+              </span>
+              {categoria.arquivada && <Badge variant="manual">Arquivada</Badge>}
+            </span>
+            {comparativo && (
+              <span
+                className={cn(
+                  "shrink-0 text-[13px]",
+                  estourado ? "text-negativo" : "text-text-primary",
+                )}
+              >
+                {formatarMoeda(comparativo.gastoRealizado)} / {formatarMoeda(comparativo.valorLimite)}
               </span>
             )}
           </div>
-
-          {categoria.tipo === "Despesa" && (
-            <CampoLimiteGasto
-              categoriaId={categoria.id}
-              categoriaTipo={TIPO_CATEGORIA_MAIUSCULO[categoria.tipo]}
-              limiteAtual={limiteAtual}
+          {comparativo && (
+            <ProgressBar
+              className="mt-1.5"
+              percent={comparativo.percentualUtilizado * 100}
+              exceeded={estourado}
+              aria-label={`Uso do limite de ${categoria.nome}`}
             />
           )}
+        </div>
 
-          {erro && (
-            <Alert variant="destructive">
-              <AlertDescription>{erro}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex justify-end gap-2">
+        <div className="relative hidden items-center gap-1 md:flex">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            title="Editar"
+            aria-label={`Editar ${categoria.nome}`}
+            onClick={() => onEditar(categoria)}
+          >
+            <Pencil className="size-4 text-text-muted" aria-hidden="true" />
+          </Button>
+          {categoria.arquivada ? (
             <Button
               type="button"
               variant="ghost"
-              size="sm"
-              disabled={emEdicao}
-              onClick={() => onEditar(categoria)}
+              size="icon-sm"
+              title="Reativar"
+              aria-label={`Reativar ${categoria.nome}`}
+              onClick={() => onReativar(categoria)}
             >
-              {emEdicao ? "Editando..." : "Editar"}
+              <RotateCcw className="size-4 text-text-muted" aria-hidden="true" />
             </Button>
-
-            {categoria.arquivada ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={reativando}
-                onClick={handleReativar}
-              >
-                {reativando ? "Reativando..." : "Reativar"}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={arquivando}
-                onClick={handleArquivar}
-              >
-                {arquivando ? "Arquivando..." : "Arquivar"}
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              title="Arquivar"
+              aria-label={`Arquivar ${categoria.nome}`}
+              onClick={() => onArquivar(categoria)}
+            >
+              <Archive className="size-4 text-text-muted" aria-hidden="true" />
+            </Button>
+          )}
+        </div>
+      </div>
 
       {categoria.subcategorias.length > 0 && (
-        <div className="flex flex-col gap-2 border-l border-border pl-4">
+        <div className="flex flex-col gap-3 border-l-[0.5px] border-border pl-4">
           {categoria.subcategorias.map((subcategoria) => (
             <CategoriaItem
               key={subcategoria.id}
               categoria={subcategoria}
-              limitesPorCategoriaId={limitesPorCategoriaId}
+              gastoVsLimitePorCategoriaId={gastoVsLimitePorCategoriaId}
               onEditar={onEditar}
-              categoriaEmEdicaoId={categoriaEmEdicaoId}
+              onArquivar={onArquivar}
+              onReativar={onReativar}
+              onAbrirAcoes={onAbrirAcoes}
+              aninhada
             />
           ))}
         </div>

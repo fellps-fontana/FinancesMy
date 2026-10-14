@@ -8,7 +8,8 @@ public class CriarAtivoRequest
 
     public TipoAtivo Tipo { get; set; }
 
-    public required string Instituicao { get; set; }
+    // Obrigatorio em ativo novo (item 8.5). Guid.Empty = ausente -> 400.
+    public Guid ContaId { get; set; }
 
     public decimal Quantidade { get; set; }
 

@@ -4,9 +4,12 @@ import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
-import { cn } from "@/shared/lib/utils"
+import { CLASSE_BOTAO_CANCELAR, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO } from "@/shared/ui/FormModal"
+import { Chip } from "@/shared/ui/chip"
+import { SelectField } from "@/shared/ui/select-field"
 import { formatarMoeda } from "@/shared/lib/formatarMoeda"
 import { dataDeHoje } from "@/features/cartao/lib/formatarData"
+import { BarraRecebido } from "@/features/contas-receber/components/ContaReceberItem"
 import { useRegistrarRecebimento } from "@/features/contas-receber/hooks/useRegistrarRecebimento"
 import { useContasParaSelecao } from "@/features/contas-receber/hooks/useContasParaSelecao"
 import {
@@ -16,8 +19,10 @@ import {
 
 type TipoRecebimento = "PARCIAL" | "TOTAL"
 
+
 type FormRegistrarRecebimentoProps = {
   contaReceberId: string
+  descricao: string
   valorTotal: number
   saldoPendente: number
   onRegistrado: () => void
@@ -48,6 +53,7 @@ type FormRegistrarRecebimentoProps = {
 // esquecimento; reportada na entrega da task.
 export function FormRegistrarRecebimento({
   contaReceberId,
+  descricao,
   valorTotal,
   saldoPendente,
   onRegistrado,
@@ -68,8 +74,6 @@ export function FormRegistrarRecebimento({
   // estado novo de dominio nasce aqui. percentualRecebido e clamp puramente
   // visual (largura da barra), sem efeito em nenhuma decisao de fluxo.
   const valorRecebido = valorTotal - saldoPendente
-  const percentualRecebido =
-    valorTotal > 0 ? Math.min(100, Math.max(0, (valorRecebido / valorTotal) * 100)) : 0
 
   // Toggle Parcial/Total (mockup): "Total" trava o campo Valor no
   // saldo_pendente atual - o usuario nao deveria digitar algo diferente do
@@ -132,57 +136,50 @@ export function FormRegistrarRecebimento({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {erro && (
         <Alert variant="destructive">
           <AlertDescription>{erro}</AlertDescription>
         </Alert>
       )}
 
-      <div className="flex flex-col gap-2 rounded-xl bg-muted p-3.5">
-        <div className="flex items-center justify-between text-[12px] text-text-muted">
+      <div className="flex flex-col rounded-xl bg-accent p-3.5">
+        <span className="text-sm text-text-body">{descricao}</span>
+        <div className="mt-2 flex items-center justify-between text-xs text-text-muted">
           <span>Recebido</span>
           <span>
             {formatarMoeda(valorRecebido)} de {formatarMoeda(valorTotal)}
           </span>
         </div>
-        <div className="h-[5px] overflow-hidden rounded-[5px] bg-border">
-          <div
-            className="h-full rounded-[5px] bg-positivo"
-            style={{ width: `${percentualRecebido}%` }}
-          />
-        </div>
+        <BarraRecebido valorTotal={valorTotal} saldoPendente={saldoPendente} className="mt-1.5 bg-border" />
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label>Tipo de recebimento</Label>
         <div className="flex gap-2" role="group" aria-label="Tipo de recebimento">
-          <Button
-            type="button"
-            variant={tipoRecebimento === "PARCIAL" ? "default" : "outline"}
-            size="sm"
+          <Chip
+            selected={tipoRecebimento === "PARCIAL"}
             onClick={handleSelecionarParcial}
-            className="flex-1"
+            className="flex-1 rounded-[9px] py-2.5 text-[13px]"
           >
             Parcial
-          </Button>
-          <Button
-            type="button"
-            variant={tipoRecebimento === "TOTAL" ? "default" : "outline"}
-            size="sm"
+          </Chip>
+          <Chip
+            selected={tipoRecebimento === "TOTAL"}
             onClick={handleSelecionarTotal}
-            className="flex-1"
+            className="flex-1 rounded-[9px] py-2.5 text-[13px]"
           >
             Total ({formatarMoeda(saldoPendente)} restante)
-          </Button>
+          </Chip>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2.5">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={`valorRecebimento-${contaReceberId}`}>Valor recebido</Label>
           <Input
             id={`valorRecebimento-${contaReceberId}`}
+            className={CLASSE_CAMPO}
             type="number"
             step="0.01"
             min="0.01"
@@ -199,6 +196,7 @@ export function FormRegistrarRecebimento({
           <Label htmlFor={`dataRecebimento-${contaReceberId}`}>Data</Label>
           <Input
             id={`dataRecebimento-${contaReceberId}`}
+            className={CLASSE_CAMPO}
             type="date"
             required
             value={data}
@@ -208,26 +206,14 @@ export function FormRegistrarRecebimento({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`contaDestinoRecebimento-${contaReceberId}`}>Conta de destino</Label>
-        <select
-          id={`contaDestinoRecebimento-${contaReceberId}`}
-          required
+        <SelectField
+          label="Conta de destino"
+          placeholder={carregandoContasDestino ? "Carregando contas..." : "Selecione a conta de destino"}
           disabled={carregandoContasDestino}
-          value={contaDestinoId}
-          onChange={(event) => setContaDestinoId(event.target.value)}
-          className={cn(
-            "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
-          )}
-        >
-          <option value="" disabled>
-            {carregandoContasDestino ? "Carregando contas..." : "Selecione a conta de destino"}
-          </option>
-          {contasDestino?.map((conta) => (
-            <option key={conta.id} value={conta.id}>
-              {conta.nome}
-            </option>
-          ))}
-        </select>
+          options={(contasDestino ?? []).map((conta) => ({ value: conta.id, label: conta.nome }))}
+          value={contaDestinoId || null}
+          onChange={setContaDestinoId}
+        />
         {erroContasDestino && (
           <span className="text-[12px] text-alerta">
             Nao foi possivel carregar as contas de destino. Tente novamente.
@@ -235,11 +221,17 @@ export function FormRegistrarRecebimento({
         )}
       </div>
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onCancelar} disabled={isPending}>
+      <div className="mt-1.5 flex justify-end gap-2.5">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancelar}
+          disabled={isPending}
+          className={CLASSE_BOTAO_CANCELAR}
+        >
           Cancelar
         </Button>
-        <Button type="submit" size="sm" disabled={isPending}>
+        <Button type="submit" disabled={isPending} className={CLASSE_BOTAO_PRIMARIO}>
           {isPending ? "Registrando..." : "Confirmar recebimento"}
         </Button>
       </div>

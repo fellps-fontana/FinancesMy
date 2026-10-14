@@ -1,7 +1,8 @@
 import { ArrowLeftRight } from "lucide-react"
-import { Card, CardContent } from "@/shared/ui/card"
-import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
-import { formatarData } from "@/features/cartao/lib/formatarData"
+import { cn } from "@/shared/lib/utils"
+import { formatarMoeda } from "@/shared/lib/formatarMoeda"
+import { formatarDiaMes } from "@/shared/lib/datas"
+import { GRADE_COLUNAS_LANCAMENTO } from "@/features/lancamentos/components/LancamentoItem"
 import { useContasParaExibicaoTransferencia } from "@/features/lancamentos/hooks/useContasParaExibicaoTransferencia"
 import { montarDescricaoTransferencia } from "@/features/lancamentos/lib/montarDescricaoTransferencia"
 import type { TransferenciaFluxoCaixa } from "@/features/lancamentos/types"
@@ -10,41 +11,38 @@ type TransferenciaFluxoCaixaItemProps = {
   transferencia: TransferenciaFluxoCaixa
 }
 
-// Componente de apresentacao (burro): a decisao de titulo/subtitulo
-// (Pagamento de fatura / Emprestimo / "Conta A -> Conta B") vem inteira de
-// montarDescricaoTransferencia (lib/, funcao pura testavel) - este componente
-// so busca o lookup de contas (useContasParaExibicaoTransferencia, banco +
-// investimento + cartao) e renderiza.
-//
-// Linha visualmente distinta de LancamentoItem (regra-de-negocio.md item 3:
-// "no fluxo de caixa a transferencia aparece como uma unica linha logica"):
-// icone de troca (ArrowLeftRight, nao a seta unica de entrada/saida de
-// LancamentoItem) e valor SEM sinal +/- nem cor positivo/negativo -
-// transferencia nao e gasto nem receita (item 2 CRITICA + item 3), entao nao
-// herda a semantica de cor de entrada/saida da identidade visual. SEM acoes
-// (editar/pagar/remover): a regra de negocio nao define nenhuma acao de
-// edicao/exclusao sobre transferencia hoje.
+// Linha de transferencia na mesma grade da tabela (apresentacao). Titulo e
+// subtitulo vem de montarDescricaoTransferencia (lib). Valor sem sinal nem
+// cor de entrada/saida: transferencia nao e gasto nem receita (itens 2, 3 e
+// 12). Sem acoes: a regra nao define edicao/exclusao de transferencia.
 export function TransferenciaFluxoCaixaItem({ transferencia }: TransferenciaFluxoCaixaItemProps) {
   const { data: contas } = useContasParaExibicaoTransferencia()
   const { titulo, subtitulo } = montarDescricaoTransferencia(transferencia, contas)
 
   return (
-    <Card size="sm">
-      <CardContent className="flex items-center gap-3">
-        <div className="flex size-[34px] shrink-0 items-center justify-center rounded-lg bg-accent-deep">
-          <ArrowLeftRight className="size-4 text-accent-soft" strokeWidth={1.6} aria-hidden="true" />
+    <li className="md:border-b-[0.5px] md:border-border md:last:border-b-0 py-1.5 md:px-[22px] md:py-3.5">
+      <div className={cn("flex items-center gap-3 md:grid", GRADE_COLUNAS_LANCAMENTO)}>
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="flex size-[34px] shrink-0 items-center justify-center rounded-[10px] bg-accent-deep">
+            <ArrowLeftRight className="size-4 text-accent-soft" strokeWidth={1.6} aria-hidden="true" />
+          </div>
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate text-sm text-text-body">{titulo}</span>
+            {subtitulo && <span className="truncate text-xs text-text-faint md:hidden">{subtitulo}</span>}
+          </div>
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-[14px] text-text-body">{titulo}</span>
-          {subtitulo && <span className="truncate text-[12px] text-text-faint">{subtitulo}</span>}
-          <span className="text-[12px] text-text-faint">{formatarData(transferencia.data)}</span>
-        </div>
-
-        <span className="shrink-0 text-[14px] font-medium text-text-primary">
+        <span className="hidden truncate text-[13px] text-text-muted md:block">
+          {subtitulo ?? "Transferencia"}
+        </span>
+        <span className="hidden text-[13px] text-text-muted md:block">
+          {formatarDiaMes(transferencia.data)}
+        </span>
+        <span className="text-sm text-text-primary md:text-right">
           {formatarMoeda(transferencia.valor)}
         </span>
-      </CardContent>
-    </Card>
+        <span className="hidden md:block" />
+      </div>
+    </li>
   )
 }

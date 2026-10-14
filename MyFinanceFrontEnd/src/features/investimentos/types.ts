@@ -13,8 +13,8 @@
 export type TipoAtivo = "RendaFixa" | "RendaVariavel"
 export type TipoAtivoStorage = "RENDA_FIXA" | "RENDA_VARIAVEL"
 
-// Ativo (regra-de-negocio.md item 8): registro STANDALONE, sem vinculo com
-// Conta. valorAtual e evolucaoPercentual sao 100% manuais (item 8.1) - sem
+// Ativo (regra-de-negocio.md item 8/8.5): sempre vinculado a uma conta de
+// investimento (`semConta` marca ativos antigos ainda sem vinculo). valorAtual e evolucaoPercentual sao 100% manuais (item 8.1) - sem
 // nenhuma API de cotacao, em nenhuma fase da v1. quantidade e precoMedio
 // vem calculados pelo backend a partir do historico de aportes (item 8.1,
 // media ponderada recalculada a cada aporte - ver AtivoResponse.FromAtivo
@@ -23,7 +23,12 @@ export type AtivoResponse = {
   id: string
   nome: string
   tipo: TipoAtivo
-  instituicao: string
+  instituicao?: string | null
+  // Conta de investimento do ativo (item 8.5). `semConta` marca ativos antigos
+  // ainda sem vinculo; a UI oferece "Vincular conta".
+  contaId?: string | null
+  contaNome?: string | null
+  semConta: boolean
   quantidade: number
   valorInvestido: number
   valorAtual: number
@@ -39,10 +44,14 @@ export type AtivoResponse = {
 export type CriarAtivoRequest = {
   nome: string
   tipo: TipoAtivo
-  instituicao: string
+  contaId: string
   quantidade: number
   precoUnitario: number
   dataCompra: string
+}
+
+export type TotalInvestidoResponse = {
+  totalInvestido: number
 }
 
 export type AtualizarValorAtualRequest = {
@@ -83,24 +92,10 @@ export type AtivosResumoResponse = {
   porTipo: ResumoPorTipo[]
 }
 
-// --- Conta de investimento simples (cofrinho, XP sem detalhe de ativo) -
-// regra-de-negocio.md item 8 ("Conta de investimento - saldo simples") e
-// item 10. Modulo separado de Ativo, sem nenhuma relacao entre os dois.
-// `saldo` vem sempre populado pelo backend (ContaResponse.FromConta);
-// `saldoManual` e o campo editavel pelo usuario. Listagem, edicao de saldo e
-// desativacao de conta migraram para features/contas/ (TASK-127/130,
-// correcao pos-review) - este tipo continua aqui SO porque
-// features/contas-receber/hooks/useContasParaSelecao.ts ainda importa dele
-// para popular o seletor de conta de origem/recebimento.
-export type ContaResponse = {
-  id: string
-  nome: string
-  tipo: string
-  origem: string
-  saldo: number
-  saldoManual: number | null
-  ativa: boolean
-}
+// ContaResponse vive em features/contas/types.ts (fonte unica). Reexportado
+// aqui porque features/contas-receber/hooks/useContasParaSelecao.ts ainda
+// importa deste caminho.
+export type { ContaResponse } from "@/features/contas/types"
 
 // --- Rendimento (regra-de-negocio.md item 8/TASK-160) - dividendo (registro
 // manual do usuario) e valorizacao (calculada pelo backend a partir da

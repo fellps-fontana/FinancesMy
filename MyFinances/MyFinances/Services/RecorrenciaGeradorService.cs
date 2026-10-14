@@ -155,9 +155,7 @@ public class RecorrenciaGeradorService : IRecorrenciaGeradorService
         var lancamentosRemovidos = 0;
 
         var lancamentosEligiveisParaRemocao = contaFixa.Lancamentos
-            .Where(l =>
-                (l.Status == StatusLancamento.Pendente) ||  // Banco: sempre Pendente
-                (l.Fatura != null && l.Fatura.Status != StatusFatura.Paga))    // Cartao: Fatura nao paga (remove, Fatura paga nunca)
+            .Where(EhNaoConsumada)
             .ToList();
 
         foreach (var lancamento in lancamentosEligiveisParaRemocao)
@@ -175,5 +173,60 @@ public class RecorrenciaGeradorService : IRecorrenciaGeradorService
         await _lancamentoRepository.Salvar();
 
         return lancamentosRemovidos;
+    }
+
+    public async Task<int> RemoverOcorrenciasNaoConsumadasAsync(Guid contaFixaId)
+    {
+        var naoConsumadas = await ListarOcorrenciasAsync(contaFixaId, EhNaoConsumada);
+
+        foreach (var lancamento in naoConsumadas)
+        {
+            await _lancamentoRepository.Remover(lancamento);
+        }
+
+        await _lancamentoRepository.Salvar();
+
+        return naoConsumadas.Count;
+    }
+
+    public async Task<int> DesvincularOcorrenciasConsumadasAsync(Guid contaFixaId)
+    {
+        var consumadas = await ListarOcorrenciasAsync(contaFixaId, EhConsumada);
+
+        foreach (var lancamento in consumadas)
+        {
+            lancamento.ContaFixaId = null;
+            await _lancamentoRepository.Atualizar(lancamento);
+        }
+
+        await _lancamentoRepository.Salvar();
+
+        return consumadas.Count;
+    }
+
+    private async Task<List<Lancamento>> ListarOcorrenciasAsync(Guid contaFixaId, Func<Lancamento, bool> criterio)
+    {
+        var contaFixa = await _contaFixaRepository.ObterPorId(contaFixaId);
+        if (contaFixa == null)
+        {
+            return [];
+        }
+
+        return contaFixa.Lancamentos.Where(criterio).ToList();
+    }
+
+    // Banco (sem fatura): consumada so quando Pago. Cartao (com fatura): consumada so quando a Fatura esta Paga.
+    private static bool EhNaoConsumada(Lancamento lancamento)
+    {
+        return lancamento.Fatura == null
+            ? lancamento.Status == StatusLancamento.Pendente
+            : lancamento.Fatura.Status != StatusFatura.Paga;
+    }
+
+    private static bool EhConsumada(Lancamento lancamento)
+    {
+        return lancamento.Fatura == null
+            ? lancamento.Status == StatusLancamento.Pago
+            : lancamento.Fatura.Status == StatusFatura.Paga;
     }
 }

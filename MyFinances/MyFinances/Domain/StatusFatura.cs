@@ -4,7 +4,8 @@ public enum StatusFatura
 {
     Aberta,
     Fechada,
-    Paga
+    Paga,
+    Futura
 }
 
 public static class StatusFaturaExtensions
@@ -14,6 +15,7 @@ public static class StatusFaturaExtensions
         StatusFatura.Aberta => "ABERTA",
         StatusFatura.Fechada => "FECHADA",
         StatusFatura.Paga => "PAGA",
+        StatusFatura.Futura => "FUTURA",
         _ => throw new ArgumentOutOfRangeException(nameof(status))
     };
 
@@ -22,6 +24,7 @@ public static class StatusFaturaExtensions
         "ABERTA" => StatusFatura.Aberta,
         "FECHADA" => StatusFatura.Fechada,
         "PAGA" => StatusFatura.Paga,
+        "FUTURA" => StatusFatura.Futura,
         _ => throw new ArgumentException($"Valor desconhecido para StatusFatura: {value}", nameof(value))
     };
 }

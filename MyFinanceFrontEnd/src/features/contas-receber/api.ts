@@ -3,6 +3,7 @@ import type {
   ContaReceberResponse,
   CriarEmprestimoRequest,
   CriarRecebivelRequest,
+  EditarContaReceberRequest,
   RecebimentoResponse,
   RegistrarRecebimentoRequest,
   TotalAReceberEsperadoResponse,
@@ -48,3 +49,12 @@ export function excluirContaReceber(id: string): Promise<void> {
   return apiClient.delete<void>(`/api/contas-receber/${id}`)
 }
 
+
+// 409 (ex: valorTotal em conta ja com recebimento) chega como ApiError com
+// status 409, lancado pelo apiClient - quem consome decide a mensagem.
+export function editarContaReceber(
+  id: string,
+  request: EditarContaReceberRequest,
+): Promise<ContaReceberResponse> {
+  return apiClient.put<ContaReceberResponse>(`/api/contas-receber/${id}`, request)
+}

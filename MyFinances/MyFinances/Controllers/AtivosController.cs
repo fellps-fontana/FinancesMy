@@ -27,7 +27,7 @@ public class AtivosController : ControllerBase
             var ativo = await _ativoService.CriarAtivo(
                 request.Nome,
                 request.Tipo,
-                request.Instituicao,
+                request.ContaId,
                 request.Quantidade,
                 request.PrecoUnitario,
                 request.DataCompra);
@@ -47,6 +47,40 @@ public class AtivosController : ControllerBase
             return BadRequest();
         }
         catch (ValorInvalidoException)
+        {
+            return BadRequest();
+        }
+        catch (ContaNaoEncontradaException)
+        {
+            return BadRequest();
+        }
+        catch (ContaInvestimentoInvalidaParaAtivoException)
+        {
+            return BadRequest();
+        }
+    }
+
+    [HttpPatch("{id}/conta")]
+    public async Task<IActionResult> VincularConta(Guid id, VincularContaAtivoRequest request)
+    {
+        try
+        {
+            await _ativoService.VincularConta(id, request.ContaId);
+            return Ok();
+        }
+        catch (CampoObrigatorioException)
+        {
+            return BadRequest();
+        }
+        catch (AtivoNaoEncontradoException)
+        {
+            return NotFound();
+        }
+        catch (ContaNaoEncontradaException)
+        {
+            return NotFound();
+        }
+        catch (ContaInvestimentoInvalidaParaAtivoException)
         {
             return BadRequest();
         }

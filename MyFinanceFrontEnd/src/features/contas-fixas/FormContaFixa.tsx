@@ -4,8 +4,10 @@ import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
-import { cn } from "@/shared/lib/utils"
-import { CategoriaSelect } from "@/features/categorias/components/CategoriaSelect"
+import { SegmentedTabs } from "@/shared/ui/segmented-tabs"
+import { SelectField } from "@/shared/ui/select-field"
+import { CategoriaCampoSelect } from "@/features/categorias/components/CategoriaCampoSelect"
+import { CLASSE_BOTAO_CANCELAR, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO } from "@/shared/ui/FormModal"
 import { useCriarContaFixa } from "@/features/contas-fixas/hooks/useCriarContaFixa"
 import { useEditarContaFixa } from "@/features/contas-fixas/hooks/useEditarContaFixa"
 // Nao existe hook de "listar contas" generico em features/contas/ (feature
@@ -17,12 +19,7 @@ import { useEditarContaFixa } from "@/features/contas-fixas/hooks/useEditarConta
 // aqui em vez de duplicar a mesma chamada combinada: e o mesmo padrao de
 // "conta de origem" do item 13 (emprestimo) aplicado a "conta de origem" do
 // item 6 (conta fixa) - mesmo conjunto de contas MANUAL, mesma regra. Import
-// cross-feature nao e o ideal de organizacao (stack.md reserva shared/hooks/
-// para hook usado por 2+ features), mas mover o hook esta fora do escopo
-// desta task (ARQUIVOS PERMITIDOS restringe a so este componente + o
-// validador) - registrado aqui para uma task futura promover
-// useContasParaSelecao para shared/hooks/ quando tocar em contas-receber de
-// novo.
+// cross-feature: candidato a shared/hooks/ (usado por 2+ features).
 import { useContasParaSelecao } from "@/features/contas-receber/hooks/useContasParaSelecao"
 import {
   converterDiaVencimentoParaNumero,
@@ -41,7 +38,13 @@ type FormContaFixaProps = {
   // para dar contexto de qual conta fixa esta sendo editada.
   contaFixaParaEditar?: ContaFixaResponse
   onSalvar?: () => void
+  onCancelar?: () => void
 }
+
+const OPCOES_RECORRENCIA = [
+  { value: "MENSAL", label: "Mensal" },
+  { value: "ANUAL", label: "Anual" },
+] as const satisfies ReadonlyArray<{ value: PeriodicidadeContaFixa; label: string }>
 
 // Categoria (categoriaId, regra-de-negocio.md item 6: "categoria vinculada",
 // FK opcional) e periodicidade (item 6, revisao 2026-07-27: MENSAL/ANUAL)
@@ -53,7 +56,7 @@ type FormContaFixaProps = {
 // total (`contaFixa.CategoriaId = categoriaId`), nao merge; se o submit
 // omitisse o campo, uma ContaFixa com categoria/periodicidade ja definida
 // perderia esse valor so por editar valor/dia_vencimento.
-export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaProps) {
+export function FormContaFixa({ contaFixaParaEditar, onSalvar, onCancelar }: FormContaFixaProps) {
   const modoEdicao = contaFixaParaEditar !== undefined
 
   const [descricao, setDescricao] = useState(contaFixaParaEditar?.descricao ?? "")
@@ -82,7 +85,7 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaPr
     data: contasOrigem,
     isLoading: carregandoContasOrigem,
     error: erroContasOrigem,
-  } = useContasParaSelecao({ enabled: !modoEdicao })
+  } = useContasParaSelecao()
 
   if (erroContasOrigem) {
     console.error("Falha ao carregar contas de origem para conta fixa", erroContasOrigem)
@@ -170,11 +173,11 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaPr
     )
   }
 
+  const opcoesConta = (contasOrigem ?? []).map((conta) => ({ value: conta.id, label: conta.nome }))
+  const contaSelecionada = modoEdicao ? (contaFixaParaEditar?.contaId ?? null) : contaId || null
+
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-4 rounded-xl border border-border bg-card px-4 py-4"
-    >
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {erroFormulario && (
         <Alert variant="destructive">
           <AlertDescription>{erroFormulario}</AlertDescription>
@@ -182,7 +185,9 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaPr
       )}
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="descricaoContaFixa">Descricao</Label>
+        <Label htmlFor="descricaoContaFixa" className="text-[13px] text-text-muted">
+          Nome
+        </Label>
         <Input
           id="descricaoContaFixa"
           name="descricao"
@@ -192,40 +197,15 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaPr
           disabled={modoEdicao}
           value={descricao}
           onChange={(event) => setDescricao(event.target.value)}
+          className={CLASSE_CAMPO}
         />
       </div>
 
-      {/* Periodicidade (regra-de-negocio.md item 6, revisao 2026-07-27):
-          editavel em ambos os modos (criar e editar), mesmo segmented control
-          ja usado em FormRegistrarContaReceber.tsx (dois Button com variant
-          condicional - nao ha Tabs/Toggle pronto no projeto). */}
-      <div className="flex flex-col gap-1.5">
-        <Label>Periodicidade</Label>
-        <div className="flex gap-2" role="group" aria-label="Periodicidade da conta fixa">
-          <Button
-            type="button"
-            variant={periodicidade === "MENSAL" ? "default" : "outline"}
-            onClick={() => setPeriodicidade("MENSAL")}
-            disabled={isSubmitting}
-            className="flex-1"
-          >
-            Mensal
-          </Button>
-          <Button
-            type="button"
-            variant={periodicidade === "ANUAL" ? "default" : "outline"}
-            onClick={() => setPeriodicidade("ANUAL")}
-            disabled={isSubmitting}
-            className="flex-1"
-          >
-            Anual
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="valorContaFixa">Valor</Label>
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <Label htmlFor="valorContaFixa" className="text-[13px] text-text-muted">
+            Valor
+          </Label>
           <Input
             id="valorContaFixa"
             name="valor"
@@ -236,11 +216,14 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaPr
             required
             value={valor}
             onChange={(event) => setValor(event.target.value)}
+            className={CLASSE_CAMPO}
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="diaVencimentoContaFixa">Dia de vencimento</Label>
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <Label htmlFor="diaVencimentoContaFixa" className="text-[13px] text-text-muted">
+            Dia de vencimento
+          </Label>
           <Input
             id="diaVencimentoContaFixa"
             name="diaVencimento"
@@ -252,59 +235,64 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar }: FormContaFixaPr
             required
             value={diaVencimento}
             onChange={(event) => setDiaVencimento(event.target.value)}
+            className={CLASSE_CAMPO}
           />
         </div>
       </div>
 
-      {/* Categoria (regra-de-negocio.md item 6: "categoria vinculada", FK
-          opcional) - sempre tipo Despesa, porque conta fixa e sempre DEBIT
-          (item 6: "nao existe conta fixa de recebimento"). Editavel em ambos
-          os modos, igual periodicidade. */}
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="categoriaContaFixa">Categoria</Label>
-        <CategoriaSelect tipo="Despesa" value={categoriaId} onChange={setCategoriaId} />
+      {/* Conta fixa e sempre DEBIT, entao so categoria de Despesa
+          (regra-de-negocio.md item 6). */}
+      <CategoriaCampoSelect tipo="Despesa" value={categoriaId} onChange={setCategoriaId} />
+
+      {/* Conta de pagamento: EditarContaFixaRequest nao aceita contaId
+          (types.ts), entao em edicao o campo e so exibido, desabilitado. */}
+      <div className="flex flex-col gap-1">
+        <SelectField
+          label="Conta de pagamento"
+          options={opcoesConta}
+          value={contaSelecionada}
+          onChange={setContaId}
+          disabled={modoEdicao || carregandoContasOrigem}
+          placeholder={carregandoContasOrigem ? "Carregando contas..." : "Selecione a conta"}
+        />
+        {erroContasOrigem && (
+          <span className="text-[12px] text-alerta">
+            Nao foi possivel carregar as contas. Tente novamente.
+          </span>
+        )}
       </div>
 
-      {/* Conta de origem so aparece no modo criar - EditarContaFixaRequest
-          nao aceita contaId (types.ts), entao o campo nem e ofertado em
-          edicao (nao so desabilitado). */}
-      {!modoEdicao && (
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="contaOrigemContaFixa">Conta de origem</Label>
-          <select
-            id="contaOrigemContaFixa"
-            name="contaId"
-            required
-            disabled={carregandoContasOrigem}
-            value={contaId}
-            onChange={(event) => setContaId(event.target.value)}
-            className={cn(
-              "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
-            )}
-          >
-            <option value="" disabled>
-              {carregandoContasOrigem ? "Carregando contas..." : "Selecione a conta de origem"}
-            </option>
-            {contasOrigem?.map((conta) => (
-              <option key={conta.id} value={conta.id}>
-                {conta.nome}
-              </option>
-            ))}
-          </select>
-          {erroContasOrigem && (
-            <span className="text-[12px] text-alerta">
-              Nao foi possivel carregar as contas de origem. Tente novamente.
-            </span>
-          )}
-        </div>
+      {/* Conta fixa nunca tem parcelamento (regra-de-negocio.md item 6). */}
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[13px] text-text-muted">Recorrencia</span>
+        <SegmentedTabs
+          ariaLabel="Recorrencia da conta fixa"
+          options={OPCOES_RECORRENCIA}
+          value={periodicidade}
+          onChange={setPeriodicidade}
+          className="w-48"
+        />
+      </div>
+
+      {modoEdicao && (
+        <p className="text-xs leading-normal text-text-faint">
+          Mudar valor, dia ou categoria atualiza os lancamentos pendentes ja gerados. Os pagos nao
+          mudam.
+        </p>
       )}
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={restaurarValoresIniciais} disabled={isSubmitting}>
-          {modoEdicao ? "Desfazer" : "Limpar"}
+      <div className="mt-1.5 flex justify-end gap-2.5">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancelar}
+          disabled={isSubmitting}
+          className={CLASSE_BOTAO_CANCELAR}
+        >
+          Cancelar
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando..." : "Salvar"}
+        <Button type="submit" disabled={isSubmitting} className={CLASSE_BOTAO_PRIMARIO}>
+          {isSubmitting ? "Salvando..." : modoEdicao ? "Salvar alteracoes" : "Salvar conta fixa"}
         </Button>
       </div>
     </form>

@@ -17,9 +17,8 @@ type LoginFormProps = {
 // Componente burro: so exibe estado e dispara callbacks. Nenhuma chamada de
 // rede ou logica de sessao vive aqui - isso fica no AuthContext/LoginPage.
 //
-// "Esqueci minha senha" e apenas texto estatico (nao e <a>/<button>): a v1 nao
-// tem endpoint de recuperacao de senha (ver mockup 01 Login, sem contrapartida
-// em regra-de-negocio.md/stack.md).
+// "Esqueci minha senha" e login por codigo de acesso do mockup nao sao
+// renderizados: nao ha regra de negocio nem endpoint correspondente.
 export function LoginForm({
   usernameOrEmail,
   senha,
@@ -30,7 +29,7 @@ export function LoginForm({
   onSubmit,
 }: LoginFormProps) {
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3.5">
+    <form onSubmit={onSubmit} className="flex flex-col gap-3.5 lg:gap-4">
       {errorMessage && (
         <Alert variant="destructive">
           <AlertDescription>{errorMessage}</AlertDescription>
@@ -47,7 +46,7 @@ export function LoginForm({
           required
           value={usernameOrEmail}
           onChange={(event) => onUsernameOrEmailChange(event.target.value)}
-          className="h-auto rounded-lg bg-card px-3.5 py-3.5"
+          className="h-auto rounded-[10px] bg-card px-3.5 py-3.5 text-sm md:text-sm lg:py-[13px]"
         />
       </div>
 
@@ -61,18 +60,14 @@ export function LoginForm({
           required
           value={senha}
           onChange={(event) => onSenhaChange(event.target.value)}
-          className="h-auto rounded-lg bg-card px-3.5 py-3.5"
+          className="h-auto rounded-[10px] bg-card px-3.5 py-3.5 text-sm md:text-sm lg:py-[13px]"
         />
-      </div>
-
-      <div className="-mt-1 text-right">
-        <span className="text-[13px] text-text-muted">Esqueci minha senha</span>
       </div>
 
       <Button
         type="submit"
         disabled={isSubmitting}
-        className="mt-2 h-auto w-full rounded-lg bg-primary p-3.5 text-sm font-medium text-background hover:bg-primary/80"
+        className="mt-2 h-auto w-full rounded-[10px] bg-primary p-3.5 text-sm font-medium text-background hover:bg-primary/80"
       >
         {isSubmitting ? "Entrando..." : "Entrar"}
       </Button>
