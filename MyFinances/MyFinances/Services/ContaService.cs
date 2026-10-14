@@ -9,6 +9,10 @@ namespace MyFinances.Services;
 public class ContaService : IContaService
 {
     private const string CampoNome = "Nome";
+    private const string NomeCampoDiaFechamento = "DiaFechamento";
+    private const string NomeCampoDiaVencimento = "DiaVencimento";
+    private const int DiaMinimoCiclo = 1;
+    private const int DiaMaximoCiclo = 31;
 
     private readonly IContaRepository _contaRepository;
     private readonly ILogger<ContaService> _logger;
@@ -161,22 +165,29 @@ public class ContaService : IContaService
     {
         var conta = await ObterContaOuFalhar(id);
 
-        if (!conta.Ativa)
-        {
-            throw new ContaInativaException(id);
-        }
-
         if (string.IsNullOrWhiteSpace(request.Nome))
         {
             throw new CampoObrigatorioException(CampoNome);
         }
 
         var subtipo = ResolverSubtipoEdicao(conta.Tipo, request.Subtipo);
+        var ehCartao = conta.Tipo == TipoConta.Cartao;
+
+        if (ehCartao)
+        {
+            ValidarDiasCartaoEdicao(request.DiaFechamento, request.DiaVencimento);
+        }
 
         conta.Nome = request.Nome;
         conta.Icone = request.Icone;
         conta.Cor = request.Cor;
         conta.Subtipo = subtipo;
+
+        if (ehCartao)
+        {
+            conta.DiaFechamento = request.DiaFechamento;
+            conta.DiaVencimento = request.DiaVencimento;
+        }
 
         await _contaRepository.Salvar();
 
@@ -241,6 +252,26 @@ public class ContaService : IContaService
         return subtipo;
     }
 
+    // Item 10.2: dias do cartao na edicao. Fechamento e validado antes de Vencimento.
+    private static void ValidarDiasCartaoEdicao(int? diaFechamento, int? diaVencimento)
+    {
+        ValidarDiaCicloEdicao(diaFechamento, NomeCampoDiaFechamento);
+        ValidarDiaCicloEdicao(diaVencimento, NomeCampoDiaVencimento);
+    }
+
+    private static void ValidarDiaCicloEdicao(int? dia, string nomeCampo)
+    {
+        if (dia == null)
+        {
+            throw new CampoObrigatorioException(nomeCampo);
+        }
+
+        if (dia < DiaMinimoCiclo || dia > DiaMaximoCiclo)
+        {
+            throw new ValorInvalidoException(nomeCampo, dia.Value, DiaMinimoCiclo, DiaMaximoCiclo);
+        }
+    }
+
     private static (bool Valido, string? Erro) ValidarCartao(CriarContaRequest request)
     {
         if (request.DiaFechamento == null)
@@ -253,14 +284,14 @@ public class ContaService : IContaService
             return (false, "Dia de vencimento e obrigatorio para cartao de credito");
         }
 
-        if (request.DiaFechamento < 1 || request.DiaFechamento > 31)
+        if (request.DiaFechamento < DiaMinimoCiclo || request.DiaFechamento > DiaMaximoCiclo)
         {
-            return (false, "Dia de fechamento deve estar entre 1 e 31");
+            return (false, $"Dia de fechamento deve estar entre {DiaMinimoCiclo} e {DiaMaximoCiclo}");
         }
 
-        if (request.DiaVencimento < 1 || request.DiaVencimento > 31)
+        if (request.DiaVencimento < DiaMinimoCiclo || request.DiaVencimento > DiaMaximoCiclo)
         {
-            return (false, "Dia de vencimento deve estar entre 1 e 31");
+            return (false, $"Dia de vencimento deve estar entre {DiaMinimoCiclo} e {DiaMaximoCiclo}");
         }
 
         return (true, null);

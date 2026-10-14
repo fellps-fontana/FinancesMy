@@ -65,6 +65,9 @@ export type EditarContaRequest = {
   subtipo?: SubtipoConta
   icone?: string
   cor?: string
+  // Obrigatorios (1..31) so para conta Cartao; ignorados nos demais tipos.
+  diaFechamento?: number
+  diaVencimento?: number
 }
 
 // Contrato de PATCH /api/contas/{id}/saldo (Controllers/ContasController.cs,

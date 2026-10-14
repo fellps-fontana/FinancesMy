@@ -11,6 +11,7 @@ import {
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { SeletorIconeCor } from "@/features/contas/components/SeletorIconeCor"
+import { validarNovaContaCartao } from "@/features/cartao/lib/validarNovaContaCartao"
 import { useEditarConta } from "@/features/contas/hooks/useEditarConta"
 import type { ContaResponse, SubtipoConta, TipoConta } from "@/features/contas/types"
 
@@ -33,7 +34,8 @@ const OPCOES_SUBTIPO: ReadonlyArray<{ valor: SubtipoConta; label: string }> = [
 
 // Modal "Editar conta" (regra-de-negocio.md item 10.2): nome, subtipo (so
 // Banco), icone e cor. O tipo e exibido como texto e nunca enviado. O modal
-// abre com os valores atuais; erros 400/404/409 do backend aparecem no modal.
+// abre com os valores atuais; erros 400/404 do backend aparecem no modal.
+// Conta Cartao tambem edita dia de fechamento e vencimento (sempre enviados).
 export function FormEditarConta({ conta, onFechar }: FormEditarContaProps) {
   const { mutate: editarConta, isPending } = useEditarConta()
 
@@ -41,9 +43,12 @@ export function FormEditarConta({ conta, onFechar }: FormEditarContaProps) {
   const [subtipo, setSubtipo] = useState<SubtipoConta | "">(conta.subtipo ?? "")
   const [icone, setIcone] = useState<string | null>(conta.icone)
   const [cor, setCor] = useState<string | null>(conta.cor)
+  const [diaFechamento, setDiaFechamento] = useState(String(conta.diaFechamento ?? ""))
+  const [diaVencimento, setDiaVencimento] = useState(String(conta.diaVencimento ?? ""))
   const [erro, setErro] = useState<string | null>(null)
 
   const ehBanco = conta.tipo === "Banco"
+  const ehCartao = conta.tipo === "Cartao"
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -51,6 +56,14 @@ export function FormEditarConta({ conta, onFechar }: FormEditarContaProps) {
     if (nome.trim().length === 0) {
       setErro("Informe um nome para a conta.")
       return
+    }
+
+    if (ehCartao) {
+      const erroDias = validarNovaContaCartao(nome, diaFechamento, diaVencimento)
+      if (erroDias) {
+        setErro(erroDias)
+        return
+      }
     }
 
     editarConta(
@@ -61,6 +74,8 @@ export function FormEditarConta({ conta, onFechar }: FormEditarContaProps) {
           subtipo: ehBanco && subtipo !== "" ? subtipo : undefined,
           icone: icone ?? undefined,
           cor: cor ?? undefined,
+          diaFechamento: ehCartao ? Number(diaFechamento) : undefined,
+          diaVencimento: ehCartao ? Number(diaVencimento) : undefined,
         },
       },
       {
@@ -124,6 +139,44 @@ export function FormEditarConta({ conta, onFechar }: FormEditarContaProps) {
                 </option>
               ))}
             </select>
+          </div>
+        )}
+
+        {ehCartao && (
+          <div className="flex flex-col gap-1.5">
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <Label htmlFor={`diaFechamentoEditarConta-${conta.id}`}>Dia de fechamento</Label>
+                <Input
+                  id={`diaFechamentoEditarConta-${conta.id}`}
+                  type="number"
+                  step="1"
+                  min="1"
+                  max="31"
+                  inputMode="numeric"
+                  required
+                  value={diaFechamento}
+                  onChange={(event) => setDiaFechamento(event.target.value)}
+                  className={CLASSE_CAMPO}
+                />
+              </div>
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <Label htmlFor={`diaVencimentoEditarConta-${conta.id}`}>Dia de vencimento</Label>
+                <Input
+                  id={`diaVencimentoEditarConta-${conta.id}`}
+                  type="number"
+                  step="1"
+                  min="1"
+                  max="31"
+                  inputMode="numeric"
+                  required
+                  value={diaVencimento}
+                  onChange={(event) => setDiaVencimento(event.target.value)}
+                  className={CLASSE_CAMPO}
+                />
+              </div>
+            </div>
+            <span className="text-xs text-text-faint">Os novos dias valem a partir da próxima fatura.</span>
           </div>
         )}
 

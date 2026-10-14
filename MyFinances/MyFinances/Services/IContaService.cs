@@ -20,8 +20,10 @@ public interface IContaService
     // Guard novo: conta com ativo ativo vinculado -> ContaPossuiAtivoAtivoException (409).
     Task DesativarConta(Guid contaId);
 
-    // Item 10.2. Edita Nome/Icone/Cor/Subtipo. Tipo imutavel. Subtipo so vale p/ Banco (outros -> null).
-    // ContaNaoEncontradaException (404), ContaInativaException (409),
-    // CampoObrigatorioException("Nome") (400), SubtipoContaInvalidoException (400).
+    // Item 10.2. Edita Nome/Icone/Cor/Subtipo; DiaFechamento/DiaVencimento so em Cartao.
+    // Tipo imutavel. Conta inativa e editavel (nao reativa). Subtipo so vale p/ Banco (outros -> null).
+    // Dias so em Cartao (outros tipos: ignorados). Cartao exige os dois, 1..31.
+    // ContaNaoEncontradaException (404), CampoObrigatorioException("Nome" | "DiaFechamento" | "DiaVencimento") (400),
+    // SubtipoContaInvalidoException (400), ValorInvalidoException (400, dia fora de 1..31).
     Task<Conta> EditarConta(Guid id, EditarContaRequest request);
 }

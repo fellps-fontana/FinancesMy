@@ -81,10 +81,16 @@ public class ContasControllerEditarTests
     public async Task EditarConta_ContaCartaoComSubtipo_SubtipoIgnoradoERespostaOk()
     {
         // Arrange
-        var conta = CriarContaCartao();
+        var conta = CriarContaCartao(diaFechamento: 5, diaVencimento: 12);
         await _fixture.AddContaAsync(conta);
 
-        var request = new EditarContaRequest { Nome = "Cartao Renomeado", Subtipo = "Poupanca" };
+        var request = new EditarContaRequest
+        {
+            Nome = "Cartao Renomeado",
+            Subtipo = "Poupanca",
+            DiaFechamento = 5,
+            DiaVencimento = 12
+        };
 
         // Act
         var response = await PutEditarAsync(conta.Id, request);
@@ -216,9 +222,80 @@ public class ContasControllerEditarTests
         Assert.Equal(conta.Nome, contaPersistida.Nome);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task EditarConta_CartaoSemUmDosDias_Retorna400CitandoOCampoENaoAltera(bool semFechamento)
+    {
+        // Arrange
+        var conta = CriarContaCartao(diaFechamento: 5, diaVencimento: 12);
+        await _fixture.AddContaAsync(conta);
+
+        var request = new EditarContaRequest
+        {
+            Nome = "Cartao sem dia",
+            DiaFechamento = semFechamento ? null : 20,
+            DiaVencimento = semFechamento ? 27 : null
+        };
+        var campoEsperado = semFechamento ? "DiaFechamento" : "DiaVencimento";
+
+        // Act
+        var response = await PutEditarAsync(conta.Id, request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var errorResponse = JsonSerializer.Deserialize<Dictionary<string, string>>(responseBody, ContasControllerTestsFixture.JsonOptions);
+        Assert.NotNull(errorResponse);
+        Assert.Contains(campoEsperado, errorResponse["erro"]);
+
+        var contaPersistida = await _fixture.GetContaByIdAsync(conta.Id);
+        Assert.NotNull(contaPersistida);
+        Assert.Equal(conta.Nome, contaPersistida.Nome);
+        Assert.Equal(5, contaPersistida.DiaFechamento);
+        Assert.Equal(12, contaPersistida.DiaVencimento);
+    }
+
+    [Theory]
+    [InlineData("DiaFechamento", 0)]
+    [InlineData("DiaFechamento", 32)]
+    [InlineData("DiaVencimento", 0)]
+    [InlineData("DiaVencimento", 32)]
+    public async Task EditarConta_CartaoComDiaForaDe1A31_Retorna400CitandoOCampoENaoAltera(string campo, int valor)
+    {
+        // Arrange
+        var conta = CriarContaCartao(diaFechamento: 5, diaVencimento: 12);
+        await _fixture.AddContaAsync(conta);
+
+        var request = new EditarContaRequest
+        {
+            Nome = "Cartao dia invalido",
+            DiaFechamento = campo == "DiaFechamento" ? valor : 20,
+            DiaVencimento = campo == "DiaVencimento" ? valor : 27
+        };
+
+        // Act
+        var response = await PutEditarAsync(conta.Id, request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var errorResponse = JsonSerializer.Deserialize<Dictionary<string, string>>(responseBody, ContasControllerTestsFixture.JsonOptions);
+        Assert.NotNull(errorResponse);
+        Assert.Contains(campo, errorResponse["erro"]);
+
+        var contaPersistida = await _fixture.GetContaByIdAsync(conta.Id);
+        Assert.NotNull(contaPersistida);
+        Assert.Equal(conta.Nome, contaPersistida.Nome);
+        Assert.Equal(5, contaPersistida.DiaFechamento);
+        Assert.Equal(12, contaPersistida.DiaVencimento);
+    }
+
     #endregion
 
-    #region PUT /api/contas/{id} - Conta inexistente (404) e inativa (409)
+    #region PUT /api/contas/{id} - Conta inexistente (404)
 
     [Fact]
     public async Task EditarConta_ContaInexistente_Retorna404()
@@ -234,39 +311,132 @@ public class ContasControllerEditarTests
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    #endregion
+
+    #region PUT /api/contas/{id} - Conta inativa pode ser editada
+
     [Fact]
-    public async Task EditarConta_ContaInativa_Retorna409ENaoAlteraConta()
+    public async Task EditarConta_ContaInativa_Retorna200EAlteraConta()
     {
         // Arrange
         var conta = CriarContaBanco(subtipo: SubtipoConta.Corrente, ativa: false);
         await _fixture.AddContaAsync(conta);
 
-        var request = new EditarContaRequest { Nome = "Tentativa em conta inativa", Subtipo = "Poupanca" };
+        var request = new EditarContaRequest { Nome = "Conta inativa editada", Subtipo = "Poupanca" };
 
         // Act
         var response = await PutEditarAsync(conta.Id, request);
 
         // Assert
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var contaResponse = JsonSerializer.Deserialize<ContaResponse>(responseBody, ContasControllerTestsFixture.JsonOptions);
+        Assert.NotNull(contaResponse);
+        Assert.Equal("Conta inativa editada", contaResponse.Nome);
+        Assert.False(contaResponse.Ativa);
 
         var contaPersistida = await _fixture.GetContaByIdAsync(conta.Id);
         Assert.NotNull(contaPersistida);
-        Assert.Equal(conta.Nome, contaPersistida.Nome);
-        Assert.Equal(SubtipoConta.Corrente, contaPersistida.Subtipo);
+        Assert.Equal("Conta inativa editada", contaPersistida.Nome);
+        Assert.Equal(SubtipoConta.Poupanca, contaPersistida.Subtipo);
+        Assert.False(contaPersistida.Ativa);
+    }
+
+    [Fact]
+    public async Task EditarConta_ContaInvestimentoInativa_Retorna200()
+    {
+        // Arrange
+        var conta = CriarContaInvestimento(ativa: false);
+        await _fixture.AddContaAsync(conta);
+
+        var request = new EditarContaRequest { Nome = "Corretora inativa editada" };
+
+        // Act
+        var response = await PutEditarAsync(conta.Id, request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var contaPersistida = await _fixture.GetContaByIdAsync(conta.Id);
+        Assert.NotNull(contaPersistida);
+        Assert.Equal("Corretora inativa editada", contaPersistida.Nome);
+        Assert.False(contaPersistida.Ativa);
     }
 
     #endregion
 
-    #region PUT /api/contas/{id} - Campos fora da edicao
+    #region PUT /api/contas/{id} - Dias do cartao (10.2)
 
     [Fact]
-    public async Task EditarConta_NaoAlteraSaldoManualDiaFechamentoNemDiaVencimento()
+    public async Task EditarConta_ContaCartaoComDias_Retorna200ComDiasNovosNoResponseEPersistidos()
     {
         // Arrange
-        var conta = CriarContaCartao(saldoManual: -250m, diaFechamento: 10, diaVencimento: 17);
+        var conta = CriarContaCartao(diaFechamento: 5, diaVencimento: 12);
         await _fixture.AddContaAsync(conta);
 
-        var request = new EditarContaRequest { Nome = "Cartao Novo Nome", Icone = "card", Cor = "#111111" };
+        var request = new EditarContaRequest { Nome = "Cartao com dias novos", DiaFechamento = 20, DiaVencimento = 27 };
+
+        // Act
+        var response = await PutEditarAsync(conta.Id, request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var contaResponse = JsonSerializer.Deserialize<ContaResponse>(responseBody, ContasControllerTestsFixture.JsonOptions);
+        Assert.NotNull(contaResponse);
+        Assert.Equal(20, contaResponse.DiaFechamento);
+        Assert.Equal(27, contaResponse.DiaVencimento);
+
+        var contaPersistida = await _fixture.GetContaByIdAsync(conta.Id);
+        Assert.NotNull(contaPersistida);
+        Assert.Equal(20, contaPersistida.DiaFechamento);
+        Assert.Equal(27, contaPersistida.DiaVencimento);
+    }
+
+    [Fact]
+    public async Task EditarConta_ContaBancoComDias_Retorna200ENaoPersisteDias()
+    {
+        // Arrange
+        var conta = CriarContaBanco(subtipo: SubtipoConta.Corrente);
+        await _fixture.AddContaAsync(conta);
+
+        var request = new EditarContaRequest { Nome = "Banco com dias ignorados", DiaFechamento = 10, DiaVencimento = 20 };
+
+        // Act
+        var response = await PutEditarAsync(conta.Id, request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var contaResponse = JsonSerializer.Deserialize<ContaResponse>(responseBody, ContasControllerTestsFixture.JsonOptions);
+        Assert.NotNull(contaResponse);
+        Assert.Null(contaResponse.DiaFechamento);
+        Assert.Null(contaResponse.DiaVencimento);
+
+        var contaPersistida = await _fixture.GetContaByIdAsync(conta.Id);
+        Assert.NotNull(contaPersistida);
+        Assert.Null(contaPersistida.DiaFechamento);
+        Assert.Null(contaPersistida.DiaVencimento);
+    }
+
+    [Fact]
+    public async Task EditarConta_ContaCartao_NaoAlteraSaldoManualEAplicaDiasNovos()
+    {
+        // Arrange
+        var conta = CriarContaCartao(saldoManual: -250m, diaFechamento: 5, diaVencimento: 12);
+        await _fixture.AddContaAsync(conta);
+
+        var request = new EditarContaRequest
+        {
+            Nome = "Cartao Novo Nome",
+            Icone = "card",
+            Cor = "#111111",
+            DiaFechamento = 20,
+            DiaVencimento = 27
+        };
 
         // Act
         var response = await PutEditarAsync(conta.Id, request);
@@ -278,14 +448,14 @@ public class ContasControllerEditarTests
         var contaResponse = JsonSerializer.Deserialize<ContaResponse>(responseBody, ContasControllerTestsFixture.JsonOptions);
         Assert.NotNull(contaResponse);
         Assert.Equal(-250m, contaResponse.SaldoManual);
-        Assert.Equal(10, contaResponse.DiaFechamento);
-        Assert.Equal(17, contaResponse.DiaVencimento);
+        Assert.Equal(20, contaResponse.DiaFechamento);
+        Assert.Equal(27, contaResponse.DiaVencimento);
 
         var contaPersistida = await _fixture.GetContaByIdAsync(conta.Id);
         Assert.NotNull(contaPersistida);
         Assert.Equal(-250m, contaPersistida.SaldoManual);
-        Assert.Equal(10, contaPersistida.DiaFechamento);
-        Assert.Equal(17, contaPersistida.DiaVencimento);
+        Assert.Equal(20, contaPersistida.DiaFechamento);
+        Assert.Equal(27, contaPersistida.DiaVencimento);
     }
 
     #endregion
@@ -330,7 +500,7 @@ public class ContasControllerEditarTests
         };
     }
 
-    private static Conta CriarContaInvestimento()
+    private static Conta CriarContaInvestimento(bool ativa = true)
     {
         return new Conta
         {
@@ -339,7 +509,7 @@ public class ContasControllerEditarTests
             Tipo = TipoConta.Investimento,
             Origem = OrigemConta.Manual,
             SaldoManual = 500m,
-            Ativa = true
+            Ativa = ativa
         };
     }
 

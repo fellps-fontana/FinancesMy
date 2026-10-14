@@ -511,7 +511,8 @@ tinha sido escrito aqui.
 ### 10.2 Edicao de conta — DECISAO CONFIRMADA COM O USUARIO EM 2026-10-13
 
 O usuario pode editar uma conta ja criada. Campos editaveis: `nome`,
-`icone`, `cor` e `subtipo`.
+`icone`, `cor`, `subtipo` e, so em conta CARTAO, `dia_fechamento` e
+`dia_vencimento`.
 
 **O tipo principal da conta e IMUTAVEL.** `Conta.Tipo` (Banco | Cartao |
 Investimento) e definido na criacao e nunca muda depois. Nao existe
@@ -520,26 +521,49 @@ exigiria reinterpretar saldo, lancamentos, faturas e ativos vinculados
 (itens 8.5, 10 e 12). Quem errou o tipo cria uma conta nova e desativa a
 antiga.
 
+**A edicao substitui os campos editaveis.** O PUT grava `icone`, `cor` e
+`subtipo` exatamente como vieram: campo vazio/ausente APAGA o valor atual.
+Nao e merge parcial. (Confirmado em 2026-10-13.)
+
+**Nome** e obrigatorio: vazio ou so espacos e recusado (400). Vale para
+qualquer origem: conta Open Finance tambem pode ser renomeada (confirmado
+em 2026-10-13).
+
 **Subtipo** segue o 10.1. So vale para Tipo = Banco. Nos outros tipos e
 IGNORADO silenciosamente e a conta fica com `Subtipo = null`. Em conta
-Banco, editar sem informar subtipo limpa o campo (a edicao substitui os
-campos editaveis). Subtipo informado e nao reconhecido e recusado (400).
+Banco, editar sem informar subtipo limpa o campo. Subtipo informado e nao
+reconhecido e recusado (400).
 
-**Nome** e obrigatorio: vazio ou so espacos e recusado (400).
+**Conta inativa PODE ser editada** (confirmado em 2026-10-13). A edicao
+nao reativa a conta: `ativa` continua sendo alterada so pelo fluxo de
+desativar (item 8.5). Todas as demais regras da edicao valem igual.
+
+**Dias do cartao (`dia_fechamento` e `dia_vencimento`).** Em conta CARTAO
+a edicao exige os DOIS dias, com a mesma validacao da criacao: cada um
+inteiro entre 1 e 31. Dia ausente (null) em cartao e recusado (400): a
+edicao substitui, entao o cartao nunca fica sem dia. Dia fora de 1..31 e
+recusado (400). Nos tipos Banco e Investimento os dias informados sao
+IGNORADOS silenciosamente, sem validar e sem gravar (mesmo padrao do
+subtipo, 10.1): essas contas nao tem ciclo de fatura.
+
+**Efeito dos novos dias — so para frente (confirmado em 2026-10-13):**
+- os novos dias valem SO para faturas criadas DEPOIS da edicao (a fatura
+  nova nasce de `dia_fechamento`/`dia_vencimento` lidos da conta no momento
+  em que e criada, item 12);
+- fatura FECHADA ou PAGA nao muda;
+- a fatura ABERTA atual mantem as datas dela (`data_fechamento` e
+  `data_vencimento` ja gravadas);
+- fatura futura que ja existe no banco (por exemplo criada antecipadamente
+  por parcela futura) tambem mantem as datas dela: nenhuma fatura existente
+  e recalculada;
+- compras ja lancadas nao trocam de fatura (`fatura_id` nao muda).
+Consequencia aceita: durante a transicao o cartao pode ter faturas com
+ciclos diferentes (a antiga com os dias velhos, as novas com os novos).
+Isso e esperado; nao ha acao de "recalcular faturas".
 
 **Campos fora da edicao** (nao mudam por este fluxo): `tipo`, `origem`,
 `saldo_manual` (tem fluxo proprio, item 10), `ativa` (tem fluxo proprio de
-desativar, item 8.5), `dia_fechamento` e `dia_vencimento`, `pierre_account_id`.
-
-**Conta inativa nao pode ser editada** (409). A regra era omissa sobre editar
-conta inativa. A decisao segue a regra existente: conta desativada sai das
-listagens (item 8.5 e 10), entao nao ha tela de onde editar, e o sistema nao
-tem reativacao. SUPOSICAO a confirmar com o usuario.
-
-**Pendencia:** editar `dia_fechamento` e `dia_vencimento` do cartao esta
-FORA desta decisao. Mudar esses dias afeta a competencia de compras e
-faturas ja lancadas (item 12) e precisa de regra propria. Nao implementar
-ate o usuario decidir.
+desativar, item 8.5), `pierre_account_id`.
 
 ---
 
@@ -584,6 +608,11 @@ dupla contagem.
 
 **Fatura:** recorte das compras por ciclo (`data_fechamento` -> `data_vencimento`).
 Serve para agrupar as compras e para casar com o pagamento.
+
+**Dias do cartao mudam (item 10.2):** a fatura guarda `data_fechamento` e
+`data_vencimento` ao ser criada. Editar `dia_fechamento`/`dia_vencimento` da
+conta so afeta faturas criadas depois; faturas existentes (aberta, futura,
+fechada ou paga) e o `fatura_id` das compras ja lancadas nao mudam.
 
 **Saldo do cartao** = compras - pagamentos - estornos. CALCULADO, nao armazenado
 (mesma logica do item 10).

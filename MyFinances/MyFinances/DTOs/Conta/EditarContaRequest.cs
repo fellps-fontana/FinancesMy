@@ -10,4 +10,9 @@ public class EditarContaRequest
     public string? Icone { get; set; }
 
     public string? Cor { get; set; }
+
+    // Item 10.2: so Cartao. Cartao exige os dois (1..31). Nos demais tipos sao ignorados.
+    public int? DiaFechamento { get; set; }
+
+    public int? DiaVencimento { get; set; }
 }

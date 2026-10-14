@@ -129,15 +129,15 @@ public class ContasController : ControllerBase
         {
             return NotFound(new { erro = ex.Message });
         }
-        catch (ContaInativaException ex)
-        {
-            return Conflict(new { erro = ex.Message });
-        }
         catch (CampoObrigatorioException ex)
         {
             return BadRequest(new { erro = ex.Message });
         }
         catch (SubtipoContaInvalidoException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+        catch (ValorInvalidoException ex)
         {
             return BadRequest(new { erro = ex.Message });
         }
