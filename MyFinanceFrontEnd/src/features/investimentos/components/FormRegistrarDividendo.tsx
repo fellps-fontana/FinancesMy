@@ -11,7 +11,7 @@ import {
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { useRegistrarDividendo } from "@/features/investimentos/hooks/useRegistrarDividendo"
-import { dataDeHoje } from "@/features/investimentos/lib/dataDeHoje"
+import { dataDeHoje } from "@/shared/lib/datas"
 import { validarDividendo } from "@/features/investimentos/lib/validarDividendo"
 import { converterValorParaNumero } from "@/features/investimentos/lib/validarValorPositivo"
 

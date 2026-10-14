@@ -228,6 +228,57 @@ public class FaturaCicloPoliticaTests
 
     #endregion
 
+    #region TASK-239. PodeReceberCompraMovida (assinatura com dia_referencia alterado)
+
+    [Theory]
+    [InlineData(StatusFatura.Aberta)]
+    [InlineData(StatusFatura.Futura)]
+    public void PodeReceberCompraMovida_FaturaExistenteAbertaOuFutura_RetornaTrue(StatusFatura status)
+    {
+        var pode = FaturaCicloPolitica.PodeReceberCompraMovida(status, new DateOnly(2026, 11, 20), Hoje, FechCicloAtual);
+
+        Assert.True(pode);
+    }
+
+    [Theory]
+    [InlineData(StatusFatura.Fechada)]
+    [InlineData(StatusFatura.Paga)]
+    public void PodeReceberCompraMovida_FaturaExistenteFechadaOuPaga_RetornaFalse(StatusFatura status)
+    {
+        var pode = FaturaCicloPolitica.PodeReceberCompraMovida(status, new DateOnly(2026, 10, 20), Hoje, FechCicloAtual);
+
+        Assert.False(pode);
+    }
+
+    [Fact]
+    public void PodeReceberCompraMovida_PagaComFechamentoIgualOuPosteriorAHoje_RetornaFalse()
+    {
+        // Paga antecipada no ciclo atual ou futuro: nao reabre, nao recebe compra movida
+        var pode = FaturaCicloPolitica.PodeReceberCompraMovida(StatusFatura.Paga, FechCicloAtual, Hoje, FechCicloAtual);
+
+        Assert.False(pode);
+    }
+
+    [Theory]
+    [InlineData("2026-10-20")]
+    [InlineData("2026-11-20")]
+    public void PodeReceberCompraMovida_InexistenteComCalendarioAbertaOuFutura_RetornaTrue(string fechamento)
+    {
+        var pode = FaturaCicloPolitica.PodeReceberCompraMovida(null, DateOnly.Parse(fechamento), Hoje, FechCicloAtual);
+
+        Assert.True(pode);
+    }
+
+    [Fact]
+    public void PodeReceberCompraMovida_InexistenteComCalendarioFechada_RetornaFalse()
+    {
+        var pode = FaturaCicloPolitica.PodeReceberCompraMovida(null, new DateOnly(2026, 9, 20), Hoje, FechCicloAtual);
+
+        Assert.False(pode);
+    }
+
+    #endregion
+
     private static Fatura CriarFatura(DateOnly dataFechamento, StatusFatura status) => new()
     {
         Id = Guid.NewGuid(),

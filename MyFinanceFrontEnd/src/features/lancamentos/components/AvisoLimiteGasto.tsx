@@ -1,7 +1,7 @@
 import { ApiError } from "@/shared/api/client"
 import { cn } from "@/shared/lib/utils"
 import { useGastoVsLimite } from "@/features/limite-gasto/hooks/useGastoVsLimite"
-import { decidirNivelAlerta } from "@/features/lancamentos/lib/limiarAlertaLimite"
+import { obterEstadoLimite } from "@/features/limite-gasto/lib/estadoLimite"
 
 type AvisoLimiteGastoProps = {
   categoriaId: string | undefined
@@ -46,7 +46,7 @@ export function AvisoLimiteGasto({ categoriaId, ano, mes }: AvisoLimiteGastoProp
     return null
   }
 
-  const nivel = decidirNivelAlerta(data.percentualUtilizado, data.estourado)
+  const nivel = obterEstadoLimite(data)
 
   if (nivel === "ok") {
     return null

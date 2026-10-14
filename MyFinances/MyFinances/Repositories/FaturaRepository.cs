@@ -46,6 +46,11 @@ public class FaturaRepository : IFaturaRepository
             .FirstOrDefaultAsync(f => f.ContaId == contaId && f.Status == StatusFatura.Aberta);
     }
 
+    public void Descartar(Fatura fatura)
+    {
+        _context.Entry(fatura).State = EntityState.Detached;
+    }
+
     public async Task<Fatura?> ObterPorContaEDataFechamento(Guid contaId, DateOnly dataFechamento)
     {
         return await _context.Faturas

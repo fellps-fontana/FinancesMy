@@ -64,3 +64,9 @@ Entrada na regra de negócio: **Item 16 da regra-de-negocio.md** (decisões regi
 
 **Pendencia:** TASK-239. Quando o `dia_referencia` muda e a nova data cruza o fechamento, a compra nao e movida de
 fatura.
+
+## Pendencias pos-PR #73 (2026-10-14)
+
+**TASK-239:** ao editar o `dia_referencia`, a compra vinculada muda de fatura quando a nova data cruza
+o fechamento e o destino e ABERTA ou FUTURA. Se o destino for FECHADA ou PAGA, ela nao muda (confirmado em
+2026-10-14). Detalhes em `modulo-cartao-credito.md`.

@@ -189,12 +189,13 @@ public class FaturaCicloIntegrationTests
         _fixture.DbContext.Faturas.Add(fatura1);
         await _fixture.DbContext.SaveChangesAsync();
 
+        // Data de fechamento diferente: isola o IX_fatura_conta_aberta (o indice unico (conta, data) tem outro teste)
         var fatura2 = new Fatura
         {
             Id = Guid.NewGuid(),
             ContaId = contaId,
-            DataFechamento = new DateOnly(2025, 1, 10),
-            DataVencimento = new DateOnly(2025, 1, 20),
+            DataFechamento = new DateOnly(2025, 2, 10),
+            DataVencimento = new DateOnly(2025, 2, 20),
             Status = StatusFatura.Aberta
         };
         _fixture.DbContext.Faturas.Add(fatura2);

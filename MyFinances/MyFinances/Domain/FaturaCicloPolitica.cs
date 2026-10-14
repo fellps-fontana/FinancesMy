@@ -90,6 +90,29 @@ public static class FaturaCicloPolitica
             : DestinoLancamentoFatura.ReabrirEUsar;
     }
 
+    // Destino de compra de assinatura MOVIDA (item 12, assinatura). Existente: so Aberta/Futura recebe.
+    // Inexistente: so se o calendario a classificaria Aberta/Futura (nunca Fechada).
+    // Paga nunca recebe (inclusive paga antecipada: nao reabre).
+    public static bool PodeReceberCompraMovida(
+        StatusFatura? statusDaFaturaExistente,
+        DateOnly dataFechamentoDestino,
+        DateOnly hoje,
+        DateOnly fechamentoCicloAtual)
+    {
+        if (statusDaFaturaExistente is { } status)
+        {
+            return EhStatusQueRecebeCompra(status);
+        }
+
+        var statusCalendario = ClassificarPorCalendario(dataFechamentoDestino, hoje, fechamentoCicloAtual);
+        return EhStatusQueRecebeCompra(statusCalendario);
+    }
+
+    private static bool EhStatusQueRecebeCompra(StatusFatura status)
+    {
+        return status is StatusFatura.Aberta or StatusFatura.Futura;
+    }
+
     private static bool EstaNaJanelaDoCicloAtual(DateOnly dataFechamento, DateOnly hoje, DateOnly fechamentoCicloAtual)
     {
         return dataFechamento >= hoje && dataFechamento <= fechamentoCicloAtual;

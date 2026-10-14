@@ -471,6 +471,10 @@ namespace MyFinances.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ContaId", "DataFechamento")
+                        .IsUnique()
+                        .HasDatabaseName("IX_fatura_conta_data_fechamento");
+
                     b.HasIndex("ContaId", "Status")
                         .IsUnique()
                         .HasDatabaseName("IX_fatura_conta_aberta")

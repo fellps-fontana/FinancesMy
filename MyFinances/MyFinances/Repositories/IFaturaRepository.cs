@@ -18,4 +18,7 @@ public interface IFaturaRepository
     Task<IEnumerable<Fatura>> ListarFaturasCartaoPorVencimentoNoMes(int ano, int mes);
     Task Atualizar(Fatura fatura);
     Task Salvar();
+
+    // Descarta do ChangeTracker uma fatura que falhou ao salvar (evita reinsercao no proximo Salvar).
+    void Descartar(Fatura fatura);
 }

@@ -155,7 +155,7 @@ public class RecorrenciaGeradorService : IRecorrenciaGeradorService
         var lancamentosRemovidos = 0;
 
         var lancamentosEligiveisParaRemocao = contaFixa.Lancamentos
-            .Where(EhNaoConsumada)
+            .Where(OcorrenciaContaFixaPolitica.EhNaoConsumada)
             .ToList();
 
         foreach (var lancamento in lancamentosEligiveisParaRemocao)
@@ -177,7 +177,7 @@ public class RecorrenciaGeradorService : IRecorrenciaGeradorService
 
     public async Task<int> RemoverOcorrenciasNaoConsumadasAsync(Guid contaFixaId)
     {
-        var naoConsumadas = await ListarOcorrenciasAsync(contaFixaId, EhNaoConsumada);
+        var naoConsumadas = await ListarOcorrenciasAsync(contaFixaId, OcorrenciaContaFixaPolitica.EhNaoConsumada);
 
         foreach (var lancamento in naoConsumadas)
         {
@@ -191,7 +191,7 @@ public class RecorrenciaGeradorService : IRecorrenciaGeradorService
 
     public async Task<int> DesvincularOcorrenciasConsumadasAsync(Guid contaFixaId)
     {
-        var consumadas = await ListarOcorrenciasAsync(contaFixaId, EhConsumada);
+        var consumadas = await ListarOcorrenciasAsync(contaFixaId, OcorrenciaContaFixaPolitica.EhConsumada);
 
         foreach (var lancamento in consumadas)
         {
@@ -213,20 +213,5 @@ public class RecorrenciaGeradorService : IRecorrenciaGeradorService
         }
 
         return contaFixa.Lancamentos.Where(criterio).ToList();
-    }
-
-    // Banco (sem fatura): consumada so quando Pago. Cartao (com fatura): consumada so quando a Fatura esta Paga.
-    private static bool EhNaoConsumada(Lancamento lancamento)
-    {
-        return lancamento.Fatura == null
-            ? lancamento.Status == StatusLancamento.Pendente
-            : lancamento.Fatura.Status != StatusFatura.Paga;
-    }
-
-    private static bool EhConsumada(Lancamento lancamento)
-    {
-        return lancamento.Fatura == null
-            ? lancamento.Status == StatusLancamento.Pago
-            : lancamento.Fatura.Status == StatusFatura.Paga;
     }
 }

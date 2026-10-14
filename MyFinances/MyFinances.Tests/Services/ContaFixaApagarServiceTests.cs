@@ -453,6 +453,130 @@ public class ContaFixaApagarServiceTests
 
     #endregion
 
+    #region TASK-241: criterio unico de nao consumada (Banco: Status != Pago)
+
+    [Fact]
+    public async Task ApagarAsync_Banco_RemoveLancamentoSugerido()
+    {
+        // Arrange
+        var moldeId = Guid.NewGuid();
+        var sugerido = CriarLancamentoBanco(moldeId, StatusLancamento.Sugerido, new DateOnly(2026, 11, 15));
+        DeixarMoldeExistente(CriarMolde(moldeId, ativa: true, sugerido));
+
+        // Act
+        await _service.ApagarAsync(moldeId);
+
+        // Assert
+        _lancamentoRepository.Verify(r => r.Remover(It.Is<Lancamento>(l => l.Id == sugerido.Id)), Times.Once);
+    }
+
+    [Fact]
+    public async Task ApagarAsync_Banco_PagoContinuaDesvinculadoMesmoComSugeridoNoMolde()
+    {
+        // Arrange
+        var moldeId = Guid.NewGuid();
+        var pago = CriarLancamentoBanco(moldeId, StatusLancamento.Pago, new DateOnly(2026, 9, 15));
+        var sugerido = CriarLancamentoBanco(moldeId, StatusLancamento.Sugerido, new DateOnly(2026, 11, 15));
+        DeixarMoldeExistente(CriarMolde(moldeId, ativa: true, pago, sugerido));
+
+        // Act
+        await _service.ApagarAsync(moldeId);
+
+        // Assert
+        Assert.Null(pago.ContaFixaId);
+        _lancamentoRepository.Verify(r => r.Remover(It.Is<Lancamento>(l => l.Id == pago.Id)), Times.Never);
+        _lancamentoRepository.Verify(r => r.Remover(It.Is<Lancamento>(l => l.Id == sugerido.Id)), Times.Once);
+    }
+
+    [Fact]
+    public async Task DesativarAsync_Banco_RemoveSugeridoMantemPago()
+    {
+        // Arrange
+        var moldeId = Guid.NewGuid();
+        var pago = CriarLancamentoBanco(moldeId, StatusLancamento.Pago, new DateOnly(2026, 9, 15));
+        var sugerido = CriarLancamentoBanco(moldeId, StatusLancamento.Sugerido, new DateOnly(2026, 11, 15));
+        DeixarMoldeExistente(CriarMolde(moldeId, ativa: true, pago, sugerido));
+
+        // Act
+        await _service.DesativarAsync(moldeId);
+
+        // Assert
+        _lancamentoRepository.Verify(r => r.Remover(It.Is<Lancamento>(l => l.Id == sugerido.Id)), Times.Once);
+        _lancamentoRepository.Verify(r => r.Remover(It.Is<Lancamento>(l => l.Id == pago.Id)), Times.Never);
+    }
+
+    [Fact]
+    public async Task RemoverOcorrenciasNaoConsumadasAsync_Banco_RemovePendenteESugeridoNaoRemovePago()
+    {
+        // Arrange
+        var moldeId = Guid.NewGuid();
+        var pendente = CriarLancamentoBanco(moldeId, StatusLancamento.Pendente, new DateOnly(2026, 11, 15));
+        var sugerido = CriarLancamentoBanco(moldeId, StatusLancamento.Sugerido, new DateOnly(2026, 12, 15));
+        var pago = CriarLancamentoBanco(moldeId, StatusLancamento.Pago, new DateOnly(2026, 9, 15));
+        DeixarMoldeExistente(CriarMolde(moldeId, ativa: true, pendente, sugerido, pago));
+
+        // Act
+        var removidas = await _motor.RemoverOcorrenciasNaoConsumadasAsync(moldeId);
+
+        // Assert
+        Assert.Equal(2, removidas);
+        _lancamentoRepository.Verify(r => r.Remover(It.Is<Lancamento>(l => l.Id == pendente.Id)), Times.Once);
+        _lancamentoRepository.Verify(r => r.Remover(It.Is<Lancamento>(l => l.Id == sugerido.Id)), Times.Once);
+        _lancamentoRepository.Verify(r => r.Remover(It.Is<Lancamento>(l => l.Id == pago.Id)), Times.Never);
+    }
+
+    [Fact]
+    public async Task DesvincularOcorrenciasConsumadasAsync_Banco_NaoDesvinculaSugerido()
+    {
+        // Arrange
+        var moldeId = Guid.NewGuid();
+        var sugerido = CriarLancamentoBanco(moldeId, StatusLancamento.Sugerido, new DateOnly(2026, 11, 15));
+        DeixarMoldeExistente(CriarMolde(moldeId, ativa: true, sugerido));
+
+        // Act
+        var desvinculadas = await _motor.DesvincularOcorrenciasConsumadasAsync(moldeId);
+
+        // Assert
+        Assert.Equal(0, desvinculadas);
+        Assert.Equal(moldeId, sugerido.ContaFixaId);
+    }
+
+    [Fact]
+    public async Task ApagarAsync_Cartao_RemoveCompraEmFaturaFutura()
+    {
+        // Arrange - guarda: fatura FUTURA nao consumada, deve sair junto com o molde
+        var moldeId = Guid.NewGuid();
+        var compraFutura = CriarLancamentoCartao(moldeId, StatusFatura.Futura, StatusLancamento.Pendente, new DateOnly(2026, 11, 15));
+        DeixarMoldeExistente(CriarMolde(moldeId, ativa: true, compraFutura));
+
+        // Act
+        await _service.ApagarAsync(moldeId);
+
+        // Assert
+        _lancamentoRepository.Verify(r => r.Remover(It.Is<Lancamento>(l => l.Id == compraFutura.Id)), Times.Once);
+    }
+
+    [Fact]
+    public async Task LimparOcorrenciasForaDaPeriodicidadeAsync_Banco_RemoveSugeridoForaDoConjunto()
+    {
+        // Arrange - molde mensal; sugerido em 2099 fica fora de mes atual e proximo
+        var moldeId = Guid.NewGuid();
+        var sugeridoFora = CriarLancamentoBanco(moldeId, StatusLancamento.Sugerido, new DateOnly(2099, 6, 15));
+        DeixarMoldeExistente(CriarMolde(moldeId, ativa: true, sugeridoFora));
+
+        // Act
+        var removidas = await _motor.LimparOcorrenciasForaDaPeriodicidadeAsync(
+            moldeId,
+            PeriodicidadeContaFixa.Mensal,
+            mesReferenciaNovo: null);
+
+        // Assert
+        Assert.Equal(1, removidas);
+        _lancamentoRepository.Verify(r => r.Remover(It.Is<Lancamento>(l => l.Id == sugeridoFora.Id)), Times.Once);
+    }
+
+    #endregion
+
     #region Helpers
 
     private void DeixarMoldeExistente(ContaFixa molde)

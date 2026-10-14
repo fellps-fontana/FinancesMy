@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/shared/ui/card"
 import { cn } from "@/shared/lib/utils"
 import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
 import { useGastoVsLimiteTodasCategorias } from "@/features/limite-gasto/hooks/useGastoVsLimiteTodasCategorias"
+import { obterEstadoLimite, type EstadoLimite } from "@/features/limite-gasto/lib/estadoLimite"
 import type { GastoVsLimiteResponse } from "@/features/limite-gasto/types"
 
 // Formata a mesma fracao 0..1+ que o backend devolve em `percentualUtilizado`
@@ -15,24 +16,6 @@ const formatadorPercentual = new Intl.NumberFormat("pt-BR", {
   style: "percent",
   maximumFractionDigits: 0,
 })
-
-// Threshold de "perto do limite" (regra-de-negocio.md item 14 nao define
-// esse corte - so define "estourar" como gasto > limite). Decisao de UX
-// isolada aqui, igual ao types.ts do modulo ja avisa ("nenhum threshold e
-// decidido no hook, so pelos consumidores"). TASK-060 (AvisoLimiteGasto) usa
-// o mesmo valor 80% numa funcao propria (lib/limiarAlertaLimite.ts) porque
-// vive noutra feature (lancamentos) - cada consumidor decide o proprio corte
-// visual sem compartilhar constante entre features, para nao criar
-// acoplamento por um numero que e so estetico, nao contrato de API.
-const LIMIAR_PERTO_DO_LIMITE = 0.8
-
-type EstadoLimite = "estourado" | "perto" | "ok"
-
-function obterEstado(item: GastoVsLimiteResponse): EstadoLimite {
-  if (item.estourado) return "estourado"
-  if (item.percentualUtilizado >= LIMIAR_PERTO_DO_LIMITE) return "perto"
-  return "ok"
-}
 
 // Cor semantica por estado (identidade-visual.md: "cor com significado").
 // estourado -> negativo (mesmo vermelho-coral de saida/gasto, aqui reforcando
@@ -101,7 +84,7 @@ type LinhaLimiteGastoProps = {
 }
 
 function LinhaLimiteGasto({ item }: LinhaLimiteGastoProps) {
-  const estado = obterEstado(item)
+  const estado = obterEstadoLimite(item)
   const config = CONFIG_POR_ESTADO[estado]
   const larguraBarra = Math.min(item.percentualUtilizado, 1) * 100
 

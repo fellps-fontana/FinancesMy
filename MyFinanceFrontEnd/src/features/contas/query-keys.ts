@@ -6,4 +6,7 @@
 export const contasKeys = {
   all: ["contas"] as const,
   lista: () => [...contasKeys.all, "lista"] as const,
+  // Contas MANUAL (banco + investimento) disponiveis pra selecao de origem ou
+  // destino em formularios. Sem parametro: uma unica chave cobre todos os usos.
+  contasParaSelecao: () => [...contasKeys.all, "contasParaSelecao"] as const,
 }

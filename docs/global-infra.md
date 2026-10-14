@@ -87,3 +87,11 @@ O trabalho anterior do Gemini ficou na branch `gemini-ui-wip`.
 
 **Cadeia de migrations:** `20260713214053_AddContaReceberEntity` vem antes de `InitialCreate`, entao um banco zerado
 nao sobe por `database update` (problema pre-existente). O preview foi criado por `dbcontext script`.
+
+## Pendencias pos-PR #73 (2026-10-14)
+
+**TASK-237:** limpeza de duplicacoes no front:
+- `shared/hooks/useContasParaSelecao` (chave em `contasKeys`);
+- limiar de limite de gasto unico (`limite-gasto/lib/estadoLimite`);
+- `CategoriaSelect` sobre `montarOpcoesCategoria`;
+- datas so em `shared/lib/datas`.

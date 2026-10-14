@@ -8,10 +8,10 @@ import { CLASSE_BOTAO_CANCELAR, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO } from "@/sh
 import { Chip } from "@/shared/ui/chip"
 import { SelectField } from "@/shared/ui/select-field"
 import { formatarMoeda } from "@/shared/lib/formatarMoeda"
-import { dataDeHoje } from "@/features/cartao/lib/formatarData"
+import { dataDeHoje } from "@/shared/lib/datas"
 import { BarraRecebido } from "@/features/contas-receber/components/ContaReceberItem"
 import { useRegistrarRecebimento } from "@/features/contas-receber/hooks/useRegistrarRecebimento"
-import { useContasParaSelecao } from "@/features/contas-receber/hooks/useContasParaSelecao"
+import { useContasParaSelecao } from "@/shared/hooks/useContasParaSelecao"
 import {
   converterValorRecebimentoParaNumero,
   validarRecebimento,

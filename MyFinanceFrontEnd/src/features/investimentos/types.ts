@@ -93,8 +93,7 @@ export type AtivosResumoResponse = {
 }
 
 // ContaResponse vive em features/contas/types.ts (fonte unica). Reexportado
-// aqui porque features/contas-receber/hooks/useContasParaSelecao.ts ainda
-// importa deste caminho.
+// aqui para os consumidores que ainda importam deste caminho.
 export type { ContaResponse } from "@/features/contas/types"
 
 // --- Rendimento (regra-de-negocio.md item 8/TASK-160) - dividendo (registro

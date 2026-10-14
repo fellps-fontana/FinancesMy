@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using MyFinances.Domain;
 using MyFinances.Repositories;
 
@@ -102,6 +103,35 @@ public class FaturaCicloService
         return fatura;
     }
 
+    // Null quando o ciclo destino nao pode receber (Fechada/Paga, existente ou por calendario).
+    // Reconcilia, calcula o ciclo de novaData, aplica Usar ou CriarNova. NUNCA ReabrirEUsar.
+    public async Task<Fatura?> ResolverFaturaParaCompraMovidaAsync(Guid contaId, DateOnly novaData)
+    {
+        var conta = await _contaRepository.ObterPorId(contaId);
+        if (conta == null || !EhCartao(conta))
+        {
+            return null;
+        }
+
+        await ReconciliarContaAsync(conta);
+
+        var hoje = HojeLocal();
+        var (dataFechamento, dataVencimento) = CalcularDatasCiclo(
+            DiaFechamentoDa(conta),
+            DiaVencimentoDa(conta),
+            novaData);
+
+        var faturaDoCiclo = await _faturaRepository.ObterPorContaEDataFechamento(contaId, dataFechamento);
+        var fechamentoCicloAtual = CalcularFechamentoCicloAtual(conta, hoje);
+
+        if (!FaturaCicloPolitica.PodeReceberCompraMovida(faturaDoCiclo?.Status, dataFechamento, hoje, fechamentoCicloAtual))
+        {
+            return null;
+        }
+
+        return faturaDoCiclo ?? await CriarFaturaAsync(conta, dataFechamento, dataVencimento, hoje);
+    }
+
     public (DateOnly DataFechamento, DateOnly DataVencimento) CalcularDatasCiclo(
         int diaFechamento,
         int diaVencimento,
@@ -145,6 +175,12 @@ public class FaturaCicloService
 
     // Nasce com o status do calendario, mas ABERTA vira FUTURA: a promocao para ABERTA e feita pela
     // reconciliacao, depois das demissoes, para nao violar o indice unico IX_fatura_conta_aberta.
+    // Corrida: outra requisicao criou a fatura do mesmo (conta, data_fechamento) entre o lookup e o
+    // INSERT. O indice unico IX_fatura_conta_data_fechamento rejeita o INSERT; devolvemos a vencedora.
+    // LIMITACAO: a recuperacao pela vencedora so vale FORA de transacao explicita no Postgres. Dentro de
+    // BeginTransactionAsync, a violacao do indice aborta a transacao (SQLSTATE 25P02) e a releitura
+    // falha; entao o erro sobe e a operacao inteira e desfeita, sem duplicata gravada. O SQLite nao
+    // reproduz esse comportamento (a transacao continua valida apos a falha do statement).
     private async Task<Fatura> CriarFaturaAsync(Conta conta, DateOnly dataFechamento, DateOnly dataVencimento, DateOnly hoje)
     {
         var statusCalendario = FaturaCicloPolitica.ClassificarPorCalendario(
@@ -161,11 +197,33 @@ public class FaturaCicloService
             Status = statusCalendario == StatusFatura.Aberta ? StatusFatura.Futura : statusCalendario
         };
 
-        await _faturaRepository.Adicionar(novaFatura);
-        await _faturaRepository.Salvar();
+        var fatura = await InserirOuRecuperarVencedoraAsync(novaFatura, conta.Id, dataFechamento);
         await ReconciliarContaAsync(conta);
 
-        return novaFatura;
+        return fatura;
+    }
+
+    // Ver LIMITACAO em CriarFaturaAsync: fora de transacao explicita no Postgres apenas.
+    private async Task<Fatura> InserirOuRecuperarVencedoraAsync(Fatura novaFatura, Guid contaId, DateOnly dataFechamento)
+    {
+        try
+        {
+            await _faturaRepository.Adicionar(novaFatura);
+            await _faturaRepository.Salvar();
+            return novaFatura;
+        }
+        catch (DbUpdateException)
+        {
+            _faturaRepository.Descartar(novaFatura);
+
+            var vencedora = await _faturaRepository.ObterPorContaEDataFechamento(contaId, dataFechamento);
+            if (vencedora == null)
+            {
+                throw;
+            }
+
+            return vencedora;
+        }
     }
 
     private async Task ReconciliarContaAsync(Conta conta)

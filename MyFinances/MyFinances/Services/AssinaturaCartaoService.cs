@@ -116,9 +116,7 @@ public class AssinaturaCartaoService : IAssinaturaCartaoService
 
                     if (diaMudou)
                     {
-                        var diasNoMes = DateTime.DaysInMonth(compra.Data.Year, compra.Data.Month);
-                        var novoDia = Math.Min(diaReferencia, diasNoMes);
-                        compra.Data = new DateOnly(compra.Data.Year, compra.Data.Month, novoDia);
+                        await MoverCompraParaNovoDiaAsync(compra, diaReferencia);
                     }
 
                     await _lancamentoRepository.Atualizar(compra);
@@ -129,6 +127,24 @@ public class AssinaturaCartaoService : IAssinaturaCartaoService
         }
 
         return assinatura;
+    }
+
+    // Dia novo no mesmo mes/ano da compra (com clamp). Move para a fatura do novo ciclo so se o destino
+    // pode receber (Aberta/Futura); senao a compra fica onde esta (Data e Fatura intactas).
+    private async Task MoverCompraParaNovoDiaAsync(Lancamento compra, int diaReferencia)
+    {
+        var diasNoMes = DateTime.DaysInMonth(compra.Data.Year, compra.Data.Month);
+        var novaData = new DateOnly(compra.Data.Year, compra.Data.Month, Math.Min(diaReferencia, diasNoMes));
+
+        var destino = await _faturaCicloService.ResolverFaturaParaCompraMovidaAsync(compra.ContaId, novaData);
+        if (destino == null)
+        {
+            return;
+        }
+
+        compra.Data = novaData;
+        compra.FaturaId = destino.Id;
+        compra.Fatura = destino;
     }
 
     public async Task DesativarAsync(Guid id)

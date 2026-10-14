@@ -11,9 +11,8 @@ import { CLASSE_CAMPO } from "@/shared/ui/FormModal"
 // (mesma situacao ja registrada em FormContaFixa.tsx). useContasParaSelecao
 // ja resolve exatamente "contas MANUAL disponiveis pra origem/destino,
 // excluindo cartao" (busca banco + investimento em paralelo) - reaproveitado
-// aqui em vez de duplicar a chamada combinada. Import cross-feature,
-// registrado no mesmo espirito da nota ja deixada em FormContaFixa.tsx.
-import { useContasParaSelecao } from "@/features/contas-receber/hooks/useContasParaSelecao"
+// aqui em vez de duplicar a chamada combinada.
+import { useContasParaSelecao } from "@/shared/hooks/useContasParaSelecao"
 import { useCriarTransferencia } from "@/features/lancamentos/hooks/useCriarTransferencia"
 import {
   converterValorParaNumero,

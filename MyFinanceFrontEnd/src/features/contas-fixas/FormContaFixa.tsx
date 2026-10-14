@@ -13,14 +13,13 @@ import { useEditarContaFixa } from "@/features/contas-fixas/hooks/useEditarConta
 // Nao existe hook de "listar contas" generico em features/contas/ (feature
 // ainda e so um placeholder - stack.md "Feature so com .gitkeep e placeholder
 // de modulo nao implementado"). O unico hook que ja resolve "contas MANUAL
-// disponiveis pra selecao de origem" e useContasParaSelecao, hoje dentro de
-// contas-receber/hooks (busca banco + investimento em paralelo, ver comentario
+// disponiveis pra selecao de origem" e useContasParaSelecao, agora em
+// shared/hooks (busca banco + investimento em paralelo, ver comentario
 // no proprio hook - o back nao tem endpoint combinado por tipo). Reaproveitado
 // aqui em vez de duplicar a mesma chamada combinada: e o mesmo padrao de
 // "conta de origem" do item 13 (emprestimo) aplicado a "conta de origem" do
-// item 6 (conta fixa) - mesmo conjunto de contas MANUAL, mesma regra. Import
-// cross-feature: candidato a shared/hooks/ (usado por 2+ features).
-import { useContasParaSelecao } from "@/features/contas-receber/hooks/useContasParaSelecao"
+// item 6 (conta fixa) - mesmo conjunto de contas MANUAL, mesma regra.
+import { useContasParaSelecao } from "@/shared/hooks/useContasParaSelecao"
 import {
   converterDiaVencimentoParaNumero,
   converterValorParaNumero,

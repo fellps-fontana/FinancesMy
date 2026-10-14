@@ -1,3 +1,4 @@
+import { formatarDiaMes } from "@/shared/lib/datas"
 import type { FluxoCaixaItem, TipoLancamento } from "../types"
 
 // Recorte de mes calendario (regra-de-negocio.md item 9) aplicado client-side,
@@ -6,10 +7,10 @@ import type { FluxoCaixaItem, TipoLancamento } from "../types"
 // `mesAtual` em DashboardPage.tsx / ComparativoLimiteGastoPage.tsx).
 // `data` chega como DateOnly do backend (string "yyyy-MM-dd") - parse manual
 // dos componentes (em vez de `new Date(iso)`) evita o deslocamento de fuso
-// que `Date` aplicaria ao interpretar a string como UTC meia-noite, mesmo
-// cuidado ja tomado em `formatarData.ts`. Opera sobre FluxoCaixaItem (uniao
-// LANCAMENTO/TRANSFERENCIA, types.ts) - `data` vive no nivel superior da
-// uniao nos dois casos, entao o recorte de mes nao precisa checar `tipoItem`.
+// que `Date` aplicaria ao interpretar a string como UTC meia-noite. Opera
+// sobre FluxoCaixaItem (uniao LANCAMENTO/TRANSFERENCIA, types.ts) - `data`
+// vive no nivel superior da uniao nos dois casos, entao o recorte de mes nao
+// precisa checar `tipoItem`.
 export function filtrarLancamentosDoMes(
   itens: FluxoCaixaItem[],
   ano: number,
@@ -111,10 +112,8 @@ export type GrupoLancamentosPorData = {
   itens: FluxoCaixaItem[]
 }
 
-const formatadorDiaMes = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" })
-
 // Parse manual dos componentes de "yyyy-MM-dd" (mesmo cuidado de
-// filtrarLancamentosDoMes acima e de cartao/lib/formatarData.ts) - evita o
+// filtrarLancamentosDoMes acima) - evita o
 // deslocamento de fuso de `new Date(iso)`.
 function paraDataLocal(dataIso: string): Date {
   const [ano, mes, dia] = dataIso.split("-").map(Number)
@@ -130,7 +129,7 @@ function mesmaData(a: Date, b: Date): boolean {
 // do sistema em teste.
 export function rotularDataLancamento(dataIso: string, hoje: Date = new Date()): string {
   const dataLancamento = paraDataLocal(dataIso)
-  const diaMes = formatadorDiaMes.format(dataLancamento)
+  const diaMes = formatarDiaMes(dataIso)
 
   if (mesmaData(dataLancamento, hoje)) {
     return `Hoje, ${diaMes}`
@@ -195,10 +194,9 @@ export function somarMeses(mesReferencia: string, delta: number): string {
 const formatadorMesExtenso = new Intl.DateTimeFormat("pt-BR", { month: "long" })
 
 // "yyyy-MM" -> "Julho 2026" (mockup "04 Lancamentos"). Nao reusa
-// formatarMesReferencia (cartao/lib/formatarData.ts, que produz "Julho de
-// 2026") porque esse arquivo esta fora do escopo de edicao desta tarefa -
-// mesmo formato, texto ligeiramente diferente (sem o "de"), decisao tomada
-// aqui pra bater com o mockup literalmente.
+// formatarMesReferencia (shared/lib/datas.ts) porque aquele produz "Julho de
+// 2026" (com "de"); aqui o texto e deliberadamente diferente, pra bater com o
+// mockup literalmente - nao sao equivalentes.
 export function formatarRotuloMes(mesReferencia: string): string {
   const { ano, mes } = paraAnoMes(mesReferencia)
   const nomeMes = formatadorMesExtenso.format(new Date(ano, mes - 1, 1))
