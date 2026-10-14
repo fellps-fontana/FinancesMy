@@ -4,6 +4,7 @@ using MyFinances.Data;
 using MyFinances.Domain;
 using MyFinances.Repositories;
 using MyFinances.Services;
+using MyFinances.Tests.Helpers;
 using Xunit;
 
 namespace MyFinances.Tests.Services;
@@ -78,7 +79,7 @@ public class FaturaCicloIntegrationTests
 
         var faturaRepository = new FaturaRepository(_fixture.DbContext);
         var contaRepository = new ContaRepository(_fixture.DbContext);
-        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository);
+        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository, new RelogioFake(new DateOnly(2025, 1, 6)));
 
         var dataCompra1 = new DateOnly(2025, 1, 5);
 
@@ -105,7 +106,7 @@ public class FaturaCicloIntegrationTests
     }
 
     [Fact]
-    public async Task ResolverFaturaParaLancamento_ComLancamentoEmCicloSeguinte_FechaAnterioresCriaNovaComIndiceUnico()
+    public async Task ResolverFaturaParaLancamento_ComLancamentoEmCicloSeguinte_NaoFechaAAnteriorECriaFuturaComoFutura()
     {
         // Arrange
         var contaId = Guid.NewGuid();
@@ -124,7 +125,7 @@ public class FaturaCicloIntegrationTests
 
         var faturaRepository = new FaturaRepository(_fixture.DbContext);
         var contaRepository = new ContaRepository(_fixture.DbContext);
-        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository);
+        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository, new RelogioFake(new DateOnly(2025, 1, 6)));
 
         var dataCompra1 = new DateOnly(2025, 1, 5);
 
@@ -142,21 +143,21 @@ public class FaturaCicloIntegrationTests
         Assert.False(rejeitada2, motivo2);
         Assert.NotNull(fatura2);
 
-        // Fatura 1 deve estar Fechada
+        // Lancamento em fev nao fecha a fatura de jan: a atual continua ABERTA (TASK-238, calendario manda).
         var fatura1Atualizada = await _fixture.DbContext.Faturas.FirstOrDefaultAsync(f => f.Id == fatura1.Id);
         Assert.NotNull(fatura1Atualizada);
-        Assert.Equal(StatusFatura.Fechada, fatura1Atualizada.Status);
+        Assert.Equal(StatusFatura.Aberta, fatura1Atualizada.Status);
 
-        // Fatura 2 deve estar Aberta e ser diferente da 1
+        // Fatura de fev e FUTURA (ciclo ainda nao atual) e diferente da 1
         Assert.NotEqual(fatura1.Id, fatura2.Id);
-        Assert.Equal(StatusFatura.Aberta, fatura2.Status);
+        Assert.Equal(StatusFatura.Futura, fatura2.Status);
 
-        // Deve haver exatamente 1 fatura aberta
+        // Deve haver exatamente 1 fatura aberta: a de jan
         var faturasAbertas = await _fixture.DbContext.Faturas
             .Where(f => f.ContaId == contaId && f.Status == StatusFatura.Aberta)
             .ToListAsync();
         Assert.Single(faturasAbertas);
-        Assert.Equal(fatura2.Id, faturasAbertas[0].Id);
+        Assert.Equal(fatura1.Id, faturasAbertas[0].Id);
     }
 
     [Fact]

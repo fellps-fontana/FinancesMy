@@ -230,4 +230,79 @@ public class AntecipacaoParcelasSelectorTests
         Assert.Empty(resultado.Selecionadas);
         Assert.NotNull(resultado.Erro);
     }
+
+    #region Regra: so parcela em fatura FUTURA posterior e elegivel; fatura PAGA posterior nao
+
+    [Fact]
+    public void ObterElegiveis_ParcelaEmFuturaPosterior_EhElegivel()
+    {
+        // Arrange
+        var atual = CriarFatura(new DateOnly(2025, 3, 20), StatusFatura.Aberta);
+        var futura = CriarFatura(new DateOnly(2025, 4, 20), StatusFatura.Futura);
+        var parcelas = new List<Lancamento> { CriarParcela(4, futura) };
+
+        // Act
+        var elegiveis = AntecipacaoParcelasSelector.ObterElegiveis(parcelas, atual);
+
+        // Assert
+        Assert.Single(elegiveis);
+        Assert.Equal(4, elegiveis[0].ParcelaNumero);
+    }
+
+    [Fact]
+    public void ObterElegiveis_ParcelaEmPagaPosteriorAAtual_NaoEhElegivel()
+    {
+        // Arrange
+        var atual = CriarFatura(new DateOnly(2025, 3, 20), StatusFatura.Aberta);
+        var paga = CriarFatura(new DateOnly(2025, 4, 20), StatusFatura.Paga);
+        var parcelas = new List<Lancamento> { CriarParcela(4, paga) };
+
+        // Act
+        var elegiveis = AntecipacaoParcelasSelector.ObterElegiveis(parcelas, atual);
+
+        // Assert
+        Assert.Empty(elegiveis);
+    }
+
+    [Fact]
+    public void Selecionar_QuantidadeMaiorQueElegiveisComPagaPosteriorExcluida_RejeitaInteiro()
+    {
+        // Arrange - elegiveis reais: parcelas 4 e 6 (Futura). A 5 (Paga) nao conta. Pedir 3 rejeita.
+        var atual = CriarFatura(new DateOnly(2025, 3, 20), StatusFatura.Aberta);
+        var parcelas = new List<Lancamento>
+        {
+            CriarParcela(4, CriarFatura(new DateOnly(2025, 4, 20), StatusFatura.Futura)),
+            CriarParcela(5, CriarFatura(new DateOnly(2025, 5, 20), StatusFatura.Paga)),
+            CriarParcela(6, CriarFatura(new DateOnly(2025, 6, 20), StatusFatura.Futura))
+        };
+
+        // Act
+        var resultado = AntecipacaoParcelasSelector.Selecionar(parcelas, atual, 3);
+
+        // Assert
+        Assert.False(resultado.Sucesso);
+        Assert.Empty(resultado.Selecionadas);
+    }
+
+    [Fact]
+    public void Selecionar_QuantidadeIgualAoElegivelSemPagaPosterior_NaoIncluiAParcelaPaga()
+    {
+        // Arrange - mesmo cenario: pedir 2 deve pegar 6 e 4, nunca a 5 (Paga).
+        var atual = CriarFatura(new DateOnly(2025, 3, 20), StatusFatura.Aberta);
+        var parcelas = new List<Lancamento>
+        {
+            CriarParcela(4, CriarFatura(new DateOnly(2025, 4, 20), StatusFatura.Futura)),
+            CriarParcela(5, CriarFatura(new DateOnly(2025, 5, 20), StatusFatura.Paga)),
+            CriarParcela(6, CriarFatura(new DateOnly(2025, 6, 20), StatusFatura.Futura))
+        };
+
+        // Act
+        var resultado = AntecipacaoParcelasSelector.Selecionar(parcelas, atual, 2);
+
+        // Assert
+        Assert.True(resultado.Sucesso);
+        Assert.Equal(new[] { 6, 4 }, resultado.Selecionadas.Select(l => l.ParcelaNumero!.Value));
+    }
+
+    #endregion
 }

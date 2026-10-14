@@ -63,15 +63,18 @@ export function selecionarPendentesAPagar(fluxo: FluxoCaixaItem[]): ItemAPagar[]
   return itens
 }
 
-// Cartao entra como UMA conta a pagar = fatura em aberto (itens 9 e 12). Usa
-// o `valorPendente` ja calculado pelo backend; fatura PAGA ou sem pendencia
-// fica de fora. Escolhe a de vencimento mais proximo.
+// Cartao entra como UMA conta a pagar = fatura ABERTA ou FECHADA com saldo
+// pendente (itens 9 e 12). Usa o `valorPendente` ja calculado pelo backend;
+// FUTURA (ciclo nao iniciado), PAGA ou sem pendencia ficam de fora. Escolhe a
+// de vencimento mais proximo.
 export function selecionarFaturaAPagar(
   faturas: FaturaResponse[],
   nomeCartao: string,
 ): ItemAPagar | null {
   const emAberto = faturas
-    .filter((fatura) => fatura.status !== "PAGA" && fatura.valorPendente > 0)
+    .filter(
+      (fatura) => (fatura.status === "ABERTA" || fatura.status === "FECHADA") && fatura.valorPendente > 0,
+    )
     .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento))[0]
 
   if (emAberto === undefined) return null

@@ -30,7 +30,7 @@ type PagarFaturaModalProps = {
 
 /**
  * Formulario de pagamento de fatura (regra de negocio item 12: o pagamento
- * pode ser ANTECIPADO - fatura ainda ABERTA - e PARCIAL, varios pagamentos
+ * pode ser ANTECIPADO - fatura ABERTA ou FUTURA - e PARCIAL, varios pagamentos
  * ate quitar o saldo pendente). O saldo pendente fica visivel no topo e o
  * campo "Valor a pagar" vem pre-preenchido com ele mas continua editavel
  * para um valor MENOR - e essa a UX que deixa claro que pagamento parcial e

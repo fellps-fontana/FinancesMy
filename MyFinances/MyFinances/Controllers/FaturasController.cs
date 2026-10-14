@@ -17,6 +17,7 @@ public class FaturasController : ControllerBase
     private readonly IRecorrenciaGeradorService _recorrenciaGeradorService;
     private readonly IContaFixaRepository _contaFixaRepository;
     private readonly IAssinaturaCartaoService? _assinaturaCartaoService;
+    private readonly FaturaCicloService _faturaCicloService;
 
     public FaturasController(
         IFaturaRepository faturaRepository,
@@ -25,6 +26,7 @@ public class FaturasController : ControllerBase
         FaturaCreditoService faturaCreditoService,
         IRecorrenciaGeradorService recorrenciaGeradorService,
         IContaFixaRepository contaFixaRepository,
+        FaturaCicloService faturaCicloService,
         IAssinaturaCartaoService? assinaturaCartaoService = null)
     {
         _faturaRepository = faturaRepository;
@@ -34,6 +36,7 @@ public class FaturasController : ControllerBase
         _recorrenciaGeradorService = recorrenciaGeradorService;
         _contaFixaRepository = contaFixaRepository;
         _assinaturaCartaoService = assinaturaCartaoService;
+        _faturaCicloService = faturaCicloService;
     }
 
     [HttpGet]
@@ -52,6 +55,9 @@ public class FaturasController : ControllerBase
             await _assinaturaCartaoService.GarantirAssinaturasDoCicloAsync(contaId, hoje.Year, hoje.Month);
         }
 
+        // Fechamento pelo calendario acontece na leitura (item 12, reclassificacao preguicosa).
+        await _faturaCicloService.ReconciliarAsync(contaId);
+
         var faturas = await _faturaRepository.ListarPorConta(contaId);
         var cadeia = await _faturaCreditoService.CalcularCadeiaDaContaAsync(contaId);
 
@@ -69,6 +75,8 @@ public class FaturasController : ControllerBase
     [HttpGet("{faturaId}")]
     public async Task<IActionResult> ObterFatura(Guid contaId, Guid faturaId)
     {
+        await _faturaCicloService.ReconciliarAsync(contaId);
+
         var fatura = await _faturaRepository.ObterPorId(faturaId);
 
         if (fatura == null || fatura.ContaId != contaId)

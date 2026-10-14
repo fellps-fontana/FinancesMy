@@ -6,8 +6,8 @@ namespace MyFinances.Services;
 
 // Orquestracao da antecipacao (item 12). A regra pura vive em AntecipacaoParcelasSelector.
 // AnteciparAsync: compra existe e e da conta -> conta Cartao (ValidacaoCartaoService) ->
-// existe fatura aberta (senao rejeita, sem criar) -> Selector.Selecionar -> dentro de
-// transacao: move as parcelas para a fatura aberta (Rollback em qualquer falha).
+// existe fatura atual (senao rejeita, sem criar) -> Selector.Selecionar -> dentro de
+// transacao: move as parcelas para a fatura atual (Rollback em qualquer falha).
 // Antecipar nunca fecha nem cria fatura.
 public class AntecipacaoParcelasService : IAntecipacaoParcelasService
 {
@@ -15,27 +15,27 @@ public class AntecipacaoParcelasService : IAntecipacaoParcelasService
 
     private const string DescricaoOperacao = "Antecipacao de parcelas";
     private const string ErroCompraOutraConta = "Compra parcelada nao pertence a esta conta";
-    private const string ErroSemFaturaAberta = "Nao existe fatura aberta para a conta de cartao";
+    private const string ErroSemFaturaAtual = "Nao existe fatura aberta para a conta de cartao";
     private const string ErroFalhaPersistencia = "Falha ao persistir a antecipacao de parcelas";
 
     private readonly ICompraParceladaRepository _compraParceladaRepository;
     private readonly ILancamentoRepository _lancamentoRepository;
-    private readonly IFaturaRepository _faturaRepository;
     private readonly ValidacaoCartaoService _validacaoCartaoService;
     private readonly ILogger<AntecipacaoParcelasService> _logger;
+    private readonly FaturaCicloService _faturaCicloService;
 
     public AntecipacaoParcelasService(
         ICompraParceladaRepository compraParceladaRepository,
         ILancamentoRepository lancamentoRepository,
-        IFaturaRepository faturaRepository,
         ValidacaoCartaoService validacaoCartaoService,
-        ILogger<AntecipacaoParcelasService> logger)
+        ILogger<AntecipacaoParcelasService> logger,
+        FaturaCicloService faturaCicloService)
     {
         _compraParceladaRepository = compraParceladaRepository;
         _lancamentoRepository = lancamentoRepository;
-        _faturaRepository = faturaRepository;
         _validacaoCartaoService = validacaoCartaoService;
         _logger = logger;
+        _faturaCicloService = faturaCicloService;
     }
 
     public async Task<(bool Sucesso, CompraParcelada? Compra, IReadOnlyList<Lancamento>? Parcelas, string? Erro)> ObterElegiveisAsync(
@@ -48,7 +48,7 @@ public class AntecipacaoParcelasService : IAntecipacaoParcelasService
             return (false, null, null, erro);
         }
 
-        var elegiveis = AntecipacaoParcelasSelector.ObterElegiveis(contexto.Compra.Lancamentos, contexto.FaturaAberta);
+        var elegiveis = AntecipacaoParcelasSelector.ObterElegiveis(contexto.Compra.Lancamentos, contexto.FaturaAtual);
         return (true, contexto.Compra, elegiveis, null);
     }
 
@@ -64,13 +64,13 @@ public class AntecipacaoParcelasService : IAntecipacaoParcelasService
             return Falha(erro);
         }
 
-        var selecao = AntecipacaoParcelasSelector.Selecionar(contexto.Compra.Lancamentos, contexto.FaturaAberta, quantidade);
+        var selecao = AntecipacaoParcelasSelector.Selecionar(contexto.Compra.Lancamentos, contexto.FaturaAtual, quantidade);
         if (!selecao.Sucesso)
         {
             return Falha(selecao.Erro);
         }
 
-        return await MoverParcelasAsync(selecao.Selecionadas, contexto.FaturaAberta, dataAntecipacao);
+        return await MoverParcelasAsync(selecao.Selecionadas, contexto.FaturaAtual, dataAntecipacao);
     }
 
     private async Task<(ContextoAntecipacao? Contexto, string? Erro)> CarregarContextoAsync(Guid contaId, Guid compraParceladaId)
@@ -95,13 +95,13 @@ public class AntecipacaoParcelasService : IAntecipacaoParcelasService
             return (null, erroValidacao);
         }
 
-        var faturaAberta = await _faturaRepository.ObterFaturaAbertaPorConta(contaId);
-        if (faturaAberta == null)
+        var faturaAtual = await _faturaCicloService.ObterFaturaAtualAsync(contaId);
+        if (faturaAtual == null)
         {
-            return (null, ErroSemFaturaAberta);
+            return (null, ErroSemFaturaAtual);
         }
 
-        return (new ContextoAntecipacao(compra, faturaAberta), null);
+        return (new ContextoAntecipacao(compra, faturaAtual), null);
     }
 
     // Transacao unica. Qualquer excecao e logada e vira Sucesso = false (sem propagar).
@@ -113,6 +113,12 @@ public class AntecipacaoParcelasService : IAntecipacaoParcelasService
         using var transaction = await _compraParceladaRepository.BeginTransactionAsync();
         try
         {
+            // Fatura atual PAGA antes do fechamento e reaberta na mesma transacao (item 12).
+            if (faturaDestino.Status == StatusFatura.Paga)
+            {
+                faturaDestino = await _faturaCicloService.ReabrirPagaAsync(faturaDestino);
+            }
+
             foreach (var parcela in parcelas)
             {
                 MoverParcela(parcela, faturaDestino, dataAntecipacao);
@@ -147,5 +153,5 @@ public class AntecipacaoParcelasService : IAntecipacaoParcelasService
         return (false, null, null, erro);
     }
 
-    private sealed record ContextoAntecipacao(CompraParcelada Compra, Fatura FaturaAberta);
+    private sealed record ContextoAntecipacao(CompraParcelada Compra, Fatura FaturaAtual);
 }

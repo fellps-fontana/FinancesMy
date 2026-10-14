@@ -8,7 +8,7 @@ public record ResultadoSelecaoAntecipacao(
     string? Erro);
 
 // Regra pura de antecipacao (item 12, "Antecipacao de parcelas"). Sem I/O:
-// recebe as parcelas ja carregadas (com Fatura) e a fatura destino. Nao muta nada.
+// recebe as parcelas ja carregadas (com Fatura) e a fatura atual. Nao muta nada.
 public static class AntecipacaoParcelasSelector
 {
     private const int QuantidadeMinima = 1;
@@ -16,16 +16,16 @@ public static class AntecipacaoParcelasSelector
     private const string ErroQuantidadeInvalida = "Quantidade de parcelas para antecipar deve ser maior ou igual a 1";
     private const string ErroQuantidadeAcimaDoElegivel = "Quantidade de parcelas para antecipar maior que o numero de parcelas elegiveis";
 
-    // Elegivel = parcela Debit com ParcelaNumero cuja Fatura e POSTERIOR a
-    // faturaAbertaAtual (Fatura.DataVencimento maior). Parcela na aberta atual,
-    // em fatura anterior, sem fatura, ou Credit (estorno) nao e elegivel.
+    // Elegivel = parcela Debit com ParcelaNumero, em fatura POSTERIOR a atual
+    // (Fatura.DataVencimento maior) e que nao esta PAGA. Parcela na fatura atual,
+    // em fatura anterior, PAGA, sem fatura, ou Credit (estorno) nao e elegivel.
     // Ordem: ParcelaNumero decrescente.
     public static IReadOnlyList<Lancamento> ObterElegiveis(
         IEnumerable<Lancamento> parcelasDaCompra,
-        Fatura faturaAbertaAtual)
+        Fatura faturaAtual)
     {
         return parcelasDaCompra
-            .Where(parcela => EhElegivel(parcela, faturaAbertaAtual))
+            .Where(parcela => EhElegivel(parcela, faturaAtual))
             .OrderByDescending(parcela => parcela.ParcelaNumero)
             .ToList()
             .AsReadOnly();
@@ -35,7 +35,7 @@ public static class AntecipacaoParcelasSelector
     // Senao devolve as `quantidade` primeiras de ObterElegiveis.
     public static ResultadoSelecaoAntecipacao Selecionar(
         IEnumerable<Lancamento> parcelasDaCompra,
-        Fatura faturaAbertaAtual,
+        Fatura faturaAtual,
         int quantidade)
     {
         if (quantidade < QuantidadeMinima)
@@ -43,7 +43,7 @@ public static class AntecipacaoParcelasSelector
             return Rejeitar(ErroQuantidadeInvalida);
         }
 
-        var elegiveis = ObterElegiveis(parcelasDaCompra, faturaAbertaAtual);
+        var elegiveis = ObterElegiveis(parcelasDaCompra, faturaAtual);
         if (quantidade > elegiveis.Count)
         {
             return Rejeitar(ErroQuantidadeAcimaDoElegivel);
@@ -53,12 +53,13 @@ public static class AntecipacaoParcelasSelector
         return new ResultadoSelecaoAntecipacao(true, selecionadas, null);
     }
 
-    private static bool EhElegivel(Lancamento parcela, Fatura faturaAbertaAtual)
+    private static bool EhElegivel(Lancamento parcela, Fatura faturaAtual)
     {
         return parcela.Tipo == TipoLancamento.Debit
             && parcela.ParcelaNumero.HasValue
             && parcela.Fatura != null
-            && parcela.Fatura.DataVencimento > faturaAbertaAtual.DataVencimento;
+            && parcela.Fatura.DataVencimento > faturaAtual.DataVencimento
+            && parcela.Fatura.Status != StatusFatura.Paga;
     }
 
     private static ResultadoSelecaoAntecipacao Rejeitar(string erro)

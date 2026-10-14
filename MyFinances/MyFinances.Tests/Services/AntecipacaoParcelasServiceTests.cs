@@ -5,6 +5,7 @@ using MyFinances.Data;
 using MyFinances.Domain;
 using MyFinances.Repositories;
 using MyFinances.Services;
+using MyFinances.Tests.Helpers;
 using Xunit;
 
 namespace MyFinances.Tests.Services;
@@ -39,6 +40,11 @@ public class AntecipacaoParcelasServiceTests
 
         public AntecipacaoParcelasService CriarService(ILancamentoRepository? lancamentoRepository = null)
         {
+            return CriarServiceEm(new DateOnly(2025, 3, 5), lancamentoRepository);
+        }
+
+        public AntecipacaoParcelasService CriarServiceEm(DateOnly hoje, ILancamentoRepository? lancamentoRepository = null)
+        {
             var contaRepository = new ContaRepository(Db);
             var faturaRepository = new FaturaRepository(Db);
             var compraParceladaRepository = new CompraParceladaRepository(Db);
@@ -48,9 +54,9 @@ public class AntecipacaoParcelasServiceTests
             return new AntecipacaoParcelasService(
                 compraParceladaRepository,
                 lancamentoRepo,
-                faturaRepository,
                 validacaoCartaoService,
-                NullLogger<AntecipacaoParcelasService>.Instance);
+                NullLogger<AntecipacaoParcelasService>.Instance,
+                new FaturaCicloService(faturaRepository, contaRepository, new RelogioFake(hoje)));
         }
 
         public void Dispose()
@@ -118,7 +124,7 @@ public class AntecipacaoParcelasServiceTests
         };
         for (var mes = 4; mes <= 10; mes++)
         {
-            faturas.Add(CriarFatura(contaId, 2025, mes, 20, StatusFatura.Fechada));
+            faturas.Add(CriarFatura(contaId, 2025, mes, 20, StatusFatura.Futura));
         }
 
         db.Faturas.AddRange(faturas);
@@ -273,28 +279,25 @@ public class AntecipacaoParcelasServiceTests
     }
 
     [Fact]
-    public async Task AnteciparAsync_SemFaturaAberta_RejeitaSemCriarFatura()
+    public async Task AnteciparAsync_SemFaturaAtual_RejeitaComErroSemFaturaAbertaESemCriarFatura()
     {
-        // Arrange
+        // Arrange - hoje = 11/10/2025: nenhuma fatura da seed cai na janela [hoje, fechamento do ciclo corrente
+        // (10/11/2025)]. As faturas passadas sao reconciliadas para FECHADA, e nao ha atual.
         using var harness = new Harness();
         var cenario = await SeedCenarioBase(harness.Db);
 
-        var faturaAberta = await harness.Db.Faturas.FindAsync(cenario.FaturaAbertaId);
-        faturaAberta!.Status = StatusFatura.Fechada;
-        await harness.Db.SaveChangesAsync();
-
         var faturasAntes = await harness.Db.Faturas.AsNoTracking().CountAsync(f => f.ContaId == cenario.ContaId);
-        var service = harness.CriarService();
+        var service = harness.CriarServiceEm(new DateOnly(2025, 10, 11));
 
         // Act
         var (sucesso, fatura, parcelas, erro) = await service.AnteciparAsync(
-            cenario.ContaId, cenario.CompraId, 2, DataAntecipacao);
+            cenario.ContaId, cenario.CompraId, 2, new DateOnly(2025, 10, 11));
 
         // Assert
         Assert.False(sucesso);
         Assert.Null(fatura);
         Assert.Null(parcelas);
-        Assert.NotNull(erro);
+        Assert.Equal("Nao existe fatura aberta para a conta de cartao", erro);
 
         var faturasDepois = await harness.Db.Faturas.AsNoTracking().CountAsync(f => f.ContaId == cenario.ContaId);
         Assert.Equal(faturasAntes, faturasDepois);

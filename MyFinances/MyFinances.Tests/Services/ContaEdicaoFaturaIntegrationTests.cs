@@ -6,6 +6,7 @@ using MyFinances.Domain;
 using MyFinances.DTOs.Conta;
 using MyFinances.Repositories;
 using MyFinances.Services;
+using MyFinances.Tests.Helpers;
 using Xunit;
 
 namespace MyFinances.Tests.Services;
@@ -37,7 +38,7 @@ public class ContaEdicaoFaturaIntegrationTests : IAsyncLifetime
         var ativoRepository = new AtivoRepository(_dbContext);
 
         _contaService = new ContaService(contaRepository, ativoRepository, NullLogger<ContaService>.Instance);
-        _faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository);
+        _faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository, new RelogioFake(new DateOnly(2025, 1, 6)));
     }
 
     public async Task DisposeAsync()
@@ -97,7 +98,7 @@ public class ContaEdicaoFaturaIntegrationTests : IAsyncLifetime
     {
         // Arrange
         var contaId = await CriarCartaoAsync(diaFechamento: 10, diaVencimento: 20);
-        var futura = SeedFatura(contaId, StatusFatura.Aberta, new DateOnly(2025, 3, 10), new DateOnly(2025, 3, 20));
+        var futura = SeedFatura(contaId, StatusFatura.Futura, new DateOnly(2025, 3, 10), new DateOnly(2025, 3, 20));
         await _dbContext.SaveChangesAsync();
 
         // Act
@@ -160,10 +161,10 @@ public class ContaEdicaoFaturaIntegrationTests : IAsyncLifetime
         Assert.NotEqual(aberta.Id, nova.Id);
         Assert.Equal(new DateOnly(2025, 1, 20), nova.DataFechamento);
         Assert.Equal(new DateOnly(2025, 1, 27), nova.DataVencimento);
-        Assert.Equal(StatusFatura.Aberta, nova.Status);
+        Assert.Equal(StatusFatura.Futura, nova.Status);
 
         var antiga = await ObterFaturaAsync(aberta.Id);
-        Assert.Equal(StatusFatura.Fechada, antiga.Status);
+        Assert.Equal(StatusFatura.Aberta, antiga.Status);
         Assert.Equal(new DateOnly(2025, 1, 10), antiga.DataFechamento);
         Assert.Equal(new DateOnly(2025, 1, 20), antiga.DataVencimento);
     }

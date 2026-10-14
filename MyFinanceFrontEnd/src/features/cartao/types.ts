@@ -9,11 +9,13 @@
 // (Program.cs) usando o NOME do membro C# (ex: "Cartao", "Manual") - NAO o
 // ToStorageValue() customizado ("CARTAO", "MANUAL"), que so e usado onde o
 // backend converte manualmente pra string antes de montar o DTO (StatusFatura
-// em FaturaResponse, que sai como "ABERTA"/"FECHADA"/"PAGA").
+// em FaturaResponse, que sai como "ABERTA"/"FECHADA"/"FUTURA"/"PAGA").
 
 export type TipoConta = "Banco" | "Cartao" | "Investimento"
 export type OrigemConta = "Manual" | "OpenFinance"
-export type StatusFatura = "ABERTA" | "FECHADA" | "PAGA"
+// FUTURA: ciclo ainda nao iniciado (item 12, ciclo e status da fatura). Aceita
+// pagamento antecipado, mas nao e a fatura "atual" nem entra em contas a pagar.
+export type StatusFatura = "ABERTA" | "FECHADA" | "FUTURA" | "PAGA"
 export type TipoLancamento = "DEBIT" | "CREDIT"
 export type StatusLancamento = "PENDENTE" | "SUGERIDO" | "PAGO"
 

@@ -5,6 +5,7 @@ using MyFinances.Domain;
 using MyFinances.DTOs;
 using MyFinances.Repositories;
 using MyFinances.Services;
+using MyFinances.Tests.Helpers;
 using Xunit;
 
 namespace MyFinances.Tests.Services;
@@ -81,7 +82,7 @@ public class ComprasParceladasServiceIntegrationTests
         var contaRepository = new ContaRepository(_fixture.DbContext);
         var lancamentoRepository = new LancamentoRepository(_fixture.DbContext);
         var compraParceladaRepository = new CompraParceladaRepository(_fixture.DbContext);
-        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository);
+        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository, new RelogioFake(new DateOnly(2025, 1, 6)));
         var validacaoCartaoService = new ValidacaoCartaoService(contaRepository);
         var comprasParceladasService = new ComprasParceladasService(
             compraParceladaRepository,
@@ -146,7 +147,7 @@ public class ComprasParceladasServiceIntegrationTests
         var contaRepository = new ContaRepository(_fixture.DbContext);
         var lancamentoRepository = new LancamentoRepository(_fixture.DbContext);
         var compraParceladaRepository = new CompraParceladaRepository(_fixture.DbContext);
-        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository);
+        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository, new RelogioFake(new DateOnly(2025, 1, 6)));
         var validacaoCartaoService = new ValidacaoCartaoService(contaRepository);
         var comprasParceladasService = new ComprasParceladasService(
             compraParceladaRepository,
@@ -224,7 +225,7 @@ public class ComprasParceladasServiceIntegrationTests
         var contaRepository = new ContaRepository(_fixture.DbContext);
         var lancamentoRepository = new LancamentoRepository(_fixture.DbContext);
         var compraParceladaRepository = new CompraParceladaRepository(_fixture.DbContext);
-        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository);
+        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository, new RelogioFake(new DateOnly(2025, 1, 6)));
         var validacaoCartaoService = new ValidacaoCartaoService(contaRepository);
         var comprasParceladasService = new ComprasParceladasService(
             compraParceladaRepository,
@@ -282,7 +283,7 @@ public class ComprasParceladasServiceIntegrationTests
         var contaRepository = new ContaRepository(_fixture.DbContext);
         var lancamentoRepository = new LancamentoRepository(_fixture.DbContext);
         var compraParceladaRepository = new CompraParceladaRepository(_fixture.DbContext);
-        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository);
+        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository, new RelogioFake(new DateOnly(2025, 1, 6)));
         var validacaoCartaoService = new ValidacaoCartaoService(contaRepository);
         var comprasParceladasService = new ComprasParceladasService(
             compraParceladaRepository,
@@ -338,7 +339,7 @@ public class ComprasParceladasServiceIntegrationTests
         var contaRepository = new ContaRepository(_fixture.DbContext);
         var lancamentoRepository = new LancamentoRepository(_fixture.DbContext);
         var compraParceladaRepository = new CompraParceladaRepository(_fixture.DbContext);
-        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository);
+        var faturaCicloService = new FaturaCicloService(faturaRepository, contaRepository, new RelogioFake(new DateOnly(2025, 1, 6)));
         var validacaoCartaoService = new ValidacaoCartaoService(contaRepository);
         var comprasParceladasService = new ComprasParceladasService(
             compraParceladaRepository,

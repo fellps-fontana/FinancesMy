@@ -77,6 +77,7 @@ builder.Services.AddScoped<IDeParaCategoriaService, DeParaCategoriaService>();
 
 // Services - Cartao
 builder.Services.AddScoped<ValidacaoCartaoService>();
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<FaturaCicloService>();
 builder.Services.AddScoped<CompraCartaoService>();
 builder.Services.AddScoped<ComprasParceladasService>();

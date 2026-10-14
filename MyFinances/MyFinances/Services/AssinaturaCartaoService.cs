@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using MyFinances.Domain;
 using MyFinances.Exceptions;
 using MyFinances.Repositories;
@@ -10,17 +12,20 @@ public class AssinaturaCartaoService : IAssinaturaCartaoService
     private readonly IContaRepository _contaRepository;
     private readonly ILancamentoRepository _lancamentoRepository;
     private readonly FaturaCicloService _faturaCicloService;
+    private readonly ILogger<AssinaturaCartaoService> _logger;
 
     public AssinaturaCartaoService(
         IAssinaturaCartaoRepository assinaturaCartaoRepository,
         IContaRepository contaRepository,
         ILancamentoRepository lancamentoRepository,
-        FaturaCicloService faturaCicloService)
+        FaturaCicloService faturaCicloService,
+        ILogger<AssinaturaCartaoService>? logger = null)
     {
         _assinaturaCartaoRepository = assinaturaCartaoRepository;
         _contaRepository = contaRepository;
         _lancamentoRepository = lancamentoRepository;
         _faturaCicloService = faturaCicloService;
+        _logger = logger ?? NullLogger<AssinaturaCartaoService>.Instance;
     }
 
     public async Task<AssinaturaCartao> CriarAsync(
@@ -98,9 +103,12 @@ public class AssinaturaCartaoService : IAssinaturaCartaoService
 
         if (assinatura.Compras != null)
         {
+            // Reconcilia antes de decidir o que propaga: a fatura vencida vira FECHADA e nao recebe edicao.
+            await _faturaCicloService.ReconciliarAsync(assinatura.ContaId);
+
             foreach (var compra in assinatura.Compras)
             {
-                if (compra.Fatura != null && compra.Fatura.Status == StatusFatura.Aberta)
+                if (compra.Fatura != null && EhStatusEditavelDaAssinatura(compra.Fatura.Status))
                 {
                     compra.Valor = valor;
                     compra.Descricao = descricao.Trim();
@@ -191,11 +199,33 @@ public class AssinaturaCartaoService : IAssinaturaCartaoService
             var dia = Math.Min(assinatura.DiaReferencia, diasNoMes);
             var dataCompra = new DateOnly(ano, mes, dia);
 
-            await GerarCompraAsync(contaId, assinatura.Id, assinatura.Descricao, assinatura.Valor, assinatura.CategoriaId, dataCompra);
+            var (compra, motivo) = await TentarGerarCompraAsync(contaId, assinatura.Id, assinatura.Descricao, assinatura.Valor, assinatura.CategoriaId, dataCompra);
+            if (compra == null)
+            {
+                // Processo automatico: ciclo PAGO encerrado pula a assinatura em silencio (item 12).
+                if (motivo != FaturaCicloPolitica.ErroCicloPagoEncerrado)
+                {
+                    throw new InvalidOperationException(motivo ?? "Nao foi possivel resolver a fatura.");
+                }
+
+                _logger.LogInformation(
+                    "Assinatura {AssinaturaId} nao gerada em {Ano}/{Mes}: fatura ja paga de ciclo encerrado",
+                    assinatura.Id,
+                    ano,
+                    mes);
+                continue;
+            }
+
             totalGeradas++;
         }
 
         return totalGeradas;
+    }
+
+    // Status em que a edicao da assinatura propaga para a compra vinculada (item 12, edicao e propagacao).
+    private static bool EhStatusEditavelDaAssinatura(StatusFatura status)
+    {
+        return status is StatusFatura.Aberta or StatusFatura.Futura;
     }
 
     private static void ValidarDadosEntrada(string descricao, decimal valor, int diaReferencia)
@@ -216,7 +246,21 @@ public class AssinaturaCartaoService : IAssinaturaCartaoService
         }
     }
 
+    // Criacao e reativacao manuais: rejeicao vira excecao.
     private async Task<Lancamento> GerarCompraAsync(
+        Guid contaId,
+        Guid assinaturaId,
+        string descricao,
+        decimal valor,
+        Guid? categoriaId,
+        DateOnly dataCompra)
+    {
+        var (compra, motivo) = await TentarGerarCompraAsync(contaId, assinaturaId, descricao, valor, categoriaId, dataCompra);
+        return compra ?? throw new InvalidOperationException(motivo ?? "Nao foi possivel resolver a fatura.");
+    }
+
+    // Compra null quando o Resolver rejeita; o motivo indica por que.
+    private async Task<(Lancamento? Compra, string? Motivo)> TentarGerarCompraAsync(
         Guid contaId,
         Guid assinaturaId,
         string descricao,
@@ -227,7 +271,7 @@ public class AssinaturaCartaoService : IAssinaturaCartaoService
         var (fatura, rejeitada, motivo) = await _faturaCicloService.ResolverFaturaParaLancamentoAsync(contaId, dataCompra);
         if (rejeitada || fatura == null)
         {
-            throw new InvalidOperationException(motivo ?? "Nao foi possivel resolver a fatura.");
+            return (null, motivo);
         }
 
         var compra = new Lancamento
@@ -247,6 +291,6 @@ public class AssinaturaCartaoService : IAssinaturaCartaoService
 
         await _lancamentoRepository.Adicionar(compra);
         await _lancamentoRepository.Salvar();
-        return compra;
+        return (compra, null);
     }
 }

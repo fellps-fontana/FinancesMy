@@ -4,6 +4,8 @@ import type { StatusFatura } from "@/features/cartao/types"
 const CONFIG_POR_STATUS: Record<StatusFatura, { label: string; className: string }> = {
   ABERTA: { label: "Aberta", className: "bg-alerta/15 text-alerta" },
   FECHADA: { label: "Fechada", className: "bg-muted text-text-muted" },
+  // Futura: ciclo ainda nao iniciado - so contorno e texto mudo, mais discreto que FECHADA.
+  FUTURA: { label: "Futura", className: "border-[0.5px] border-border text-text-faint" },
   PAGA: { label: "Paga", className: "bg-positivo/15 text-positivo" },
 }
 
