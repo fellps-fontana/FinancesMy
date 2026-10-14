@@ -3552,7 +3552,7 @@ HISTORICO: style APROVADO (ressalva: Created aponta para rota sem GET, padrao ja
 
 ## TASK-190 — Front: camada de dados de lancamentos (vinculo, editar conta, parcelado) (hanzo)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-181, TASK-187
 FLUXO: Implementacao
@@ -3562,7 +3562,7 @@ CRITERIO DE ACEITE: 1) tipos sem any; 2) invalidacao de cache correta; 3) typech
 ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/lancamentos/types.ts, MyFinanceFrontEnd/src/features/lancamentos/api.ts, MyFinanceFrontEnd/src/features/lancamentos/query-keys.ts, MyFinanceFrontEnd/src/features/lancamentos/hooks/useEditarLancamento.ts, MyFinanceFrontEnd/src/features/lancamentos/hooks/useRemoverLancamento.ts, MyFinanceFrontEnd/src/features/lancamentos/hooks/useCriarLancamentoParcelado.ts (novo), MyFinanceFrontEnd/src/features/lancamentos/hooks/useCancelarLancamentoParcelado.ts (novo), MyFinanceFrontEnd/src/features/lancamentos/lib/destinoDeEdicao.ts (novo)
 NAO FAZER: nao renderizar UI; nao editar .claude/tasks.md.
 RETORNO ESPERADO: tipos/hooks prontos + typecheck.
-HISTORICO:
+HISTORICO: 2026-10-13 (hanzo). Camada de dados do parcelado em conta banco: types/api/hooks useCriarLancamentoParcelado/useCancelarLancamentoParcelado, destinoDeEdicao (lib), ApiError.body em shared/api/client. Style rodada 1 PRECISA CORRIGIR (clean-code: duplicacao de campo de categoria, datas, logica pura em components, CLASSE_CAMPO, casts) -> rodada 2 APROVADO. Datas centralizadas em shared/lib/datas.ts; dica do destino de edicao em DestinoDeEdicao.dica.
 
 ---
 
@@ -3664,7 +3664,7 @@ HISTORICO: style 1a rodada: PRECISA CORRIGIR (construtores transitorios com null
 
 ## TASK-197 — Front: camada de dados de investimentos e contas (conta do ativo, vincular, saldo calculado) (hanzo)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-194
 FLUXO: Implementacao
@@ -3674,7 +3674,7 @@ CRITERIO DE ACEITE: 1) sem any; 2) invalidacao cruzada ativos<->contas; 3) typec
 ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/investimentos/types.ts, MyFinanceFrontEnd/src/features/investimentos/api.ts, MyFinanceFrontEnd/src/features/investimentos/query-keys.ts, MyFinanceFrontEnd/src/features/investimentos/hooks/useCriarAtivo.ts, MyFinanceFrontEnd/src/features/investimentos/hooks/useVincularContaAtivo.ts (novo), MyFinanceFrontEnd/src/features/investimentos/hooks/useTotalInvestido.ts (novo), MyFinanceFrontEnd/src/features/contas/types.ts, MyFinanceFrontEnd/src/features/contas/api.ts, MyFinanceFrontEnd/src/features/contas/hooks/useDesativarConta.ts, MyFinanceFrontEnd/src/features/contas/hooks/useAtualizarSaldoConta.ts, MyFinanceFrontEnd/src/features/contas/lib/calcularPatrimonioTotal.ts
 NAO FAZER: nao renderizar UI; nao editar .claude/tasks.md.
 RETORNO ESPERADO: tipos/hooks prontos + typecheck.
-HISTORICO:
+HISTORICO: 2026-10-13 (hanzo). Tipos (AtivoResponse contaId/contaNome/semConta, CriarAtivoRequest com contaId, ContaResponse.saldoCalculado boolean), api vincularContaAtivo/buscarTotalInvestido, hooks useVincularContaAtivo/useTotalInvestido, erros tipados 409/422 (ContaOperacaoError), calcularPatrimonioTotal = Banco + totalInvestido. Fora da lista: ContasPage passa totalInvestido. Style rodada 1 PRECISA CORRIGIR (ALTA: saldoCalculado tipado como number e Atualizar saldo oferecido com saldo calculado; ALTA: total investido nao invalidado em 5 mutations; MEDIA: patrimonio caia em 0 com total carregando/erro) -> rodada 2 APROVADO.
 
 ---
 
@@ -4128,7 +4128,7 @@ HISTORICO: hanzo: dashboard conforme mockup; widgets extras abaixo da grade. Com
 
 ## TASK-226 — Tela Contas (mockup s_contas + modal Nova conta, desktop e mobile) (hanzo)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-197, TASK-222, TASK-221
 FLUXO: Implementacao
@@ -4138,13 +4138,13 @@ CRITERIO DE ACEITE: 1) patrimonio = valor do hook da TASK-197 (sem soma dupla); 
 ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/contas/ContasPage.tsx, MyFinanceFrontEnd/src/features/contas/components/ContaCard.tsx, MyFinanceFrontEnd/src/features/contas/components/ContaItem.tsx, MyFinanceFrontEnd/src/features/contas/components/ContaBadgeOrigem.tsx, MyFinanceFrontEnd/src/features/contas/components/ContaIcone.tsx, MyFinanceFrontEnd/src/features/contas/components/FormNovaConta.tsx, MyFinanceFrontEnd/src/features/contas/components/PatrimonioTotalResumo.tsx
 NAO FAZER: nao renderizar badge "OFX" nem "Conectar via OFX" (Open Finance e v2); nao editar .claude/tasks.md.
 RETORNO ESPERADO: arquivos + build limpo.
-HISTORICO:
+HISTORICO: 2026-10-13 (hanzo). Tela Contas largura total, contas agrupadas por tipo (lib/agruparContas), useContas inclui cartoes (so exibicao), Atualizar saldo oculto quando saldoCalculado, 409 ao desativar conta com ativo exibido. Extra: edicao de conta (item 10.2, decisao do usuario 2026-10-13: nome/icone/cor/subtipo, tipo imutavel) - killua desenhou (Kira gravou regra e esqueleto), mike 23 testes RED, levi GREEN (1071/1071), style APROVADO; PUT /api/contas/{id}. Suposicoes pendentes de confirmacao: conta inativa nao edita (409), PUT substitui icone/cor/subtipo, Open Finance pode renomear, dias de fechamento/vencimento fora.
 
 ---
 
 ## TASK-227 — Tela Lancamentos (mockup s_lancamentos + modais Novo/Editar/Cancelar parcelado, desktop e mobile) (hanzo)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-190, TASK-183, TASK-189, TASK-221, TASK-222
 FLUXO: Implementacao
@@ -4154,13 +4154,13 @@ CRITERIO DE ACEITE: 1) regras de habilitacao vem de `avulso`/`origemVinculo` do 
 ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/lancamentos/LancamentosPage.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FormLancamento.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/LancamentoItem.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FiltroTipoLancamento.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/NavegadorMes.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/AvisoLimiteGasto.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/TransferenciaFluxoCaixaItem.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FormTransferencia.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FormLancamentoParcelado.tsx (novo), MyFinanceFrontEnd/src/features/lancamentos/components/CancelarCompraParceladaDialog.tsx (novo)
 NAO FAZER: nao calcular valor de parcela no front como fonte de verdade (resumo e so previa; backend define); nao permitir edicao de parcela isolada; nao editar .claude/tasks.md.
 RETORNO ESPERADO: arquivos + build limpo.
-HISTORICO:
+HISTORICO: 2026-10-13 (hanzo). Tela Lancamentos largura total, tabela desktop/lista por dia mobile, toggle Parcelar, editar/excluir so avulso, cancelar compra parcelada, ?novo=transferencia|lancamento. Usuario aprovou o visual. Style rodada 1 PRECISA CORRIGIR (clean-code) -> rodada 2 APROVADO. Campo de categoria unificado em categorias/components/CategoriaCampoSelect.
 
 ---
 
 ## TASK-228 — Tela Cartao (mockup s_cartao + Nova compra + Antecipar parcelas, desktop e mobile) (hanzo)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-204, TASK-203, TASK-221, TASK-222
 FLUXO: Implementacao
@@ -4170,7 +4170,7 @@ CRITERIO DE ACEITE: 1) quantidade limitada ao numero de elegiveis do backend e e
 ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/cartao/ContaCartaoPage.tsx, MyFinanceFrontEnd/src/features/cartao/components/CartaoVisual.tsx, MyFinanceFrontEnd/src/features/cartao/components/FaturasSection.tsx, MyFinanceFrontEnd/src/features/cartao/components/FaturaItem.tsx, MyFinanceFrontEnd/src/features/cartao/components/LancarCompraForm.tsx, MyFinanceFrontEnd/src/features/cartao/components/PagarFaturaModal.tsx, MyFinanceFrontEnd/src/features/cartao/components/StatusFaturaBadge.tsx, MyFinanceFrontEnd/src/features/cartao/components/AnteciparParcelasModal.tsx (novo), MyFinanceFrontEnd/src/features/assinaturas-cartao/AssinaturasCartaoSection.tsx
 NAO FAZER: nao recalcular fatura nem decidir elegibilidade no front; nao oferecer "desfazer antecipacao" nem campo de desconto; nao editar .claude/tasks.md.
 RETORNO ESPERADO: arquivos + build limpo.
-HISTORICO:
+HISTORICO: 2026-10-13 (hanzo). Tela Cartao: compras da fatura via GET novo, antecipar sem dataAntecipacao, layout lado a lado so em xl, modais no padrao FormModal (promovido para shared/ui). Kira inline: AppShell main min-w-0 e link Ver relatorio. Style rodada 1 PRECISA CORRIGIR (clean-code) -> rodada 2 APROVADO (skipToken nos hooks, previa de antecipacao em centavos). Pendente: bug pre-existente do FaturaCicloService fechando faturas futuras (aguarda ok do usuario).
 
 ---
 
@@ -4256,7 +4256,7 @@ HISTORICO: hanzo: contas a receber conforme mockup + modal Editar; resumo somado
 
 ## TASK-234 — Tela Investimentos (mockup s_investimentos + Novo ativo com conta, desktop e mobile) (hanzo)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: hanzo
 DEPENDENCIAS: TASK-197, TASK-196, TASK-221, TASK-222
 FLUXO: Implementacao
@@ -4266,7 +4266,7 @@ CRITERIO DE ACEITE: 1) conta obrigatoria no cadastro; 2) "Vincular conta" troca/
 ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/investimentos/ListaAtivosPage.tsx, MyFinanceFrontEnd/src/features/investimentos/components/ResumoAtivosCards.tsx, MyFinanceFrontEnd/src/features/investimentos/components/GraficoConsolidadoAtivos.tsx, MyFinanceFrontEnd/src/features/investimentos/components/AtivoCard.tsx, MyFinanceFrontEnd/src/features/investimentos/components/AtivoItem.tsx, MyFinanceFrontEnd/src/features/investimentos/components/FiltroTipoAtivo.tsx, MyFinanceFrontEnd/src/features/investimentos/components/ModalNovoAtivo.tsx, MyFinanceFrontEnd/src/features/investimentos/components/FormRegistrarAporte.tsx, MyFinanceFrontEnd/src/features/investimentos/components/VincularContaAtivoModal.tsx (novo)
 NAO FAZER: nao renderizar "+4,2% no mes" (sem historico mensal na v1); nao usar campo "Valor investido" direto no cadastro (a regra e quantidade x preco unitario); nao editar .claude/tasks.md.
 RETORNO ESPERADO: arquivos + build limpo.
-HISTORICO:
+HISTORICO: 2026-10-13 (hanzo). Tela Investimentos: total investido do back, tiles RF/RV com % da carteira, donut, tabela Ativo/Tipo/Conta/Valor/Evolucao, Vincular conta (nunca null), Novo ativo com conta obrigatoria e quantidade x preco. Desvios: sem sparkline e '+4,2%' (sem historico), filtros tambem no desktop, grafico de rendimentos mantido. Style rodada 1 PRECISA CORRIGIR (invalidacao do total) -> rodada 2 APROVADO.
 
 ---
 
@@ -4300,3 +4300,31 @@ NAO FAZER: nao calcular percentuais; nao editar .claude/tasks.md.
 RETORNO ESPERADO: arquivos + build limpo.
 HISTORICO: hanzo: RelatorioCategoriaDetalhePage + rotas /relatorio/sem-categoria e /relatorio/:id. Largura da barra de limite calculada no front. Commit 470b13b.
 
+
+## TASK-237 — Front: consolidar duplicacoes residuais apontadas pelo style (hanzo)
+
+STATUS: PENDENTE
+AGENT: hanzo
+DEPENDENCIAS:
+FLUXO: Melhoria
+CONTEXTO A LER: .claude/context/clean-code.md, .claude/context/stack.md
+ESCOPO: Eliminar as copias residuais: LIMIAR_PERTO_DO_LIMITE (dashboard/LimiteGastoIndicador e lancamentos/lib/limiarAlertaLimite passam a importar de limite-gasto/lib/estadoLimite), CategoriaSelect/achatarCategorias e AssinaturasCartaoSection passam a usar categorias/lib (montarOpcoesCategoria/construirMapaCategorias), dataDeHoje de investimentos/lib e o shim cartao/lib/formatarData apontam para shared/lib/datas, useContasParaSelecao promovido para shared/hooks.
+CRITERIO DE ACEITE: 1) cada helper existe em um unico lugar; 2) comportamento visual identico; 3) npx tsc -b limpo.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/{dashboard,lancamentos,limite-gasto,categorias,assinaturas-cartao,investimentos,cartao,contas-receber,contas-fixas}/**, MyFinanceFrontEnd/src/shared/{lib,hooks}/**
+NAO FAZER: nao mudar regra nem visual; nao editar .claude/tasks.md; nao commitar.
+RETORNO ESPERADO: arquivos tocados + tsc.
+HISTORICO:
+
+## TASK-238 — Back: FaturaCicloService fecha faturas futuras ao lancar compra parcelada (diagnostico)
+
+STATUS: PENDENTE
+AGENT: killua
+DEPENDENCIAS:
+FLUXO: Correcao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 12), MyFinances/MyFinances/Services/FaturaCicloService.cs
+ESCOPO: ResolverFaturaParaLancamentoAsync (~linhas 27-36) fecha a fatura ABERTA e cria a seguinte quando a data do lancamento >= DataFechamento; parcelas futuras de compra parcelada fecham todas as faturas intermediarias (so a ultima fica ABERTA), quebrando "fatura atual" e elegiveis de antecipacao. Regra critica: killua -> mike RED -> levi GREEN -> style.
+CRITERIO DE ACEITE: 1) lancar parcela futura nao fecha a fatura aberta atual; 2) faturas futuras nascem em estado coerente com o item 12; 3) suite verde.
+ARQUIVOS PERMITIDOS: definidos pelo killua no esqueleto.
+NAO FAZER: nao alterar regra sem confirmar com o usuario; nao editar .claude/tasks.md; nao commitar.
+RETORNO ESPERADO: diagnostico + esqueleto/contrato para TDD.
+HISTORICO:
