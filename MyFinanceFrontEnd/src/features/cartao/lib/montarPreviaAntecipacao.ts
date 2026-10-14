@@ -17,6 +17,8 @@ export function montarPreviaAntecipacao(
 ): PreviaAntecipacao {
   const n = Math.max(0, Math.min(Math.floor(quantidade), elegiveis.length))
   const parcelas = [...elegiveis].sort((a, b) => b.parcelaNumero - a.parcelaNumero).slice(0, n)
-  const valorTotal = parcelas.reduce((soma, p) => soma + p.valor, 0)
+  // Soma em centavos para o ponto flutuante nao vazar na previa.
+  const totalCentavos = parcelas.reduce((soma, p) => soma + Math.round(p.valor * 100), 0)
+  const valorTotal = totalCentavos / 100
   return { parcelas, quantidade: parcelas.length, valorTotal }
 }

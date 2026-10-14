@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
+import { CLASSE_BOTAO_CANCELAR, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO } from "@/shared/ui/FormModal"
 import { useEditarContaReceber } from "@/features/contas-receber/hooks/useEditarContaReceber"
 import { podeEditarValorTotal } from "@/features/contas-receber/lib/podeEditarValorTotal"
 import {
@@ -18,7 +19,6 @@ type FormEditarContaReceberProps = {
   onCancelar: () => void
 }
 
-const CLASSE_CAMPO = "h-auto rounded-[10px] border-border bg-accent px-3.5 py-3 text-sm md:text-sm dark:bg-accent"
 
 const AJUDA_VALOR_TOTAL_BLOQUEADO =
   "O valor total so pode ser alterado em recebivel sem nenhum recebimento registrado."
@@ -147,10 +147,16 @@ export function FormEditarContaReceber({ contaReceber, onSalvo, onCancelar }: Fo
       </div>
 
       <div className="mt-1.5 flex justify-end gap-2.5">
-        <Button type="button" variant="outline" size="lg" onClick={onCancelar} disabled={isPending}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancelar}
+          disabled={isPending}
+          className={CLASSE_BOTAO_CANCELAR}
+        >
           Cancelar
         </Button>
-        <Button type="submit" size="lg" disabled={isPending}>
+        <Button type="submit" disabled={isPending} className={CLASSE_BOTAO_PRIMARIO}>
           {isPending ? "Salvando..." : "Salvar alteracoes"}
         </Button>
       </div>

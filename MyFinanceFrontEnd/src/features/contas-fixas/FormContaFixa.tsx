@@ -6,7 +6,8 @@ import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { SegmentedTabs } from "@/shared/ui/segmented-tabs"
 import { SelectField } from "@/shared/ui/select-field"
-import { CategoriaSelect } from "@/features/categorias/components/CategoriaSelect"
+import { CategoriaCampoSelect } from "@/features/categorias/components/CategoriaCampoSelect"
+import { CLASSE_BOTAO_CANCELAR, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO } from "@/shared/ui/FormModal"
 import { useCriarContaFixa } from "@/features/contas-fixas/hooks/useCriarContaFixa"
 import { useEditarContaFixa } from "@/features/contas-fixas/hooks/useEditarContaFixa"
 // Nao existe hook de "listar contas" generico em features/contas/ (feature
@@ -18,12 +19,7 @@ import { useEditarContaFixa } from "@/features/contas-fixas/hooks/useEditarConta
 // aqui em vez de duplicar a mesma chamada combinada: e o mesmo padrao de
 // "conta de origem" do item 13 (emprestimo) aplicado a "conta de origem" do
 // item 6 (conta fixa) - mesmo conjunto de contas MANUAL, mesma regra. Import
-// cross-feature nao e o ideal de organizacao (stack.md reserva shared/hooks/
-// para hook usado por 2+ features), mas mover o hook esta fora do escopo
-// desta task (ARQUIVOS PERMITIDOS restringe a so este componente + o
-// validador) - registrado aqui para uma task futura promover
-// useContasParaSelecao para shared/hooks/ quando tocar em contas-receber de
-// novo.
+// cross-feature: candidato a shared/hooks/ (usado por 2+ features).
 import { useContasParaSelecao } from "@/features/contas-receber/hooks/useContasParaSelecao"
 import {
   converterDiaVencimentoParaNumero,
@@ -44,8 +40,6 @@ type FormContaFixaProps = {
   onSalvar?: () => void
   onCancelar?: () => void
 }
-
-const CLASSE_CAMPO = "h-auto rounded-[10px] border-border bg-accent px-3.5 py-3 text-sm"
 
 const OPCOES_RECORRENCIA = [
   { value: "MENSAL", label: "Mensal" },
@@ -248,12 +242,7 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar, onCancelar }: For
 
       {/* Conta fixa e sempre DEBIT, entao so categoria de Despesa
           (regra-de-negocio.md item 6). */}
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="categoriaContaFixa" className="text-[13px] text-text-muted">
-          Categoria
-        </Label>
-        <CategoriaSelect tipo="Despesa" value={categoriaId} onChange={setCategoriaId} />
-      </div>
+      <CategoriaCampoSelect tipo="Despesa" value={categoriaId} onChange={setCategoriaId} />
 
       {/* Conta de pagamento: EditarContaFixaRequest nao aceita contaId
           (types.ts), entao em edicao o campo e so exibido, desabilitado. */}
@@ -293,10 +282,16 @@ export function FormContaFixa({ contaFixaParaEditar, onSalvar, onCancelar }: For
       )}
 
       <div className="mt-1.5 flex justify-end gap-2.5">
-        <Button type="button" variant="outline" size="lg" onClick={onCancelar} disabled={isSubmitting}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancelar}
+          disabled={isSubmitting}
+          className={CLASSE_BOTAO_CANCELAR}
+        >
           Cancelar
         </Button>
-        <Button type="submit" size="lg" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} className={CLASSE_BOTAO_PRIMARIO}>
           {isSubmitting ? "Salvando..." : modoEdicao ? "Salvar alteracoes" : "Salvar conta fixa"}
         </Button>
       </div>

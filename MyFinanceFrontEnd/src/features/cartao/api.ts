@@ -68,6 +68,13 @@ export function listarFaturas(contaId: string): Promise<FaturaResponse[]> {
   return apiClient.get<FaturaResponse[]>(`/api/contas/${contaId}/faturas`)
 }
 
+// GET /api/contas/{contaId}/faturas/{faturaId}/compras
+// (FaturasController.ListarComprasDaFatura) - lancamentos da fatura; 404
+// { erro } se a fatura nao pertence a conta.
+export function listarComprasDaFatura(contaId: string, faturaId: string): Promise<CompraResponse[]> {
+  return apiClient.get<CompraResponse[]>(`/api/contas/${contaId}/faturas/${faturaId}/compras`)
+}
+
 // POST /api/contas/{contaId}/faturas/{faturaId}/pagamentos
 // (FaturasController.PagarFatura). Registra o pagamento (parcial ou total,
 // regra de negocio item 12) e devolve a Transferencia criada - NAO a fatura

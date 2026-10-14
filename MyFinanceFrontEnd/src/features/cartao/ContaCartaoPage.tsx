@@ -1,10 +1,14 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
 import { Link } from "react-router-dom"
+import { Plus } from "lucide-react"
 import { useContaCartaoAtual } from "@/features/cartao/hooks/useContaCartaoAtual"
 import { useCriarContaCartao } from "@/features/cartao/hooks/useCriarContaCartao"
 import { useSaldoCartao } from "@/features/cartao/hooks/useSaldoCartao"
 import { useLancarCompra } from "@/features/cartao/hooks/useLancarCompra"
+import { useFaturas } from "@/features/cartao/hooks/useFaturas"
+import { selecionarFaturaAtual } from "@/features/cartao/lib/selecionarFaturaAtual"
+import { FaturaAtualCard } from "@/features/cartao/components/FaturaItem"
 import { CartaoVisual, CartaoVisualNovo } from "@/features/cartao/components/CartaoVisual"
 import { CriarContaCartaoForm } from "@/features/cartao/components/CriarContaCartaoForm"
 import { LancarCompraForm } from "@/features/cartao/components/LancarCompraForm"
@@ -13,9 +17,10 @@ import { AssinaturasCartaoSection } from "@/features/assinaturas-cartao/Assinatu
 import { validarNovaContaCartao } from "@/features/cartao/lib/validarNovaContaCartao"
 import { validarCompra } from "@/features/cartao/lib/validarCompra"
 import { validarNumeroParcelas } from "@/features/cartao/lib/validarNumeroParcelas"
-import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
+import { formatarMoeda } from "@/shared/lib/formatarMoeda"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Card, CardContent } from "@/shared/ui/card"
+import { PageHeader } from "@/shared/ui/page-header"
 import { Button } from "@/shared/ui/button"
 import { ApiError } from "@/shared/api/client"
 import type { CompraParceladaResponse } from "@/features/cartao/types"
@@ -56,6 +61,7 @@ export function ContaCartaoPage() {
     error: erroSaldoDetalhe,
   } = useSaldoCartao(contaCartaoAtual?.id ?? null)
   const { mutate: lancarCompra, isPending: lancandoCompra } = useLancarCompra()
+  const { data: faturas, isLoading: carregandoFaturas } = useFaturas(contaCartaoAtual?.id ?? null)
 
   const [nome, setNome] = useState("")
   const [diaFechamento, setDiaFechamento] = useState("")
@@ -176,9 +182,12 @@ export function ContaCartaoPage() {
       {
         onSuccess: (resultado) => {
           fecharFormularioCompra()
-          setConfirmacaoCompraParcelada(
-            resultado.tipo === "parcelada" ? montarConfirmacaoParcelamento(resultado.compraParcelada) : null,
-          )
+          if (resultado.tipo === "parcelada") {
+            const { compraParcelada } = resultado
+            setConfirmacaoCompraParcelada(montarConfirmacaoParcelamento(compraParcelada))
+          } else {
+            setConfirmacaoCompraParcelada(null)
+          }
         },
         onError: (erro) => {
           console.error("Falha ao lancar compra no cartao", erro)
@@ -191,13 +200,8 @@ export function ContaCartaoPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-svh max-w-2xl flex-col gap-6 px-4 py-8">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-[19px] font-medium text-text-primary">Cartao de credito</h1>
-        <p className="text-sm text-text-muted">
-          Compras entram por competencia; a fatura so fecha o saldo quando for totalmente paga.
-        </p>
-      </header>
+    <div className="flex flex-col gap-4 md:gap-5">
+      <PageHeader title="Cartao de credito" />
 
       {carregandoContaCartao ? (
         <p className="text-sm text-text-muted">Carregando cartao...</p>
@@ -219,49 +223,31 @@ export function ContaCartaoPage() {
           onSubmit={handleSubmitNovaConta}
         />
       ) : (
-        <div className="flex flex-col gap-6">
-          <div className="flex gap-3 overflow-x-auto pb-1">
-            {contasCartao.map((conta) => (
-              <CartaoVisual
-                key={conta.id}
-                nome={conta.nome}
-                selecionado={!formularioNovaContaAberto && conta.id === contaCartaoAtual?.id}
-                onSelecionar={() => {
-                  setContaSelecionadaId(conta.id)
-                  fecharFormularioNovaConta()
-                  setConfirmacaoCompraParcelada(null)
-                }}
-              />
-            ))}
-            <CartaoVisualNovo onClick={abrirFormularioNovaConta} />
-          </div>
-
-          {formularioNovaContaAberto ? (
-            <div className="flex flex-col gap-3">
-              <CriarContaCartaoForm
-                nome={nome}
-                diaFechamento={diaFechamento}
-                diaVencimento={diaVencimento}
-                isSubmitting={criandoConta}
-                errorMessage={erroFormularioConta}
-                onNomeChange={setNome}
-                onDiaFechamentoChange={setDiaFechamento}
-                onDiaVencimentoChange={setDiaVencimento}
-                onSubmit={handleSubmitNovaConta}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={fecharFormularioNovaConta}
-                className="self-start"
-              >
-                Cancelar
-              </Button>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:gap-6">
+          <div className="flex min-w-0 flex-col gap-4 xl:w-[340px] xl:shrink-0">
+            <div className="flex flex-wrap gap-3">
+              {contasCartao.map((conta) => (
+                <CartaoVisual
+                  key={conta.id}
+                  nome={conta.nome}
+                  selecionado={!formularioNovaContaAberto && conta.id === contaCartaoAtual?.id}
+                  onSelecionar={() => {
+                    setContaSelecionadaId(conta.id)
+                    fecharFormularioNovaConta()
+                    setConfirmacaoCompraParcelada(null)
+                  }}
+                />
+              ))}
+              <CartaoVisualNovo onClick={abrirFormularioNovaConta} />
             </div>
-          ) : (
-            contaCartaoAtual && (
+
+            {!formularioNovaContaAberto && contaCartaoAtual && (
               <>
-                <Card>
+                <FaturaAtualCard
+                  fatura={selecionarFaturaAtual(faturas ?? [])}
+                  carregando={carregandoFaturas}
+                />
+                <Card size="sm">
                   <CardContent className="flex flex-col gap-1">
                     <span className="text-[13px] text-text-muted">Saldo do cartao</span>
                     {carregandoSaldo && <span className="text-sm text-text-muted">Calculando...</span>}
@@ -269,39 +255,80 @@ export function ContaCartaoPage() {
                       <span className="text-sm text-negativo">Nao foi possivel calcular o saldo.</span>
                     )}
                     {!carregandoSaldo && !erroSaldo && saldo !== undefined && (
-                      <span className="text-[28px] font-medium text-text-primary">
+                      <span className="text-[19px] font-medium text-text-primary">
                         {formatarMoeda(saldo.saldo)}
                       </span>
                     )}
                   </CardContent>
                 </Card>
-
-                <Button type="button" onClick={abrirFormularioCompra} className="self-start">
-                  Lancar compra
-                </Button>
-
-                {confirmacaoCompraParcelada && (
-                  <Alert className="border-positivo/30 bg-positivo/10">
-                    <AlertDescription className="text-positivo">
-                      Compra parcelada lancada: {confirmacaoCompraParcelada}
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                <FaturasSection contaId={contaCartaoAtual.id} />
-
-                <AssinaturasCartaoSection contaId={contaCartaoAtual.id} />
-
-                <Link
-                  className="text-sm text-accent underline-offset-4 hover:underline"
-                  to="/limites-gasto"
-                >
-                  Ver relatorio por categoria
-                </Link>
               </>
-            )
-          )}
+            )}
+          </div>
+
+          <div className="flex min-w-0 flex-1 flex-col gap-4 xl:gap-6">
+            {formularioNovaContaAberto ? (
+              <div className="flex flex-col gap-3">
+                <CriarContaCartaoForm
+                  nome={nome}
+                  diaFechamento={diaFechamento}
+                  diaVencimento={diaVencimento}
+                  isSubmitting={criandoConta}
+                  errorMessage={erroFormularioConta}
+                  onNomeChange={setNome}
+                  onDiaFechamentoChange={setDiaFechamento}
+                  onDiaVencimentoChange={setDiaVencimento}
+                  onSubmit={handleSubmitNovaConta}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={fecharFormularioNovaConta}
+                  className="self-start"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            ) : (
+              contaCartaoAtual && (
+                <>
+                  {confirmacaoCompraParcelada && (
+                    <Alert className="border-positivo/30 bg-positivo/10">
+                      <AlertDescription className="text-positivo">
+                        Compra parcelada lancada: {confirmacaoCompraParcelada}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <FaturasSection
+                    contaId={contaCartaoAtual.id}
+                    onNovaCompra={abrirFormularioCompra}
+                  />
+
+                  <AssinaturasCartaoSection contaId={contaCartaoAtual.id} />
+
+                  <Link
+                    className="self-start rounded-[9px] border-[0.5px] border-border px-4 py-2 text-[13px] font-medium text-accent-soft transition-colors hover:bg-muted"
+                    to="/relatorio"
+                  >
+                    Ver relatorio por categoria
+                  </Link>
+                </>
+              )
+            )}
+          </div>
         </div>
+      )}
+
+      {/* FAB mobile (mockup mobile): no desktop o botao fica ao lado das abas de mes. */}
+      {!formularioNovaContaAberto && contaCartaoAtual && (
+        <button
+          type="button"
+          onClick={abrirFormularioCompra}
+          aria-label="Nova compra"
+          className="fixed right-5 bottom-24 z-10 flex size-13 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/35 md:hidden"
+        >
+          <Plus className="size-5" strokeWidth={2} aria-hidden="true" />
+        </button>
       )}
 
       {formularioCompraAberto && (

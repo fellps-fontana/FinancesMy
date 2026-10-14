@@ -16,11 +16,15 @@ type ApiErrorBody = {
 
 export class ApiError extends Error {
   readonly status: number
+  // Corpo da resposta ja parseado (null se nao era JSON). Permite a features
+  // ler campos extras do erro, ex.: `origemVinculo` no 409 de lancamento.
+  readonly body: unknown
 
-  constructor(status: number, erro: string) {
+  constructor(status: number, erro: string, body: unknown = null) {
     super(erro)
     this.name = "ApiError"
     this.status = status
+    this.body = body
   }
 }
 
@@ -56,7 +60,7 @@ async function request<TResponse>(
 
   if (!response.ok) {
     const erro = (data as ApiErrorBody | null)?.erro ?? "Erro inesperado. Tente novamente."
-    throw new ApiError(response.status, erro)
+    throw new ApiError(response.status, erro, data)
   }
 
   return data as TResponse

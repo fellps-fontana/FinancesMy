@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
+import { CLASSE_BOTAO_CANCELAR, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO } from "@/shared/ui/FormModal"
 import { CategoriaSelect } from "@/features/categorias/components/CategoriaSelect"
 import { useCriarDePara } from "@/features/de-para/hooks/useCriarDePara"
 import { useEditarDePara } from "@/features/de-para/hooks/useEditarDePara"
@@ -15,6 +16,7 @@ type FormDeParaProps = {
   // chave do vinculo). Ausente -> CRIAR.
   vinculoParaEditar?: DeParaCategoriaResponse
   onSalvar: () => void
+  onCancelar: () => void
 }
 
 const TIPOS: TipoCategoria[] = ["Despesa", "Receita"]
@@ -23,7 +25,7 @@ function mensagemDeErro(erro: unknown): string {
   return erro instanceof ApiError ? erro.message : "Nao foi possivel salvar o vinculo. Tente novamente."
 }
 
-export function FormDePara({ vinculoParaEditar, onSalvar }: FormDeParaProps) {
+export function FormDePara({ vinculoParaEditar, onSalvar, onCancelar }: FormDeParaProps) {
   const modoEdicao = vinculoParaEditar !== undefined
 
   const [categoriaPierre, setCategoriaPierre] = useState(vinculoParaEditar?.categoriaPierre ?? "")
@@ -72,6 +74,7 @@ export function FormDePara({ vinculoParaEditar, onSalvar }: FormDeParaProps) {
           value={categoriaPierre}
           onChange={(e) => setCategoriaPierre(e.target.value)}
           disabled={modoEdicao || salvando}
+          className={CLASSE_CAMPO}
           placeholder="Ex: SUPERMERC PAO ACUCAR"
         />
       </div>
@@ -84,7 +87,7 @@ export function FormDePara({ vinculoParaEditar, onSalvar }: FormDeParaProps) {
               key={t}
               type="button"
               variant={tipo === t ? "default" : "outline"}
-              className="flex-1"
+              className="h-auto flex-1 rounded-[10px] px-[18px] py-[11px] text-sm"
               disabled={salvando}
               onClick={() => handleTrocarTipo(t)}
             >
@@ -105,9 +108,14 @@ export function FormDePara({ vinculoParaEditar, onSalvar }: FormDeParaProps) {
         </Alert>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={salvando}>
-        {modoEdicao ? "Salvar" : "Aplicar e lembrar para futuras"}
-      </Button>
+      <div className="flex justify-end gap-2.5">
+        <Button type="button" variant="outline" className={CLASSE_BOTAO_CANCELAR} disabled={salvando} onClick={onCancelar}>
+          Cancelar
+        </Button>
+        <Button type="submit" className={CLASSE_BOTAO_PRIMARIO} disabled={salvando}>
+          {modoEdicao ? "Salvar" : "Aplicar e lembrar"}
+        </Button>
+      </div>
     </form>
   )
 }

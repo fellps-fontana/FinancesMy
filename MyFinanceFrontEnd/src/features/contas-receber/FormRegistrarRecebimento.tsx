@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
+import { CLASSE_BOTAO_CANCELAR, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO } from "@/shared/ui/FormModal"
 import { Chip } from "@/shared/ui/chip"
 import { SelectField } from "@/shared/ui/select-field"
 import { formatarMoeda } from "@/shared/lib/formatarMoeda"
@@ -18,7 +19,6 @@ import {
 
 type TipoRecebimento = "PARCIAL" | "TOTAL"
 
-const CLASSE_CAMPO = "h-auto rounded-[10px] border-border bg-accent px-3.5 py-3 text-sm md:text-sm dark:bg-accent"
 
 type FormRegistrarRecebimentoProps = {
   contaReceberId: string
@@ -174,7 +174,7 @@ export function FormRegistrarRecebimento({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2.5">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={`valorRecebimento-${contaReceberId}`}>Valor recebido</Label>
           <Input
@@ -225,14 +225,13 @@ export function FormRegistrarRecebimento({
         <Button
           type="button"
           variant="outline"
-          size="lg"
           onClick={onCancelar}
           disabled={isPending}
-          className="max-md:hidden"
+          className={CLASSE_BOTAO_CANCELAR}
         >
           Cancelar
         </Button>
-        <Button type="submit" size="lg" disabled={isPending} className="max-md:w-full">
+        <Button type="submit" disabled={isPending} className={CLASSE_BOTAO_PRIMARIO}>
           {isPending ? "Registrando..." : "Confirmar recebimento"}
         </Button>
       </div>

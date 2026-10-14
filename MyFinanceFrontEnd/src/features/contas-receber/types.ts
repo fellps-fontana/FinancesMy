@@ -4,6 +4,14 @@
 // de perna unica saindo de uma conta do usuario. `valorTotal` e fixo (sem
 // juros/correcao); `saldoPendente` e `status` sao derivados dos recebimentos
 // ja registrados (ver formula no item 13), nunca editados direto pelo front.
+export const STATUS_CONTA_RECEBER = {
+  PENDENTE: "PENDENTE",
+  PARCIAL: "PARCIAL",
+  RECEBIDO: "RECEBIDO",
+} as const
+
+export type StatusContaReceber = (typeof STATUS_CONTA_RECEBER)[keyof typeof STATUS_CONTA_RECEBER]
+
 export type ContaReceberResponse = {
   id: string
   tipo: string

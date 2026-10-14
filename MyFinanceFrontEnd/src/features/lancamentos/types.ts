@@ -32,7 +32,25 @@ export type LancamentoResponse = {
   status: StatusLancamento
   manual: boolean
   oculto: boolean
+  // Item 18: so lancamento avulso edita/exclui; os demais sao tratados na origem.
+  avulso: boolean
+  origemVinculo: OrigemVinculo
+  // Item 17: preenchidos so quando o lancamento e parcela ("Notebook 3/10").
+  compraParceladaId: string | null
+  parcelaNumero: number | null
+  totalParcelas: number | null
 }
+
+// Espelha LancamentoVinculoResolver (OrigemVinculo.ToStorageValue()).
+export type OrigemVinculo =
+  | "AVULSO"
+  | "CONTA_FIXA"
+  | "COMPRA_PARCELADA"
+  | "CARTAO"
+  | "CONTA_RECEBER"
+  | "TRANSFERENCIA"
+  | "CONCILIADO"
+  | "NAO_MANUAL"
 
 // Espelha CriarLancamentoRequest.cs (Descricao/Valor/Tipo/Data/Status
 // obrigatorios; CategoriaId opcional).
@@ -54,6 +72,42 @@ export type EditarLancamentoRequest = {
   tipo: TipoLancamento
   data: string
   status?: StatusLancamento
+  // Item 18: omitido = mantem a conta; diferente da atual = move o lancamento.
+  contaId?: string
+}
+
+// Espelha CriarLancamentoParceladoRequest.cs. `status` vale so p/ a parcela 1;
+// as demais nascem PENDENTE.
+export type CriarLancamentoParceladoRequest = {
+  descricao: string
+  valorTotal: number
+  quantidadeParcelas: number
+  dataPrimeiraParcela: string
+  categoriaId?: string
+  status: Exclude<StatusLancamento, "SUGERIDO">
+}
+
+// Espelha LancamentoParceladoResponse.cs (parcelas ordenadas 1..N).
+export type LancamentoParceladoResponse = {
+  compraParceladaId: string
+  parcelas: LancamentoResponse[]
+}
+
+// Espelha o corpo 200 de DELETE lancamentos-parcelados/{id}.
+export type CancelarLancamentoParceladoResponse = {
+  excluidas: number
+  mantidas: number
+}
+
+// 409 de PUT/DELETE de lancamento nao avulso: { erro, origemVinculo }.
+export class LancamentoNaoAvulsoError extends Error {
+  readonly origemVinculo: OrigemVinculo
+
+  constructor(mensagem: string, origemVinculo: OrigemVinculo) {
+    super(mensagem)
+    this.name = "LancamentoNaoAvulsoError"
+    this.origemVinculo = origemVinculo
+  }
 }
 
 // Espelha TransferenciaResponse.cs. Transferencia entre contas de mesma

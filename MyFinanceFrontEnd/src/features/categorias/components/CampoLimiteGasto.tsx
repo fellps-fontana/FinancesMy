@@ -1,6 +1,7 @@
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
+import { CLASSE_CAMPO } from "@/shared/ui/FormModal"
 
 type CampoLimiteGastoProps = {
   valor: string
@@ -49,6 +50,7 @@ export function CampoLimiteGasto({
         value={valor}
         disabled={disabled || removendo}
         onChange={(event) => onChange(event.target.value)}
+        className={CLASSE_CAMPO}
       />
     </div>
   )

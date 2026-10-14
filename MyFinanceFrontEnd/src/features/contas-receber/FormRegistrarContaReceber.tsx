@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
+import { CLASSE_BOTAO_CANCELAR, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO } from "@/shared/ui/FormModal"
 import { SegmentedTabs } from "@/shared/ui/segmented-tabs"
 import { SelectField } from "@/shared/ui/select-field"
 import { dataDeHoje } from "@/features/cartao/lib/formatarData"
@@ -23,7 +24,6 @@ const OPCOES_TIPO: ReadonlyArray<{ value: TipoContaReceber; label: string }> = [
   { value: "EMPRESTIMO", label: "Emprestimo" },
 ]
 
-const CLASSE_CAMPO = "h-auto rounded-[10px] border-border bg-accent px-3.5 py-3 text-sm md:text-sm dark:bg-accent"
 
 type FormRegistrarContaReceberProps = {
   onRegistrado: () => void
@@ -260,14 +260,13 @@ export function FormRegistrarContaReceber({ onRegistrado, onCancelar }: FormRegi
         <Button
           type="button"
           variant="outline"
-          size="lg"
           onClick={onCancelar}
           disabled={isSubmitting}
-          className="max-md:hidden"
+          className={CLASSE_BOTAO_CANCELAR}
         >
           Cancelar
         </Button>
-        <Button type="submit" size="lg" disabled={isSubmitting} className="max-md:w-full">
+        <Button type="submit" disabled={isSubmitting} className={CLASSE_BOTAO_PRIMARIO}>
           {isSubmitting ? "Salvando..." : "Salvar"}
         </Button>
       </div>

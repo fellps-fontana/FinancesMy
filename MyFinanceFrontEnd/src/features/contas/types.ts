@@ -26,6 +26,9 @@ export type ContaResponse = {
   cor: string | null
   origem: OrigemConta
   saldo: number
+  // true quando o saldo e calculado pelo backend (ex: conta de investimento
+  // com ativos, item 8.5/10): nesse caso nao e editavel pelo usuario.
+  saldoCalculado: boolean
   saldoManual: number | null
   ativa: boolean
   diaFechamento: number | null
@@ -53,6 +56,15 @@ export type CriarContaRequest = {
   icone?: string
   cor?: string
   saldoManual?: number
+}
+
+// Contrato de PUT /api/contas/{id} (regra-de-negocio.md item 10.2). O tipo da
+// conta e imutavel: nao existe campo `tipo`. `subtipo` so vale para Banco.
+export type EditarContaRequest = {
+  nome: string
+  subtipo?: SubtipoConta
+  icone?: string
+  cor?: string
 }
 
 // Contrato de PATCH /api/contas/{id}/saldo (Controllers/ContasController.cs,

@@ -1,26 +1,37 @@
 import { useState, type FormEvent } from "react"
+import { Power } from "lucide-react"
 import { useAtualizarSaldoConta } from "@/features/contas/hooks/useAtualizarSaldoConta"
 import { useDesativarConta } from "@/features/contas/hooks/useDesativarConta"
 import { validarSaldo, converterSaldoParaNumero } from "@/features/contas/lib/validarSaldo"
 import { ContaCard } from "@/features/contas/components/ContaCard"
+import { FormEditarConta } from "@/features/contas/components/FormEditarConta"
 import { ApiError } from "@/shared/api/client"
+import { Alert, AlertDescription } from "@/shared/ui/alert"
+import { Button } from "@/shared/ui/button"
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog"
+import {
+  CLASSE_BOTAO_CANCELAR,
+  CLASSE_BOTAO_PRIMARIO,
+  CLASSE_CAMPO,
+  FormModal,
+} from "@/shared/ui/FormModal"
+import { Input } from "@/shared/ui/input"
+import { Label } from "@/shared/ui/label"
 import type { ContaResponse } from "@/features/contas/types"
 
 type ContaItemProps = {
   conta: ContaResponse
 }
 
-// Container do item de lista: guarda o estado de UI (edicao de saldo_manual,
-// confirmacao de desativacao) e aciona as mutations
-// (useAtualizarSaldoConta/useDesativarConta). A apresentacao pura fica em
-// ContaCard - clean-code.md "Organizacao (React)": componente de
-// apresentacao separado da logica de estado. Mesma divisao ja usada por
-// AtivoItem/AtivoCard e, antes da migracao para esta feature generica, por
-// ContaInvestimentoItem/ContaInvestimentoCard.
+// Container do item: guarda o estado de UI (modal de saldo, confirmacao de
+// desativacao, erro) e aciona as mutations. Erros 409 (conta com ativo ativo)
+// e 422 (saldo invalido) chegam tipados pelos hooks, com a mensagem do
+// backend em `message`. Apresentacao pura em ContaCard.
 export function ContaItem({ conta }: ContaItemProps) {
   const { mutate: atualizarSaldo, isPending: salvandoSaldo } = useAtualizarSaldoConta()
   const { mutate: desativarConta, isPending: desativando } = useDesativarConta()
 
+  const [editandoConta, setEditandoConta] = useState(false)
   const [editandoSaldo, setEditandoSaldo] = useState(false)
   const [novoSaldo, setNovoSaldo] = useState("")
   const [erroSaldo, setErroSaldo] = useState<string | null>(null)
@@ -29,12 +40,12 @@ export function ContaItem({ conta }: ContaItemProps) {
   const [erroDesativar, setErroDesativar] = useState<string | null>(null)
 
   function iniciarEdicaoSaldo() {
-    setNovoSaldo(String(conta.saldoManual ?? 0))
+    setNovoSaldo(String(conta.saldoManual ?? conta.saldo))
     setErroSaldo(null)
     setEditandoSaldo(true)
   }
 
-  function cancelarEdicaoSaldo() {
+  function fecharEdicaoSaldo() {
     setEditandoSaldo(false)
     setErroSaldo(null)
   }
@@ -51,10 +62,7 @@ export function ContaItem({ conta }: ContaItemProps) {
     atualizarSaldo(
       { id: conta.id, request: { novoSaldo: converterSaldoParaNumero(novoSaldo) } },
       {
-        onSuccess: () => {
-          setEditandoSaldo(false)
-          setErroSaldo(null)
-        },
+        onSuccess: fecharEdicaoSaldo,
         onError: (error) => {
           console.error("Falha ao atualizar saldo da conta", error)
           setErroSaldo(
@@ -70,18 +78,14 @@ export function ContaItem({ conta }: ContaItemProps) {
     setConfirmandoDesativar(true)
   }
 
-  function cancelarDesativar() {
-    setConfirmandoDesativar(false)
-    setErroDesativar(null)
-  }
-
   function confirmarDesativar() {
     desativarConta(conta.id, {
+      onSuccess: () => setConfirmandoDesativar(false),
       onError: (error) => {
-        // Em sucesso a conta some da lista pela invalidacao de cache. Em
-        // erro so registramos o contexto e mantemos a confirmacao aberta com
-        // a mensagem, sem travar a UI - ver clean-code.md "Tratamento de erro".
+        // 409: conta com ativo ativo. Fecha a confirmacao e deixa a mensagem
+        // do backend visivel no card.
         console.error("Falha ao desativar conta", error)
+        setConfirmandoDesativar(false)
         setErroDesativar(
           error instanceof ApiError ? error.message : "Nao foi possivel desativar a conta. Tente novamente.",
         )
@@ -90,22 +94,73 @@ export function ContaItem({ conta }: ContaItemProps) {
   }
 
   return (
-    <ContaCard
-      conta={conta}
-      editandoSaldo={editandoSaldo}
-      novoSaldo={novoSaldo}
-      salvandoSaldo={salvandoSaldo}
-      erroSaldo={erroSaldo}
-      onIniciarEdicaoSaldo={iniciarEdicaoSaldo}
-      onNovoSaldoChange={setNovoSaldo}
-      onSubmitSaldo={handleSubmitSaldo}
-      onCancelarEdicaoSaldo={cancelarEdicaoSaldo}
-      confirmandoDesativar={confirmandoDesativar}
-      desativando={desativando}
-      erroDesativar={erroDesativar}
-      onSolicitarDesativar={solicitarDesativar}
-      onConfirmarDesativar={confirmarDesativar}
-      onCancelarDesativar={cancelarDesativar}
-    />
+    <div className="flex flex-col gap-2">
+      <ContaCard
+        conta={conta}
+        onEditar={() => setEditandoConta(true)}
+        onEditarSaldo={iniciarEdicaoSaldo}
+        onDesativar={solicitarDesativar}
+      />
+
+      {editandoConta && <FormEditarConta conta={conta} onFechar={() => setEditandoConta(false)} />}
+
+      {erroDesativar && (
+        <Alert variant="destructive">
+          <AlertDescription>{erroDesativar}</AlertDescription>
+        </Alert>
+      )}
+
+      <FormModal open={editandoSaldo} onClose={fecharEdicaoSaldo} title={`Atualizar saldo - ${conta.nome}`}>
+        <form onSubmit={handleSubmitSaldo} className="flex flex-col gap-4">
+          {erroSaldo && (
+            <Alert variant="destructive">
+              <AlertDescription>{erroSaldo}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`saldo-${conta.id}`}>Novo saldo</Label>
+            <Input
+              id={`saldo-${conta.id}`}
+              type="number"
+              step="0.01"
+              inputMode="decimal"
+              autoFocus
+              required
+              value={novoSaldo}
+              onChange={(event) => setNovoSaldo(event.target.value)}
+              className={CLASSE_CAMPO}
+            />
+          </div>
+
+          <div className="mt-1 flex justify-end gap-2.5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={fecharEdicaoSaldo}
+              disabled={salvandoSaldo}
+              className={CLASSE_BOTAO_CANCELAR}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={salvandoSaldo} className={CLASSE_BOTAO_PRIMARIO}>
+              {salvandoSaldo ? "Salvando..." : "Salvar saldo"}
+            </Button>
+          </div>
+        </form>
+      </FormModal>
+
+      <ConfirmDialog
+        open={confirmandoDesativar}
+        title={`Desativar ${conta.nome}?`}
+        description="A conta sai das listas. Contas com ativo ativo nao podem ser desativadas."
+        icon={<Power className="size-[18px]" />}
+        destructive
+        confirmLabel="Desativar"
+        loading={desativando}
+        onCancel={() => setConfirmandoDesativar(false)}
+        onConfirm={confirmarDesativar}
+      />
+    </div>
   )
 }

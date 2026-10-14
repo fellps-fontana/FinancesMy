@@ -3,7 +3,7 @@ import { Pencil, Repeat, Trash2 } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
 import { ApiError } from "@/shared/api/client"
 import { Alert, AlertDescription } from "@/shared/ui/alert"
-import { BottomSheet } from "@/shared/ui/bottom-sheet"
+import { FormModal } from "@/shared/ui/FormModal"
 import { Button } from "@/shared/ui/button"
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog"
 import { IconTile } from "@/shared/ui/icon-tile"
@@ -99,7 +99,7 @@ export function ContaFixaItem({ contaFixa, categoriaNome }: ContaFixaItemProps) 
   }
 
   return (
-    <li className="flex flex-col gap-2 border-b-[0.5px] border-border px-4 py-3.5 last:border-b-0 md:px-[22px]">
+    <li className="flex flex-col gap-2 rounded-[14px] border-[0.5px] border-border bg-card p-3.5 md:rounded-none md:border-0 md:border-b-[0.5px] md:bg-transparent md:px-[22px] md:last:border-b-0">
       <div className={cn("flex items-center gap-3 md:grid", GRADE_COLUNAS_CONTA_FIXA)}>
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <IconTile className={cn(!contaFixa.ativa && "bg-muted text-text-muted")}>
@@ -117,13 +117,13 @@ export function ContaFixaItem({ contaFixa, categoriaNome }: ContaFixaItemProps) 
           </div>
         </div>
 
-        <span className="hidden text-[13px] text-text-muted md:block">
+        <span className="hidden text-[13px] whitespace-nowrap text-text-muted md:block">
           {formatarRecorrencia(contaFixa)}
         </span>
 
         <span
           className={cn(
-            "text-sm md:text-right",
+            "text-sm whitespace-nowrap md:text-right",
             contaFixa.ativa ? "text-text-primary" : "text-text-faint",
           )}
         >
@@ -170,13 +170,13 @@ export function ContaFixaItem({ contaFixa, categoriaNome }: ContaFixaItemProps) 
         </Alert>
       )}
 
-      <BottomSheet open={editando} onClose={() => setEditando(false)} title="Editar conta fixa">
+      <FormModal open={editando} onClose={() => setEditando(false)} title="Editar conta fixa">
         <FormContaFixa
           contaFixaParaEditar={contaFixa}
           onSalvar={() => setEditando(false)}
           onCancelar={() => setEditando(false)}
         />
-      </BottomSheet>
+      </FormModal>
 
       <ConfirmDialog
         open={acaoPendente === "desativar"}

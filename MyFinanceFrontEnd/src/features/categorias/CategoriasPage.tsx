@@ -10,6 +10,7 @@ import { CategoriaItem } from "@/features/categorias/components/CategoriaItem"
 import { FormCategoria } from "@/features/categorias/FormCategoria"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { BottomSheet } from "@/shared/ui/bottom-sheet"
+import { FormModal } from "@/shared/ui/FormModal"
 import { Button } from "@/shared/ui/button"
 import { Chip } from "@/shared/ui/chip"
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog"
@@ -117,14 +118,28 @@ export function CategoriasPage() {
   const formularioAberto = superficie?.tipo === "criar" || superficie?.tipo === "editar"
 
   return (
-    <div className="mx-auto flex min-h-svh max-w-5xl flex-col gap-5 px-5 py-8 md:px-10">
+    <div className="flex flex-col gap-4 md:gap-5">
       <PageHeader
         title="Categorias"
         action={
-          <Button type="button" onClick={() => setSuperficie({ tipo: "criar" })}>
-            <Plus aria-hidden="true" />
-            <span className="max-md:sr-only">Nova categoria</span>
-          </Button>
+          <>
+            <Button
+              type="button"
+              onClick={() => setSuperficie({ tipo: "criar" })}
+              className="hidden h-auto gap-1.5 rounded-[9px] px-4 py-2.5 text-[13px] md:inline-flex"
+            >
+              <Plus className="size-3.5" strokeWidth={2} aria-hidden="true" />
+              Nova categoria
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setSuperficie({ tipo: "criar" })}
+              aria-label="Nova categoria"
+              className="size-8 rounded-[9px] p-0 md:hidden"
+            >
+              <Plus className="size-4" strokeWidth={2} aria-hidden="true" />
+            </Button>
+          </>
         }
       />
 
@@ -173,7 +188,7 @@ export function CategoriasPage() {
       )}
 
       {/* Mesmo form em criar/editar; `key` remonta o estado ao trocar de alvo. */}
-      <BottomSheet
+      <FormModal
         open={formularioAberto}
         onClose={fechar}
         title={superficie?.tipo === "editar" ? "Editar categoria" : "Nova categoria"}
@@ -189,7 +204,7 @@ export function CategoriasPage() {
         ) : (
           <FormCategoria key="nova" onSalvar={fechar} onCancelar={fechar} />
         )}
-      </BottomSheet>
+      </FormModal>
 
       {/* Folha de acoes (mobile): toque na linha. */}
       <BottomSheet

@@ -1,4 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { dashboardKeys } from "@/features/dashboard/query-keys"
+import { limiteGastoKeys } from "@/features/limite-gasto/query-keys"
 import { editarLancamento } from "@/features/lancamentos/api"
 import { lancamentosKeys } from "@/features/lancamentos/query-keys"
 import type { EditarLancamentoRequest } from "@/features/lancamentos/types"
@@ -19,6 +21,8 @@ export function useEditarLancamento() {
       editarLancamento(contaId, lancamentoId, request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: lancamentosKeys.all })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
+      queryClient.invalidateQueries({ queryKey: limiteGastoKeys.all })
     },
   })
 }

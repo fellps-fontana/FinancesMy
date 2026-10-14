@@ -5,11 +5,12 @@ import { formatarMoeda } from "@/shared/lib/formatarMoeda"
 import { cn } from "@/shared/lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { BottomSheet } from "@/shared/ui/bottom-sheet"
+import { FormModal } from "@/shared/ui/FormModal"
 import { Button } from "@/shared/ui/button"
 import { Chip } from "@/shared/ui/chip"
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog"
 import { PageHeader } from "@/shared/ui/page-header"
-import { resumirContasAbertas } from "@/features/conciliacao/lib/situacaoDoVencimento"
+import { resumirContasReceber } from "@/features/contas-receber/lib/resumirContasReceber"
 import { useContasReceber } from "@/features/contas-receber/hooks/useContasReceber"
 import { useExcluirContaReceber } from "@/features/contas-receber/hooks/useExcluirContaReceber"
 import {
@@ -40,23 +41,6 @@ type Superficie =
   | { tipo: "acoes"; conta: ContaReceberResponse }
   | { tipo: "excluir"; conta: ContaReceberResponse }
   | null
-
-type ResumoContasReceber = {
-  aReceber: number
-  jaRecebido: number
-  atrasado: number
-}
-
-// Soma dos valores que o backend ja entrega por conta (saldoPendente e
-// valorTotal; item 13). "Atrasado" reaproveita a regra de vencimento de
-// conciliacao: saldo pendente de conta com data prevista anterior a hoje.
-function resumirContasReceber(contas: ReadonlyArray<ContaReceberResponse>): ResumoContasReceber {
-  const { emAberto, atrasado } = resumirContasAbertas(
-    contas.map((conta) => ({ valor: conta.saldoPendente, vencimento: conta.dataPrevista })),
-  )
-  const jaRecebido = contas.reduce((total, conta) => total + (conta.valorTotal - conta.saldoPendente), 0)
-  return { aReceber: emAberto, jaRecebido, atrasado }
-}
 
 function mensagemDeErro(error: unknown, padrao: string): string {
   return error instanceof ApiError ? error.message : padrao
@@ -105,14 +89,28 @@ export function ListaContasReceber() {
   const recorrente = Boolean(contaDaSuperficie?.recebivelRecorrenteId)
 
   return (
-    <div className="mx-auto flex min-h-svh max-w-5xl flex-col gap-5 px-5 py-8 md:px-10">
+    <div className="flex flex-col gap-4 md:gap-5">
       <PageHeader
         title="Contas a receber"
         action={
-          <Button type="button" onClick={() => abrir({ tipo: "nova" })}>
-            <Plus aria-hidden="true" />
-            <span className="max-md:sr-only">Novo recebivel</span>
-          </Button>
+          <>
+            <Button
+              type="button"
+              onClick={() => abrir({ tipo: "nova" })}
+              className="hidden h-auto gap-1.5 rounded-[9px] px-4 py-2.5 text-[13px] md:inline-flex"
+            >
+              <Plus className="size-3.5" strokeWidth={2} aria-hidden="true" />
+              Novo recebivel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => abrir({ tipo: "nova" })}
+              aria-label="Novo recebivel"
+              className="size-8 rounded-[9px] p-0 md:hidden"
+            >
+              <Plus className="size-4" strokeWidth={2} aria-hidden="true" />
+            </Button>
+          </>
         }
       />
 
@@ -172,11 +170,11 @@ export function ListaContasReceber() {
         <p className="text-sm text-text-muted">Nenhuma conta a receber cadastrada ainda.</p>
       )}
 
-      <BottomSheet open={superficie?.tipo === "nova"} onClose={fechar} title="Novo recebivel">
+      <FormModal open={superficie?.tipo === "nova"} onClose={fechar} title="Novo recebivel">
         <FormRegistrarContaReceber onRegistrado={fechar} onCancelar={fechar} />
-      </BottomSheet>
+      </FormModal>
 
-      <BottomSheet open={superficie?.tipo === "receber"} onClose={fechar} title="Registrar recebimento">
+      <FormModal open={superficie?.tipo === "receber"} onClose={fechar} title="Registrar recebimento">
         {superficie?.tipo === "receber" && (
           <FormRegistrarRecebimento
             key={superficie.conta.id}
@@ -188,9 +186,9 @@ export function ListaContasReceber() {
             onCancelar={fechar}
           />
         )}
-      </BottomSheet>
+      </FormModal>
 
-      <BottomSheet open={superficie?.tipo === "editar"} onClose={fechar} title="Editar conta a receber">
+      <FormModal open={superficie?.tipo === "editar"} onClose={fechar} title="Editar conta a receber">
         {superficie?.tipo === "editar" && (
           <FormEditarContaReceber
             key={superficie.conta.id}
@@ -199,7 +197,7 @@ export function ListaContasReceber() {
             onCancelar={fechar}
           />
         )}
-      </BottomSheet>
+      </FormModal>
 
       {/* Folha de acoes (mobile): toque no card. */}
       <BottomSheet

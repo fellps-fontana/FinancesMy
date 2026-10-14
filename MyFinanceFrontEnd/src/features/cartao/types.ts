@@ -14,8 +14,8 @@
 export type TipoConta = "Banco" | "Cartao" | "Investimento"
 export type OrigemConta = "Manual" | "OpenFinance"
 export type StatusFatura = "ABERTA" | "FECHADA" | "PAGA"
-export type TipoLancamento = "Debit" | "Credit"
-export type StatusLancamento = "Pendente" | "Sugerido" | "Pago"
+export type TipoLancamento = "DEBIT" | "CREDIT"
+export type StatusLancamento = "PENDENTE" | "SUGERIDO" | "PAGO"
 
 export type ContaResponse = {
   id: string
@@ -77,8 +77,8 @@ export type CompraResponse = {
   parcelaNumero: number | null
   // DTOs/CompraResponse.cs: total de parcelas da compra (null se nao e
   // parcela) e flag de parcela ja antecipada.
-  totalParcelas?: number | null
-  antecipada?: boolean
+  totalParcelas: number | null
+  antecipada: boolean
 }
 
 // POST /api/contas/{contaId}/compras-parceladas (DTOs/CriarCompraParceladaRequest.cs).
@@ -159,11 +159,10 @@ export type ParcelaElegivelResponse = {
   faturaDataVencimento: string
 }
 
-// POST .../antecipacoes (AnteciparParcelasRequest). dataAntecipacao omitida =
-// hoje, resolvido pelo backend.
+// POST .../antecipacoes (AnteciparParcelasRequest). Destino e sempre a fatura
+// aberta e a data da antecipacao e a do servidor: so a quantidade e enviada.
 export type AnteciparParcelasRequest = {
   quantidade: number
-  dataAntecipacao?: string // yyyy-MM-dd
 }
 
 // AnteciparParcelasResponse - parcelas ja movidas para a fatura de destino.

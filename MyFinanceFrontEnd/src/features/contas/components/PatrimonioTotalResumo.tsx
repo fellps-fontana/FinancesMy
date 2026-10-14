@@ -2,31 +2,37 @@ import { formatarMoeda } from "@/shared/lib/formatarMoeda"
 
 type PatrimonioTotalResumoProps = {
   carregando: boolean
+  /** Falha ao carregar o total investido: o patrimonio nao pode ser exibido. */
+  erro?: boolean
   patrimonioTotal: number
   quantidadeContas: number
 }
 
-// Componente de apresentacao (burro): recebe o total ja calculado (ver
-// lib/calcularPatrimonioTotal.ts) e so formata para exibicao - nenhum
-// calculo de dominio mora aqui (clean-code.md "Organizacao (React)"). Layout
-// espelha o card "Patrimonio total" do mockup 03 Contas (mobile e desktop).
+// Apresentacao pura do card "Patrimonio total" (mockup s_contas): o total vem
+// de lib/calcularPatrimonioTotal.ts (saldos Banco + total investido do
+// backend); aqui so se formata.
 export function PatrimonioTotalResumo({
   carregando,
+  erro = false,
   patrimonioTotal,
   quantidadeContas,
 }: PatrimonioTotalResumoProps) {
   return (
-    <section className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-5 py-5">
-      <div className="flex flex-col gap-1.5">
-        <span className="text-[13px] text-text-muted">Patrimônio total</span>
-        <span className="text-[28px] font-medium text-text-primary">
-          {carregando ? "Carregando..." : formatarMoeda(patrimonioTotal)}
-        </span>
+    <section className="flex items-center justify-between gap-4 rounded-2xl border-[0.5px] border-border bg-card p-5 md:p-[22px]">
+      <div>
+        <span className="text-[13px] text-text-muted">Patrimonio total</span>
+        <div className="mt-1.5 text-[28px] leading-tight font-medium text-text-primary">
+          {carregando ? "Carregando..." : erro ? "Indisponivel" : formatarMoeda(patrimonioTotal)}
+        </div>
       </div>
 
-      {!carregando && (
-        <span className="text-[13px] text-text-faint">
-          {quantidadeContas} {quantidadeContas === 1 ? "conta" : "contas"} cadastradas
+      {erro && !carregando && (
+        <span className="shrink-0 text-[13px] text-negativo">Nao foi possivel carregar o total investido.</span>
+      )}
+
+      {!carregando && !erro && (
+        <span className="shrink-0 text-[13px] text-text-faint">
+          {quantidadeContas} {quantidadeContas === 1 ? "conta" : "contas"}
         </span>
       )}
     </section>

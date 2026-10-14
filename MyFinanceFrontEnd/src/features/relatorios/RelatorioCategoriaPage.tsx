@@ -4,28 +4,25 @@ import { PageHeader } from "@/shared/ui/page-header"
 import { Button } from "@/shared/ui/button"
 import { useRelatorioGastoPorCategoria } from "@/features/relatorios/hooks/useRelatorioGastoPorCategoria"
 import { mesAnterior, proximoMes, rotuloMes, type AnoMes } from "@/features/relatorios/lib/navegarMes"
+import { lerMesDaQuery } from "@/features/relatorios/lib/lerMesDaQuery"
 import { LinhaCategoriaRelatorio } from "@/features/relatorios/components/LinhaCategoriaRelatorio"
-import { ResumoTotalGasto } from "@/features/relatorios/components/ResumoTotalGasto"
-
-// Mes/ano vivem na query string (?ano=2026&mes=7); ausente/invalido = mes atual.
-export function lerMesDaQuery(params: URLSearchParams): AnoMes {
-  const hoje = new Date()
-  const ano = Number(params.get("ano"))
-  const mes = Number(params.get("mes"))
-  const valido = Number.isInteger(ano) && ano > 1900 && Number.isInteger(mes) && mes >= 1 && mes <= 12
-  return valido ? { ano, mes } : { ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 }
-}
+import { DonutGastoPorCategoria } from "@/features/relatorios/components/DonutGastoPorCategoria"
+import { CHAVE_SEM_CATEGORIA, calcularFatiasDonut, chaveDaLinha, corDaFatia } from "@/features/relatorios/lib/fatiasRelatorio"
 
 export function RelatorioCategoriaPage() {
   const [params, setParams] = useSearchParams()
   const referencia = lerMesDaQuery(params)
-  const { data, isLoading, isError } = useRelatorioGastoPorCategoria(referencia.ano, referencia.mes)
+  const { data, isLoading, isError, error } = useRelatorioGastoPorCategoria(referencia.ano, referencia.mes)
+
+  if (error) {
+    console.error("Falha ao carregar relatorio por categoria", error)
+  }
 
   const irPara = (alvo: AnoMes) => setParams({ ano: String(alvo.ano), mes: String(alvo.mes) })
   const query = `?ano=${referencia.ano}&mes=${referencia.mes}`
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4 md:gap-5">
       <PageHeader
         title="Relatorio por categoria"
         action={
@@ -51,14 +48,19 @@ export function RelatorioCategoriaPage() {
       ) : null}
 
       {data && data.linhas.length > 0 ? (
-        <div className="grid gap-5 lg:grid-cols-[1fr_1.3fr] lg:items-start">
-          <ResumoTotalGasto totalGasto={data.totalGasto} variacaoPercentual={data.variacaoPercentual} />
-          <div className="flex flex-col gap-3 rounded-2xl border-[0.5px] border-border bg-card p-5">
-            {data.linhas.map((linha) => (
+        <div className="grid gap-4 lg:grid-cols-[1fr_1.3fr] lg:items-start lg:gap-6">
+          <DonutGastoPorCategoria
+            fatias={calcularFatiasDonut(data.linhas)}
+            totalGasto={data.totalGasto}
+            variacaoPercentual={data.variacaoPercentual}
+          />
+          <div className="flex min-w-0 flex-col gap-4 rounded-2xl border-[0.5px] border-border bg-card p-[22px]">
+            {data.linhas.map((linha, indice) => (
               <LinhaCategoriaRelatorio
-                key={linha.categoriaId ?? "sem-categoria"}
+                key={chaveDaLinha(linha)}
                 linha={linha}
-                to={`/relatorio/${linha.categoriaId ?? "sem-categoria"}${query}`}
+                cor={corDaFatia(indice)}
+                to={`/relatorio/${linha.categoriaId ?? CHAVE_SEM_CATEGORIA}${query}`}
               />
             ))}
           </div>

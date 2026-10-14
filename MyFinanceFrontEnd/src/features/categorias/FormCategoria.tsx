@@ -5,6 +5,7 @@ import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { cn } from "@/shared/lib/utils"
+import { CLASSE_BOTAO_CANCELAR, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO } from "@/shared/ui/FormModal"
 import { useCriarCategoria } from "@/features/categorias/hooks/useCriarCategoria"
 import { useEditarCategoria } from "@/features/categorias/hooks/useEditarCategoria"
 import { useCategorias } from "@/features/categorias/hooks/useCategorias"
@@ -217,7 +218,7 @@ export function FormCategoria({
             disabled={tipoTravado || ocupado}
             className={cn(
               "flex-1 rounded-[9px] px-3 py-2.5 text-[13px] transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none",
-              tipo === valor ? "bg-accent-deep text-accent-soft" : "bg-muted text-muted-foreground",
+              tipo === valor ? "bg-accent-deep text-accent-soft" : "bg-accent text-muted-foreground",
               tipoTravado && tipo !== valor && "opacity-50",
             )}
           >
@@ -237,6 +238,7 @@ export function FormCategoria({
           value={nome}
           disabled={ocupado}
           onChange={(event) => setNome(event.target.value)}
+          className={CLASSE_CAMPO}
         />
       </div>
 
@@ -258,7 +260,7 @@ export function FormCategoria({
                 onClick={() => setIcone(selecionado ? undefined : id)}
                 className={cn(
                   "flex size-10 shrink-0 items-center justify-center rounded-[10px] transition-colors disabled:pointer-events-none disabled:opacity-50",
-                  selecionado ? "bg-primary" : "bg-muted hover:bg-muted/70",
+                  selecionado ? "bg-primary" : "bg-accent hover:bg-accent/70",
                 )}
               >
                 <Icon
@@ -281,7 +283,7 @@ export function FormCategoria({
           value={parentId}
           onChange={(event) => setParentId(event.target.value)}
           className={cn(
-            "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
+            "w-full min-w-0 rounded-[10px] border border-border bg-accent px-3.5 py-3 text-sm text-text-body transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
           )}
         >
           <option value="">
@@ -311,11 +313,17 @@ export function FormCategoria({
         />
       )}
 
-      <div className="flex justify-end gap-2.5">
-        <Button type="button" variant="outline" size="lg" onClick={onCancelar} disabled={ocupado}>
+      <div className="mt-1.5 flex justify-end gap-2.5">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancelar}
+          disabled={ocupado}
+          className={CLASSE_BOTAO_CANCELAR}
+        >
           Cancelar
         </Button>
-        <Button type="submit" size="lg" disabled={ocupado}>
+        <Button type="submit" disabled={ocupado} className={CLASSE_BOTAO_PRIMARIO}>
           {salvando ? "Salvando..." : "Salvar categoria"}
         </Button>
       </div>

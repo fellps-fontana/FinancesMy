@@ -1,7 +1,10 @@
 import { useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
+import { Plus } from "lucide-react"
 import { useContas } from "@/features/contas/hooks/useContas"
 import { useCriarConta } from "@/features/contas/hooks/useCriarConta"
+import { useTotalInvestido } from "@/features/investimentos/hooks/useTotalInvestido"
+import { agruparContas } from "@/features/contas/lib/agruparContas"
 import { calcularPatrimonioTotal } from "@/features/contas/lib/calcularPatrimonioTotal"
 import { aplicarMascaraMoeda, converterMascaraMoedaParaNumero } from "@/features/contas/lib/mascaraMoeda"
 import { obterTipoESubtipoConta } from "@/features/contas/lib/obterTipoESubtipoConta"
@@ -10,6 +13,7 @@ import { ContaItem } from "@/features/contas/components/ContaItem"
 import { FormNovaConta } from "@/features/contas/components/FormNovaConta"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
 import { Button } from "@/shared/ui/button"
+import { PageHeader } from "@/shared/ui/page-header"
 import { ApiError } from "@/shared/api/client"
 import type { TipoContaFormulario } from "@/features/contas/types"
 
@@ -18,11 +22,10 @@ import type { TipoContaFormulario } from "@/features/contas/types"
 // componentes de apresentacao chamados abaixo - ver clean-code.md
 // "Organizacao (React)".
 //
-// Lista TODAS as contas manuais tipo Banco (corrente/poupanca/dinheiro
-// fisico, regra-de-negocio.md item 10) + Investimento (saldo simples, item
-// 8) - Cartao fica de fora, tem pagina propria em /cartao e e linha de
-// credito, nao patrimonio. Rota /contas (TASK-129) troca o destino de
-// ListaContasSimplesPage para esta pagina.
+// Lista as contas Banco (corrente/poupanca/dinheiro fisico, item 10),
+// Investimento (item 8/8.5) e Cartao, agrupadas por tipo. O patrimonio soma os
+// saldos Banco com o total investido do backend; Cartao e linha de credito e
+// fica fora do patrimonio (tem pagina propria em /cartao).
 export function ContasPage() {
   const { data: contas, isLoading, error } = useContas()
   const { mutate: criarConta, isPending: criandoConta } = useCriarConta()
@@ -39,7 +42,19 @@ export function ContasPage() {
     console.error("Falha ao carregar contas", error)
   }
 
-  const patrimonioTotal = contas ? calcularPatrimonioTotal(contas) : 0
+  const {
+    data: totalInvestido,
+    isLoading: carregandoTotalInvestido,
+    error: erroTotalInvestido,
+  } = useTotalInvestido()
+  if (erroTotalInvestido) {
+    console.error("Falha ao carregar total investido", erroTotalInvestido)
+  }
+
+  // Sem o total investido o patrimonio ficaria subestimado: so e calculado
+  // quando as contas e o total estao disponiveis.
+  const patrimonioTotal =
+    contas && totalInvestido ? calcularPatrimonioTotal(contas, totalInvestido.totalInvestido) : 0
 
   function abrirModal() {
     setNome("")
@@ -89,22 +104,33 @@ export function ContasPage() {
     )
   }
 
+  const grupos = contas ? agruparContas(contas) : []
+
   return (
-    <div className="mx-auto flex min-h-svh max-w-3xl flex-col gap-6 px-4 py-8">
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-[19px] font-medium text-text-primary">Contas</h1>
-          <Link
-            className="text-sm text-primary underline-offset-4 hover:underline"
-            to="/investimentos"
-          >
-            Ver investimentos (ativos)
-          </Link>
-        </div>
-        <Button type="button" onClick={abrirModal}>
-          Nova conta
-        </Button>
-      </header>
+    <div className="flex flex-col gap-4 md:gap-5">
+      <PageHeader
+        title="Contas"
+        action={
+          <>
+            <Button
+              type="button"
+              onClick={abrirModal}
+              className="hidden h-auto gap-1.5 rounded-[9px] px-4 py-2.5 text-[13px] md:inline-flex"
+            >
+              <Plus className="size-3.5" strokeWidth={2} aria-hidden="true" />
+              Nova conta
+            </Button>
+            <Button
+              type="button"
+              onClick={abrirModal}
+              aria-label="Nova conta"
+              className="size-8 rounded-[9px] p-0 md:hidden"
+            >
+              <Plus className="size-4" strokeWidth={2} aria-hidden="true" />
+            </Button>
+          </>
+        }
+      />
 
       {modalAberto && (
         <FormNovaConta
@@ -133,25 +159,35 @@ export function ContasPage() {
       ) : (
         <>
           <PatrimonioTotalResumo
-            carregando={isLoading}
+            carregando={isLoading || carregandoTotalInvestido}
+            erro={Boolean(erroTotalInvestido)}
             patrimonioTotal={patrimonioTotal}
             quantidadeContas={contas?.length ?? 0}
           />
 
           {isLoading ? (
             <p className="text-sm text-text-muted">Carregando contas...</p>
-          ) : contas && contas.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {contas.map((conta) => (
-                <ContaItem key={conta.id} conta={conta} />
-              ))}
-            </div>
+          ) : grupos.length > 0 ? (
+            grupos.map((grupo) => (
+              <section key={grupo.tipo} className="flex flex-col gap-2.5">
+                <h2 className="text-[13px] text-text-muted">{grupo.titulo}</h2>
+                <div className="grid grid-cols-1 content-start gap-3.5 md:grid-cols-2">
+                  {grupo.contas.map((conta) => (
+                    <ContaItem key={conta.id} conta={conta} />
+                  ))}
+                </div>
+              </section>
+            ))
           ) : (
             <p className="text-sm text-text-muted">
               Nenhuma conta cadastrada ainda. Contas de banco e investimento aparecem aqui assim que
               forem cadastradas.
             </p>
           )}
+
+          <Link className="text-sm text-primary underline-offset-4 hover:underline" to="/investimentos">
+            Ver investimentos (ativos)
+          </Link>
         </>
       )}
     </div>

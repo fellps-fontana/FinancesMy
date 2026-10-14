@@ -7,6 +7,9 @@ export const cartaoKeys = {
   contasBanco: () => [...cartaoKeys.all, "contas-banco"] as const,
   saldo: (contaId: string) => [...cartaoKeys.all, "saldo", contaId] as const,
   faturas: (contaId: string) => [...cartaoKeys.all, "faturas", contaId] as const,
+  comprasDaConta: (contaId: string) => [...cartaoKeys.all, "compras", contaId] as const,
+  comprasDaFatura: (contaId: string, faturaId: string) =>
+    [...cartaoKeys.comprasDaConta(contaId), faturaId] as const,
   parcelasElegiveis: (contaId: string, compraParceladaId: string) =>
     [...cartaoKeys.all, "parcelas-elegiveis", contaId, compraParceladaId] as const,
   relatorioCategoria: (mes: string, contaId?: string) =>

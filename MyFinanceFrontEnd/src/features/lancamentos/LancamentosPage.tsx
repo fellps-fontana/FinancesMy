@@ -1,9 +1,16 @@
-import { useMemo, useState } from "react"
+import { Fragment, useEffect, useMemo, useState } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { Plus } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert"
+import { BottomSheet } from "@/shared/ui/bottom-sheet"
 import { Button } from "@/shared/ui/button"
+import { PageHeader } from "@/shared/ui/page-header"
+import { formatarMoeda } from "@/shared/lib/formatarMoeda"
+import { mesAtualIso } from "@/shared/lib/datas"
+import { useCategorias } from "@/features/categorias/hooks/useCategorias"
+import { construirMapaCategorias } from "@/features/categorias/lib/construirMapaCategorias"
 import { useFluxoCaixaTodasContas } from "@/features/lancamentos/hooks/useFluxoCaixaTodasContas"
-import { mesAtualIso } from "@/features/cartao/lib/formatarData"
+import { useMarcarComoPago } from "@/features/lancamentos/hooks/useMarcarComoPago"
 import {
   agruparLancamentosPorData,
   calcularResumoLancamentos,
@@ -12,206 +19,197 @@ import {
   somarMeses,
   type FiltroTipoLancamento as FiltroTipoLancamentoValor,
 } from "@/features/lancamentos/lib/filtrarPeriodo"
-import { NavegadorMes } from "@/features/lancamentos/components/NavegadorMes"
+import { AcoesLancamentoSheet } from "@/features/lancamentos/components/AcoesLancamentoSheet"
+import { CancelarCompraParceladaDialog } from "@/features/lancamentos/components/CancelarCompraParceladaDialog"
+import { ExcluirLancamentoDialog } from "@/features/lancamentos/components/ExcluirLancamentoDialog"
 import { FiltroTipoLancamento } from "@/features/lancamentos/components/FiltroTipoLancamento"
-import { LancamentoItem } from "@/features/lancamentos/components/LancamentoItem"
-import { TransferenciaFluxoCaixaItem } from "@/features/lancamentos/components/TransferenciaFluxoCaixaItem"
 import { FormLancamento } from "@/features/lancamentos/components/FormLancamento"
 import { FormTransferencia } from "@/features/lancamentos/components/FormTransferencia"
-import { Modal } from "@/shared/ui/Modal"
-import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
+import {
+  GRADE_COLUNAS_LANCAMENTO,
+  LancamentoItem,
+} from "@/features/lancamentos/components/LancamentoItem"
+import { mensagemDeErro } from "@/features/lancamentos/lib/mensagemDeErro"
+import {
+  contarParcelasPorCompra,
+  SEM_PARCELAS,
+  type ContagemParcelas,
+} from "@/features/lancamentos/lib/contarParcelasPorCompra"
+import { NavegadorMes } from "@/features/lancamentos/components/NavegadorMes"
+import { TransferenciaFluxoCaixaItem } from "@/features/lancamentos/components/TransferenciaFluxoCaixaItem"
 import type { LancamentoResponse } from "@/features/lancamentos/types"
+import { cn } from "@/shared/lib/utils"
 
-type TipoNovoRegistro = "LANCAMENTO" | "TRANSFERENCIA"
-
-// Estado de qual formulario esta aberto (mesmo espirito de CategoriasPage.tsx
-// "EstadoFormulario"): `null` fecha tudo; `{ modo: "criar" }` abre o
-// segmented control Lancamento/Transferencia; `{ modo: "editar" }` reabre
-// FormLancamento com `lancamentoParaEditar` (o unico caminho de edicao e
-// lancamento avulso - transferencia nao tem edicao nesta task).
-type EstadoFormulario =
-  | { modo: "criar"; tipo: TipoNovoRegistro }
-  | { modo: "editar"; lancamento: LancamentoResponse }
+// Qual janela esta aberta. `null` fecha tudo. "acoes" e a folha mobile que
+// leva a editar/excluir/cancelar compra.
+type Dialogo =
+  | { tipo: "novo" }
+  | { tipo: "transferencia" }
+  | { tipo: "acoes"; lancamento: LancamentoResponse }
+  | { tipo: "editar"; lancamento: LancamentoResponse }
+  | { tipo: "excluir"; lancamento: LancamentoResponse }
+  | { tipo: "cancelarCompra"; lancamento: LancamentoResponse }
   | null
 
-// Componente roteado da feature (stack.md "raiz da feature"). Visao agregada
-// de TODAS as contas por padrao (mockup "04 Lancamentos"): useFluxoCaixaTodasContas
-// consome o endpoint agregado (GET /api/lancamentos/fluxo-caixa), entao a
-// pagina abre ja mostrando os lancamentos e transferencias do mes, sem exigir
-// selecao previa de conta (a selecao de conta migrou para dentro de
-// FormLancamento, so no modo criar - ver components/FormLancamento.tsx).
-//
-// Container puro: nenhum calculo de dominio mora aqui - a classificacao
-// DEBIT/CREDIT vive em LancamentoItem, o recorte/resumo/agrupamento de
-// periodo vem de lib/filtrarPeriodo.ts (estendido nesta leva para operar
-// sobre FluxoCaixaItem, a uniao LANCAMENTO/TRANSFERENCIA) e a mutacao de
-// dados vive nos hooks consumidos por FormLancamento/FormTransferencia. Esta
-// pagina so decide QUAL formulario esta aberto e QUAL mes/filtro estao em
-// foco. Cada item da lista renderiza LancamentoItem ou TransferenciaFluxoCaixaItem
-// conforme `tipoItem` - a decisao de qual componente usar fica aqui no pai;
-// nenhum dos dois componentes de item sabe da uniao.
+// `?novo=` e enviado pelos atalhos do dashboard (AcoesRapidas).
+function dialogoInicial(novo: string | null): Dialogo {
+  if (novo === "transferencia") return { tipo: "transferencia" }
+  if (novo === "lancamento") return { tipo: "novo" }
+  return null
+}
+
+// Container da tela Lancamentos (mockup s_lancamentos): visao agregada de
+// todas as contas, recorte por mes, chips Todos/Entradas/Saidas e totais do
+// mes. Desktop = tabela em largura total; mobile = lista por dia com folha de
+// acoes. Nenhum calculo de dominio aqui: recorte, resumo e agrupamento vem de
+// lib/filtrarPeriodo.ts; habilitacao de editar/excluir vem de `avulso`.
 export function LancamentosPage() {
-  const [formulario, setFormulario] = useState<EstadoFormulario>(null)
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const [dialogo, setDialogo] = useState<Dialogo>(() => dialogoInicial(searchParams.get("novo")))
   const [mesReferencia, setMesReferencia] = useState(() => mesAtualIso())
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipoLancamentoValor>("TODOS")
+  const [erroAcao, setErroAcao] = useState<string | null>(null)
 
   const { data: itens, isLoading: carregandoItens, error: erroItens } = useFluxoCaixaTodasContas()
+  const { data: categoriasAtivas } = useCategorias(undefined, false)
+  const { data: categoriasArquivadas } = useCategorias(undefined, true)
+  const { mutate: marcarComoPago, isPending: marcandoComoPago } = useMarcarComoPago()
+
+  // Consome o atalho `?novo=` uma vez, para atualizar a pagina nao reabrir o formulario.
+  useEffect(() => {
+    if (!searchParams.has("novo")) return
+    const restantes = new URLSearchParams(searchParams)
+    restantes.delete("novo")
+    setSearchParams(restantes, { replace: true })
+  }, [searchParams, setSearchParams])
 
   if (erroItens) {
     console.error("Falha ao carregar fluxo de caixa", erroItens)
   }
 
-  // Recorte de mes -> resumo do mes inteiro (Entradas/Saidas/Saldo, mockup
-  // "04 Lancamentos") -> filtro de tipo (chip) -> agrupamento por data pra
-  // renderizar a lista. O resumo usa `itensDoMes` (antes do filtro de tipo)
-  // porque os 3 cards representam o mes inteiro, independente do chip
-  // selecionado - o chip so afeta a LISTA abaixo. TRANSFERENCIA nunca entra
-  // no resumo (regra-de-negocio.md itens 3 e 12, ver calcularResumoLancamentos).
   const [ano, mes] = mesReferencia.split("-").map(Number)
 
   const itensDoMes = useMemo(
     () => filtrarLancamentosDoMes(itens ?? [], ano, mes),
     [itens, ano, mes],
   )
-
+  // Os totais representam o mes inteiro, independente do chip; transferencia
+  // nunca entra (itens 3 e 12).
   const resumo = useMemo(() => calcularResumoLancamentos(itensDoMes), [itensDoMes])
-
   const gruposPorData = useMemo(
     () => agruparLancamentosPorData(filtrarPorTipo(itensDoMes, filtroTipo)),
     [itensDoMes, filtroTipo],
   )
+  const contagemPorCompra = useMemo(() => contarParcelasPorCompra(itens ?? []), [itens])
+  const mapaCategorias = useMemo(
+    () => construirMapaCategorias([...(categoriasAtivas ?? []), ...(categoriasArquivadas ?? [])]),
+    [categoriasAtivas, categoriasArquivadas],
+  )
 
-  function handleAlternarNovo() {
-    setFormulario((atual) => (atual?.modo === "criar" ? null : { modo: "criar", tipo: "LANCAMENTO" }))
+  function fechar() {
+    setDialogo(null)
   }
 
-  function handleTrocarTipoNovo(tipo: TipoNovoRegistro) {
-    setFormulario({ modo: "criar", tipo })
+  function handleMarcarComoPago(lancamento: LancamentoResponse) {
+    marcarComoPago(
+      { contaId: lancamento.contaId, lancamentoId: lancamento.id },
+      {
+        onSuccess: () => {
+          setErroAcao(null)
+          fechar()
+        },
+        onError: (error) => {
+          console.error("Falha ao marcar lancamento como pago", error)
+          setErroAcao(mensagemDeErro(error, "Nao foi possivel marcar o lancamento como pago."))
+          fechar()
+        },
+      },
+    )
   }
 
-  function handleEditar(lancamento: LancamentoResponse) {
-    setFormulario({ modo: "editar", lancamento })
+  function handleIrParaOrigem(rota: string) {
+    fechar()
+    navigate(rota)
   }
 
-  function handleFecharFormulario() {
-    setFormulario(null)
+  function contagemDa(lancamento: LancamentoResponse): ContagemParcelas {
+    return (
+      (lancamento.compraParceladaId && contagemPorCompra.get(lancamento.compraParceladaId)) ||
+      SEM_PARCELAS
+    )
   }
 
-  function handleMesAnterior() {
-    setMesReferencia((atual) => somarMeses(atual, -1))
-  }
-
-  function handleProximoMes() {
-    setMesReferencia((atual) => somarMeses(atual, 1))
-  }
+  const lancamentoAcoes = dialogo?.tipo === "acoes" ? dialogo.lancamento : null
+  const lancamentoEditando = dialogo?.tipo === "editar" ? dialogo.lancamento : null
+  const lancamentoExcluindo = dialogo?.tipo === "excluir" ? dialogo.lancamento : null
+  const lancamentoCancelando = dialogo?.tipo === "cancelarCompra" ? dialogo.lancamento : null
 
   return (
-    <div className="relative mx-auto flex min-h-svh max-w-2xl flex-col gap-6 px-4 py-8 pb-16 md:pb-8">
-      <header className="flex items-center justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-[19px] font-medium text-text-primary">Lancamentos</h1>
-          <p className="text-sm text-text-muted">
-            Fluxo de caixa de todas as contas: entradas e saidas reais do mes.
-          </p>
-        </div>
-      </header>
+    <div className="flex flex-col gap-4 md:gap-5">
+      <PageHeader
+        title="Lancamentos"
+        action={
+          <Button
+            type="button"
+            onClick={() => setDialogo({ tipo: "novo" })}
+            className="hidden h-auto gap-1.5 rounded-[9px] px-4 py-2.5 text-[13px] md:inline-flex"
+          >
+            <Plus className="size-3.5" strokeWidth={2} aria-hidden="true" />
+            Novo lancamento
+          </Button>
+        }
+      />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:gap-2.5">
         <NavegadorMes
           mesReferencia={mesReferencia}
-          onMesAnterior={handleMesAnterior}
-          onProximoMes={handleProximoMes}
+          onMesAnterior={() => setMesReferencia((atual) => somarMeses(atual, -1))}
+          onProximoMes={() => setMesReferencia((atual) => somarMeses(atual, 1))}
         />
-        {/* No mobile a acao de criar vive no FAB fixo (mesmo padrao do
-            mockup "04 Lancamentos"); no desktop o botao fica no topo, ao
-            lado do navegador de mes. */}
-        <Button type="button" onClick={handleAlternarNovo} className="hidden md:inline-flex">
-          {formulario?.modo === "criar" ? "Cancelar" : "Novo lancamento"}
-        </Button>
-      </div>
 
-      {/* Resumo do mes (mockup "04 Lancamentos": 3 cards Entradas/Saidas/
-          Saldo). Valores ja formatados no locale pt-BR (formatarMoeda) -
-          nenhum numero cru na tela. Soma vem de calcularResumoLancamentos
-          (lib/filtrarPeriodo.ts), respeitando `tipo` (regra-de-negocio.md
-          item 2, CRITICA) e ignorando toda linha TRANSFERENCIA (itens 3 e
-          12) - nao um calculo inline aqui. */}
-      <div className="grid grid-cols-3 gap-2.5">
-        <div className="flex flex-col gap-1 rounded-xl border border-border bg-card px-3 py-2.5">
-          <span className="text-[12px] text-positivo">Entradas</span>
-          <span className="text-[16px] font-medium text-text-primary">
-            {formatarMoeda(resumo.totalEntradas)}
-          </span>
-        </div>
-        <div className="flex flex-col gap-1 rounded-xl border border-border bg-card px-3 py-2.5">
-          <span className="text-[12px] text-negativo">Saidas</span>
-          <span className="text-[16px] font-medium text-text-primary">
-            {formatarMoeda(resumo.totalSaidas)}
-          </span>
-        </div>
-        <div className="flex flex-col gap-1 rounded-xl border border-border bg-card px-3 py-2.5">
-          <span className="text-[12px] text-text-muted">Saldo</span>
-          <span className="text-[16px] font-medium text-text-primary">
-            {formatarMoeda(resumo.saldo)}
-          </span>
-        </div>
-      </div>
-
-      <FiltroTipoLancamento valor={filtroTipo} onChange={setFiltroTipo} />
-
-      {/* Modal compartilhado (shared/ui/Modal.tsx) - mesmo shell de
-          overlay/dialog ja usado em CategoriasPage.tsx. Title reflete o tipo
-          selecionado no toggle (mockup nao cobre o caso Transferencia, mas
-          "Nova transferencia" segue a mesma linguagem de "Novo lancamento"). */}
-      {formulario?.modo === "criar" && (
-        <Modal
-          open
-          onClose={handleFecharFormulario}
-          title={formulario.tipo === "TRANSFERENCIA" ? "Nova transferencia" : "Novo lancamento"}
-        >
-          <div className="flex flex-col gap-3">
-            {/* Segmented control Lancamento/Transferencia - mesmo padrao ja
-                usado no toggle Recebivel/Emprestimo de
-                FormRegistrarContaReceber.tsx (dois Button com variant
-                condicional, sem componente de tabs novo). FormLancamento tem
-                seu proprio select de conta (banco/investimento); FormTransferencia
-                tem seus proprios selects de origem/destino - nenhum dos dois
-                depende de uma "conta em foco" desta pagina. */}
-            <div className="flex gap-2" role="group" aria-label="Tipo de novo registro">
-              <Button
-                type="button"
-                variant={formulario.tipo === "LANCAMENTO" ? "default" : "outline"}
-                onClick={() => handleTrocarTipoNovo("LANCAMENTO")}
-                className="flex-1"
-              >
-                Lancamento
-              </Button>
-              <Button
-                type="button"
-                variant={formulario.tipo === "TRANSFERENCIA" ? "default" : "outline"}
-                onClick={() => handleTrocarTipoNovo("TRANSFERENCIA")}
-                className="flex-1"
-              >
-                Transferencia
-              </Button>
+        {/* Mobile: tres cards Entradas/Saidas/Saldo (mockup mobile). */}
+        <div className="grid grid-cols-3 gap-2.5 md:hidden">
+          <div className="rounded-xl border-[0.5px] border-border bg-card p-3">
+            <div className="text-xs text-positivo">Entradas</div>
+            <div className="mt-1 text-base font-medium text-text-primary">
+              {formatarMoeda(resumo.totalEntradas)}
             </div>
-
-            {formulario.tipo === "LANCAMENTO" ? (
-              <FormLancamento onSalvar={handleFecharFormulario} />
-            ) : (
-              <FormTransferencia onSalvar={handleFecharFormulario} />
-            )}
           </div>
-        </Modal>
-      )}
+          <div className="rounded-xl border-[0.5px] border-border bg-card p-3">
+            <div className="text-xs text-negativo">Saidas</div>
+            <div className="mt-1 text-base font-medium text-text-primary">
+              {formatarMoeda(resumo.totalSaidas)}
+            </div>
+          </div>
+          <div className="rounded-xl border-[0.5px] border-border bg-card p-3">
+            <div className="text-xs text-text-muted">Saldo</div>
+            <div className="mt-1 text-base font-medium text-text-primary">
+              {formatarMoeda(resumo.saldo)}
+            </div>
+          </div>
+        </div>
 
-      {formulario?.modo === "editar" && (
-        <Modal open onClose={handleFecharFormulario} title="Editar lancamento">
-          <FormLancamento
-            lancamentoParaEditar={formulario.lancamento}
-            onSalvar={handleFecharFormulario}
-          />
-        </Modal>
+        <FiltroTipoLancamento valor={filtroTipo} onChange={setFiltroTipo} />
+
+        {/* Desktop: totais em linha, a direita (mockup s_lancamentos). */}
+        <div className="hidden gap-[18px] text-[13px] md:ml-auto md:flex">
+          <div>
+            <span className="text-positivo">Entradas </span>
+            <span className="text-text-primary">{formatarMoeda(resumo.totalEntradas)}</span>
+          </div>
+          <div>
+            <span className="text-negativo">Saidas </span>
+            <span className="text-text-primary">{formatarMoeda(resumo.totalSaidas)}</span>
+          </div>
+        </div>
+      </div>
+
+      {erroAcao && (
+        <Alert variant="destructive">
+          <AlertDescription>{erroAcao}</AlertDescription>
+        </Alert>
       )}
 
       {erroItens ? (
@@ -222,17 +220,44 @@ export function LancamentosPage() {
       ) : carregandoItens ? (
         <p className="text-sm text-text-muted">Carregando...</p>
       ) : gruposPorData.length > 0 ? (
-        <div className="flex flex-col gap-4">
-          {gruposPorData.map((grupo) => (
-            <div key={grupo.data} className="flex flex-col gap-2">
-              <span className="text-[12px] text-text-faint">{grupo.rotulo}</span>
-              <div className="flex flex-col gap-2.5">
+        <div className="md:overflow-hidden md:rounded-2xl md:border-[0.5px] md:border-border md:bg-card">
+          <div
+            className={cn(
+              "hidden border-b-[0.5px] border-border px-[22px] py-3.5 text-xs text-text-muted md:grid",
+              GRADE_COLUNAS_LANCAMENTO,
+            )}
+          >
+            <span>Descricao</span>
+            <span>Categoria</span>
+            <span>Data</span>
+            <span className="text-right">Valor</span>
+            <span />
+          </div>
+          <ul>
+            {gruposPorData.map((grupo) => (
+              <Fragment key={grupo.data}>
+                <li className="pt-3 pb-1.5 text-xs text-text-faint first:pt-0 md:hidden">
+                  {grupo.rotulo}
+                </li>
                 {grupo.itens.map((item) =>
                   item.tipoItem === "LANCAMENTO" ? (
                     <LancamentoItem
                       key={item.lancamento.id}
                       lancamento={item.lancamento}
-                      onEditar={handleEditar}
+                      categoria={
+                        item.lancamento.categoriaId
+                          ? (mapaCategorias[item.lancamento.categoriaId] ?? null)
+                          : null
+                      }
+                      podeCancelarCompra={contagemDa(item.lancamento).pendentes > 0}
+                      marcandoComoPago={marcandoComoPago}
+                      onEditar={(lancamento) => setDialogo({ tipo: "editar", lancamento })}
+                      onExcluir={(lancamento) => setDialogo({ tipo: "excluir", lancamento })}
+                      onCancelarCompra={(lancamento) =>
+                        setDialogo({ tipo: "cancelarCompra", lancamento })
+                      }
+                      onMarcarComoPago={handleMarcarComoPago}
+                      onAbrirAcoes={(lancamento) => setDialogo({ tipo: "acoes", lancamento })}
                     />
                   ) : (
                     <TransferenciaFluxoCaixaItem
@@ -241,23 +266,60 @@ export function LancamentosPage() {
                     />
                   ),
                 )}
-              </div>
-            </div>
-          ))}
+              </Fragment>
+            ))}
+          </ul>
         </div>
       ) : (
         <p className="text-sm text-text-muted">Nenhum lancamento neste mes.</p>
       )}
 
-      {/* FAB (mockup "04 Lancamentos", variante mobile) - so em telas < md,
-          onde nao ha espaco no header pro botao "Novo lancamento". */}
+      <BottomSheet open={dialogo?.tipo === "novo"} onClose={fechar} title="Novo lancamento">
+        <FormLancamento onSalvar={fechar} onCancelar={fechar} />
+      </BottomSheet>
+
+      <BottomSheet open={dialogo?.tipo === "transferencia"} onClose={fechar} title="Nova transferencia">
+        <FormTransferencia onSalvar={fechar} onCancelar={fechar} />
+      </BottomSheet>
+
+      <BottomSheet open={lancamentoEditando !== null} onClose={fechar} title="Editar lancamento">
+        {lancamentoEditando && (
+          <FormLancamento
+            lancamentoParaEditar={lancamentoEditando}
+            onSalvar={fechar}
+            onCancelar={fechar}
+          />
+        )}
+      </BottomSheet>
+
+      <AcoesLancamentoSheet
+        lancamento={lancamentoAcoes}
+        podeCancelarCompra={lancamentoAcoes !== null && contagemDa(lancamentoAcoes).pendentes > 0}
+        marcandoComoPago={marcandoComoPago}
+        onFechar={fechar}
+        onEditar={(lancamento) => setDialogo({ tipo: "editar", lancamento })}
+        onExcluir={(lancamento) => setDialogo({ tipo: "excluir", lancamento })}
+        onCancelarCompra={(lancamento) => setDialogo({ tipo: "cancelarCompra", lancamento })}
+        onMarcarComoPago={handleMarcarComoPago}
+        onIrParaOrigem={handleIrParaOrigem}
+      />
+
+      <ExcluirLancamentoDialog lancamento={lancamentoExcluindo} onFechar={fechar} />
+
+      <CancelarCompraParceladaDialog
+        lancamento={lancamentoCancelando}
+        contagem={lancamentoCancelando ? contagemDa(lancamentoCancelando) : SEM_PARCELAS}
+        onFechar={fechar}
+      />
+
+      {/* FAB mobile (mockup mobile): no desktop o botao fica no cabecalho. */}
       <button
         type="button"
-        onClick={handleAlternarNovo}
-        aria-label={formulario?.modo === "criar" ? "Cancelar novo lancamento" : "Novo lancamento"}
-        className="fixed right-5 bottom-20 flex size-13 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/35 md:hidden"
+        onClick={() => setDialogo({ tipo: "novo" })}
+        aria-label="Novo lancamento"
+        className="fixed right-5 bottom-24 z-10 flex size-13 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/35 md:hidden"
       >
-        <Plus className="size-5" strokeWidth={2} />
+        <Plus className="size-5" strokeWidth={2} aria-hidden="true" />
       </button>
     </div>
   )

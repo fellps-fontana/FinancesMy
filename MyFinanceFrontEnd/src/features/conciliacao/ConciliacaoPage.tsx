@@ -18,8 +18,8 @@ import {
   ehContaAPagar,
   ehPagoDoMes,
   resumirContasAbertas,
-  situacaoDoVencimento,
 } from "@/features/conciliacao/lib/situacaoDoVencimento"
+import { situacaoDoVencimento } from "@/shared/lib/situacaoDoVencimento"
 
 type Aba = "A_PAGAR" | "A_RECEBER" | "CONCILIADO"
 
@@ -123,10 +123,10 @@ export function ConciliacaoPage() {
     (aba === "CONCILIADO" && pagosDoMes.length === 0)
 
   return (
-    <div className="mx-auto flex min-h-svh max-w-4xl flex-col gap-5 px-5 py-8 md:px-10">
+    <div className="flex flex-col gap-4 md:gap-5">
       <PageHeader title="Conciliacao / contas a pagar" />
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-5">
         <SegmentedTabs options={ABAS} value={aba} onChange={setAba} ariaLabel="Visao de conciliacao" className="md:w-fit" />
         {aba !== "CONCILIADO" ? (
           <div className="flex justify-between rounded-[14px] border-[0.5px] border-border bg-card p-4 md:gap-[18px] md:rounded-none md:border-0 md:bg-transparent md:p-0">
@@ -154,7 +154,7 @@ export function ConciliacaoPage() {
       ) : carregando ? (
         <p className="text-sm text-text-muted">Carregando...</p>
       ) : (
-        <div className="overflow-hidden md:rounded-2xl md:border-[0.5px] md:border-border md:bg-card">
+        <div className="md:overflow-hidden md:rounded-2xl md:border-[0.5px] md:border-border md:bg-card">
           <div className="hidden grid-cols-[2.4fr_1fr_1fr_1fr_0.8fr] border-b-[0.5px] border-border px-[22px] py-3.5 md:grid">
             <span className="text-xs text-text-muted">Descricao</span>
             <span className="text-xs text-text-muted">{aba === "CONCILIADO" ? "Data" : "Vencimento"}</span>
@@ -163,7 +163,7 @@ export function ConciliacaoPage() {
             <span aria-hidden="true" />
           </div>
 
-          <ul className="flex flex-col gap-2.5 md:gap-0">
+          <ul className="flex flex-col gap-2.5 md:block">
             {aba === "A_PAGAR" ? (
               <>
                 {contasAPagar.map((lancamento) => {

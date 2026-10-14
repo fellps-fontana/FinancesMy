@@ -180,7 +180,7 @@ export function AppShell({ children }: AppShellProps) {
 
         {/* pb-24 da folga pra bottom tab bar fixa (< md) nao cobrir o fim do
             conteudo; sem efeito em >= md (bar so existe no mobile). */}
-        <main className="flex-1 px-4 pt-8 pb-24 md:px-10 md:py-8">
+        <main className="min-w-0 flex-1 px-4 pt-8 pb-24 md:px-10 md:py-8">
           <div className="mx-auto w-full">{children}</div>
         </main>
 

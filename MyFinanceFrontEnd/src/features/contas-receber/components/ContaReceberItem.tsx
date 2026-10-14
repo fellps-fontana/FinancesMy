@@ -3,11 +3,13 @@ import { formatarMoeda } from "@/shared/lib/formatarMoeda"
 import { cn } from "@/shared/lib/utils"
 import { Badge, type BadgeVariant } from "@/shared/ui/badge"
 import { IconTile } from "@/shared/ui/icon-tile"
-import { situacaoDoVencimento } from "@/features/conciliacao/lib/situacaoDoVencimento"
+import { descreverVencimento } from "@/features/contas-receber/lib/resumirContasReceber"
 import { formatarData } from "@/features/cartao/lib/formatarData"
-import type { ContaReceberResponse } from "@/features/contas-receber/types"
-
-type StatusContaReceber = "PENDENTE" | "PARCIAL" | "RECEBIDO"
+import {
+  STATUS_CONTA_RECEBER,
+  type ContaReceberResponse,
+  type StatusContaReceber,
+} from "@/features/contas-receber/types"
 
 // Grade unica da tabela desktop (mockup s_receber): descricao, vencimento,
 // progresso, valor total, status, Receber, acoes. Cabecalho e linhas dividem
@@ -19,10 +21,12 @@ const GRADE_DESKTOP = "md:grid md:grid-cols-[2fr_1fr_1.4fr_1fr_0.8fr_0.8fr_64px]
 // status do backend: e o vencimento de uma conta ainda em aberto, derivado da
 // data prevista e exibido como estado proprio (coral).
 const BADGE_POR_STATUS: Record<StatusContaReceber, { rotulo: string; variante: BadgeVariant }> = {
-  PENDENTE: { rotulo: "Pendente", variante: "pendente" },
-  PARCIAL: { rotulo: "Parcial", variante: "sugerido" },
-  RECEBIDO: { rotulo: "Recebido", variante: "pago" },
+  [STATUS_CONTA_RECEBER.PENDENTE]: { rotulo: "Pendente", variante: "pendente" },
+  [STATUS_CONTA_RECEBER.PARCIAL]: { rotulo: "Parcial", variante: "sugerido" },
+  [STATUS_CONTA_RECEBER.RECEBIDO]: { rotulo: "Recebido", variante: "pago" },
 }
+
+const BADGES_POR_STATUS_API: Record<string, { rotulo: string; variante: BadgeVariant } | undefined> = BADGE_POR_STATUS
 
 type ContaReceberItemProps = {
   contaReceber: ContaReceberResponse
@@ -93,12 +97,11 @@ export function ContaReceberItem({
   onAbrirAcoes,
   dicaEdicaoBloqueada,
 }: ContaReceberItemProps) {
-  const status = contaReceber.status as StatusContaReceber
-  const emAberto = status !== "RECEBIDO"
-  const vencimento = descreverVencimento(contaReceber, emAberto)
+  const emAberto = contaReceber.status !== STATUS_CONTA_RECEBER.RECEBIDO
+  const vencimento = descreverVencimento(contaReceber, formatarData)
   const badge: { rotulo: string; variante: BadgeVariant } = vencimento.atrasada
     ? { rotulo: "Atrasado", variante: "atrasado" }
-    : (BADGE_POR_STATUS[status] ?? { rotulo: contaReceber.status, variante: "manual" })
+    : (BADGES_POR_STATUS_API[contaReceber.status] ?? { rotulo: contaReceber.status, variante: "manual" })
   const emprestimo = contaReceber.tipo === "EMPRESTIMO"
   const Icone = emprestimo ? UserRound : Receipt
   const valorRecebido = contaReceber.valorTotal - contaReceber.saldoPendente
@@ -214,16 +217,4 @@ export function ContaReceberItem({
       </div>
     </div>
   )
-}
-
-type DescricaoVencimento = { rotulo: string; atrasada: boolean }
-
-// Vencimento relativo ("Venceu ha 2 dias") vem da funcao testavel de
-// conciliacao; conta ja recebida nao e cobrada de prazo, mostra a data.
-function descreverVencimento(conta: ContaReceberResponse, emAberto: boolean): DescricaoVencimento {
-  if (!conta.dataPrevista) return { rotulo: "Sem vencimento", atrasada: false }
-  if (!emAberto) return { rotulo: formatarData(conta.dataPrevista), atrasada: false }
-
-  const { situacao, rotulo } = situacaoDoVencimento(conta.dataPrevista)
-  return { rotulo, atrasada: situacao === "atrasado" }
 }
