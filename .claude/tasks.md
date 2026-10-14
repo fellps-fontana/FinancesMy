@@ -4317,7 +4317,7 @@ HISTORICO:
 
 ## TASK-238 — Back: FaturaCicloService fecha faturas futuras ao lancar compra parcelada (diagnostico)
 
-STATUS: PENDENTE
+STATUS: CONCLUIDA
 AGENT: killua
 DEPENDENCIAS:
 FLUXO: Correcao
@@ -4327,4 +4327,32 @@ CRITERIO DE ACEITE: 1) lancar parcela futura nao fecha a fatura aberta atual; 2)
 ARQUIVOS PERMITIDOS: definidos pelo killua no esqueleto.
 NAO FAZER: nao alterar regra sem confirmar com o usuario; nao editar .claude/tasks.md; nao commitar.
 RETORNO ESPERADO: diagnostico + esqueleto/contrato para TDD.
+HISTORICO: 2026-10-14. Diagnostico killua (bug + 2 extras: duplicata de ciclo no dia do fechamento e compra de hoje caindo na ultima aberta). Decisoes do usuario: status FUTURA (FUTURA->ABERTA->FECHADA->PAGA, uma ABERTA), fechamento automatico pelo calendario (preguicoso), dia de fechamento inclusivo, retroativa em FECHADA entra, em PAGA encerrada rejeita, PAGA nao encerrada reabre, assinatura propaga ABERTA+FUTURA, FUTURA pagavel, dashboard so ABERTA/FECHADA, migration de dados. Kira gravou regra (item 12 "Ciclo e status da fatura") e esqueleto; mike RED 45 testes; levi GREEN (FaturaCicloPolitica, resolver por ciclo, reconciliacao, migration ReclassificarStatusFaturaPorCalendario); mike ajustou 2 testes desatualizados; hanzo front (badge FUTURA, selecionarFaturaAtual, dashboard). Style rodada 1 PRECISA CORRIGIR (ALTA: parcela em fatura PAGA posterior elegivel a antecipacao; baixas: campo morto, nomes "aberta", ciclo opcional no controller) -> mike RED 5 testes -> levi -> style rodada 2 APROVADO. Suite 1157/1157. Migration ensaiada (rollback, idempotente) e aplicada no banco de preview.
+
+## TASK-239 — Back: revalidar fatura ao editar dia_referencia da assinatura de cartao
+
+STATUS: PENDENTE
+AGENT: killua
+DEPENDENCIAS: TASK-238
+FLUXO: Correcao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 12 "Ciclo e status da fatura" e assinatura de cartao), MyFinances/MyFinances/Services/AssinaturaCartaoService.cs
+ESCOPO: AssinaturaCartaoService.EditarAsync recalcula a data da compra vinculada quando dia_referencia muda, mas nao move a compra de fatura quando a nova data cruza o fechamento; a regra diz "a fatura e revalidada". Lacuna pre-existente apontada pelo style na TASK-238. Regra critica: killua -> mike RED -> levi -> style.
+CRITERIO DE ACEITE: 1) nova data fora do ciclo move a compra para a fatura do ciclo correto (ABERTA/FUTURA); 2) FECHADA/PAGA nunca alteradas; 3) suite verde.
+ARQUIVOS PERMITIDOS: definidos pelo killua.
+NAO FAZER: nao editar .claude/tasks.md; nao commitar.
+RETORNO ESPERADO: desenho + esqueleto para TDD.
+HISTORICO:
+
+## TASK-240 — Back: indice unico (conta_id, data_fechamento) em fatura
+
+STATUS: PENDENTE
+AGENT: killua
+DEPENDENCIAS: TASK-238
+FLUXO: Melhoria
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (item 12 "Ciclo e status da fatura"), configuracao EF da entidade Fatura
+ESCOPO: Garantir no banco que nao existam duas faturas do mesmo ciclo (corrida entre lancamentos simultaneos), com migration de indice unico e tratamento de conflito no FaturaCicloService.
+CRITERIO DE ACEITE: 1) indice unico criado; 2) criacao concorrente reaproveita a fatura existente; 3) suite verde.
+ARQUIVOS PERMITIDOS: definidos pelo killua.
+NAO FAZER: nao editar .claude/tasks.md; nao commitar.
+RETORNO ESPERADO: desenho + esqueleto.
 HISTORICO:
