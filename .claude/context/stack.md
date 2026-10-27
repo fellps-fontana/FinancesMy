@@ -91,6 +91,13 @@ primeiro nivel do backend — nao e arbitraria, e o registro que faltava.
   fetch solto no componente.
 - Componentes pequenos e por feature, espelhando os modulos do app.
 - Identidade visual: ver `context/identidade-visual.md` quando existir.
+- Testes: vitest, em ambiente `node` (sem jsdom e sem testing-library), para
+  funcoes puras de `lib/` (decisao de 2026-10-26). O teste fica ao lado do
+  arquivo testado, como `<nome>.test.ts`, com imports explicitos de `vitest`
+  (`describe`, `it`, `expect`; sem globals). Comando: `npm test` (`vitest
+  run`), a partir de `MyFinanceFrontEnd/`. Config em
+  `MyFinanceFrontEnd/vitest.config.ts`. Componente e hook (que exigem render)
+  ficam fora desse escopo.
 
 ### Estrutura de pastas (src/)
 
