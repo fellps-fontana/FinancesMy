@@ -6,7 +6,7 @@ import { registerContasFixasTools } from "./tools/contasFixas.js";
 import { registerContasReceberTools } from "./tools/contasReceber.js";
 import { registerCartaoTools } from "./tools/cartao.js";
 import { registerAssinaturasCartaoTools } from "./tools/assinaturasCartao.js";
-import { registerLimitesGastoTools } from "./tools/limitesGasto.js";
+import { registerPlanejamentoMensalTools } from "./tools/planejamentoMensal.js";
 import { registerDashboardTools } from "./tools/dashboard.js";
 import { registerAtivosTools } from "./tools/ativos.js";
 import { registerTransferenciasTools } from "./tools/transferencias.js";
@@ -26,7 +26,7 @@ export function buildServer(): McpServer {
   registerContasReceberTools(server);
   registerCartaoTools(server);
   registerAssinaturasCartaoTools(server);
-  registerLimitesGastoTools(server);
+  registerPlanejamentoMensalTools(server);
   registerDashboardTools(server);
   registerAtivosTools(server);
   registerTransferenciasTools(server);

@@ -1,4 +1,3 @@
-import { ApiError } from "@/shared/api/client"
 import { cn } from "@/shared/lib/utils"
 import { useGastoVsLimite } from "@/features/limite-gasto/hooks/useGastoVsLimite"
 import { obterEstadoLimite } from "@/features/limite-gasto/lib/estadoLimite"
@@ -9,40 +8,35 @@ type AvisoLimiteGastoProps = {
   mes: number
 }
 
-// Mensagem por nivel (regra-de-negocio.md item 14, "Onde aparece": "Tela de
-// lancamento: aviso ao selecionar/criar lancamento numa categoria perto ou
-// acima do limite"). Cor segue identidade-visual.md: alerta = atencao,
+// Mensagem por nivel (regra-de-negocio.md item 14: aviso ao selecionar/criar
+// lancamento numa categoria perto ou acima do sublimite). Cor segue
+// identidade-visual.md, em chip com fundo: alerta = atencao,
 // negativo = estado ja estourado - nunca bloqueia nada, so informa.
 const MENSAGEM_POR_NIVEL = {
   perto: {
-    texto: "Voce esta perto do limite desta categoria",
-    className: "text-alerta",
+    texto: "Voce esta perto do sublimite desta categoria",
+    className: "bg-alerta/15 text-alerta",
   },
   estourado: {
-    texto: "Limite desta categoria ja foi ultrapassado",
-    className: "text-negativo",
+    texto: "Sublimite desta categoria ja foi ultrapassado",
+    className: "bg-negativo/15 text-negativo",
   },
 } as const
 
-// Componente de apresentacao, standalone (ainda nao ha form de lancamento
-// manual construido - ver features/lancamentos/.gitkeep). So exibe, nunca
-// desabilita ou bloqueia submit: item 14 e explicito que o efeito do limite
-// e SOMENTE alerta visual. `useGastoVsLimite` ja trata `enabled:
-// Boolean(categoriaId)` internamente; passamos "" quando a categoria ainda
-// nao foi selecionada so pra satisfazer a assinatura (string, nao
-// string | undefined) sem alterar o hook (fora do escopo desta task).
+// Componente de apresentacao, standalone. So exibe, nunca desabilita ou
+// bloqueia submit: item 14 e explicito que o efeito do sublimite e SOMENTE
+// alerta visual. `categoriaId` ausente vira "" so pra satisfazer a assinatura
+// do hook (string, nao string | undefined); sem categoria nao ha sublimite
+// correspondente e nada e exibido.
 export function AvisoLimiteGasto({ categoriaId, ano, mes }: AvisoLimiteGastoProps) {
-  const { data, error } = useGastoVsLimite(categoriaId ?? "", ano, mes)
+  const { data } = useGastoVsLimite(categoriaId ?? "", ano, mes)
 
-  // Categoria sem limite cadastrado responde 404 - nao e erro pro usuario,
-  // so significa que nao ha limite definido pra essa categoria (regra-de-
-  // negocio.md item 14: limite_gasto e 1:1 com categoria, opcional). Qualquer
-  // outro erro tambem nao vira mensagem aqui: um aviso que falha em carregar
-  // nao pode virar ruido de erro numa tela de lancamento, so ausencia de
-  // aviso.
-  const categoriaSemLimite = error instanceof ApiError && error.status === 404
-
-  if (!data || categoriaSemLimite) {
+  // `ano`/`mes` sao os da DATA do lancamento (derivados no formulario), nao
+  // o mes atual: o sublimite vem do plano daquele mes (item 20). Sem plano
+  // ou sem sublimite na categoria, `data` e null e nao ha aviso. Falha de
+  // carga tambem nao vira mensagem: um aviso que falha em carregar nao pode
+  // virar ruido de erro numa tela de lancamento, so ausencia de aviso.
+  if (!data) {
     return null
   }
 
@@ -55,7 +49,7 @@ export function AvisoLimiteGasto({ categoriaId, ano, mes }: AvisoLimiteGastoProp
   const { texto, className } = MENSAGEM_POR_NIVEL[nivel]
 
   return (
-    <p role="status" className={cn("text-[13px] font-medium", className)}>
+    <p role="status" className={cn("w-fit rounded-[5px] px-2 py-0.5 text-[13px] font-medium", className)}>
       {texto}
     </p>
   )

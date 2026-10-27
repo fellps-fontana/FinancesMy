@@ -9,16 +9,12 @@ import { CLASSE_BOTAO_CANCELAR, CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO } from "@/sh
 import { useCriarCategoria } from "@/features/categorias/hooks/useCriarCategoria"
 import { useEditarCategoria } from "@/features/categorias/hooks/useEditarCategoria"
 import { useCategorias } from "@/features/categorias/hooks/useCategorias"
-import { CampoLimiteGasto } from "@/features/categorias/components/CampoLimiteGasto"
-import { useDefinirLimiteGasto } from "@/features/limite-gasto/hooks/useDefinirLimiteGasto"
-import { useRemoverLimiteGasto } from "@/features/limite-gasto/hooks/useRemoverLimiteGasto"
 import {
   filtrarOpcoesDeCategoriaPai,
   validarCategoria,
 } from "@/features/categorias/lib/validarCategoria"
 import { CATALOGO_ICONES } from "@/shared/lib/catalogoIcones"
 import type { CategoriaResponse, TipoCategoria } from "@/features/categorias/types"
-import type { LimiteGastoResponse } from "@/features/limite-gasto/types"
 
 type FormCategoriaProps = {
   // Presenca de `categoriaParaEditar` define o modo do formulario: ausente ->
@@ -28,22 +24,8 @@ type FormCategoriaProps = {
   // o campo continua exibido em modo edicao so para dar contexto, mas
   // desabilitado e nunca reenviado no payload.
   categoriaParaEditar?: CategoriaResponse
-  // Limite ja gravado da categoria em edicao (regra-de-negocio.md item 14),
-  // vindo do estado de servidor da pagina; null/ausente = sem limite.
-  limiteAtual?: LimiteGastoResponse | null
   onSalvar?: () => void
   onCancelar?: () => void
-}
-
-const MENSAGEM_LIMITE_INVALIDO = "Informe um limite maior que zero ou deixe em branco."
-
-// Converte o texto digitado ("1.850,50" nao e aceito; "1850,50" e "1850.50"
-// sim) em numero. Vazio = sem limite (null); invalido ou <= 0 = undefined.
-function interpretarLimite(texto: string): number | null | undefined {
-  const limpo = texto.trim()
-  if (limpo === "") return null
-  const numero = Number(limpo.replace(",", "."))
-  return Number.isFinite(numero) && numero > 0 ? numero : undefined
 }
 
 function mensagemDeErro(error: unknown, padrao: string): string {
@@ -59,7 +41,6 @@ const OPCOES_TIPO: ReadonlyArray<{ valor: TipoCategoria; rotulo: string }> = [
 
 export function FormCategoria({
   categoriaParaEditar,
-  limiteAtual,
   onSalvar,
   onCancelar,
 }: FormCategoriaProps) {
@@ -73,21 +54,11 @@ export function FormCategoria({
   // sem icone escolhido fica `undefined`, sem quebra (backend ja trata como
   // nullable, ver types.ts).
   const [icone, setIcone] = useState<string | undefined>(categoriaParaEditar?.icone)
-  const [limiteTexto, setLimiteTexto] = useState(
-    limiteAtual ? String(limiteAtual.valorLimite).replace(".", ",") : "",
-  )
-  const [temLimite, setTemLimite] = useState(limiteAtual != null)
-  // Id da categoria ja gravada nesta sessao do form. Se o limite falhar depois
-  // de a categoria salvar (falha parcial), o retry reaproveita o id em vez de
-  // criar uma segunda categoria.
-  const [idSalvo, setIdSalvo] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [erroFormulario, setErroFormulario] = useState<string | null>(null)
 
   const { mutateAsync: criarCategoria } = useCriarCategoria()
   const { mutateAsync: editarCategoria } = useEditarCategoria()
-  const { mutateAsync: definirLimite } = useDefinirLimiteGasto()
-  const { mutateAsync: removerLimite, isPending: removendoLimite } = useRemoverLimiteGasto()
 
   // Lista de categorias ativas do tipo selecionado, para oferecer como
   // categoria-pai. Em modo edicao `tipo` fica travado no tipo original.
@@ -102,37 +73,20 @@ export function FormCategoria({
   }
 
   const opcoesDeCategoriaPai = useMemo(
-    () => filtrarOpcoesDeCategoriaPai(categoriasDoTipo, idSalvo ?? categoriaParaEditar?.id),
-    [categoriasDoTipo, categoriaParaEditar, idSalvo],
+    () => filtrarOpcoesDeCategoriaPai(categoriasDoTipo, categoriaParaEditar?.id),
+    [categoriasDoTipo, categoriaParaEditar],
   )
 
-  const ocupado = salvando || removendoLimite
-  // Limite so existe para DESPESA (regra-de-negocio.md item 14).
-  const aceitaLimite = tipo === "Despesa"
-  const tipoTravado = modoEdicao || idSalvo !== null
+  const ocupado = salvando
+  const tipoTravado = modoEdicao
 
   function handleTrocarTipo(novoTipo: TipoCategoria) {
-    // Tipo e imutavel apos a criacao (item 7); tambem trava depois da
-    // categoria ja ter sido gravada numa falha parcial.
+    // Tipo e imutavel apos a criacao (item 7).
     if (tipoTravado) return
     setTipo(novoTipo)
     // Categoria-pai valida depende do tipo.
     setParentId("")
     setErroFormulario(null)
-  }
-
-  async function handleRemoverLimite() {
-    const id = idSalvo ?? categoriaParaEditar?.id
-    if (!id) return
-    setErroFormulario(null)
-    try {
-      await removerLimite(id)
-      setTemLimite(false)
-      setLimiteTexto("")
-    } catch (error) {
-      console.error("Falha ao remover limite de gasto", error)
-      setErroFormulario(mensagemDeErro(error, "Nao foi possivel remover o limite. Tente novamente."))
-    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -144,53 +98,27 @@ export function FormCategoria({
       return
     }
 
-    const limite = aceitaLimite ? interpretarLimite(limiteTexto) : null
-    if (limite === undefined) {
-      setErroFormulario(MENSAGEM_LIMITE_INVALIDO)
-      return
-    }
-
     setErroFormulario(null)
     setSalvando(true)
 
-    // Passo 1: categoria (criar, ou editar - inclusive o retry apos falha
-    // parcial). O request de edicao nunca leva `tipo` (item 7).
-    let id = idSalvo ?? categoriaParaEditar?.id ?? null
+    // Criar ou editar. O request de edicao nunca leva `tipo` (item 7).
     try {
-      if (id) {
+      if (categoriaParaEditar) {
         await editarCategoria({
-          id,
+          id: categoriaParaEditar.id,
           request: { nome: nome.trim(), parentId: parentId || undefined, icone },
         })
       } else {
-        const criada = await criarCategoria({
+        await criarCategoria({
           nome: nome.trim(),
           tipo,
           parentId: parentId || undefined,
           icone,
         })
-        id = criada.id
-        setIdSalvo(criada.id)
       }
     } catch (error) {
       console.error("Falha ao salvar categoria", error)
       setErroFormulario(mensagemDeErro(error, "Nao foi possivel salvar a categoria. Tente novamente."))
-      setSalvando(false)
-      return
-    }
-
-    // Passo 2: limite (so despesa). Campo vazio com limite gravado = remover.
-    try {
-      if (limite !== null) {
-        await definirLimite({ categoriaId: id, valorLimite: limite })
-      } else if (temLimite) {
-        await removerLimite(id)
-      }
-    } catch (error) {
-      console.error("Falha ao gravar limite de gasto", error)
-      setErroFormulario(
-        `A categoria foi salva, mas o limite nao: ${mensagemDeErro(error, "tente novamente")}. Salve de novo para repetir so o limite.`,
-      )
       setSalvando(false)
       return
     }
@@ -301,17 +229,6 @@ export function FormCategoria({
           </span>
         )}
       </div>
-
-      {aceitaLimite && (
-        <CampoLimiteGasto
-          valor={limiteTexto}
-          onChange={setLimiteTexto}
-          temLimite={temLimite && tipoTravado}
-          onRemover={handleRemoverLimite}
-          removendo={removendoLimite}
-          disabled={salvando}
-        />
-      )}
 
       <div className="mt-1.5 flex justify-end gap-2.5">
         <Button

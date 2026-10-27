@@ -170,11 +170,35 @@ Table recebivel_recorrente {
   ativa boolean [not null, default: true, note: 'desativar hard-deleta as ocorrencias conta_receber ainda PENDENTE; reativar regenera (item 15)']
 }
 
-Table limite_gasto {
+// Planejamento mensal (item 20). Um plano por mes calendario: (ano, mes) unico.
+// App single-user: sem usuario_id. Guarda SO o que o usuario define; fixas,
+// investimento, sobra, valores em R$ dos sublimites, nao_alocado e gasto sao
+// calculados a cada consulta, nunca gravados.
+Table plano_mensal {
   id uuid [pk]
-  categoria_id uuid [ref: > categoria.id, not null]
-  valor_limite decimal [not null]
-  periodo varchar [not null, default: 'MENSAL']
+  ano int [not null]
+  mes int [not null, note: '1-12']
+  renda_prevista decimal [not null, note: '>= 0; nasce pre-preenchida com a soma das ocorrencias dos recebiveis recorrentes ativos do mes (item 15); depois de criado o plano nao acompanha os recebiveis']
+  percentual_investimento decimal [not null, note: '0-100; copiado do plano mais recente anterior ao nascer; 0 se nao houver anterior']
+
+  indexes {
+    (ano, mes) [unique, name: 'IX_plano_mensal_ano_mes']
+  }
+}
+
+// Sublimite (item 14): limite de gasto de uma categoria DESPESA nao arquivada
+// dentro de um plano, em percentual. Categoria de primeiro nivel: percentual da
+// sobra. Subcategoria: percentual do sublimite do pai (exige sublimite do pai no
+// mesmo plano). Substitui a antiga tabela limite_gasto (removida; dados descartados).
+Table plano_mensal_sublimite {
+  id uuid [pk]
+  plano_mensal_id uuid [ref: > plano_mensal.id, not null, note: 'on delete cascade']
+  categoria_id uuid [ref: > categoria.id, not null, note: 'on delete restrict; categoria DESPESA nao arquivada']
+  percentual decimal [not null, note: '0-100']
+
+  indexes {
+    (plano_mensal_id, categoria_id) [unique, name: 'IX_plano_mensal_sublimite_plano_categoria']
+  }
 }
 
 // Assinatura de Cartao (item 16). MOLDE de compra recorrente vinculado exclusivamente

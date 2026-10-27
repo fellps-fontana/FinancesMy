@@ -23,6 +23,8 @@ export type RelatorioGastoPorCategoriaResponse = {
 export type LimiteRelatorio = {
   valorLimite: number
   gastoRealizado: number
+  // Calculado pelo back; o front nao recalcula estouro.
+  estourado: boolean
 }
 
 export type ContaTipoRelatorio = "BANCO" | "CARTAO" | "INVESTIMENTO"

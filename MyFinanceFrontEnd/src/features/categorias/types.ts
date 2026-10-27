@@ -7,9 +7,8 @@
 // TipoCategoria (Domain/TipoCategoria.cs) tem membros "Despesa"/"Receita" e
 // serializa em PascalCase — NAO em caixa alta ("DESPESA"/"RECEITA"), apesar
 // do valor de storage no banco usar caixa alta internamente
-// (TipoCategoriaExtensions.ToStorageValue). Quem consumir esse tipo em
-// CampoLimiteGasto.tsx (que espera caixa alta) precisa converter — conversao
-// fica fora do escopo desta camada de dados.
+// (TipoCategoriaExtensions.ToStorageValue). Quem precisar da caixa alta
+// converte fora desta camada de dados.
 export type TipoCategoria = "Despesa" | "Receita"
 
 // `icone` (adicionado na TASK-137, backend): id de um icone do catalogo fixo

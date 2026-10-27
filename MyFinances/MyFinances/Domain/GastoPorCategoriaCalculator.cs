@@ -2,7 +2,6 @@ namespace MyFinances.Domain;
 
 // Item 19. Funcao pura. Calcular (lista) e LancamentosDaLinha (detalhe) compartilham
 // FiltrarElegiveis e ResolverRaiz, entao soma(detalhe) == valor da linha.
-// NAO reutiliza LimiteGastoCalculator (ele nao filtra transferencia nem status).
 public static class GastoPorCategoriaCalculator
 {
     public const string NomeSemCategoria = "Sem categoria";

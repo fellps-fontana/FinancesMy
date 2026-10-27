@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { reativarAssinaturaCartao } from "@/features/assinaturas-cartao/api"
 import { assinaturasCartaoKeys } from "@/features/assinaturas-cartao/query-keys"
+import { planejamentoMensalKeys } from "@/features/planejamento-mensal/query-keys"
 
 export function useReativarAssinaturaCartao() {
   const queryClient = useQueryClient()
@@ -10,6 +11,7 @@ export function useReativarAssinaturaCartao() {
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: assinaturasCartaoKeys.all })
       queryClient.invalidateQueries({ queryKey: assinaturasCartaoKeys.porId(id) })
+      queryClient.invalidateQueries({ queryKey: planejamentoMensalKeys.all })
     },
   })
 }

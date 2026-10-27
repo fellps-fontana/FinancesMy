@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { editarAssinaturaCartao } from "@/features/assinaturas-cartao/api"
 import { assinaturasCartaoKeys } from "@/features/assinaturas-cartao/query-keys"
 import type { EditarAssinaturaCartaoRequest } from "@/features/assinaturas-cartao/types"
+import { planejamentoMensalKeys } from "@/features/planejamento-mensal/query-keys"
 
 type EditarAssinaturaCartaoVariables = {
   id: string
@@ -20,6 +21,7 @@ export function useEditarAssinaturaCartao() {
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: assinaturasCartaoKeys.all })
       queryClient.invalidateQueries({ queryKey: assinaturasCartaoKeys.porId(id) })
+      queryClient.invalidateQueries({ queryKey: planejamentoMensalKeys.all })
     },
   })
 }

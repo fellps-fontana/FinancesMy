@@ -24,9 +24,10 @@ export function larguraDaBarra(percentual: number): number {
   return Math.min(100, Math.max(0, percentual))
 }
 
-// Razao entre gasto e limite para a barra do limite (0-100+, a barra clampa).
-// Geometria de exibicao: gasto e limite continuam sendo os valores do backend.
-export function larguraDoLimite(gastoRealizado: number, valorLimite: number): number {
+// Largura (0-100) da barra do limite. Estourado (flag do backend) => cheia,
+// inclusive limite R$ 0; senao e so a proporcao visual gasto/limite.
+export function larguraDoLimite(gastoRealizado: number, valorLimite: number, estourado: boolean): number {
+  if (estourado) return 100
   return valorLimite > 0 ? (gastoRealizado / valorLimite) * 100 : 0
 }
 

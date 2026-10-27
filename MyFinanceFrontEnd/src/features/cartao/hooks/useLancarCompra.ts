@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { criarCompra, criarCompraParcelada } from "@/features/cartao/api"
 import { cartaoKeys } from "@/features/cartao/query-keys"
 import type { CompraParceladaResponse, CompraResponse, CriarCompraRequest } from "@/features/cartao/types"
+import { planejamentoMensalKeys } from "@/features/planejamento-mensal/query-keys"
 
 type LancarCompraVariaveis = {
   contaId: string
@@ -51,6 +52,7 @@ export function useLancarCompra() {
       queryClient.invalidateQueries({ queryKey: cartaoKeys.saldo(variaveis.contaId) })
       queryClient.invalidateQueries({ queryKey: cartaoKeys.faturas(variaveis.contaId) })
       queryClient.invalidateQueries({ queryKey: cartaoKeys.comprasDaConta(variaveis.contaId) })
+      queryClient.invalidateQueries({ queryKey: planejamentoMensalKeys.all })
     },
   })
 }

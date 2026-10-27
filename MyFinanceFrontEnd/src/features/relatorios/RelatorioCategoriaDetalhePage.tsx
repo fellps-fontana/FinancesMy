@@ -5,7 +5,7 @@ import { formatarMoeda } from "@/shared/lib/formatarMoeda"
 import { useRelatorioCategoriaDetalhe } from "@/features/relatorios/hooks/useRelatorioCategoriaDetalhe"
 import { rotuloMes } from "@/features/relatorios/lib/navegarMes"
 import { CHAVE_SEM_CATEGORIA, larguraDoLimite } from "@/features/relatorios/lib/fatiasRelatorio"
-import { formatarPercentualRelatorio, limiteEstourado } from "@/features/relatorios/lib/regrasRelatorio"
+import { formatarPercentualRelatorio } from "@/features/relatorios/lib/regrasRelatorio"
 import {
   GRADE_COLUNAS_LANCAMENTO_RELATORIO,
   LancamentoRelatorioItem,
@@ -67,14 +67,14 @@ export function RelatorioCategoriaDetalhePage() {
             {data.limite ? (
               <div className="min-w-0">
                 <div className="mb-1.5 flex justify-between gap-2 text-xs text-text-muted">
-                  <span>Limite de gasto</span>
+                  <span>Sublimite (gasto variavel)</span>
                   <span className="whitespace-nowrap">
                     {formatarMoeda(data.limite.gastoRealizado)} de {formatarMoeda(data.limite.valorLimite)}
                   </span>
                 </div>
                 <ProgressBar
-                  percent={larguraDoLimite(data.limite.gastoRealizado, data.limite.valorLimite)}
-                  exceeded={limiteEstourado(data.limite.gastoRealizado, data.limite.valorLimite)}
+                  percent={larguraDoLimite(data.limite.gastoRealizado, data.limite.valorLimite, data.limite.estourado)}
+                  exceeded={data.limite.estourado}
                 />
               </div>
             ) : null}

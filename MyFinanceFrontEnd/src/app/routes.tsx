@@ -1,11 +1,11 @@
-import { Navigate, Route, Routes } from "react-router-dom"
+import { Navigate, Route, Routes, useLocation } from "react-router-dom"
 import { LoginPage } from "@/features/auth/LoginPage"
 import { DashboardPage } from "@/features/dashboard/DashboardPage"
 import { AuthenticatedLayout } from "@/app/AuthenticatedLayout"
 import { ListaAtivosPage } from "@/features/investimentos/ListaAtivosPage"
 import { ContasPage } from "@/features/contas/ContasPage"
 import { ContaCartaoPage } from "@/features/cartao/ContaCartaoPage"
-import { ComparativoLimiteGastoPage } from "@/features/limite-gasto/ComparativoLimiteGastoPage"
+import { PlanejamentoMensalPage } from "@/features/planejamento-mensal/PlanejamentoMensalPage"
 import { ListaContasReceber } from "@/features/contas-receber/ListaContasReceber"
 import { ListaContasFixas } from "@/features/contas-fixas/ListaContasFixas"
 import { ListaRecebiveisRecorrentes } from "@/features/recebiveis-recorrentes/ListaRecebiveisRecorrentes"
@@ -17,6 +17,11 @@ import { ConciliacaoPage } from "@/features/conciliacao/ConciliacaoPage"
 import { RelatorioCategoriaPage } from "@/features/relatorios/RelatorioCategoriaPage"
 import { RelatorioCategoriaDetalhePage } from "@/features/relatorios/RelatorioCategoriaDetalhePage"
 
+function RedirecionarParaPlanejamento() {
+  const location = useLocation()
+  return <Navigate to={{ pathname: "/planejamento", search: location.search }} replace />
+}
+
 export function AppRoutes() {
   return (
     <Routes>
@@ -27,7 +32,8 @@ export function AppRoutes() {
         <Route path="/investimentos" element={<ListaAtivosPage />} />
         <Route path="/contas" element={<ContasPage />} />
         <Route path="/cartao" element={<ContaCartaoPage />} />
-        <Route path="/limites-gasto" element={<ComparativoLimiteGastoPage />} />
+        <Route path="/limites-gasto" element={<RedirecionarParaPlanejamento />} />
+        <Route path="/planejamento" element={<PlanejamentoMensalPage />} />
         <Route path="/contas-receber" element={<ListaContasReceber />} />
         <Route path="/contas-fixas" element={<ListaContasFixas />} />
         <Route path="/recebiveis-recorrentes" element={<ListaRecebiveisRecorrentes />} />

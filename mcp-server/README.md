@@ -149,10 +149,30 @@ configuradas no `.env` de quem sobe o servidor.
   `estornar_compra_parcelada`, `listar_faturas`, `obter_fatura`,
   `pagar_fatura`, `criar_estorno_fatura`
 
-### Limites de gasto
+### Planejamento mensal
 
-- `listar_limites_gasto`, `definir_limite_gasto`, `remover_limite_gasto`,
-  `gasto_vs_limite`
+- `obter_planejamento_mensal` - mostra renda, fixas, investimento, sobra,
+  sublimites e o gasto variavel do mes por categoria de despesa (inclusive as
+  sem sublimite, com nome e hierarquia pai > subcategoria).
+- `salvar_planejamento_mensal` - o conjunto de sublimites enviado substitui o
+  atual. Investimento e cada sublimite aceitam `%` OU `R$`, exatamente um dos
+  dois por campo: `percentualInvestimento` / `valorInvestimento` e
+  `percentual` / `valor`. Valor em R$ e convertido para `%` antes de ir ao
+  `PUT` (investimento sobre a renda prevista; sublimite de primeiro nivel sobre
+  a sobra do mes; subcategoria sobre o R$ do sublimite do pai no mesmo envio).
+  Sublimites com `0%` ou `R$ 0` nao sao enviados. Cada categoria pode aparecer
+  so uma vez no envio (duplicata e erro, em `%` ou em R$). Se algum sublimite
+  vier em R$, a tool faz um GET previo do plano para obter as fixas. Esse GET
+  pode criar o plano do mes corrente ou futuro (geracao sob demanda da primeira
+  consulta); o PUT logo depois substitui todos os campos, entao o resultado
+  final e o mesmo. Mes passado sem plano e erro. Subcategoria em R$ exige que o
+  pai tenha sublimite > 0 no mesmo envio, senao e erro.
+- `copiar_planejamento_mensal` (`anoOrigem`, `mesOrigem`, `anoDestino`,
+  `mesDestino`, `copiarRenda?` padrao false) - copia percentual de investimento
+  e sublimites do mes de origem para o de destino (sobrescreve o destino).
+  Categorias arquivadas nao sao copiadas e subcategoria so entra se o pai
+  tambem entrou. A renda do destino e mantida, a menos que `copiarRenda` seja
+  true. Origem sem plano e erro; origem e destino iguais e erro.
 
 ### Dashboard
 

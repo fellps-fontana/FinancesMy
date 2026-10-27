@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { criarContaFixa } from "@/features/contas-fixas/api"
 import { contasFixasKeys } from "@/features/contas-fixas/query-keys"
 import type { CriarContaFixaRequest } from "@/features/contas-fixas/types"
+import { planejamentoMensalKeys } from "@/features/planejamento-mensal/query-keys"
 
 // Criar uma ContaFixa gera o Lancamento do mes vigente (regra-de-negocio.md
 // item 6), o que muda o que a lista exibe - invalida so a lista, o registro
@@ -13,6 +14,7 @@ export function useCriarContaFixa() {
     mutationFn: (request: CriarContaFixaRequest) => criarContaFixa(request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: contasFixasKeys.lista() })
+      queryClient.invalidateQueries({ queryKey: planejamentoMensalKeys.all })
     },
   })
 }

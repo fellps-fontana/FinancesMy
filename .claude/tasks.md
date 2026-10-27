@@ -4370,3 +4370,427 @@ ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/OcorrenciaContaFixaPolitica.cs
 NAO FAZER: mudar o criterio do cartao (FECHADA continua apagavel).
 RETORNO ESPERADO: politica + testes.
 HISTORICO: 2026-10-14. Decisoes do usuario: SUGERIDO = nao confirmado; FECHADA no cartao continua apagavel. killua achou que apagar pendentes ja estava implementado e que restava so o Sugerido; mike 13 testes; levi OcorrenciaContaFixaPolitica substituindo os privados do RecorrenciaGeradorService. Style APROVADO. Regra item 6 atualizada; percentual do relatorio (item 19) e validacao da edicao de conta a receber (item 13) confirmados na mesma rodada.
+
+# Bloco Planejamento mensal + sublimite (itens 20, 14 e 19 — confirmados em 2026-10-13) — TASK-242..264
+
+## TASK-242 — Modelagem e Esqueleto: Planejamento mensal + sublimite por categoria
+
+STATUS: CONCLUIDA
+AGENT: killua
+DEPENDENCIAS:
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md (itens 20, 14, 19 + dependencias 6, 7, 12, 13, 15, 16, 17); .claude/context/schema.dbml; .claude/context/stack.md; .claude/context/clean-code.md; .claude/context/identidade-visual.md; docs/limite-gasto.md; docs/projecao-do-mes.md; docs/recebivel-recorrente.md
+ESCOPO: Modelar o planejamento mensal (item 20) e o sublimite que substitui o limite de gasto (item 14), entregar o esqueleto compilavel para o TDD e decompor a implementacao em tasks.
+CRITERIO DE ACEITE: 1) schema.dbml com plano_mensal e plano_mensal_sublimite, sem limite_gasto; 2) esqueleto compilavel (NotImplementedException) com uma assinatura por termo do item 20, build limpo e testes existentes verdes; 3) tasks TASK-243+ no formato 6.1.
+ARQUIVOS PERMITIDOS: .claude/context/schema.dbml; esqueleto backend (Domain/, DTOs/PlanejamentoMensal/, Repositories/, Services/, Controllers/, Infrastructure/Configurations/, Exceptions/, DbContext, Program.cs)
+NAO FAZER: alterar regra-de-negocio.md; implementar logica real; remover o modulo LimiteGasto; editar .claude/tasks.md.
+RETORNO ESPERADO: modelagem, diff do schema, caminhos do esqueleto, tasks, [REVISAR].
+HISTORICO: 2026-10-14. Originalmente TASK-171 (redigida no checkout principal, cuja fila parava em 170); renumerada por colisao. Pre-requisito: itens 20/14/19 so existiam como alteracao nao commitada no checkout principal (base 4ea094d) — killua analisou o merge, Kira aplicou (5 hunks limpos; paragrafo Detalhe do item 19 mesclado preservando o denominador de 2026-10-14; item 20 inserido antes de Escopo). killua sem Write: devolveu conteudo, Kira gravou schema.dbml e 21 arquivos (PlanoMensal, PlanoMensalSublimite, PlanoMensalCalculado, PlanejamentoMensalCalculator, PlanoMensalValidator, PlanoMensalInicialFactory, 6 exceptions, 2 Configurations, IPlanoMensalRepository/PlanoMensalRepository, IPlanejamentoMensalService/PlanejamentoMensalService, 2 DTOs, PlanejamentoMensalController) + DbSet/ApplyConfiguration/DI. Build 0 warnings; 1199 testes verdes. Achado: RelatorioCategoriaService (item 19) le ILimiteGastoRepository -> TASK-254/255. Decisoes do usuario sobre [REVISAR]: (1) drop de limite_gasto sai da migration inicial (TASK-243 aditiva) e vai para TASK-263; (2) categoria arquivada com sublimite pre-existente: PUT recusa se reenviada, GET sinaliza categoriaArquivada e a tela oferece remover; (3) na copia, subcategoria cujo pai arquivado ficou de fora tambem fica de fora; (4) link do ContaCartaoPage continua em /relatorio; (5) /limites-gasto continua pagina propria; (6) TASK-264 rotulada kira (Secao 9).
+
+## TASK-243 — Migration: cria plano_mensal e plano_mensal_sublimite
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-242
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/stack.md, .claude/context/schema.dbml, MyFinances/MyFinances/Domain/PlanoMensal.cs, MyFinances/MyFinances/Domain/PlanoMensalSublimite.cs, MyFinances/MyFinances/Infrastructure/Configurations/PlanoMensalConfiguration.cs, MyFinances/MyFinances/Infrastructure/Configurations/PlanoMensalSublimiteConfiguration.cs, MyFinances/MyFinances/Data/MyFinancesDbContext.cs
+ESCOPO: Gerar a migration EF ADITIVA AddPlanoMensal criando as duas tabelas; limite_gasto permanece intocada.
+CRITERIO DE ACEITE: 1) Up cria plano_mensal e plano_mensal_sublimite com colunas/tipos do schema.dbml, indices unicos (ano,mes) e (plano_mensal_id,categoria_id), FK cascade (plano) e restrict (categoria); Down desfaz. 2) MyFinancesDbContextModelSnapshot atualizado; nenhuma operacao sobre limite_gasto. 3) dotnet build e a suite existente verdes.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Migrations/*_AddPlanoMensal.cs, MyFinances/MyFinances/Migrations/*_AddPlanoMensal.Designer.cs, MyFinances/MyFinances/Migrations/MyFinancesDbContextModelSnapshot.cs
+NAO FAZER: Nao dropar limite_gasto (TASK-263). Nao editar a migration gerada a mao. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: nome da migration, resumo do Up/Down, resultado de build e testes.
+HISTORICO: 2026-10-14. levi gerou AddPlanoMensal (20261014181932): cria plano_mensal e plano_mensal_sublimite, indices unicos (ano,mes) e (plano_mensal_id,categoria_id), FK cascade/restrict; EF adicionou indice nao-unico IX_plano_mensal_sublimite_categoria_id (padrao de FK, mantido). Nada sobre limite_gasto. Build ok, 1199 verdes. Nao aplicada em banco. Instalado dotnet-ef 10.0.10 global. Revisao inline do Kira (estrutural).
+
+## TASK-244 — RED: testes do PlanejamentoMensalCalculator
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-242
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, MyFinances/MyFinances/Domain/PlanejamentoMensalCalculator.cs, MyFinances/MyFinances/Domain/PlanoMensalCalculado.cs, MyFinances/MyFinances/Domain/PlanoMensal.cs, MyFinances/MyFinances/Domain/PlanoMensalSublimite.cs, MyFinances/MyFinances/Domain/Lancamento.cs, MyFinances/MyFinances/Domain/Categoria.cs, MyFinances/MyFinances/Domain/GastoPorCategoriaCalculator.cs, MyFinances/MyFinances.Tests/Domain/LimiteGastoCalculatorTests.cs
+ESCOPO: Escrever os testes RED (falham por NotImplementedException) de cada metodo do calculator, cobrindo todos os termos do item 20.
+CRITERIO DE ACEITE: 1) Cobre: fixas (conta fixa e assinatura de cartao entram; parcela, oculto, CREDIT, transferencia, status fora de Pendente/Pago e mes diferente nao entram); investimento (planejado, reducao quando nao cabe, renda-fixas<0 => 0); sobra (nunca negativa); sublimite de 1o nivel e de subcategoria; nao_alocado; gasto do sublimite (pai soma subcategorias diretas; exclui fixas e assinatura); gasto_sem_sublimite (categoria null, sem sublimite nem no pai); flags InvestimentoReduzido e PlanoNaoFecha; estourado com sublimite 0 e gasto > 0; ordem de Sublimites do Calcular. 2) Invariante: soma dos gastos de 1o nivel + GastoSemSublimite == total variavel do mes. 3) Testes compilam e falham por logica ausente, nunca por compilacao.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Domain/PlanejamentoMensalCalculatorTests.cs
+NAO FAZER: Nao implementar o calculator. Nao editar o esqueleto. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista dos testes, comando de execucao, confirmacao de RED.
+HISTORICO: 2026-10-14. mike: 79 testes RED (NotImplementedException) em PlanejamentoMensalCalculatorTests cobrindo EhFixa, EhGastoVariavel, fixas, investimento, sobra, sublimites, nao_alocado, gasto do sublimite, gasto sem sublimite, Calcular (flags, estourado, ordem, invariante 890+150==1040). [REVISAR] nao testados (estados que validator/item 18 impedem ou nao definidos): debito em categoria inexistente/RECEITA, sublimite de subcategoria com pai sem sublimite (posicao), sublimite de categoria ausente, ordenacao ordinal x cultural.
+
+## TASK-245 — GREEN: implementar PlanejamentoMensalCalculator
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-244
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, MyFinances/MyFinances/Domain/PlanejamentoMensalCalculator.cs, MyFinances/MyFinances/Domain/PlanoMensalCalculado.cs, MyFinances/MyFinances/Domain/PlanoMensal.cs, MyFinances/MyFinances/Domain/PlanoMensalSublimite.cs, MyFinances/MyFinances/Domain/Lancamento.cs, MyFinances/MyFinances/Domain/Categoria.cs, MyFinances/MyFinances/Domain/GastoPorCategoriaCalculator.cs, MyFinances/MyFinances.Tests/Domain/PlanejamentoMensalCalculatorTests.cs
+ESCOPO: Implementar o calculator ate os testes da TASK-244 ficarem GREEN, sem arredondamento intermediario.
+CRITERIO DE ACEITE: 1) PlanejamentoMensalCalculatorTests GREEN; assinaturas preservadas. 2) Cada termo do item 20 e funcao nomeada e pura; sem duplicar filtros alem de EhFixa/EhGastoVariavel. 3) mike GREEN e style APROVADO.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/PlanejamentoMensalCalculator.cs
+NAO FAZER: Nao editar testes (leitura apenas). Nao alterar assinaturas. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos tocados, resultado dos testes, decisoes.
+HISTORICO: 2026-10-14. levi implementou o calculator (EhElegivelNoMes reaproveita GastoPorCategoriaCalculator.StatusElegiveis; ordenacao StringComparer.CurrentCultureIgnoreCase; subcategoria com pai sem sublimite => Valor 0 no fim; sublimite de categoria ausente ignorado). 75/79 na 1a rodada: 4 testes da TASK-244 com dado inconsistente (esperavam fixa de R$1000 ausente do input) -> mike corrigiu o dado sem mudar esperados -> 79/79. Kira rodou GREEN (130/130 dos 3 dominios). Style APROVADO; notas baixas nao bloqueantes: ContainsKey+indexador (L187), lista de categorias deve ser completa (L34), valor de 1o nivel calculado 2x.
+
+## TASK-246 — RED: testes do PlanoMensalValidator
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-242
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, MyFinances/MyFinances/Domain/PlanoMensalValidator.cs, MyFinances/MyFinances/Domain/Categoria.cs, MyFinances/MyFinances/Exceptions/RendaPrevistaNegativaException.cs, MyFinances/MyFinances/Exceptions/SomaPercentuaisExcedeCemException.cs, MyFinances/MyFinances/Exceptions/SubcategoriaSemSublimiteNoPaiException.cs, MyFinances/MyFinances/Exceptions/CategoriaInvalidaParaSublimiteException.cs, MyFinances/MyFinances/Exceptions/SublimiteDuplicadoException.cs, MyFinances/MyFinances/Exceptions/ValorInvalidoException.cs, MyFinances/MyFinances/Exceptions/CategoriaNaoEncontradaException.cs
+ESCOPO: Escrever os testes RED de cada validacao do item 20/14 e da ordem de checagem documentada.
+CRITERIO DE ACEITE: 1) Cobre: renda negativa (0 vale); percentual de investimento e de sublimite em -0.01, 0, 100 e 100.01; soma de 1o nivel = 100 (ok) e > 100; soma de subcategorias de um pai > 100 (pais diferentes nao se somam); subcategoria sem pai no conjunto; categoria RECEITA, arquivada, inexistente; duplicada; conjunto vazio valido. 2) Um teste por posicao da ordem documentada (violacao anterior vence a posterior). 3) Falham por NotImplementedException, nao por compilacao.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Domain/PlanoMensalValidatorTests.cs
+NAO FAZER: Nao implementar o validator. Nao editar o esqueleto. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista dos testes, comando de execucao, confirmacao de RED.
+HISTORICO: 2026-10-14. mike: 30 testes RED em PlanoMensalValidatorTests (limites 0/100 com bordas de centavo, somas por nivel e por pai, subcategoria sem pai, RECEITA/arquivada/inexistente/duplicada, vazio, um teste por posicao da ordem de checagem). Subcategoria com pai arquivado ja coberta pela regra 4 (pai arquivado nao entra no conjunto).
+
+## TASK-247 — GREEN: implementar PlanoMensalValidator
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-246
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, MyFinances/MyFinances/Domain/PlanoMensalValidator.cs, MyFinances/MyFinances/Domain/Categoria.cs, MyFinances/MyFinances/Exceptions/ValorInvalidoException.cs, MyFinances/MyFinances.Tests/Domain/PlanoMensalValidatorTests.cs
+ESCOPO: Implementar o validator ate os testes da TASK-246 ficarem GREEN, respeitando a ordem de checagem.
+CRITERIO DE ACEITE: 1) PlanoMensalValidatorTests GREEN. 2) Metodos privados pequenos e nomeados por regra; PercentualMinimo/PercentualMaximo usados, sem numero magico. 3) mike GREEN e style APROVADO.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/PlanoMensalValidator.cs
+NAO FAZER: Nao editar testes. Nao alterar assinaturas. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos tocados, resultado dos testes.
+HISTORICO: 2026-10-14. levi: Validar em passos nomeados na ordem do cabecalho; (int)PercentualMinimo/Maximo para ValorInvalidoException. 30/30 GREEN. Style APROVADO; notas baixas: nome de campo inconsistente no erro (percentualInvestimento x Percentual) a padronizar no controller (TASK-252); ObterCategoria repetido / ContemCategoria O(n2) sem impacto.
+
+## TASK-248 — RED: testes do PlanoMensalInicialFactory
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-242
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, MyFinances/MyFinances/Domain/PlanoMensalInicialFactory.cs, MyFinances/MyFinances/Domain/RecebivelRecorrenteOcorrenciaFactory.cs, MyFinances/MyFinances/Domain/RecebivelRecorrente.cs, MyFinances/MyFinances/Domain/PlanoMensal.cs, MyFinances/MyFinances/Domain/PlanoMensalSublimite.cs, MyFinances/MyFinances/Domain/Categoria.cs, MyFinances/MyFinances.Tests/Domain/RecebivelRecorrenteOcorrenciaFactoryTests.cs
+ESCOPO: Escrever os testes RED do pre-preenchimento da renda e da copia do plano anterior.
+CRITERIO DE ACEITE: 1) Renda: MENSAL (1 ocorrencia, dia clampado em fevereiro), ANUAL (so no mes_referencia), SEMANAL (4 ou 5 no mes), molde inativo ignorado, mes futuro, sem moldes => 0. 2) Criar: sem anterior => 0% e sem sublimites; com anterior copia % e sublimites (so percentual, Ids novos); ignora categoria arquivada; ignora subcategoria cujo pai foi excluido da copia; RendaPrevista e a informada. 3) Falham por NotImplementedException.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Domain/PlanoMensalInicialFactoryTests.cs
+NAO FAZER: Nao implementar a factory. Nao editar o esqueleto. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista dos testes, comando de execucao, confirmacao de RED.
+HISTORICO: 2026-10-14. mike: 21 testes RED em PlanoMensalInicialFactoryTests (renda MENSAL com clamp, ANUAL, SEMANAL 4/5, inativo, futuro, sem moldes; Criar sem/com anterior, Ids novos, renda nao copiada, PlanoMensalId do plano novo, categoria arquivada/ausente, subcategoria com pai arquivado/ausente, hierarquia feliz).
+
+## TASK-249 — GREEN: implementar PlanoMensalInicialFactory
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-248
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, MyFinances/MyFinances/Domain/PlanoMensalInicialFactory.cs, MyFinances/MyFinances/Domain/RecebivelRecorrenteOcorrenciaFactory.cs, MyFinances/MyFinances/Domain/RecebivelRecorrente.cs, MyFinances/MyFinances/Domain/PlanoMensal.cs, MyFinances/MyFinances/Domain/PlanoMensalSublimite.cs, MyFinances/MyFinances/Domain/Categoria.cs, MyFinances/MyFinances.Tests/Domain/PlanoMensalInicialFactoryTests.cs
+ESCOPO: Implementar a factory ate os testes da TASK-248 ficarem GREEN, reaproveitando RecebivelRecorrenteOcorrenciaFactory.CalcularOcorrenciasNoIntervalo.
+CRITERIO DE ACEITE: 1) PlanoMensalInicialFactoryTests GREEN. 2) Nenhuma reimplementacao de calculo de ocorrencia. 3) mike GREEN e style APROVADO.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/PlanoMensalInicialFactory.cs
+NAO FAZER: Nao editar RecebivelRecorrenteOcorrenciaFactory. Nao editar testes. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos tocados, resultado dos testes.
+HISTORICO: 2026-10-14. levi: renda = soma Valor x ocorrencias de CalcularOcorrenciasNoIntervalo dos moldes ativos; copia com Ids novos, PlanoMensalId do plano novo, sem categoria arquivada/ausente nem subcategoria com pai arquivado/ausente. 21/21 GREEN. Style APROVADO; notas baixas: chaves em if de uma linha (estilo), 'PURA' x Guid.NewGuid, DateOnly lanca com mes invalido (service valida ano/mes antes — TASK-251).
+
+## TASK-250 — RED: testes do PlanejamentoMensalService
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-242
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, MyFinances/MyFinances/Services/IPlanejamentoMensalService.cs, MyFinances/MyFinances/Services/PlanejamentoMensalService.cs, MyFinances/MyFinances/Repositories/IPlanoMensalRepository.cs, MyFinances/MyFinances/Repositories/ICategoriaRepository.cs, MyFinances/MyFinances/Repositories/ILancamentoRepository.cs, MyFinances/MyFinances/Repositories/IRecebivelRecorrenteRepository.cs, MyFinances/MyFinances/Domain/PlanoMensalCalculado.cs, MyFinances/MyFinances.Tests/Services/LimiteGastoServiceTests.cs
+ESCOPO: Escrever os testes RED (Moq + TimeProvider controlado) do ciclo do mes e do salvar.
+CRITERIO DE ACEITE: 1) Obter: mes corrente/futuro sem plano => gera (renda dos moldes ativos + copia do anterior, AdicionarOuObterExistente chamado uma vez); plano existente => nao regera; mes passado sem plano => null e nada persistido; mes passado com plano => SomenteLeitura true; ano/mes invalidos => ValorInvalidoException. 2) Salvar: mes passado => PlanoMensalPassadoSomenteLeituraException ANTES de validar; invalido => nada salvo; valido => diff in-place (existente atualizado, ausente via RemoverSublimite, novo adicionado); remover pai mantendo filho => SubcategoriaSemSublimiteNoPaiException. 3) Falham por NotImplementedException.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Services/PlanejamentoMensalServiceTests.cs
+NAO FAZER: Nao implementar service/repositorio. Nao editar o esqueleto. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista dos testes, comando de execucao, confirmacao de RED.
+HISTORICO: 2026-10-14. mike: 30 testes RED em PlanejamentoMensalServiceTests (RelogioFixo 2026-10-14; geracao sob demanda, copia, mes passado null/somente leitura, bordas de virada de mes, ano/mes invalidos; salvar: trava de mes passado antes do validator, violacoes nao salvam, arquivada reenviada recusada, diff in-place). [REVISAR] aberto: SalvarAsync em mes corrente/futuro sem plano gravado (criar com os valores enviados x 404) — bloqueia TASK-251.
+
+## TASK-251 — GREEN: PlanoMensalRepository e PlanejamentoMensalService
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-243, TASK-245, TASK-247, TASK-249, TASK-250
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, .claude/context/stack.md, MyFinances/MyFinances/Services/IPlanejamentoMensalService.cs, MyFinances/MyFinances/Services/PlanejamentoMensalService.cs, MyFinances/MyFinances/Repositories/IPlanoMensalRepository.cs, MyFinances/MyFinances/Repositories/PlanoMensalRepository.cs, MyFinances/MyFinances/Repositories/RecebivelRecorrenteRepository.cs, MyFinances/MyFinances/Domain/PlanejamentoMensalCalculator.cs, MyFinances/MyFinances/Domain/PlanoMensalValidator.cs, MyFinances/MyFinances/Domain/PlanoMensalInicialFactory.cs, MyFinances/MyFinances/Domain/PlanoMensalCalculado.cs, MyFinances/MyFinances.Tests/Services/PlanejamentoMensalServiceTests.cs
+ESCOPO: Implementar repositorio e service ate PlanejamentoMensalServiceTests ficar GREEN, orquestrando calculator, validator e factory sem logica de calculo propria.
+CRITERIO DE ACEITE: 1) PlanejamentoMensalServiceTests GREEN; AdicionarOuObterExistente captura a violacao do indice unico (ano, mes), faz detach e devolve o existente. 2) Service nao acessa DbContext; debitos vem de ILancamentoRepository.ListarDebitosParaRelatorioAsync; hoje via TimeProvider.GetLocalNow. 3) mike GREEN e style APROVADO.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/PlanejamentoMensalService.cs, MyFinances/MyFinances/Repositories/PlanoMensalRepository.cs
+NAO FAZER: Nao alterar ILancamentoRepository nem outros repositorios. Nao editar testes. Nao delete+insert da mesma categoria no salvar. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos tocados, resultado dos testes, decisoes.
+HISTORICO: 2026-10-14. Decisao do usuario: SalvarAsync em mes sem plano gravado cria com os valores enviados (registrada no item 20). levi: repositorio (AdicionarOuObterExistente captura 23505 em IX_plano_mensal_ano_mes, detach, devolve vencedor) e service orquestrando factory/validator/calculator, diff in-place. mike complementou TASK-250: +3 testes (salvar sem plano) e +8 de teto de ano -> 41 testes. Style rodada 1 PRECISA CORRIGIR: ano > 9999 virava 500 via DateOnly (decisao do Kira: teto tecnico 1..9999) + comentario da interface + nota LIMITACAO 25P02. levi corrigiu; rodada 2 APROVADO. Suite 1363/1363. Risco registrado sem acao: dois salvamentos concorrentes do mesmo plano existente podem estourar o indice (plano,categoria) -> 500 (single-user). Categorias lidas 2x por consulta (custo aceito).
+
+## TASK-252 — Controller e DTOs do planejamento mensal
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-251
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/clean-code.md, .claude/context/stack.md, MyFinances/MyFinances/Controllers/PlanejamentoMensalController.cs, MyFinances/MyFinances/DTOs/PlanejamentoMensal/PlanoMensalResponse.cs, MyFinances/MyFinances/DTOs/PlanejamentoMensal/SalvarPlanoMensalRequest.cs, MyFinances/MyFinances/Services/IPlanejamentoMensalService.cs, MyFinances/MyFinances/Domain/PlanoMensalCalculado.cs, MyFinances/MyFinances/Controllers/LimitesGastoController.cs
+ESCOPO: Implementar GET e PUT /api/planejamento-mensal/{ano}/{mes} e o mapeamento Domain -> Response, com o mapa de status documentado no esqueleto.
+CRITERIO DE ACEITE: 1) GET 200 com plano calculado, 404 para null (mes passado sem plano), 400 para ano/mes invalidos. 2) PUT mapeia cada excecao para o status do esqueleto (400/404/409/422); corpo de erro { erro = mensagem }. 3) Controller sem regra de negocio; so DTOs expostos.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Controllers/PlanejamentoMensalController.cs, MyFinances/MyFinances/DTOs/PlanejamentoMensal/PlanoMensalResponse.cs, MyFinances/MyFinances/DTOs/PlanejamentoMensal/SalvarPlanoMensalRequest.cs
+NAO FAZER: Nao tocar LimitesGastoController. Nao mudar o contrato dos DTOs sem sinalizar. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos tocados, tabela excecao -> status.
+HISTORICO: 2026-10-14. levi: GET/PUT /api/planejamento-mensal/{ano}/{mes}, mapa excecao->status (400/404/409/422, corpo { erro }), PlanoMensalResponse.From. Style r1 PRECISA CORRIGIR (Sublimites nao anulavel virava [Required] implicito; nome de campo 'Percentual'; catches duplicados) -> corrigido. TASK-253 achou 2 bugs de producao no service (Listar() escondia arquivadas -> ListarTodas(); sublimite novo com Id preenchido virava UPDATE -> AdicionarSublimite com Add explicito). Style r2 aprovou o planejamento. Gon r1 PRECISA CORRIGIR: GET criava plano para qualquer mes futuro (abuso), renda acima de numeric(18,2) -> 500, campos ausentes no PUT viravam 0/lista vazia. Decisoes do usuario: horizonte = mes corrente + 12 (PlanoMensalForaDoHorizonteException, 400, nada gravado); rendaPrevista/percentualInvestimento/sublimites obrigatorios (400). Kira: teto de renda 9.999.999.999.999.999,99 (overload decimal de ValorInvalidoException); CategoriaId/Percentual do item obrigatorios e [null] => 400. [Required] precisou ir para os parametros do record (na propriedade gerava 500). Style r3 achou regressao no relatorio (horizonte -> 500) -> relatorio trata como sem sublimite. Style r4 APROVADO; gon r2 APROVADO. MCP: zod ano 1..9999. Suite 1421/1421.
+
+## TASK-253 — Testes HTTP do planejamento mensal
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-252
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, MyFinances/MyFinances/Controllers/PlanejamentoMensalController.cs, MyFinances/MyFinances/DTOs/PlanejamentoMensal/PlanoMensalResponse.cs, MyFinances/MyFinances/DTOs/PlanejamentoMensal/SalvarPlanoMensalRequest.cs, MyFinances/MyFinances.Tests/Controllers/LimitesGastoControllerTests.cs
+ESCOPO: Testes end-to-end dos dois endpoints (padrao dos testes HTTP existentes), incluindo geracao sob demanda e persistencia real.
+CRITERIO DE ACEITE: 1) GET gera o plano do mes corrente (200) e e idempotente; mes passado sem plano => 404. 2) PUT valido persiste e o GET seguinte reflete; cada violacao devolve o status documentado sem persistir. 3) Fixa de conta fixa/assinatura reduz sobra; gasto fora de fixas aparece no sublimite ou em gastoSemSublimite.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Controllers/PlanejamentoMensalControllerTests.cs
+NAO FAZER: Nao alterar codigo de producao; bug vira relatorio. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: lista dos testes, resultado, bugs encontrados.
+HISTORICO: 2026-10-14. mike: PlanejamentoMensalControllerTests com RelogioFake (2026-10-14) — 38 testes: geracao sob demanda e idempotencia, 404 mes passado sem plano, 400 ano/mes invalidos, PUT persiste e cria mes sem plano, cada violacao com status sem persistir, fixas/assinatura reduzem sobra, gasto no sublimite e em gastoSemSublimite, horizonte (10/2027 ok, 11/2027 400 sem linha), campos obrigatorios e [null] => 400, renda acima do teto 400. Achou 2 bugs de producao (arquivada 404 em vez de 422; 500 ao adicionar sublimite em plano existente) e a causa do 500 do [Required] em record.
+
+## TASK-254 — Relatorio por categoria: barra le o sublimite do plano
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-251
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, MyFinances/MyFinances/Services/RelatorioCategoriaService.cs, MyFinances/MyFinances/Services/IPlanejamentoMensalService.cs, MyFinances/MyFinances/Domain/PlanoMensalCalculado.cs, MyFinances/MyFinances/DTOs/Relatorio/RelatorioCategoriaDetalheResponse.cs
+ESCOPO: Trocar ILimiteGastoRepository por IPlanejamentoMensalService em RelatorioCategoriaService.ObterDetalheAsync: Limite = sublimite da categoria no plano do mes (ValorLimite = Valor, GastoRealizado = gasto do sublimite, sem fixas), ou null.
+CRITERIO DE ACEITE: 1) Categoria com sublimite => Limite com o gasto do sublimite (pode ser menor que o Total da linha); sem sublimite, "Sem categoria" ou mes passado sem plano => null. 2) Total, PercentualDoTotal e lista de lancamentos inalterados. 3) RelatorioCategoriaService sem ILimiteGastoRepository; comentario do LimiteRelatorioResponse atualizado.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Services/RelatorioCategoriaService.cs, MyFinances/MyFinances/DTOs/Relatorio/RelatorioCategoriaDetalheResponse.cs
+NAO FAZER: Nao mexer em GastoPorCategoriaCalculator nem na lista do resumo. Nao editar testes. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos tocados, mudanca de construtor, impacto nos testes existentes.
+HISTORICO: 2026-10-14. levi trocou ILimiteGastoRepository por IPlanejamentoMensalService em RelatorioCategoriaService: Limite = sublimite da categoria no plano do mes (ValorLimite = Valor, GastoRealizado = gasto variavel), null sem sublimite/sem plano/Sem categoria. Total/percentual/lista inalterados. Efeito: projeto de testes deixou de compilar ate a TASK-255 (despachada em seguida). Revisao: logica de orquestracao validada pelos testes da TASK-255; style junto da TASK-252 rodada 2. Style r2 achou bug anterior a feature: relatorio usava Listar() e descartava gasto de categoria arquivada (item 19) -> ListarTodas() + testes; ano limitado a 1..9999; LimiteRelatorioResponse ganhou Estourado (decisao do Kira para o front nao recalcular). Mes alem do horizonte => Limite null (catch estreito). Style r4 APROVADO.
+
+## TASK-255 — Ajustar testes do relatorio ao sublimite
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-254
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, MyFinances/MyFinances/Services/RelatorioCategoriaService.cs, MyFinances/MyFinances.Tests/Services/RelatorioCategoriaServiceTests.cs, MyFinances/MyFinances.Tests/Controllers/RelatoriosControllerTests.cs
+ESCOPO: Trocar os mocks de ILimiteGastoRepository por IPlanejamentoMensalService nos testes do relatorio e cobrir o gasto variavel da barra.
+CRITERIO DE ACEITE: 1) Teste novo: GastoRealizado do sublimite menor que o Total da linha. 2) Sem sublimite, mes passado sem plano e "Sem categoria" => Limite null. 3) Suite do relatorio GREEN sem referencia a LimiteGasto.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Services/RelatorioCategoriaServiceTests.cs, MyFinances/MyFinances.Tests/Controllers/RelatoriosControllerTests.cs
+NAO FAZER: Nao alterar codigo de producao. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: testes alterados/novos, resultado.
+HISTORICO: 2026-10-14. mike restaurou a compilacao (mocks de IPlanejamentoMensalService), reescreveu os testes do detalhe (gasto do sublimite < Total; mes sem plano; plano sem sublimite da categoria; Sem categoria nao consulta o plano) e o teste HTTP do relatorio semeando plano via fixture. 38/38 do relatorio. Testes nasceram verdes (producao ja existia).
+
+## TASK-256 — Front: camada de dados do planejamento mensal
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-252
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/stack.md, .claude/context/clean-code.md, MyFinances/MyFinances/DTOs/PlanejamentoMensal/PlanoMensalResponse.cs, MyFinances/MyFinances/DTOs/PlanejamentoMensal/SalvarPlanoMensalRequest.cs, MyFinanceFrontEnd/src/features/limite-gasto/api.ts, MyFinanceFrontEnd/src/features/limite-gasto/query-keys.ts, MyFinanceFrontEnd/src/features/limite-gasto/types.ts
+ESCOPO: Criar features/planejamento-mensal com types.ts, api.ts, query-keys.ts e hooks usePlanoMensal(ano, mes) e useSalvarPlanoMensal.
+CRITERIO DE ACEITE: 1) types.ts espelha os DTOs; uma funcao por endpoint; separacao api/hooks/query-keys da stack.md. 2) Salvar invalida a query do plano do mes; 404 do GET tratado como "sem plano". 3) tsc estrito sem any.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/planejamento-mensal/types.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/api.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/query-keys.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/hooks/usePlanoMensal.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/hooks/useSalvarPlanoMensal.ts
+NAO FAZER: Nao calcular valor de regra no cliente. Nao tocar features/limite-gasto. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos criados, assinaturas dos hooks.
+HISTORICO: 2026-10-14. hanzo criou types/api/query-keys e hooks usePlanoMensal(ano, mes) (404 -> null, distinguivel de carregando/erro) e useSalvarPlanoMensal(ano, mes) (invalida a chave do mes). tsc estrito limpo (via junction temporaria para o node_modules do checkout principal, removida). Sem regra de negocio: revisao inline do Kira, aprovado.
+
+## TASK-257 — Front: tela de planejamento mensal, rota e menu
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-256
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/identidade-visual.md, .claude/context/stack.md, .claude/context/clean-code.md, MyFinanceFrontEnd/src/features/planejamento-mensal/types.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/hooks/usePlanoMensal.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/hooks/useSalvarPlanoMensal.ts, MyFinanceFrontEnd/src/features/limite-gasto/ComparativoLimiteGastoPage.tsx, MyFinanceFrontEnd/src/app/routes.tsx, MyFinanceFrontEnd/src/app/navigation.ts
+ESCOPO: Tela PlanejamentoMensalPage (rota /planejamento) com navegacao de mes, edicao de renda, % de investimento e sublimites (pai e subcategorias), e exibicao de renda, fixas, investimento (planejado e calculado), sobra, cada sublimite (percentual, R$, gasto), nao alocado e gasto sem sublimite.
+CRITERIO DE ACEITE: 1) Alertas do item 20 ("investimento reduzido de R$ X para R$ Y", "plano nao fecha", sublimite estourado); mes passado somente leitura; mes passado sem plano com estado vazio. 2) Erros do PUT aparecem como mensagem; categoria arquivada ja no plano e sinalizada com opcao de remover (decisao do usuario 2026-10-14). 3) Rota /planejamento em routes.tsx e item "Planejamento" em navigation.ts no lugar de "Limites de gasto"; /limites-gasto continua acessivel por link da propria tela.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/planejamento-mensal/PlanejamentoMensalPage.tsx, MyFinanceFrontEnd/src/features/planejamento-mensal/components/*, MyFinanceFrontEnd/src/features/planejamento-mensal/lib/*, MyFinanceFrontEnd/src/app/routes.tsx, MyFinanceFrontEnd/src/app/navigation.ts
+NAO FAZER: Sem calculo de R$ no cliente (so soma de percentuais em lib/ como dica visual). Nao remover a rota /limites-gasto. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos criados/alterados, decisoes de UX.
+HISTORICO: 2026-10-14. hanzo: PlanejamentoMensalPage (rota /planejamento, item 'Planejamento' no menu no lugar de 'Limites de gasto'), components NavegacaoMes/ResumoPlano/AlertasPlano/ListaSublimites/EditorPlano, lib mes/rascunho/opcoesCategoria/agruparPorPai. Alertas do item 20, somente leitura, estado vazio, replace-all, arquivada sinalizada com remover; UX: subcategoria so com pai no rascunho, remover pai bloqueado com filhos. Style rodada 1 PRECISA CORRIGIR (barra vazia com sublimite R$0 estourado; flash do plano antigo apos salvar; ehMesPassado morto; transformacoes do rascunho no componente; Intl repetido; alerta/negativo sem fundo) -> hanzo corrigiu (lib/usoSublimite, lib/percentual, setQueryData) -> rodada 2 APROVADO. tsc limpo.
+
+## TASK-258 — Front: camada limite-gasto e comparativo leem o sublimite do mes
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-256
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/identidade-visual.md, .claude/context/stack.md, .claude/context/clean-code.md, MyFinanceFrontEnd/src/features/planejamento-mensal/types.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/hooks/usePlanoMensal.ts, MyFinanceFrontEnd/src/features/limite-gasto/types.ts, MyFinanceFrontEnd/src/features/limite-gasto/api.ts, MyFinanceFrontEnd/src/features/limite-gasto/query-keys.ts, MyFinanceFrontEnd/src/features/limite-gasto/hooks/useGastoVsLimiteTodasCategorias.ts, MyFinanceFrontEnd/src/features/limite-gasto/hooks/useGastoVsLimite.ts, MyFinanceFrontEnd/src/features/limite-gasto/lib/estadoLimite.ts, MyFinanceFrontEnd/src/features/limite-gasto/ComparativoLimiteGastoPage.tsx, MyFinanceFrontEnd/src/features/limite-gasto/components/ItemComparativoLimite.tsx
+ESCOPO: Reapontar useGastoVsLimiteTodasCategorias e useGastoVsLimite para usePlanoMensal e ajustar ComparativoLimiteGastoPage/ItemComparativoLimite para sublimite x gasto variavel do mes, mostrando o percentual.
+CRITERIO DE ACEITE: 1) Nenhuma chamada a /api/limites-gasto nos hooks de leitura; consumidores existentes continuam compilando. 2) Comparativo mostra percentual, R$ do sublimite, gasto variavel e estado via lib/estadoLimite.ts. 3) Mes sem plano mostra estado vazio.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/limite-gasto/types.ts, MyFinanceFrontEnd/src/features/limite-gasto/hooks/useGastoVsLimiteTodasCategorias.ts, MyFinanceFrontEnd/src/features/limite-gasto/hooks/useGastoVsLimite.ts, MyFinanceFrontEnd/src/features/limite-gasto/lib/estadoLimite.ts, MyFinanceFrontEnd/src/features/limite-gasto/ComparativoLimiteGastoPage.tsx, MyFinanceFrontEnd/src/features/limite-gasto/components/ItemComparativoLimite.tsx
+NAO FAZER: Nao deletar api.ts nem os hooks de definir/remover/listar (TASK-262). Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos alterados, mapeamento sublimite -> tipo consumido.
+HISTORICO: 2026-10-14. hanzo reapontou useGastoVsLimiteTodasCategorias/useGastoVsLimite para usePlanoMensal (useMemo sobre o cache do plano; default ano/mes = corrente), comparativo mostra % do sublimite, R$, gasto variavel e estado. Criou lib/sublimiteParaGastoVsLimite.ts (fora dos ARQUIVOS PERMITIDOS, aceito pelo Kira: mapeamento puro). types.ts ganhou percentualSublimite. tsc limpo. Revisao inline do Kira; nota baixa: 'hoje' calculado no load do modulo (default so de seguranca, consumidores passam ano/mes). query-keys gastoVsLimite* ficam orfas para a TASK-262.
+
+## TASK-259 — Front: dashboard, aviso de lancamento e detalhe do relatorio
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-258, TASK-254
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/identidade-visual.md, .claude/context/clean-code.md, MyFinanceFrontEnd/src/features/dashboard/components/LimiteGastoIndicador.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/AvisoLimiteGasto.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FormLancamento.tsx, MyFinanceFrontEnd/src/features/relatorios/RelatorioCategoriaDetalhePage.tsx, MyFinanceFrontEnd/src/features/limite-gasto/hooks/useGastoVsLimite.ts, MyFinanceFrontEnd/src/features/limite-gasto/hooks/useGastoVsLimiteTodasCategorias.ts, MyFinanceFrontEnd/src/features/limite-gasto/lib/estadoLimite.ts
+ESCOPO: LimiteGastoIndicador usa o sublimite do mes corrente; AvisoLimiteGasto usa o sublimite do mes da DATA do lancamento; rotulo da barra do detalhe do relatorio passa a "Sublimite (gasto variavel)".
+CRITERIO DE ACEITE: 1) Aviso deriva ano/mes da data do formulario e atualiza ao mudar a data; mes passado sem plano => sem aviso. 2) Indicador do dashboard mostra gasto/sublimite do mes corrente; link /limites-gasto?categoriaId= preservado. 3) Detalhe do relatorio rotula a barra como gasto variavel; lista e total inalterados.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/dashboard/components/LimiteGastoIndicador.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/AvisoLimiteGasto.tsx, MyFinanceFrontEnd/src/features/lancamentos/components/FormLancamento.tsx, MyFinanceFrontEnd/src/features/relatorios/RelatorioCategoriaDetalhePage.tsx
+NAO FAZER: Nao tocar ContaCartaoPage (link continua em /relatorio, decisao do usuario 2026-10-14). Nao bloquear salvamento de lancamento. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos alterados, como o mes da data e derivado.
+HISTORICO: 2026-10-14. hanzo: rotulos 'sublimite' no indicador do dashboard e 'Sublimite (gasto variavel)' no detalhe do relatorio; aviso ja derivava ano/mes da data (extrairAnoMes). Style rodada 1 PRECISA CORRIGIR (relatorio recalculava estouro em R$ no cliente; barra vazia com R$0; ramo 404 morto; comentarios; import formatarMoeda) -> Kira decidiu expor Estourado no LimiteRelatorioResponse (levi, TASK-254) -> hanzo consome o flag, remove limiteEstourado (editou relatorios/lib fora do escopo, aceito) -> rodada 2 APROVADO.
+
+## TASK-260 — Front: remover limite do cadastro de categoria
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-258
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, MyFinanceFrontEnd/src/features/categorias/FormCategoria.tsx, MyFinanceFrontEnd/src/features/categorias/CategoriasPage.tsx, MyFinanceFrontEnd/src/features/categorias/components/CategoriaItem.tsx, MyFinanceFrontEnd/src/features/categorias/components/CampoLimiteGasto.tsx, MyFinanceFrontEnd/src/features/categorias/types.ts
+ESCOPO: Tirar CampoLimiteGasto e o fluxo de definir/remover limite do FormCategoria e CategoriasPage (item 7); CategoriaItem segue mostrando o progresso do sublimite do mes corrente quando existir.
+CRITERIO DE ACEITE: 1) FormCategoria sem campo de limite nem hooks de definir/remover. 2) CategoriasPage sem useLimitesGasto e sem limiteAtual. 3) tsc estrito sem referencias a CampoLimiteGasto em categorias.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/categorias/FormCategoria.tsx, MyFinanceFrontEnd/src/features/categorias/CategoriasPage.tsx, MyFinanceFrontEnd/src/features/categorias/components/CategoriaItem.tsx, MyFinanceFrontEnd/src/features/categorias/types.ts
+NAO FAZER: Nao deletar CampoLimiteGasto.tsx (TASK-262). Nao mudar edicao de nome/icone/parent_id. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos alterados, o que saiu do form.
+HISTORICO: 2026-10-14. hanzo: FormCategoria sem campo/hook de limite e sem passo 2 do submit; CategoriasPage sem useLimitesGasto/limiteAtual. Correcao da rodada de style apagou CampoLimiteGasto.tsx (antecipado da TASK-262). Style rodada 2 APROVADO.
+
+## TASK-261 — MCP: tools do plano mensal no lugar das de limite de gasto
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-252
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, MyFinances/MyFinances/DTOs/PlanejamentoMensal/PlanoMensalResponse.cs, MyFinances/MyFinances/DTOs/PlanejamentoMensal/SalvarPlanoMensalRequest.cs, mcp-server/src/tools/limitesGasto.ts, mcp-server/src/server.ts, mcp-server/src/apiClient.ts, mcp-server/src/mcpHelpers.ts, mcp-server/src/format.ts
+ESCOPO: Criar tools/planejamentoMensal.ts com obter_planejamento_mensal(ano, mes) e salvar_planejamento_mensal(ano, mes, rendaPrevista, percentualInvestimento, sublimites[]), registrar em server.ts e remover limitesGasto.ts.
+CRITERIO DE ACEITE: 1) server.ts sem as 4 tools de limite; registra as novas. 2) obter formata renda, fixas, investimento (com aviso de reducao), sobra, cada sublimite (percentual, R$, gasto, [ESTOURADO]), nao alocado e gasto sem sublimite. 3) Descricao de salvar informa que o conjunto SUBSTITUI o atual (chamar obter antes); MCP compila.
+ARQUIVOS PERMITIDOS: mcp-server/src/tools/planejamentoMensal.ts, mcp-server/src/tools/limitesGasto.ts, mcp-server/src/server.ts
+NAO FAZER: Nao tocar o backend. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos tocados, lista final de tools.
+HISTORICO: 2026-10-14. levi criou mcp-server/src/tools/planejamentoMensal.ts (obter_planejamento_mensal: renda, fixas, investimento planejado/calculado com aviso de reducao, 'plano nao fecha', sobra, sublimites com %/R$/gasto/fracao/[ESTOURADO]/arquivada e categoriaId, nao alocado, gasto sem sublimite; 404 -> 'mes passado sem plano'. salvar_planejamento_mensal: descricao avisa replace-all e criacao de mes sem plano; zod valida mes 1-12, % 0-100, renda >= 0, uuid). server.ts troca o registro; limitesGasto.ts removido. npm run build ok; smoke: 56 tools, 4 antigas fora. Kira atualizou mcp-server/README.md (secao Planejamento mensal). Revisao inline do Kira (formatacao, sem calculo). Sem testes no mcp-server.
+
+## TASK-262 — Front: remover resquicios do limite de gasto
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-257, TASK-258, TASK-259, TASK-260
+FLUXO: Melhoria
+CONTEXTO A LER: .claude/context/clean-code.md, MyFinanceFrontEnd/src/features/limite-gasto/api.ts, MyFinanceFrontEnd/src/features/limite-gasto/query-keys.ts, MyFinanceFrontEnd/src/features/limite-gasto/types.ts, MyFinanceFrontEnd/src/features/limite-gasto/hooks/useLimitesGasto.ts, MyFinanceFrontEnd/src/features/limite-gasto/hooks/useDefinirLimiteGasto.ts, MyFinanceFrontEnd/src/features/limite-gasto/hooks/useRemoverLimiteGasto.ts, MyFinanceFrontEnd/src/features/categorias/components/CampoLimiteGasto.tsx
+ESCOPO: Apagar CampoLimiteGasto.tsx, useLimitesGasto, useDefinirLimiteGasto, useRemoverLimiteGasto e funcoes/tipos/chaves de /api/limites-gasto sem consumidor.
+CRITERIO DE ACEITE: 1) grep por "api/limites-gasto" no front sem resultado; nenhum hook/tipo morto em features/limite-gasto. 2) tsc estrito e build do front passam. 3) Rota /limites-gasto (comparativo) continua funcionando.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/limite-gasto/api.ts, MyFinanceFrontEnd/src/features/limite-gasto/query-keys.ts, MyFinanceFrontEnd/src/features/limite-gasto/types.ts, MyFinanceFrontEnd/src/features/limite-gasto/hooks/useLimitesGasto.ts, MyFinanceFrontEnd/src/features/limite-gasto/hooks/useDefinirLimiteGasto.ts, MyFinanceFrontEnd/src/features/limite-gasto/hooks/useRemoverLimiteGasto.ts, MyFinanceFrontEnd/src/features/categorias/components/CampoLimiteGasto.tsx
+NAO FAZER: Nao remover o que ainda tem consumidor. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos removidos/alterados, resultado de grep e build.
+HISTORICO: 2026-10-14. hanzo removeu (git rm) limite-gasto/api.ts, query-keys.ts, useLimitesGasto, useDefinirLimiteGasto, useRemoverLimiteGasto; types.ts so com GastoVsLimiteResponse. Achado do Kira: 4 hooks de lancamento invalidavam limiteGastoKeys.all (cache morto) -> trocados por planejamentoMensalKeys.all; adicionada invalidacao do plano em 13 mutacoes que mudam gasto/fixas (criar lancamento, marcar pago, compra de cartao, antecipar parcelas, conta fixa criar/editar/apagar/desativar/reativar, assinatura criar/editar/desativar/reativar). grep 'api/limites-gasto' vazio; tsc e vite build ok. Revisao inline do Kira (limpeza, sem regra). CampoLimiteGasto.tsx ja apagado na correcao da 257/259/260.
+
+## TASK-263 — Remover modulo LimiteGasto do back e dropar limite_gasto
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-253, TASK-255, TASK-261, TASK-262
+FLUXO: Melhoria
+CONTEXTO A LER: .claude/context/stack.md, .claude/context/clean-code.md, .claude/context/schema.dbml, MyFinances/MyFinances/Data/MyFinancesDbContext.cs, MyFinances/MyFinances/Program.cs, MyFinances/MyFinances/Controllers/LimitesGastoController.cs, MyFinances/MyFinances/Services/LimiteGastoService.cs, MyFinances/MyFinances/Repositories/LimiteGastoRepository.cs
+ESCOPO: Apagar LimiteGasto (Domain, Calculator, PeriodoLimiteGasto, DTOs/LimiteGasto, Configuration, Repository, Service, Controller, 2 Exceptions e seus testes), tirar DbSet/Configuration/DI e gerar a migration DropLimiteGasto (dados descartados).
+CRITERIO DE ACEITE: 1) grep por LimiteGasto/LimitesGasto no back e nos testes sem resultado (exceto migrations antigas). 2) Migration DropLimiteGasto gerada pelo EF so com DropTable de limite_gasto; snapshot atualizado. 3) Build e suite completa verdes.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/LimiteGasto.cs, MyFinances/MyFinances/Domain/LimiteGastoCalculator.cs, MyFinances/MyFinances/Domain/PeriodoLimiteGasto.cs, MyFinances/MyFinances/DTOs/LimiteGasto/*, MyFinances/MyFinances/Infrastructure/Configurations/LimiteGastoConfiguration.cs, MyFinances/MyFinances/Repositories/ILimiteGastoRepository.cs, MyFinances/MyFinances/Repositories/LimiteGastoRepository.cs, MyFinances/MyFinances/Services/ILimiteGastoService.cs, MyFinances/MyFinances/Services/LimiteGastoService.cs, MyFinances/MyFinances/Controllers/LimitesGastoController.cs, MyFinances/MyFinances/Exceptions/LimiteGastoNaoEncontradoException.cs, MyFinances/MyFinances/Exceptions/CategoriaInvalidaParaLimiteGastoException.cs, MyFinances/MyFinances/Data/MyFinancesDbContext.cs, MyFinances/MyFinances/Program.cs, MyFinances/MyFinances/Migrations/*_DropLimiteGasto.cs, MyFinances/MyFinances/Migrations/*_DropLimiteGasto.Designer.cs, MyFinances/MyFinances/Migrations/MyFinancesDbContextModelSnapshot.cs, MyFinances/MyFinances.Tests/Domain/LimiteGastoCalculatorTests.cs, MyFinances/MyFinances.Tests/Services/LimiteGastoServiceTests.cs, MyFinances/MyFinances.Tests/Controllers/LimitesGastoControllerTests.cs
+NAO FAZER: Nao editar migrations antigas. Nao tocar o planejamento mensal. Nao editar .claude/tasks.md.
+RETORNO ESPERADO: arquivos removidos, migration gerada, resultado de build e testes.
+HISTORICO: 2026-10-14. levi removeu (git rm) 17 arquivos do modulo LimiteGasto (domain, DTOs, configuration, repository, service, controller, 2 exceptions, 3 arquivos de teste), tirou DbSet/ApplyConfiguration/DI e gerou DropLimiteGasto (20261014191723; Up so DropTable limite_gasto, Down recria; sem diff em outra tabela; nao aplicada). grep limpo (Kira removeu comentario obsoleto em GastoPorCategoriaCalculator). Build 0 erros; suite 1386/1386 (queda de 1421 = testes do modulo removido). Depende de AddPlanoMensal no mesmo commit.
+
+## TASK-264 — Documentacao: docs/planejamento-mensal.md substitui docs/limite-gasto.md
+
+STATUS: CONCLUIDA
+AGENT: kira
+DEPENDENCIAS: TASK-263
+FLUXO: Melhoria
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, docs/limite-gasto.md, docs/projecao-do-mes.md
+ESCOPO: Escrever docs/planejamento-mensal.md (itens 14 e 20, modelo, endpoints, tela, achados de style/mike) e remover docs/limite-gasto.md.
+CRITERIO DE ACEITE: 1) Cobre visao geral, regras (referenciando itens 14, 19 e 20), modelo e endpoints, lacunas e o que cada agent entregou. 2) docs/limite-gasto.md removido; referencias em docs/ atualizadas. 3) Registra a mudanca de semantica da barra do item 19 (gasto variavel).
+ARQUIVOS PERMITIDOS: docs/planejamento-mensal.md, docs/limite-gasto.md
+NAO FAZER: Nao editar .claude/tasks.md nem o context/.
+RETORNO ESPERADO: arquivos escritos/removidos.
+HISTORICO: 2026-10-14. Kira escreveu docs/planejamento-mensal.md (visao, regras itens 14/19/20 por referencia, modelo/endpoints, lacunas, entregas por agent, notas operacionais), removeu docs/limite-gasto.md e atualizou a referencia em docs/modulo-cartao-credito.md. Regra recebeu o horizonte de 12 meses e o teto da renda (texto do killua).
+
+# Bloco Planejamento mensal unificado + edicao inline R$ <-> % (confirmado em 2026-10-22) — TASK-265..269
+
+## TASK-265 — RED: testes de GastosPorCategoria no PlanejamentoMensalCalculator e Controller
+
+STATUS: CONCLUIDA
+AGENT: mike
+DEPENDENCIAS: TASK-264
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, MyFinances/MyFinances/Domain/PlanejamentoMensalCalculator.cs, MyFinances/MyFinances/Domain/PlanoMensalCalculado.cs, MyFinances/MyFinances/DTOs/PlanejamentoMensal/PlanoMensalResponse.cs, MyFinances/MyFinances.Tests/Domain/PlanejamentoMensalCalculatorTests.cs, MyFinances/MyFinances.Tests/Controllers/PlanejamentoMensalControllerTests.cs
+ESCOPO: Escrever os testes RED para PlanejamentoMensalCalculator.CalcularGastosPorCategoria e para a exposicao de GastosPorCategoria em PlanoMensalCalculado (retorno de Calcular) e PlanoMensalResponse (GET e PUT /api/planejamento-mensal/{ano}/{mes}).
+CRITERIO DE ACEITE: 1) PlanejamentoMensalCalculatorTests cobre CalcularGastosPorCategoria: retorna apenas categorias DESPESA (ativas e arquivadas, 1o nivel e subcategorias), exclui categorias RECEITA; categoria de 1o nivel soma lancamentos variaveis proprios + subcategorias diretas; subcategoria soma apenas lancamentos proprios; categoria DESPESA sem gasto no mes aparece com GastoRealizado = 0; lancamentos fixos (ContaFixaId / AssinaturaCartaoId), ocultos, transferencias, Credit e de outros meses nao entram; ordenacao deterministica por CategoriaId; Calcular preenche GastosPorCategoria mesmo quando o plano nao possui sublimites salvos. 2) PlanejamentoMensalControllerTests valida que GET e PUT retornam gastosPorCategoria contendo o gasto variavel de categoria DESPESA que nao possui sublimite salvo no plano. 3) Os testes novos compilam e falham em RED (por NotImplementedException / assercao sobre GastosPorCategoria).
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances.Tests/Domain/PlanejamentoMensalCalculatorTests.cs, MyFinances/MyFinances.Tests/Controllers/PlanejamentoMensalControllerTests.cs
+NAO FAZER: Nao implementar CalcularGastosPorCategoria no codigo de producao. Nao editar .claude/tasks.md. Nao commitar.
+RETORNO ESPERADO: lista dos novos testes, comando de execucao e confirmacao do estado RED.
+HISTORICO: 2026-10-22. Kira aplicou o esqueleto TDD do killua em PlanoMensalCalculado, PlanejamentoMensalCalculator e PlanoMensalResponse. mike escreveu 8 testes RED (6 em PlanejamentoMensalCalculatorTests e 2 em PlanejamentoMensalControllerTests). 125 rodados: 117 pass, 8 RED.
+
+## TASK-266 — GREEN: implementar GastosPorCategoria no PlanejamentoMensalCalculator e PlanoMensalResponse
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-265
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, MyFinances/MyFinances/Domain/PlanejamentoMensalCalculator.cs, MyFinances/MyFinances/Domain/PlanoMensalCalculado.cs, MyFinances/MyFinances/DTOs/PlanejamentoMensal/PlanoMensalResponse.cs, MyFinances/MyFinances.Tests/Domain/PlanejamentoMensalCalculatorTests.cs, MyFinances/MyFinances.Tests/Controllers/PlanejamentoMensalControllerTests.cs
+ESCOPO: Implementar PlanejamentoMensalCalculator.CalcularGastosPorCategoria, incluir GastosPorCategoria no retorno de PlanejamentoMensalCalculator.Calcular e mapear para PlanoMensalResponse ate todos os testes da TASK-265 ficarem GREEN.
+CRITERIO DE ACEITE: 1) PlanejamentoMensalCalculatorTests e PlanejamentoMensalControllerTests 100% GREEN. 2) Reaproveita CalcularGastoDoSublimite e IdsDoGastoDoSublimite sem duplicar regra de elegibilidade nem de hierarquia. 3) Suite completa de testes do backend verde e style APROVADO.
+ARQUIVOS PERMITIDOS: MyFinances/MyFinances/Domain/PlanejamentoMensalCalculator.cs, MyFinances/MyFinances/Domain/PlanoMensalCalculado.cs, MyFinances/MyFinances/DTOs/PlanejamentoMensal/PlanoMensalResponse.cs
+NAO FAZER: Nao editar arquivos de teste. Nao alterar regras de validacao do PlanoMensalValidator. Nao editar .claude/tasks.md. Nao commitar.
+RETORNO ESPERADO: arquivos alterados e resultado da suite de testes.
+HISTORICO: 2026-10-22. levi implementou CalcularGastosPorCategoria reaproveitando CalcularGastoDoSublimite e IdsDoGastoDoSublimite (ordenado por CategoriaId) e populou GastosPorCategoria em Calcular. 125/125 testes de PlanejamentoMensal e 1394/1394 da suite completa verdes. Style rodada 1 APROVADO.
+
+## TASK-267 — Front: funcoes puras de calculo live, conversao bidirecional R$ <-> %, horizonte e estadoLimite
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-266
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/stack.md, .claude/context/clean-code.md, MyFinanceFrontEnd/src/features/planejamento-mensal/types.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/lib/rascunho.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/lib/mes.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/lib/usoSublimite.ts, MyFinanceFrontEnd/src/features/limite-gasto/lib/estadoLimite.ts
+ESCOPO: 1) Atualizar features/planejamento-mensal/types.ts com GastoCategoriaResponse e gastosPorCategoria. 2) Em lib/mes.ts, adicionar HORIZONTE_MESES_FUTUROS = 12 e podeAvancarMes(atual, referencia). 3) Consolidar larguraBarraUso e rotuloUso em features/limite-gasto/lib/estadoLimite.ts (mantendo reexport em usoSublimite.ts se necessario ou atualizando imports) e remover larguraBarraPercentual. 4) Modelar em features/planejamento-mensal/lib/rascunho.ts (e/ou calculoLivePlano.ts) a criacao do rascunho unificado (todas as categorias DESPESA ativas + arquivadas que ja tinham sublimite no plano, com gastoRealizado vindo de gastosPorCategoria), as transformacoes bidirecionais R$ <-> % (alterarRendaPrevista, alterarPercentualInvestimento, alterarValorInvestimento, alterarPercentualSublimite, alterarValorSublimite, removerSublimite — zerar pai zera filhos), o calculo puro de preview em tempo real (calcularPlanoPreview), a deteccao de dirty state (temAlteracoes) e o montarRequest (omitindo categorias com percentual <= 0 ou vazio).
+CRITERIO DE ACEITE: 1) Todas as funcoes em lib/ sao 100% puras (sem hooks, sem fetch, sem JSX). 2) Conversao R$ <-> % arredonda para no maximo 2 casas decimais e nao sobrescreve o texto do campo que o usuario esta digitando no momento. 3) Categorias ativas com 0% / vazio ficam com temSublimite = false, estourado = false, entram em gastoSemSublimite no preview e nao sao enviadas em sublimites[] no montarRequest; zerar o pai zera todas as subcategorias dele. 4) npx tsc -b limpo sem any.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/planejamento-mensal/types.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/lib/*, MyFinanceFrontEnd/src/features/limite-gasto/lib/estadoLimite.ts
+NAO FAZER: Nao usar hooks React dentro de lib/. Nao editar .claude/tasks.md. Nao commitar.
+RETORNO ESPERADO: arquivos criados/alterados, assinaturas exportadas e resultado do npx tsc -b.
+HISTORICO: 2026-10-22. hanzo atualizou types.ts (GastoCategoriaResponse e gastosPorCategoria), mes.ts (HORIZONTE_MESES_FUTUROS, indiceMes, podeAvancarMes), estadoLimite.ts (larguraBarraUso e rotuloUso consolidados) e rascunho.ts (criarRascunho unificado, transformacoes bidirecionais R$ <-> %, calcularPlanoPreview, temAlteracoes, montarRequest). tsc -b 0 erros. Style rodada 1 APROVADO.
+
+## TASK-268 — Front: tela unificada /planejamento com edicao inline, inputs R$ <-> % e redirect de /limites-gasto
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-267
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/identidade-visual.md, .claude/context/stack.md, .claude/context/clean-code.md, MyFinanceFrontEnd/src/features/planejamento-mensal/PlanejamentoMensalPage.tsx, MyFinanceFrontEnd/src/features/planejamento-mensal/components/ResumoPlano.tsx, MyFinanceFrontEnd/src/features/planejamento-mensal/components/ListaSublimites.tsx, MyFinanceFrontEnd/src/features/planejamento-mensal/components/EditorPlano.tsx, MyFinanceFrontEnd/src/features/planejamento-mensal/components/NavegacaoMes.tsx, MyFinanceFrontEnd/src/features/planejamento-mensal/components/AlertasPlano.tsx, MyFinanceFrontEnd/src/features/limite-gasto/ComparativoLimiteGastoPage.tsx, MyFinanceFrontEnd/src/features/limite-gasto/components/ItemComparativoLimite.tsx, MyFinanceFrontEnd/src/features/dashboard/components/LimiteGastoIndicador.tsx, MyFinanceFrontEnd/src/router.tsx, MyFinanceFrontEnd/src/components/layout/Sidebar.tsx, MyFinanceFrontEnd/src/components/layout/BottomNav.tsx
+ESCOPO: 1) Unificar Planejamento Mensal e Comparativo de Limites em /planejamento (PlanejamentoMensalPage.tsx), removendo o modo separado EditorPlano.tsx e o select de adicionar categoria. 2) Em meses editaveis (!plano.somenteLeitura), permitir edicao inline de rendaPrevista, investimento (% e R$) e sublimite de cada categoria/subcategoria (% e R$), atualizando em tempo real ResumoPlano, AlertasPlano, barras de progresso (com cores semanticas de estadoLimite.ts: ok/perto/estourado), naoAlocado e gastoSemSublimite via calcularPlanoPreview. 3) Listar todas as categorias DESPESA ativas de 1o nivel com toggle para expandir/recolher suas subcategorias ativas (subcategoria fica com inputs desabilitados enquanto o pai estiver em 0%), exibindo gastoRealizado em todas elas; manter categorias arquivadas que ja tinham sublimite no plano sinalizadas com botao de remover. 4) Exibir barra/acoes explicitas "Salvar alteracoes" e "Descartar" quando temAlteracoes for true. 5) Desabilitar avancar mes em NavegacaoMes quando !podeAvancarMes(periodo) e exibir error.message real quando error instanceof ApiError. 6) Suportar ?categoriaId= em /planejamento (destaque visual da categoria, auto-expansao do pai se for subcategoria e chip/botao "Ver todas" para limpar o query param), redirecionar /limites-gasto para /planejamento preservando location.search em router.tsx, atualizar o link de LimiteGastoIndicador.tsx para /planejamento?categoriaId= e remover ComparativoLimiteGastoPage.tsx e ItemComparativoLimite.tsx (e limpar funcoes temporarias em rascunho.ts / estadoLimite.ts se nao tiverem mais consumidores fora desta task).
+CRITERIO DE ACEITE: 1) Edicao inline atualiza todos os valores em R$, sobra, nao alocado, gasto sem sublimite, alertas e barras em tempo real; digitar em R$ atualiza % e vice-versa; meses passados continuam somente leitura sem inputs. 2) Barra "Salvar alteracoes" / "Descartar" aparece ao editar; salvar envia apenas sublimites com % > 0; zerar pai zera filhos. 3) /limites-gasto?categoriaId=X redireciona para /planejamento?categoriaId=X destacando a categoria; nenhum link ou item duplicado para /limites-gasto resta na UI. 4) npx tsc -b e npm run build limpos e style APROVADO.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/planejamento-mensal/PlanejamentoMensalPage.tsx, MyFinanceFrontEnd/src/features/planejamento-mensal/components/*, MyFinanceFrontEnd/src/features/planejamento-mensal/lib/*, MyFinanceFrontEnd/src/features/limite-gasto/ComparativoLimiteGastoPage.tsx, MyFinanceFrontEnd/src/features/limite-gasto/components/ItemComparativoLimite.tsx, MyFinanceFrontEnd/src/features/limite-gasto/lib/estadoLimite.ts, MyFinanceFrontEnd/src/features/dashboard/components/LimiteGastoIndicador.tsx, MyFinanceFrontEnd/src/router.tsx, MyFinanceFrontEnd/src/components/layout/Sidebar.tsx, MyFinanceFrontEnd/src/components/layout/BottomNav.tsx
+NAO FAZER: Nao fazer calculo de regra de negocio inline em componentes JSX (usar sempre as funcoes puras de lib/). Nao editar .claude/tasks.md. Nao commitar.
+RETORNO ESPERADO: arquivos criados/alterados/removidos e resultado de npx tsc -b e npm run build.
+HISTORICO: 2026-10-22. hanzo unificou /planejamento e /limites-gasto em PlanejamentoMensalPage.tsx com edicao inline (ResumoPlano e ListaSublimites com inputs % e R$ bidirecionais), expansao de subcategorias, barra Salvar alteracoes/Descartar, suporte a ?categoriaId=, trava de +12 meses em NavegacaoMes, redirect em routes.tsx e links em LimiteGastoIndicador.tsx; removeu EditorPlano.tsx, opcoesCategoria.ts, ComparativoLimiteGastoPage.tsx e ItemComparativoLimite.tsx. tsc -b e vite build ok. Style rodada 1 APROVADO.
+
+## TASK-269 — Front: corrigir barra de sublimite R$ 0 em CategoriaItem e invalidar plano nos hooks de categoria
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-267
+FLUXO: Correcao
+CONTEXTO A LER: .claude/context/clean-code.md, .claude/context/stack.md, MyFinanceFrontEnd/src/features/categorias/components/CategoriaItem.tsx, MyFinanceFrontEnd/src/features/categorias/hooks/useArquivarCategoria.ts, MyFinanceFrontEnd/src/features/categorias/hooks/useReativarCategoria.ts, MyFinanceFrontEnd/src/features/categorias/hooks/useEditarCategoria.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/query-keys.ts, MyFinanceFrontEnd/src/features/limite-gasto/lib/estadoLimite.ts
+ESCOPO: 1) Em CategoriaItem.tsx, substituir percent={comparativo.percentualUtilizado * 100} por larguraBarraUso(comparativo.percentualUtilizado, estourado) (e exibir rotuloUso se aplicavel) de estadoLimite.ts, garantindo barra cheia (100%) quando valorLimite == 0 e estourado == true. 2) Nos hooks useArquivarCategoria.ts, useReativarCategoria.ts e useEditarCategoria.ts, invalidar tambem planejamentoMensalKeys.all no onSuccess.
+CRITERIO DE ACEITE: 1) CategoriaItem.tsx usa larguraBarraUso sem multiplicacao inline de percentual. 2) useArquivarCategoria, useReativarCategoria e useEditarCategoria invalidam planejamentoMensalKeys.all. 3) npx tsc -b limpo e style APROVADO.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/categorias/components/CategoriaItem.tsx, MyFinanceFrontEnd/src/features/categorias/hooks/useArquivarCategoria.ts, MyFinanceFrontEnd/src/features/categorias/hooks/useReativarCategoria.ts, MyFinanceFrontEnd/src/features/categorias/hooks/useEditarCategoria.ts
+NAO FAZER: Nao alterar o formulario de categoria. Nao editar .claude/tasks.md. Nao commitar.
+RETORNO ESPERADO: arquivos alterados e resultado do npx tsc -b.
+HISTORICO: 2026-10-22. hanzo trocou a barra inline de CategoriaItem.tsx por larguraBarraUso/rotuloUso de estadoLimite.ts e adicionou invalidacao de planejamentoMensalKeys.all em useArquivarCategoria, useReativarCategoria e useEditarCategoria. tsc -b 0 erros. Style rodada 1 APROVADO.
+
+## TASK-270 — Front: recurso "Copiar de outro mes" no planejamento mensal (/planejamento)
+
+STATUS: CONCLUIDA
+AGENT: hanzo
+DEPENDENCIAS: TASK-268
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/identidade-visual.md, .claude/context/stack.md, .claude/context/clean-code.md, MyFinanceFrontEnd/src/features/planejamento-mensal/PlanejamentoMensalPage.tsx, MyFinanceFrontEnd/src/features/planejamento-mensal/components/ListaSublimites.tsx, MyFinanceFrontEnd/src/features/planejamento-mensal/lib/rascunho.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/lib/mes.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/hooks/usePlanoMensal.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/api.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/query-keys.ts, MyFinanceFrontEnd/src/shared/ui/FormModal.tsx
+ESCOPO: 1) Em features/planejamento-mensal/lib/mes.ts, adicionar as funcoes puras ehMesmoMes(a, b) e estaDentroDoHorizonte(alvo, referencia). 2) Em features/planejamento-mensal/lib/rascunho.ts, adicionar aplicarCopiaDePlano(rascunhoDestino, planoOrigem, fixasDestino, opcoes) que copia percentualInvestimento (e rendaPrevista somente quando opcoes.copiarRenda === true), aplica os percentuais das categorias DESPESA ativas do mes de origem (zerando as que nao tinham sublimite na origem, ignorando categorias arquivadas e zerando subcategorias cujo pai ficou com 0% ou arquivado) e recalcula todos os valores em R$ sobre fixasDestino. 3) Criar o hook useBuscarPlanoParaCopia em features/planejamento-mensal/hooks/useBuscarPlanoParaCopia.ts (usando queryClient.fetchQuery com planejamentoMensalKeys.plano(ano, mes) e tratando 404 como null). 4) Criar o componente CopiarPlanoModal em features/planejamento-mensal/components/CopiarPlanoModal.tsx (usando FormModal) com seletores de mes/ano (inicializados com deslocarMes(periodoAtual, -1)), checkbox "Copiar tambem a renda prevista" (desmarcado por padrao), validacao impedindo selecionar o proprio mes aberto ou mes alem do horizonte (+12 meses) e alerta claro caso o mes de origem nao possua plano salvo (null/404). 5) Integrar o botao "Copiar de outro mes" e o CopiarPlanoModal em PlanejamentoMensalPage.tsx para meses editaveis (!plano.somenteLeitura), aplicando o resultado no rascunho da tela (habilitando a barra "Salvar alteracoes" / "Descartar") e expandindo automaticamente em ListaSublimites os pais cujas subcategorias receberam percentual > 0.
+CRITERIO DE ACEITE: 1) Botao "Copiar de outro mes" visivel apenas em meses editaveis (!plano.somenteLeitura); modal abre sugerindo o mes imediatamente anterior ao mes aberto e checkbox de renda desmarcado. 2) Confirmar a copia com checkbox desmarcado preserva a rendaPrevista atual do rascunho e atualiza percentualInvestimento e sublimites; com checkbox marcado atualiza tambem rendaPrevista. 3) Todos os valores em R$, sobra, nao alocado, gasto sem sublimite, alertas e barras atualizam imediatamente no preview da tela sem salvar no banco, exibindo a barra "Salvar alteracoes" / "Descartar". 4) Tentar copiar de mes passado sem plano (404) exibe mensagem clara no modal sem fechar nem perder o rascunho; proprio mes aberto e mes alem de +12 meses sao bloqueados. 5) npx tsc -b e npm run build limpos e style APROVADO.
+ARQUIVOS PERMITIDOS: MyFinanceFrontEnd/src/features/planejamento-mensal/lib/mes.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/lib/rascunho.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/hooks/useBuscarPlanoParaCopia.ts, MyFinanceFrontEnd/src/features/planejamento-mensal/components/CopiarPlanoModal.tsx, MyFinanceFrontEnd/src/features/planejamento-mensal/components/ListaSublimites.tsx, MyFinanceFrontEnd/src/features/planejamento-mensal/PlanejamentoMensalPage.tsx
+NAO FAZER: Nao criar endpoint novo no backend. Nao salvar automaticamente no banco ao copiar (deve apenas atualizar o rascunho na tela). Nao colocar logica de calculo ou fetch direto no JSX do modal. Nao editar .claude/tasks.md. Nao commitar.
+RETORNO ESPERADO: arquivos criados/alterados e resultado de npx tsc -b e npm run build.
+HISTORICO: 2026-10-23. hanzo implementou ehMesmoMes e estaDentroDoHorizonte em mes.ts, aplicarCopiaDePlano em rascunho.ts, useBuscarPlanoParaCopia.ts, CopiarPlanoModal.tsx e integrou o botao "Copiar de outro mes" em PlanejamentoMensalPage.tsx (com auto-expansao de pais com subcategorias copiadas em ListaSublimites.tsx). tsc -b e vite build ok. Style rodada 1 APROVADO.
+
+## TASK-271 — MCP: copiar_planejamento_mensal, suporte a R$ <-> % em salvar_planejamento_mensal e gastosPorCategoria em obter_planejamento_mensal
+
+STATUS: CONCLUIDA
+AGENT: levi
+DEPENDENCIAS: TASK-266, TASK-270
+FLUXO: Implementacao
+CONTEXTO A LER: .claude/context/regra-de-negocio.md, .claude/context/clean-code.md, mcp-server/src/tools/planejamentoMensal.ts, mcp-server/src/tools/categorias.ts, mcp-server/src/apiClient.ts, mcp-server/src/mcpHelpers.ts, mcp-server/src/format.ts, mcp-server/README.md
+ESCOPO: 1) Em mcp-server/src/tools/planejamentoMensal.ts, atualizar PlanoMensalResponse com gastosPorCategoria: { categoriaId: string; gastoRealizado: number }[] e, em obter_planejamento_mensal, listar os gastos variaveis realizados no mes por categoria DESPESA (resolvendo nome/hierarquia via api/Categorias), inclusive das categorias sem sublimite salvo. 2) Em salvar_planejamento_mensal, aceitar investimento tanto por percentualInvestimento (0-100) quanto por valorInvestimento (em R$, convertido para % sobre rendaPrevista arredondado em 2 casas), e em cada item de sublimites aceitar tanto percentual (0-100) quanto valor (em R$, convertido para % sobre a sobra no 1o nivel ou sobre o valor do sublimite do pai na subcategoria, arredondado em 2 casas; omitir sublimites com % <= 0 ao enviar ao PUT). 3) Adicionar a tool copiar_planejamento_mensal(anoOrigem, mesOrigem, anoDestino, mesDestino, copiarRenda?) que le o plano de origem e o de destino, aplica os percentuais de investimento e sublimites de categorias ativas da origem (e rendaPrevista se copiarRenda=true, senao preserva a rendaPrevista do destino) e salva no mes destino via PUT. 4) Atualizar mcp-server/README.md documentando copiar_planejamento_mensal e o suporte a R$ ou % em salvar_planejamento_mensal.
+CRITERIO DE ACEITE: 1) obter_planejamento_mensal exibe sublimites e tambem os gastos variaveis por categoria DESPESA (gastosPorCategoria). 2) salvar_planejamento_mensal aceita % ou R$ no investimento e nos sublimites, convertendo R$ -> % conforme a regra dos itens 14 e 20. 3) copiar_planejamento_mensal copia de anoOrigem/mesOrigem para anoDestino/mesDestino respeitando categorias arquivadas e a flag copiarRenda. 4) npm run build em mcp-server passa com 0 erros e style APROVADO.
+ARQUIVOS PERMITIDOS: mcp-server/src/tools/planejamentoMensal.ts, mcp-server/README.md
+NAO FAZER: Nao alterar o backend. Nao editar .claude/tasks.md. Nao commitar.
+RETORNO ESPERADO: arquivos alterados, lista de tools e resultado de npm run build.
+HISTORICO: 2026-10-26. levi (Kira/Claude) implementou gastosPorCategoria em obter_planejamento_mensal (nome e hierarquia via api/Categorias, ativas + arquivadas), entrada em % ou R$ (exatamente um) no investimento e em cada sublimite de salvar_planejamento_mensal (R$ -> % sobre renda / sobra / R$ do pai, 2 casas, omite % <= 0) e a tool copiar_planejamento_mensal (ignora arquivadas e sub sem pai copiado, copiarRenda opcional); README atualizado. Style rodada 1 PRECISA CORRIGIR: indice de categorias sobrescrevia subcategoria com parentId null (lista plana do GET), conversao R$ de sub caia sobre a sobra; duplicata engolida no caminho R$; arquivadas sem nome; mensagem "sem base"; constantes/schemas de mes. levi corrigiu e verificou o indice nas duas ordens por script fora do repo; Kira removeu exports temporarios. Style rodada 2 APROVADO. npm run build ok. mcp-server sem testes automatizados.

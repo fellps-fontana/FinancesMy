@@ -35,7 +35,9 @@ public class MyFinancesDbContext : DbContext
 
     public DbSet<ContaFixa> ContasFixas { get; set; }
 
-    public DbSet<LimiteGasto> LimitesGasto { get; set; }
+    public DbSet<PlanoMensal> PlanosMensais { get; set; }
+
+    public DbSet<PlanoMensalSublimite> PlanoMensalSublimites { get; set; }
 
     public DbSet<Rendimento> Rendimentos { get; set; }
 
@@ -59,7 +61,8 @@ public class MyFinancesDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ContaReceberConfiguration());
         modelBuilder.ApplyConfiguration(new CompraParceladaConfiguration());
         modelBuilder.ApplyConfiguration(new ContaFixaConfiguration());
-        modelBuilder.ApplyConfiguration(new LimiteGastoConfiguration());
+        modelBuilder.ApplyConfiguration(new PlanoMensalConfiguration());
+        modelBuilder.ApplyConfiguration(new PlanoMensalSublimiteConfiguration());
         modelBuilder.ApplyConfiguration(new RendimentoConfiguration());
         modelBuilder.ApplyConfiguration(new RecebivelRecorrenteConfiguration());
         modelBuilder.ApplyConfiguration(new AssinaturaCartaoConfiguration());

@@ -4,7 +4,6 @@ import { ApiError } from "@/shared/api/client"
 import { useCategorias } from "@/features/categorias/hooks/useCategorias"
 import { useArquivarCategoria } from "@/features/categorias/hooks/useArquivarCategoria"
 import { useReativarCategoria } from "@/features/categorias/hooks/useReativarCategoria"
-import { useLimitesGasto } from "@/features/limite-gasto/hooks/useLimitesGasto"
 import { useGastoVsLimiteTodasCategorias } from "@/features/limite-gasto/hooks/useGastoVsLimiteTodasCategorias"
 import { CategoriaItem } from "@/features/categorias/components/CategoriaItem"
 import { FormCategoria } from "@/features/categorias/FormCategoria"
@@ -16,7 +15,7 @@ import { Chip } from "@/shared/ui/chip"
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog"
 import { PageHeader } from "@/shared/ui/page-header"
 import type { CategoriaResponse, TipoCategoria } from "@/features/categorias/types"
-import type { GastoVsLimiteResponse, LimiteGastoResponse } from "@/features/limite-gasto/types"
+import type { GastoVsLimiteResponse } from "@/features/limite-gasto/types"
 
 const TIPO_PADRAO: TipoCategoria = "Despesa"
 
@@ -34,8 +33,8 @@ type Superficie =
   | { tipo: "arquivar"; categoria: CategoriaResponse }
   | null
 
-// Container roteado: le estado de servidor (categorias, limites e
-// gasto-vs-limite do mes corrente via React Query) e orquestra as superficies
+// Container roteado: le estado de servidor (categorias e
+// gasto-vs-limite do sublimite do mes corrente via React Query) e orquestra as superficies
 // de UI. Gasto, percentual e `estourado` chegam prontos do backend
 // (regra-de-negocio.md item 14); renderizacao fica em CategoriaItem.
 // Nova subcategoria: escolher a categoria-pai no proprio form (item 7).
@@ -50,8 +49,6 @@ export function CategoriasPage() {
     error: erroCategorias,
   } = useCategorias(tipoSelecionado)
 
-  const { data: limites, error: erroLimites } = useLimitesGasto()
-
   const hoje = new Date()
   const { data: gastosVsLimite, error: erroGastos } = useGastoVsLimiteTodasCategorias(
     hoje.getFullYear(),
@@ -62,14 +59,7 @@ export function CategoriasPage() {
   const { mutate: reativar } = useReativarCategoria()
 
   if (erroCategorias) console.error("Falha ao carregar categorias", erroCategorias)
-  if (erroLimites) console.error("Falha ao carregar limites de gasto", erroLimites)
   if (erroGastos) console.error("Falha ao carregar gasto vs limite", erroGastos)
-
-  const limitesPorCategoriaId = useMemo(() => {
-    const mapa: Record<string, LimiteGastoResponse> = {}
-    for (const limite of limites ?? []) mapa[limite.categoriaId] = limite
-    return mapa
-  }, [limites])
 
   const gastoVsLimitePorCategoriaId = useMemo(() => {
     const mapa: Record<string, GastoVsLimiteResponse> = {}
@@ -197,7 +187,6 @@ export function CategoriasPage() {
           <FormCategoria
             key={superficie.categoria.id}
             categoriaParaEditar={superficie.categoria}
-            limiteAtual={limitesPorCategoriaId[superficie.categoria.id] ?? null}
             onSalvar={fechar}
             onCancelar={fechar}
           />

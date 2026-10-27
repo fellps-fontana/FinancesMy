@@ -51,7 +51,7 @@ builder.Services.AddScoped<IRendimentoRepository, RendimentoRepository>();
 builder.Services.AddScoped<IAtivoAporteRepository, AtivoAporteRepository>();
 builder.Services.AddScoped<ICompraParceladaRepository, CompraParceladaRepository>();
 builder.Services.AddScoped<IContaFixaRepository, ContaFixaRepository>();
-builder.Services.AddScoped<ILimiteGastoRepository, LimiteGastoRepository>();
+builder.Services.AddScoped<IPlanoMensalRepository, PlanoMensalRepository>();
 builder.Services.AddScoped<IRecebivelRecorrenteRepository, RecebivelRecorrenteRepository>();
 builder.Services.AddScoped<IAssinaturaCartaoRepository, AssinaturaCartaoRepository>();
 
@@ -98,8 +98,8 @@ builder.Services.AddScoped<ILancamentoParceladoService, LancamentoParceladoServi
 builder.Services.AddScoped<ITransferenciaService, TransferenciaService>();
 builder.Services.AddScoped<IFluxoCaixaService, FluxoCaixaService>();
 
-// Services - Limite de Gasto
-builder.Services.AddScoped<ILimiteGastoService, LimiteGastoService>();
+// Services - Planejamento Mensal (item 20)
+builder.Services.AddScoped<IPlanejamentoMensalService, PlanejamentoMensalService>();
 
 // Services - Dashboard
 builder.Services.AddScoped<IFaturaProjecaoService, FaturaProjecaoService>();
