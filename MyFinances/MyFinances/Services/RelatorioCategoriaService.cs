@@ -8,21 +8,22 @@ namespace MyFinances.Services;
 public class RelatorioCategoriaService : IRelatorioCategoriaService
 {
     private const int AnoMinimo = 1;
+    private const int AnoMaximo = 9999;
     private const int MesMinimo = 1;
     private const int MesMaximo = 12;
 
     private readonly ILancamentoRepository _lancamentoRepository;
     private readonly ICategoriaRepository _categoriaRepository;
-    private readonly ILimiteGastoRepository _limiteGastoRepository;
+    private readonly IPlanejamentoMensalService _planejamentoMensalService;
 
     public RelatorioCategoriaService(
         ILancamentoRepository lancamentoRepository,
         ICategoriaRepository categoriaRepository,
-        ILimiteGastoRepository limiteGastoRepository)
+        IPlanejamentoMensalService planejamentoMensalService)
     {
         _lancamentoRepository = lancamentoRepository;
         _categoriaRepository = categoriaRepository;
-        _limiteGastoRepository = limiteGastoRepository;
+        _planejamentoMensalService = planejamentoMensalService;
     }
 
     // validar ano/mes -> debitos do mes e do anterior (janeiro: dez/ano-1) + todas as
@@ -48,8 +49,8 @@ public class RelatorioCategoriaService : IRelatorioCategoriaService
     }
 
     // validar ano/mes -> se categoriaId != null: existe, ParentId == null, Tipo == Despesa
-    // -> Calcular (total e percentual da linha) + LancamentosDaLinha -> limite via
-    // _limiteGastoRepository.ObterPorCategoriaId (GastoRealizado = total da linha).
+    // -> Calcular (total e percentual da linha) + LancamentosDaLinha -> limite = sublimite da
+    // categoria no plano do mes (IPlanejamentoMensalService.ObterAsync; GastoRealizado do sublimite).
     // Categoria valida sem gasto: total 0, lista vazia (nao e erro).
     public async Task<RelatorioCategoriaDetalheResponse> ObterDetalheAsync(int ano, int mes, Guid? categoriaId)
     {
@@ -68,7 +69,7 @@ public class RelatorioCategoriaService : IRelatorioCategoriaService
 
         LimiteRelatorioResponse? limite = categoria == null
             ? null
-            : await ObterLimiteRelatorioAsync(categoria.Id, totalDaLinha);
+            : await ObterLimiteRelatorioAsync(ano, mes, categoria.Id);
 
         var lancamentosDaLinha = GastoPorCategoriaCalculator.LancamentosDaLinha(lancamentos, categorias, categoriaId);
 
@@ -84,8 +85,8 @@ public class RelatorioCategoriaService : IRelatorioCategoriaService
 
     private static void ValidarAnoMes(int ano, int mes)
     {
-        if (ano < AnoMinimo)
-            throw new ValorInvalidoException("ano", ano);
+        if (ano < AnoMinimo || ano > AnoMaximo)
+            throw new ValorInvalidoException("ano", ano, AnoMinimo, AnoMaximo);
 
         if (mes < MesMinimo || mes > MesMaximo)
             throw new ValorInvalidoException("mes", mes, MesMinimo, MesMaximo);
@@ -94,8 +95,9 @@ public class RelatorioCategoriaService : IRelatorioCategoriaService
     private static (int Ano, int Mes) CalcularMesAnterior(int ano, int mes) =>
         mes == MesMinimo ? (ano - 1, MesMaximo) : (ano, mes - 1);
 
+    // Arquivadas inclusive: gasto de categoria arquivada entra no mes (item 19).
     private async Task<List<Categoria>> CarregarCategoriasAsync() =>
-        (await _categoriaRepository.Listar()).ToList();
+        (await _categoriaRepository.ListarTodas()).ToList();
 
     private async Task<List<Lancamento>> CarregarDebitosAsync(int ano, int mes) =>
         (await _lancamentoRepository.ListarDebitosParaRelatorioAsync(ano, mes)).ToList();
@@ -111,13 +113,22 @@ public class RelatorioCategoriaService : IRelatorioCategoriaService
         return categoria;
     }
 
-    private async Task<LimiteRelatorioResponse?> ObterLimiteRelatorioAsync(Guid categoriaId, decimal gastoRealizado)
+    // Mes alem do horizonte do planejamento nao tem plano: relatorio segue sem limite (decisao 2026-10-14).
+    private async Task<LimiteRelatorioResponse?> ObterLimiteRelatorioAsync(int ano, int mes, Guid categoriaId)
     {
-        var limite = await _limiteGastoRepository.ObterPorCategoriaId(categoriaId);
+        try
+        {
+            var consulta = await _planejamentoMensalService.ObterAsync(ano, mes);
+            var sublimite = consulta?.Plano.Sublimites.FirstOrDefault(item => item.CategoriaId == categoriaId);
 
-        return limite == null
-            ? null
-            : new LimiteRelatorioResponse(limite.ValorLimite, gastoRealizado);
+            return sublimite == null
+                ? null
+                : new LimiteRelatorioResponse(sublimite.Valor, sublimite.GastoRealizado, sublimite.Estourado);
+        }
+        catch (PlanoMensalForaDoHorizonteException)
+        {
+            return null;
+        }
     }
 
     private static LinhaGastoPorCategoriaResponse MapearLinhaResumo(LinhaGastoCategoria linha) =>

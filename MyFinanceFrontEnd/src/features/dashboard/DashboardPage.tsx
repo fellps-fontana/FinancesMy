@@ -45,9 +45,8 @@ const mesAtual = hoje.getMonth() + 1
  * (stack.md "Estrutura de pastas (src/)" - raiz da feature = alvo direto de
  * uma <Route>). Compoe os dois indicadores do mes corrente
  * (regra-de-negocio.md itens 9 e 14): CardSaldoProjetado (projecao do mes) e
- * LimiteGastoIndicador (limite de gasto por categoria). Sem seletor de
- * mes/ano nesta leva - sempre o mes corrente via `new Date()`, mesmo padrao
- * ja usado em ComparativoLimiteGastoPage.tsx.
+ * LimiteGastoIndicador (sublimite do planejamento mensal). Sem seletor de
+ * mes/ano nesta leva - sempre o mes corrente via `new Date()`.
  *
  * Saudacao "Ola, {usuario}" + data (mockups 02 Dashboard) vive aqui; o botao
  * Sair continua so no AppShell. Layout segue o mockup: desktop = 3 cards de

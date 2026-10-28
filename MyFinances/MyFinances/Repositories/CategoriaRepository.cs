@@ -53,6 +53,13 @@ public class CategoriaRepository : ICategoriaRepository
         return await query.ToListAsync();
     }
 
+    public async Task<IEnumerable<Categoria>> ListarTodas()
+    {
+        return await _context.Categorias
+            .Include(c => c.Subcategorias)
+            .ToListAsync();
+    }
+
     public async Task Salvar()
     {
         await _context.SaveChangesAsync();

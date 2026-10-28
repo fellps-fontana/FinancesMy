@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { criarAssinaturaCartao } from "@/features/assinaturas-cartao/api"
 import { assinaturasCartaoKeys } from "@/features/assinaturas-cartao/query-keys"
 import type { CriarAssinaturaCartaoRequest } from "@/features/assinaturas-cartao/types"
+import { planejamentoMensalKeys } from "@/features/planejamento-mensal/query-keys"
 
 // Criar uma AssinaturaCartao ja gera a primeira compra na fatura aberta
 // (AssinaturaCartaoService.CriarAsync, backend) - invalida a lista de
@@ -15,6 +16,7 @@ export function useCriarAssinaturaCartao() {
     mutationFn: (request: CriarAssinaturaCartaoRequest) => criarAssinaturaCartao(request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: assinaturasCartaoKeys.all })
+      queryClient.invalidateQueries({ queryKey: planejamentoMensalKeys.all })
     },
   })
 }

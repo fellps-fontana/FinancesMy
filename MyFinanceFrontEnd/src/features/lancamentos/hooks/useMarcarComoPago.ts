@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { marcarLancamentoComoPago } from "@/features/lancamentos/api"
 import { lancamentosKeys } from "@/features/lancamentos/query-keys"
+import { planejamentoMensalKeys } from "@/features/planejamento-mensal/query-keys"
 
 type MarcarComoPagoVariables = {
   contaId: string
@@ -19,6 +20,7 @@ export function useMarcarComoPago() {
       marcarLancamentoComoPago(contaId, lancamentoId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: lancamentosKeys.all })
+      queryClient.invalidateQueries({ queryKey: planejamentoMensalKeys.all })
     },
   })
 }

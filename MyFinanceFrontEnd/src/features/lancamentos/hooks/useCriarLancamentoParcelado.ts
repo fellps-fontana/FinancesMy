@@ -3,7 +3,7 @@ import { dashboardKeys } from "@/features/dashboard/query-keys"
 import { criarLancamentoParcelado } from "@/features/lancamentos/api"
 import { lancamentosKeys } from "@/features/lancamentos/query-keys"
 import type { CriarLancamentoParceladoRequest } from "@/features/lancamentos/types"
-import { limiteGastoKeys } from "@/features/limite-gasto/query-keys"
+import { planejamentoMensalKeys } from "@/features/planejamento-mensal/query-keys"
 
 type CriarLancamentoParceladoVariables = {
   contaId: string
@@ -20,7 +20,7 @@ export function useCriarLancamentoParcelado() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: lancamentosKeys.all })
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
-      queryClient.invalidateQueries({ queryKey: limiteGastoKeys.all })
+      queryClient.invalidateQueries({ queryKey: planejamentoMensalKeys.all })
     },
   })
 }

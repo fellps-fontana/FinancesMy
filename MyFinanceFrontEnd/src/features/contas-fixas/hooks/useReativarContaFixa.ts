@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { reativarContaFixa } from "@/features/contas-fixas/api"
 import { contasFixasKeys } from "@/features/contas-fixas/query-keys"
+import { planejamentoMensalKeys } from "@/features/planejamento-mensal/query-keys"
 
 // Reativar (ativa false->true) gera de novo os Lancamentos a partir do mes
 // vigente (regra-de-negocio.md item 6) - mesma invalidacao de
@@ -13,6 +14,7 @@ export function useReativarContaFixa() {
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: contasFixasKeys.lista() })
       queryClient.invalidateQueries({ queryKey: contasFixasKeys.porId(id) })
+      queryClient.invalidateQueries({ queryKey: planejamentoMensalKeys.all })
     },
   })
 }

@@ -6,6 +6,7 @@ import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { IconTile } from "@/shared/ui/icon-tile"
 import { ProgressBar } from "@/shared/ui/progress-bar"
+import { larguraBarraUso, rotuloUso } from "@/features/limite-gasto/lib/estadoLimite"
 import type { CategoriaResponse } from "@/features/categorias/types"
 import type { GastoVsLimiteResponse } from "@/features/limite-gasto/types"
 
@@ -24,8 +25,8 @@ type CategoriaItemProps = {
 // Apresentacao pura (regra-de-negocio.md item 7: categoria/subcategoria via
 // parentId, arquivar e a unica exclusao; item 14: limite mensal). Gasto,
 // percentual e `estourado` chegam prontos do backend (GastoVsLimiteResponse) -
-// aqui so se exibe: a barra recebe o percentual (fracao -> escala 0-100 da
-// barra) e `estourado` decide a cor (coral = gasto acima do limite).
+// aqui so se exibe: a barra recebe larguraBarraUso e `estourado` decide a cor
+// (coral = gasto acima do limite, inclusive quando sublimite = R$ 0).
 // Categoria sem limite nao tem barra. Desktop: icones de acao na linha;
 // mobile: a linha inteira e um alvo de toque que abre a folha de acoes.
 export function CategoriaItem({
@@ -80,14 +81,17 @@ export function CategoriaItem({
                   estourado ? "text-negativo" : "text-text-primary",
                 )}
               >
-                {formatarMoeda(comparativo.gastoRealizado)} / {formatarMoeda(comparativo.valorLimite)}
+                {formatarMoeda(comparativo.gastoRealizado)} / {formatarMoeda(comparativo.valorLimite)}{" "}
+                <span className="text-[12px] text-text-faint">
+                  ({rotuloUso(comparativo.percentualUtilizado, estourado)})
+                </span>
               </span>
             )}
           </div>
           {comparativo && (
             <ProgressBar
               className="mt-1.5"
-              percent={comparativo.percentualUtilizado * 100}
+              percent={larguraBarraUso(comparativo.percentualUtilizado, estourado)}
               exceeded={estourado}
               aria-label={`Uso do limite de ${categoria.nome}`}
             />

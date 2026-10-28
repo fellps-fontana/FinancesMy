@@ -327,7 +327,8 @@ export function FormLancamento({ lancamentoParaEditar, onSalvar, onCancelar }: F
         </span>
       )}
 
-      {/* Aviso de limite (item 14): so despesa com categoria; nunca bloqueia. */}
+      {/* Aviso de sublimite (itens 14/20): so despesa com categoria; usa o mes da
+          data do formulario (ano/mes de extrairAnoMes(data)); nunca bloqueia. */}
       {despesa && categoriaId && <AvisoLimiteGasto categoriaId={categoriaId} ano={ano} mes={mes} />}
 
       <div className="flex flex-col gap-1.5">

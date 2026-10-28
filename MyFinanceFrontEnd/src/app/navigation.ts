@@ -30,7 +30,8 @@ export type NavGroup = {
 
 // Estrutura da sidebar desktop (>= md), espelhando o mockup: principal,
 // Organizacao e Acompanhamento. Puramente estrutural - rotulo + rota + icone.
-// Limites de gasto (Organizacao) e Recebiveis recorrentes (Acompanhamento)
+// Planejamento (Organizacao, antes Limites de gasto; /limites-gasto segue por
+// link da tela) e Recebiveis recorrentes (Acompanhamento)
 // sao itens extras mantidos por decisao do usuario. /de-para, /conciliacao e
 // /relatorio podem ainda nao ter tela: caem no redirect padrao do router.
 export const NAV_GROUPS: NavGroup[] = [
@@ -48,7 +49,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/categorias", label: "Categorias", icon: Tags },
       { to: "/de-para", label: "De-para de categoria", icon: Shuffle },
       { to: "/contas-fixas", label: "Contas fixas", icon: Repeat },
-      { to: "/limites-gasto", label: "Limites de gasto", icon: Target },
+      { to: "/planejamento", label: "Planejamento", icon: Target },
     ],
   },
   {

@@ -3,6 +3,7 @@ import { anteciparParcelas } from "@/features/cartao/api"
 import { cartaoKeys } from "@/features/cartao/query-keys"
 import { dashboardKeys } from "@/features/dashboard/query-keys"
 import type { AnteciparParcelasRequest } from "@/features/cartao/types"
+import { planejamentoMensalKeys } from "@/features/planejamento-mensal/query-keys"
 
 type AnteciparParcelasVariaveis = {
   contaId: string
@@ -26,6 +27,7 @@ export function useAnteciparParcelas() {
         queryKey: cartaoKeys.parcelasElegiveis(variaveis.contaId, variaveis.compraParceladaId),
       })
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
+      queryClient.invalidateQueries({ queryKey: planejamentoMensalKeys.all })
     },
   })
 }

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { editarContaFixa } from "@/features/contas-fixas/api"
 import { contasFixasKeys } from "@/features/contas-fixas/query-keys"
 import type { EditarContaFixaRequest } from "@/features/contas-fixas/types"
+import { planejamentoMensalKeys } from "@/features/planejamento-mensal/query-keys"
 
 type EditarContaFixaVariables = {
   id: string
@@ -19,6 +20,7 @@ export function useEditarContaFixa() {
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: contasFixasKeys.lista() })
       queryClient.invalidateQueries({ queryKey: contasFixasKeys.porId(id) })
+      queryClient.invalidateQueries({ queryKey: planejamentoMensalKeys.all })
     },
   })
 }

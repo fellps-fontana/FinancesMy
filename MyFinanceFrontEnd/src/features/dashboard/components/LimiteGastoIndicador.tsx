@@ -1,29 +1,18 @@
 import { Link } from "react-router-dom"
 import { Card, CardContent } from "@/shared/ui/card"
 import { cn } from "@/shared/lib/utils"
-import { formatarMoeda } from "@/features/investimentos/lib/formatarMoeda"
+import { formatarMoeda } from "@/shared/lib/formatarMoeda"
 import { useGastoVsLimiteTodasCategorias } from "@/features/limite-gasto/hooks/useGastoVsLimiteTodasCategorias"
-import { obterEstadoLimite, type EstadoLimite } from "@/features/limite-gasto/lib/estadoLimite"
+import {
+  larguraBarraUso,
+  obterEstadoLimite,
+  rotuloUso,
+  type EstadoLimite,
+} from "@/features/limite-gasto/lib/estadoLimite"
 import type { GastoVsLimiteResponse } from "@/features/limite-gasto/types"
 
-// Formata a mesma fracao 0..1+ que o backend devolve em `percentualUtilizado`
-// (ver LimiteGastoCalculator.cs: 0.5m = 50%, 1.5m = 150% quando estourado) -
-// mesmo padrao ja usado em RelatorioCategoriaPage.tsx para `item.percentual`,
-// que tambem chega como fracao pronta do backend, sem escala *100 embutida
-// (diferente de formatarPercentual.ts de investimentos, feito pra um valor
-// que ja vem multiplicado por 100 - escala incompativel aqui).
-const formatadorPercentual = new Intl.NumberFormat("pt-BR", {
-  style: "percent",
-  maximumFractionDigits: 0,
-})
-
 // Cor semantica por estado (identidade-visual.md: "cor com significado").
-// estourado -> negativo (mesmo vermelho-coral de saida/gasto, aqui reforcando
-// "orcamento furado"). perto -> alerta (mesmo ambar de "pendente/atencao").
-// ok -> positivo: nao ha token neutro de "sucesso" separado no documento, e
-// "dentro do limite" e o analogo, no dominio de orcamento, do estado
-// resolvido/tranquilo que positivo ja representa nos badges de status (ex:
-// "pago" em ContaReceberItem) - reaproveitar em vez de inventar cor nova.
+// estourado -> negativo; perto -> alerta; ok -> positivo.
 const CONFIG_POR_ESTADO: Record<EstadoLimite, { barra: string; texto: string; label: string }> = {
   estourado: { barra: "bg-negativo", texto: "text-negativo", label: "Limite estourado" },
   perto: { barra: "bg-alerta", texto: "text-alerta", label: "Perto do limite" },
@@ -36,26 +25,21 @@ type LimiteGastoIndicadorProps = {
   className?: string
 }
 
-// Componente standalone (regra-de-negocio.md item 14: "Dashboard/resumo
-// geral: indicador de progresso gasto/limite por categoria"). Escolha de
-// design: recebe `ano`/`mes` como props e chama
-// `useGastoVsLimiteTodasCategorias` internamente, em vez de receber a lista
-// ja pronta via prop - mais simples pra quem for embutir este componente
-// quando a pagina de Dashboard existir (TASK-059 nao constroi essa pagina):
-// o consumidor so passa o periodo, sem precisar orquestrar o hook por fora.
-// Continua sendo apresentacao pura no sentido que importa aqui - nenhum
-// calculo de gasto/limite/percentual/estouro mora neste arquivo, tudo isso
-// (`percentualUtilizado`, `estourado`) vem pronto do backend
-// (LimiteGastoCalculator.cs); o unico "calculo" local e de UI (limitar a
-// largura visual da barra a 100%, pra uma categoria 150% estourada nao
-// vazar do card).
 export function LimiteGastoIndicador({ ano, mes, className }: LimiteGastoIndicadorProps) {
   const { data, isLoading, isError } = useGastoVsLimiteTodasCategorias(ano, mes)
 
   return (
     <Card className={className}>
       <CardContent className="flex flex-col gap-3">
-        <span className="text-[13px] text-text-muted">Limite de gasto por categoria</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[13px] text-text-muted">Sublimite de gasto por categoria (mes)</span>
+          <Link
+            to="/planejamento"
+            className="text-[12px] text-accent-soft underline-offset-4 hover:underline"
+          >
+            Ver planejamento
+          </Link>
+        </div>
 
         {isLoading && <p className="text-sm text-text-muted">Carregando limites...</p>}
 
@@ -64,7 +48,9 @@ export function LimiteGastoIndicador({ ano, mes, className }: LimiteGastoIndicad
         )}
 
         {!isLoading && !isError && (data === undefined || data.length === 0) && (
-          <p className="text-sm text-text-muted">Nenhuma categoria com limite de gasto definido.</p>
+          <p className="text-sm text-text-muted">
+            Nenhuma categoria com sublimite definido no plano deste mes.
+          </p>
         )}
 
         {!isLoading && !isError && data !== undefined && data.length > 0 && (
@@ -86,17 +72,12 @@ type LinhaLimiteGastoProps = {
 function LinhaLimiteGasto({ item }: LinhaLimiteGastoProps) {
   const estado = obterEstadoLimite(item)
   const config = CONFIG_POR_ESTADO[estado]
-  const larguraBarra = Math.min(item.percentualUtilizado, 1) * 100
+  const larguraBarra = larguraBarraUso(item.percentualUtilizado, item.estourado)
 
   return (
     <li>
-      {/* Link real (nao onClick + navigate), mesmo padrao ja usado em
-          dashboard/components/AcoesRapidas.tsx - preserva comportamento
-          nativo de link (nova aba, foco por teclado). Destino ja suportado
-          por ComparativoLimiteGastoPage.tsx via `?categoriaId=` (filtro
-          client-side sobre a mesma lista que o endpoint ja retorna). */}
       <Link
-        to={`/limites-gasto?categoriaId=${item.categoriaId}`}
+        to={`/planejamento?categoriaId=${item.categoriaId}`}
         className={cn(
           "-mx-1 flex flex-col gap-1.5 rounded-lg px-1 py-0.5 transition-colors",
           "hover:bg-bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
@@ -118,7 +99,7 @@ function LinhaLimiteGasto({ item }: LinhaLimiteGastoProps) {
           <span>
             {formatarMoeda(item.gastoRealizado)} de {formatarMoeda(item.valorLimite)}
           </span>
-          <span>{formatadorPercentual.format(item.percentualUtilizado)}</span>
+          <span>{rotuloUso(item.percentualUtilizado, item.estourado)}</span>
         </div>
       </Link>
     </li>

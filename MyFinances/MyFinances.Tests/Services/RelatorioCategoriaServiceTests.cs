@@ -11,7 +11,7 @@ public class RelatorioCategoriaServiceTests
 {
     private readonly Mock<ILancamentoRepository> _mockLancamentoRepository;
     private readonly Mock<ICategoriaRepository> _mockCategoriaRepository;
-    private readonly Mock<ILimiteGastoRepository> _mockLimiteGastoRepository;
+    private readonly Mock<IPlanejamentoMensalService> _mockPlanejamentoMensalService;
     private readonly RelatorioCategoriaService _service;
 
     private readonly Conta _contaBanco = new() { Id = Guid.NewGuid(), Nome = "Nubank Conta", Tipo = TipoConta.Banco };
@@ -21,13 +21,14 @@ public class RelatorioCategoriaServiceTests
     {
         _mockLancamentoRepository = new Mock<ILancamentoRepository>();
         _mockCategoriaRepository = new Mock<ICategoriaRepository>();
-        _mockLimiteGastoRepository = new Mock<ILimiteGastoRepository>();
+        _mockPlanejamentoMensalService = new Mock<IPlanejamentoMensalService>();
         _service = new RelatorioCategoriaService(
             _mockLancamentoRepository.Object,
             _mockCategoriaRepository.Object,
-            _mockLimiteGastoRepository.Object);
+            _mockPlanejamentoMensalService.Object);
 
         ConfigurarCategorias();
+        ConfigurarPlanoAusente();
     }
 
     #region Resumo - Regra 1: Validacao de ano/mes (ValorInvalidoException)
@@ -51,6 +52,13 @@ public class RelatorioCategoriaServiceTests
     {
         // Act & Assert
         await Assert.ThrowsAsync<ValorInvalidoException>(() => _service.ObterResumoAsync(0, 3));
+    }
+
+    [Fact]
+    public async Task ObterResumoAsync_AnoAcimaDe9999_LancaValorInvalidoExcecao()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ValorInvalidoException>(() => _service.ObterResumoAsync(10000, 3));
     }
 
     #endregion
@@ -165,6 +173,14 @@ public class RelatorioCategoriaServiceTests
             () => _service.ObterDetalheAsync(0, 3, Guid.NewGuid()));
     }
 
+    [Fact]
+    public async Task ObterDetalheAsync_AnoAcimaDe9999_LancaValorInvalidoExcecao()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ValorInvalidoException>(
+            () => _service.ObterDetalheAsync(10000, 3, Guid.NewGuid()));
+    }
+
     #endregion
 
     #region Detalhe - Regra 5: Categoria precisa ser de primeiro nivel e Despesa
@@ -243,23 +259,21 @@ public class RelatorioCategoriaServiceTests
         Assert.Equal(semCategoria.Id, unico.Id);
         Assert.Equal(45m, unico.Valor);
 
-        _mockLimiteGastoRepository.Verify(r => r.ObterPorCategoriaId(It.IsAny<Guid>()), Times.Never);
+        _mockPlanejamentoMensalService.Verify(s => s.ObterAsync(It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
     #endregion
 
-    #region Detalhe - Regra 8: Limite presente -> GastoRealizado == Total da linha
+    #region Detalhe - Regra 8: Limite vem do sublimite do plano; GastoRealizado e o gasto do sublimite (itens 14 e 19)
 
     [Fact]
-    public async Task ObterDetalheAsync_ComLimite_RetornaValorLimiteEGastoRealizadoIgualAoTotal()
+    public async Task ObterDetalheAsync_ComSublimite_GastoRealizadoMenorQueTotal_LimiteUsaGastoDoSublimite()
     {
         // Arrange
         var categoria = Despesa("Mercado", icone: "cart");
         ConfigurarCategorias(categoria);
         ConfigurarLancamentos(2026, 3, NovoDebito(120m, categoria.Id), NovoDebito(80m, categoria.Id));
-        _mockLimiteGastoRepository
-            .Setup(r => r.ObterPorCategoriaId(categoria.Id))
-            .ReturnsAsync(new LimiteGasto { Id = Guid.NewGuid(), CategoriaId = categoria.Id, ValorLimite = 500m });
+        ConfigurarPlano(2026, 3, Sublimite(categoria.Id, valor: 500m, gastoRealizado: 150m));
 
         // Act
         var resposta = await _service.ObterDetalheAsync(2026, 3, categoria.Id);
@@ -271,19 +285,106 @@ public class RelatorioCategoriaServiceTests
         Assert.Equal(200m, resposta.Total);
         Assert.NotNull(resposta.Limite);
         Assert.Equal(500m, resposta.Limite!.ValorLimite);
-        Assert.Equal(resposta.Total, resposta.Limite.GastoRealizado);
+        Assert.Equal(150m, resposta.Limite.GastoRealizado);
     }
 
     [Fact]
-    public async Task ObterDetalheAsync_SemLimite_LimiteNulo()
+    public async Task ObterDetalheAsync_GastoAcimaDoSublimite_LimiteEstourado()
+    {
+        // Arrange
+        var categoria = Despesa("Mercado");
+        ConfigurarCategorias(categoria);
+        ConfigurarLancamentos(2026, 3, NovoDebito(200m, categoria.Id));
+        ConfigurarPlano(2026, 3, Sublimite(categoria.Id, valor: 100m, gastoRealizado: 150m));
+
+        // Act
+        var resposta = await _service.ObterDetalheAsync(2026, 3, categoria.Id);
+
+        // Assert
+        Assert.True(resposta.Limite!.Estourado);
+    }
+
+    [Fact]
+    public async Task ObterDetalheAsync_GastoDentroDoSublimite_LimiteNaoEstourado()
     {
         // Arrange
         var categoria = Despesa("Mercado");
         ConfigurarCategorias(categoria);
         ConfigurarLancamentos(2026, 3, NovoDebito(120m, categoria.Id));
-        _mockLimiteGastoRepository
-            .Setup(r => r.ObterPorCategoriaId(categoria.Id))
-            .ReturnsAsync((LimiteGasto?)null);
+        ConfigurarPlano(2026, 3, Sublimite(categoria.Id, valor: 500m, gastoRealizado: 150m));
+
+        // Act
+        var resposta = await _service.ObterDetalheAsync(2026, 3, categoria.Id);
+
+        // Assert
+        Assert.False(resposta.Limite!.Estourado);
+    }
+
+    [Fact]
+    public async Task ObterDetalheAsync_SublimiteZeroComGasto_LimiteEstourado()
+    {
+        // Arrange
+        var categoria = Despesa("Mercado");
+        ConfigurarCategorias(categoria);
+        ConfigurarLancamentos(2026, 3, NovoDebito(50m, categoria.Id));
+        ConfigurarPlano(2026, 3, Sublimite(categoria.Id, valor: 0m, gastoRealizado: 50m));
+
+        // Act
+        var resposta = await _service.ObterDetalheAsync(2026, 3, categoria.Id);
+
+        // Assert
+        Assert.True(resposta.Limite!.Estourado);
+    }
+
+    [Fact]
+    public async Task ObterDetalheAsync_MesAlemDoHorizonte_LimiteNuloSemFalhar()
+    {
+        // Arrange
+        var categoria = Despesa("Mercado");
+        ConfigurarCategorias(categoria);
+        var lancamento = NovoDebito(120m, categoria.Id);
+        ConfigurarLancamentos(2040, 1, lancamento);
+        _mockPlanejamentoMensalService
+            .Setup(s => s.ObterAsync(2040, 1))
+            .ThrowsAsync(new PlanoMensalForaDoHorizonteException(2040, 1, 12));
+
+        // Act
+        var resposta = await _service.ObterDetalheAsync(2040, 1, categoria.Id);
+
+        // Assert
+        Assert.Null(resposta.Limite);
+        Assert.Equal(120m, resposta.Total);
+        Assert.Equal(categoria.Id, resposta.CategoriaId);
+        var unico = Assert.Single(resposta.Lancamentos);
+        Assert.Equal(lancamento.Id, unico.Id);
+    }
+
+    [Fact]
+    public async Task ObterDetalheAsync_MesSemPlano_LimiteNulo()
+    {
+        // Arrange
+        var categoria = Despesa("Mercado");
+        ConfigurarCategorias(categoria);
+        ConfigurarLancamentos(2026, 3, NovoDebito(120m, categoria.Id));
+        ConfigurarPlanoAusente();
+
+        // Act
+        var resposta = await _service.ObterDetalheAsync(2026, 3, categoria.Id);
+
+        // Assert
+        Assert.Equal(120m, resposta.Total);
+        Assert.Null(resposta.Limite);
+    }
+
+    [Fact]
+    public async Task ObterDetalheAsync_PlanoSemSublimiteDaCategoria_LimiteNulo()
+    {
+        // Arrange
+        var categoria = Despesa("Mercado");
+        var outra = Despesa("Lazer");
+        ConfigurarCategorias(categoria, outra);
+        ConfigurarLancamentos(2026, 3, NovoDebito(120m, categoria.Id));
+        ConfigurarPlano(2026, 3, Sublimite(outra.Id, valor: 300m, gastoRealizado: 40m));
 
         // Act
         var resposta = await _service.ObterDetalheAsync(2026, 3, categoria.Id);
@@ -424,6 +525,54 @@ public class RelatorioCategoriaServiceTests
 
     #endregion
 
+    #region Regra 14: categoria arquivada continua entrando no gasto do mes (item 19)
+
+    [Fact]
+    public async Task ObterResumoAsync_CategoriaArquivada_GastoEntraNoTotalELinha()
+    {
+        // Arrange
+        var arquivada = DespesaArquivada("Lazer");
+        var ativa = Despesa("Mercado");
+        ConfigurarCategorias(arquivada, ativa);
+        ConfigurarLancamentos(2026, 3, NovoDebito(80m, arquivada.Id), NovoDebito(20m, ativa.Id));
+
+        // Act
+        var resposta = await _service.ObterResumoAsync(2026, 3);
+
+        // Assert
+        Assert.Equal(100m, resposta.TotalGasto);
+        Assert.Equal(2, resposta.Linhas.Count);
+
+        var linhaArquivada = resposta.Linhas.Single(linha => linha.CategoriaId == arquivada.Id);
+        Assert.Equal("Lazer", linhaArquivada.Nome);
+        Assert.Equal(80m, linhaArquivada.Valor);
+    }
+
+    [Fact]
+    public async Task ObterDetalheAsync_CategoriaArquivada_RetornaTotalELancamentos()
+    {
+        // Arrange
+        var arquivada = DespesaArquivada("Lazer");
+        var ativa = Despesa("Mercado");
+        ConfigurarCategorias(arquivada, ativa);
+        var lancamento = NovoDebito(80m, arquivada.Id);
+        ConfigurarLancamentos(2026, 3, lancamento, NovoDebito(20m, ativa.Id));
+
+        // Act
+        var resposta = await _service.ObterDetalheAsync(2026, 3, arquivada.Id);
+
+        // Assert
+        Assert.Equal(arquivada.Id, resposta.CategoriaId);
+        Assert.Equal("Lazer", resposta.Nome);
+        Assert.Equal(80m, resposta.Total);
+        Assert.Equal(80.00m, resposta.PercentualDoTotal);
+
+        var unico = Assert.Single(resposta.Lancamentos);
+        Assert.Equal(lancamento.Id, unico.Id);
+    }
+
+    #endregion
+
     #region Helpers
 
     private void ConfigurarCategorias(params Categoria[] categorias)
@@ -431,7 +580,7 @@ public class RelatorioCategoriaServiceTests
         var lista = categorias.ToList();
 
         _mockCategoriaRepository
-            .Setup(r => r.Listar(It.IsAny<TipoCategoria?>(), It.IsAny<bool?>(), It.IsAny<Guid?>()))
+            .Setup(r => r.ListarTodas())
             .ReturnsAsync(lista);
 
         _mockCategoriaRepository
@@ -446,6 +595,47 @@ public class RelatorioCategoriaServiceTests
             .ReturnsAsync(lancamentos.ToList());
     }
 
+    private void ConfigurarPlano(int ano, int mes, params SublimiteCalculado[] sublimites)
+    {
+        var plano = new PlanoMensalCalculado(
+            ano,
+            mes,
+            Renda: 0m,
+            Fixas: 0m,
+            PercentualInvestimento: 0m,
+            InvestimentoPlanejado: 0m,
+            Investimento: 0m,
+            InvestimentoReduzido: false,
+            PlanoNaoFecha: false,
+            Sobra: 0m,
+            NaoAlocado: 0m,
+            GastoSemSublimite: 0m,
+            Sublimites: sublimites);
+
+        _mockPlanejamentoMensalService
+            .Setup(s => s.ObterAsync(ano, mes))
+            .ReturnsAsync(new PlanoMensalConsulta(plano, SomenteLeitura: false));
+    }
+
+    private void ConfigurarPlanoAusente()
+    {
+        _mockPlanejamentoMensalService
+            .Setup(s => s.ObterAsync(It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync((PlanoMensalConsulta?)null);
+    }
+
+    private static SublimiteCalculado Sublimite(Guid categoriaId, decimal valor, decimal gastoRealizado) => new(
+        categoriaId,
+        ParentId: null,
+        Nome: "Sublimite",
+        Icone: null,
+        CategoriaArquivada: false,
+        Percentual: 0m,
+        Valor: valor,
+        GastoRealizado: gastoRealizado,
+        FracaoUtilizada: valor == 0m ? 0m : gastoRealizado / valor,
+        Estourado: gastoRealizado > valor);
+
     private static Categoria Despesa(string nome, Guid? parentId = null, string? icone = null) => new()
     {
         Id = Guid.NewGuid(),
@@ -453,6 +643,14 @@ public class RelatorioCategoriaServiceTests
         Tipo = TipoCategoria.Despesa,
         ParentId = parentId,
         Icone = icone
+    };
+
+    private static Categoria DespesaArquivada(string nome) => new()
+    {
+        Id = Guid.NewGuid(),
+        Nome = nome,
+        Tipo = TipoCategoria.Despesa,
+        Arquivada = true
     };
 
     private static Categoria Receita(string nome) => new()

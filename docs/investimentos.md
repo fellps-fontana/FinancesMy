@@ -77,7 +77,7 @@ completo. Resumo:
   neste bloco).
 - **Isolamento total**: Rendimento nunca entra em `saldo_projetado` nem em
   saldo de `Conta` — nao ha nenhum acoplamento com `ProjecaoMesService`,
-  `ContaService`, `FluxoCaixaService` ou `LimiteGastoService`. E um dado
+  `ContaService`, `FluxoCaixaService` ou `PlanejamentoMensalService`. E um dado
   puramente informativo sobre a evolucao do Ativo.
 - **Gatilho (a)/aporte permanece NO-OP** — `AtivoService.RegistrarAporte`
   (bloco F) nao chama nada de `IRendimentoService`. Aporte e rendimento sao

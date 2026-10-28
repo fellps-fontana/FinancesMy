@@ -88,11 +88,10 @@ configuráveis, navegação por categoria).
     `useRendimentosResumo` (módulo Investimentos, item 8.4 — dividendo
     manual + valorização automática derivada de `valor_atual`; nunca
     provento de fonte externa).
-- **Navegação por categoria**: no indicador de limite de gasto do
-  dashboard, clicar numa categoria navega pra
-  `/limites-gasto?categoriaId={id}` já filtrada naquela categoria
-  (consome o filtro client-side já suportado por
-  `ComparativoLimiteGastoPage.tsx`).
+- **Navegação por categoria**: no indicador de sublimite do dashboard
+  (`LimiteGastoIndicador`), clicar numa categoria navega pra
+  `/planejamento?categoriaId={id}`, que destaca a categoria na tela do
+  planejamento mensal (ver `docs/backend/planejamento-mensal.md`).
 
 ### Feedback pós-entrega (2026-08-17)
 

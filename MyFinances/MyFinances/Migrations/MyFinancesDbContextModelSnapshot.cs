@@ -605,7 +605,41 @@ namespace MyFinances.Migrations
                     b.ToTable("lancamento", (string)null);
                 });
 
-            modelBuilder.Entity("MyFinances.Domain.LimiteGasto", b =>
+            modelBuilder.Entity("MyFinances.Domain.PlanoMensal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Ano")
+                        .HasColumnType("integer")
+                        .HasColumnName("ano");
+
+                    b.Property<int>("Mes")
+                        .HasColumnType("integer")
+                        .HasColumnName("mes");
+
+                    b.Property<decimal>("PercentualInvestimento")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("percentual_investimento");
+
+                    b.Property<decimal>("RendaPrevista")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("renda_prevista");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Ano", "Mes")
+                        .IsUnique()
+                        .HasDatabaseName("IX_plano_mensal_ano_mes");
+
+                    b.ToTable("plano_mensal", (string)null);
+                });
+
+            modelBuilder.Entity("MyFinances.Domain.PlanoMensalSublimite", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -616,23 +650,24 @@ namespace MyFinances.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("categoria_id");
 
-                    b.Property<string>("Periodo")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("MENSAL")
-                        .HasColumnName("periodo");
+                    b.Property<decimal>("Percentual")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("percentual");
 
-                    b.Property<decimal>("ValorLimite")
-                        .HasColumnType("numeric")
-                        .HasColumnName("valor_limite");
+                    b.Property<Guid>("PlanoMensalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("plano_mensal_id");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CategoriaId")
-                        .IsUnique();
+                    b.HasIndex("CategoriaId");
 
-                    b.ToTable("limite_gasto", (string)null);
+                    b.HasIndex("PlanoMensalId", "CategoriaId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_plano_mensal_sublimite_plano_categoria");
+
+                    b.ToTable("plano_mensal_sublimite", (string)null);
                 });
 
             modelBuilder.Entity("MyFinances.Domain.RecebivelRecorrente", b =>
@@ -989,15 +1024,23 @@ namespace MyFinances.Migrations
                     b.Navigation("Transferencia");
                 });
 
-            modelBuilder.Entity("MyFinances.Domain.LimiteGasto", b =>
+            modelBuilder.Entity("MyFinances.Domain.PlanoMensalSublimite", b =>
                 {
                     b.HasOne("MyFinances.Domain.Categoria", "Categoria")
                         .WithMany()
                         .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MyFinances.Domain.PlanoMensal", "PlanoMensal")
+                        .WithMany("Sublimites")
+                        .HasForeignKey("PlanoMensalId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Categoria");
+
+                    b.Navigation("PlanoMensal");
                 });
 
             modelBuilder.Entity("MyFinances.Domain.RecebivelRecorrente", b =>
@@ -1096,6 +1139,11 @@ namespace MyFinances.Migrations
             modelBuilder.Entity("MyFinances.Domain.Lancamento", b =>
                 {
                     b.Navigation("LancamentosConciliados");
+                });
+
+            modelBuilder.Entity("MyFinances.Domain.PlanoMensal", b =>
+                {
+                    b.Navigation("Sublimites");
                 });
 
             modelBuilder.Entity("MyFinances.Domain.RecebivelRecorrente", b =>

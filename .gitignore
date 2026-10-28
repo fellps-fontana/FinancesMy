@@ -25,3 +25,6 @@ project.fragment.lock.json
 # OS files
 .DS_Store
 Thumbs.db
+
+# Arquivos de tasks do Kira (locais por branch)
+.kira/

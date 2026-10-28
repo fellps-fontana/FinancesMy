@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { criarLancamento } from "@/features/lancamentos/api"
 import { lancamentosKeys } from "@/features/lancamentos/query-keys"
 import type { CriarLancamentoRequest } from "@/features/lancamentos/types"
+import { planejamentoMensalKeys } from "@/features/planejamento-mensal/query-keys"
 
 type CriarLancamentoVariables = {
   contaId: string
@@ -20,6 +21,7 @@ export function useCriarLancamento() {
       criarLancamento(contaId, request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: lancamentosKeys.all })
+      queryClient.invalidateQueries({ queryKey: planejamentoMensalKeys.all })
     },
   })
 }

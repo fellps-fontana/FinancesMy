@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Builder;
@@ -11,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MyFinances.Data;
 using MyFinances.DTOs;
-using MyFinances.DTOs.LimiteGasto;
 using MyFinances.DTOs.Relatorio;
 using MyFinances.Domain;
 using Xunit;
@@ -142,12 +140,21 @@ public class RelatoriosControllerTestsFixture : IAsyncLifetime
         await dbContext.SaveChangesAsync();
     }
 
+    public async Task AddPlanoMensalAsync(PlanoMensal plano)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<MyFinancesDbContext>();
+        dbContext.PlanosMensais.Add(plano);
+        await dbContext.SaveChangesAsync();
+    }
+
     public async Task ClearAsync()
     {
         using var scope = _factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<MyFinancesDbContext>();
         dbContext.Lancamentos.RemoveRange(await dbContext.Lancamentos.ToListAsync());
-        dbContext.LimitesGasto.RemoveRange(await dbContext.LimitesGasto.ToListAsync());
+        dbContext.PlanoMensalSublimites.RemoveRange(await dbContext.PlanoMensalSublimites.ToListAsync());
+        dbContext.PlanosMensais.RemoveRange(await dbContext.PlanosMensais.ToListAsync());
         dbContext.Categorias.RemoveRange(await dbContext.Categorias.ToListAsync());
         dbContext.Contas.RemoveRange(await dbContext.Contas.ToListAsync());
         await dbContext.SaveChangesAsync();
@@ -303,16 +310,32 @@ public class RelatoriosControllerTests
     }
 
     [Fact]
-    public async Task ObterDetalhe_CategoriaComLimite_RetornaLimiteComGastoRealizadoIgualAoTotal()
+    public async Task ObterDetalhe_CategoriaComSublimite_RetornaValorDoSublimiteEGastoVariavel()
     {
         await PrepararMassaAsync();
-        await DefinirLimiteAsync(_categoriaMercadoId, 120m);
+        await _fixture.AddPlanoMensalAsync(new PlanoMensal
+        {
+            Id = Guid.NewGuid(),
+            Ano = 2026,
+            Mes = 3,
+            RendaPrevista = 1000m,
+            PercentualInvestimento = 0m,
+            Sublimites = new List<PlanoMensalSublimite>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    CategoriaId = _categoriaMercadoId,
+                    Percentual = 50m
+                }
+            }
+        });
 
         var detalhe = await ObterDetalheAsync(2026, 3, _categoriaMercadoId);
 
+        Assert.Equal(150m, detalhe.Total);
         Assert.NotNull(detalhe.Limite);
-        Assert.Equal(120m, detalhe.Limite!.ValorLimite);
-        Assert.Equal(detalhe.Total, detalhe.Limite.GastoRealizado);
+        Assert.Equal(500m, detalhe.Limite!.ValorLimite);
         Assert.Equal(150m, detalhe.Limite.GastoRealizado);
     }
 
@@ -474,21 +497,6 @@ public class RelatoriosControllerTests
         Oculto = oculto,
         TransferenciaId = transferenciaId
     };
-
-    private async Task DefinirLimiteAsync(Guid categoriaId, decimal valorLimite)
-    {
-        var request = new DefinirLimiteGastoRequest
-        {
-            CategoriaId = categoriaId,
-            ValorLimite = valorLimite
-        };
-
-        var json = JsonSerializer.Serialize(request);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-        var response = await _fixture.Client.PostAsync("/api/limites-gasto", content);
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-    }
 
     private async Task<RelatorioGastoPorCategoriaResponse> ObterResumoAsync(int ano, int mes)
     {

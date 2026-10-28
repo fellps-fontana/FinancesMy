@@ -121,8 +121,9 @@ Campo `periodicidade` no cadastro, valores suportados: `MENSAL` (padrao) e
 `ANUAL`. `SEMANAL` avaliado e descartado nesta rodada — contas fixas
 domesticas (aluguel, internet, assinaturas) recorrem em base mensal ou
 anual; recorrencia semanal e atipica para o dominio e pode ser adicionada
-depois se surgir caso de uso real, mesmo espirito do campo `periodo` de
-`limite_gasto` (item 14: "pronto para extensao futura"). Registros
+depois se surgir caso de uso real, mesmo espirito do antigo campo `periodo`
+de `limite_gasto` (item 14 original, "pronto para extensao futura"; campo
+removido na reescrita de 2026-10-13). Registros
 existentes de `conta_fixa` recebem `periodicidade = MENSAL` por default
 (migracao aditiva — preserva o comportamento hoje ja implementado, que
 sempre foi mensal).
@@ -265,13 +266,15 @@ a uma categoria do usuario (DE_PARA_CATEGORIA).
 - Se NAO existe vinculo -> lancamento fica com `categoria_id = null`
   (sem categoria) e aparece na aba de vinculo pendente.
 
-**Edicao de categoria (registrada em 2026-10-08).** Editaveis: `nome`,
-`icone`, `parent_id` (o pai precisa ser do mesmo tipo) e o limite de gasto
-(item 14), no mesmo formulario. "Remover limite" apaga o `limite_gasto` da
-categoria. O `tipo` (DESPESA | RECEITA) NAO muda depois de criada:
-subcategorias, lancamentos e limite dependem dele — e o comportamento ja
-implementado em `CategoriaService.Editar`. Arquivar continua sendo a unica
-forma de "excluir" (sem hard delete).
+**Edicao de categoria (registrada em 2026-10-08; limite retirado em
+2026-10-13).** Editaveis: `nome`, `icone` e `parent_id` (o pai precisa ser
+do mesmo tipo). O limite de gasto NAO fica mais no formulario de categoria:
+desde 2026-10-13 ele e o sublimite do planejamento mensal, definido em
+percentual na tela de planejamento (itens 14 e 20). O `tipo` (DESPESA |
+RECEITA) NAO muda depois de criada: subcategorias, lancamentos e sublimites
+dependem dele — e o comportamento ja implementado em
+`CategoriaService.Editar`. Arquivar continua sendo a unica forma de
+"excluir" (sem hard delete).
 
 ---
 
@@ -945,58 +948,129 @@ entra como entrada esperada, simetrica a conta a pagar.
 
 ---
 
-## 14. Limite de Gasto por Categoria
+## 14. Limite de Gasto por Categoria (sublimite do planejamento mensal) — REESCRITO EM 2026-10-13
 
-Alerta de orcamento por categoria. NENHUM bloqueio de lancamento.
+**DECISAO CONFIRMADA COM O USUARIO EM 2026-10-13.** Substitui a versao
+anterior deste item (limite em R$ fixo, 1:1 com categoria, igual para todo
+mes). O limite de gasto passa a existir SOMENTE como sublimite do
+planejamento mensal (item 20): e definido em percentual dentro do plano de
+um mes, e o valor em R$ e calculado. Continua sendo alerta de orcamento por
+categoria — NENHUM bloqueio de lancamento.
 
-**O que e:** o usuario define um `valor_limite` mensal para uma categoria de
-tipo DESPESA (`limite_gasto`, 1:1 com `categoria` — uma categoria tem no
-maximo um limite). Categoria tipo RECEITA nao pode ter limite; o conceito e
-orcamento de gasto, nao de entrada.
+**Fonte unica.** A tabela `limite_gasto` (1:1 com categoria, `valor_limite`
+em R$, `periodo`) deixa de existir. Nao ha coexistencia entre limite avulso
+e sublimite do plano — seriam duas fontes de verdade, e cada tela teria que
+decidir de qual ler. Os limites cadastrados ate 2026-10-13 sao descartados,
+sem conversao automatica (app single-user): o usuario recadastra em
+percentual no primeiro plano.
 
-**Hierarquia (categoria/subcategoria, item 7):** o gasto de uma subcategoria
-soma TAMBEM no limite da categoria-pai, alem de poder ter seu proprio limite
-independente. Ou seja, se a categoria-pai tem limite cadastrado, o gasto
-realizado dela e a soma dos lancamentos da propria categoria MAIS os
-lancamentos de todas as suas subcategorias diretas — mesmo que uma
-subcategoria tambem tenha limite proprio (os dois calculos coexistem, cada
-um comparado ao seu proprio `valor_limite`).
+**Quem pode ter sublimite:** so categoria DESPESA nao arquivada. Categoria
+RECEITA nunca — o conceito e orcamento de gasto, nao de entrada. Uma
+categoria tem no maximo um sublimite por plano.
 
-**Gasto realizado no periodo:** soma de todos os lancamentos DEBIT
-vinculados a categoria (e suas subcategorias diretas, se for categoria-pai),
-dentro do mes calendario (mesmo recorte usado na projecao do mes, item 9).
-Conta tanto lancamento avulso (conta banco) quanto compra de cartao de
-credito daquela categoria — regime de COMPETENCIA: o lancamento conta assim
-que registrado na categoria, independente do status (PENDENTE ou PAGO),
-mesma filosofia do item 12 (a compra de cartao conta na hora, nao so quando
-a fatura e paga). Lancamento oculto (item 4) nao entra na soma.
+**Categoria arquivada que ja tem sublimite (decisao confirmada com o usuario
+em 2026-10-14).** Arquivar a categoria depois de ela receber sublimite NAO
+apaga o sublimite do plano: ele continua existindo, continua aparecendo no
+plano e continua entrando nos calculos (soma de percentuais, `nao_alocado`,
+gasto e estouro), sinalizado como "categoria arquivada" e com a opcao de
+remover. Ao salvar o plano, reenviar o sublimite de uma categoria arquivada
+e recusado (erro de validacao, nada e salvo): categoria arquivada nao recebe
+sublimite. Na pratica, para salvar um plano que ainda carrega sublimite de
+categoria arquivada, o usuario remove esse sublimite antes. A regra acima
+("so categoria DESPESA nao arquivada") vale para QUEM RECEBE sublimite; nao
+revoga o que ja existia no plano.
+
+**Sublimite de categoria arquivada e intocavel no rascunho da tela
+`/planejamento` (decisao confirmada com o usuario em 2026-10-26).** Enquanto
+o usuario nao clicar em "Remover" naquela linha, o sublimite de categoria
+arquivada nao muda por nenhum efeito indireto no rascunho:
+- zerar o percentual do pai (cascateamento da "Hierarquia") zera so as
+  subcategorias ATIVAS; a subcategoria arquivada mantem o percentual salvo;
+- "Copiar de outro mes" (item 20) preserva no rascunho os sublimites de
+  categorias arquivadas que ja existiam no mes DESTINO; as arquivadas da
+  ORIGEM continuam ignoradas;
+- a linha arquivada continua entrando nos calculos (soma de percentuais,
+  `nao_alocado`, gasto e estouro) com o percentual salvo, e salvar continua
+  recusado enquanto ela existir (regra de 2026-10-14, acima, inalterada).
+So o clique explicito em "Remover" retira o sublimite arquivado do rascunho.
+
+**Valor do sublimite (R$ — sempre calculado na consulta, nunca gravado):**
+- categoria de primeiro nivel: `sobra * percentual / 100` (`sobra`: item 20);
+- subcategoria: `sublimite do pai * percentual / 100`.
+- **Entrada bidirecional `R$ <-> %` na tela (decisao confirmada com o usuario
+  em 2026-10-22):** na interface de planejamento, o usuario pode digitar o
+  sublimite tanto em `%` quanto em `R$`, convertendo imediatamente um campo
+  pelo outro (`% = valor_R$ / sobra * 100` no primeiro nivel;
+  `% = valor_R$ / sublimite_pai_R$ * 100` na subcategoria). O banco e a API
+  (`PUT`) continuam gravando exclusivamente o percentual (`0` a `100`).
+  Categorias deixadas com `0%` / `R$ 0` / vazio na tela nao sao enviadas em
+  `sublimites[]` no salvamento (zerar ou limpar remove o sublimite ao salvar).
+
+**Hierarquia (categoria/subcategoria, item 7 — 1 nivel):**
+- Subcategoria so pode ter sublimite se a categoria-pai tiver sublimite no
+  mesmo plano. Sem isso, dar percentual ao pai depois mudaria sozinho o
+  significado do percentual do filho.
+- Remover o sublimite do pai na API e recusado enquanto alguma subcategoria
+  dele tiver sublimite: remover os das subcategorias antes (mesmo padrao de
+  "resolver os dependentes antes" do item 8.5). Na tela de planejamento, zerar
+  o sublimite da categoria-pai zera automaticamente os sublimites das suas
+  subcategorias ATIVAS no rascunho (decisao confirmada em 2026-10-22). O
+  sublimite de subcategoria ARQUIVADA nao e zerado por esse cascateamento (ver
+  "Sublimite de categoria arquivada e intocavel no rascunho", item 14,
+  decisao de 2026-10-26).
+- O gasto de uma subcategoria soma TAMBEM no gasto do pai: o gasto realizado
+  do pai e a soma dos lancamentos da propria categoria MAIS os das
+  subcategorias diretas. Os dois calculos coexistem, cada um comparado ao
+  seu proprio sublimite.
+
+**Gasto realizado no mes (gasto do sublimite):** lancamentos DEBIT da
+categoria (e das subcategorias diretas, se for categoria-pai) no mes
+calendario do plano, regime de COMPETENCIA (conta assim que registrado,
+status PENDENTE ou PAGO), sem lancamento oculto (item 4). Conta lancamento
+avulso de conta banco, compra de cartao e parcela (itens 12 e 17 — cada
+parcela no mes da propria `data`, inclusive parcela antecipada). NAO conta o
+que ja entrou em `fixas` no item 20: lancamento gerado por conta fixa (item
+6) ou por assinatura de cartao (item 16). Cada despesa cai em exatamente um
+balde — `fixas` OU sublimite —, nunca nos dois.
 
 ```
 gasto_realizado_no_mes(categoria) = soma(lancamento.valor)
   onde lancamento.categoria_id IN (categoria.id, subcategorias_diretas(categoria).id)
     e lancamento.tipo = DEBIT
     e lancamento.oculto = false
-    e lancamento.data dentro do mes calendario consultado
+    e lancamento.data dentro do mes calendario do plano
+    e lancamento.conta_fixa_id IS NULL
+    e lancamento.assinatura_cartao_id IS NULL
+    e lancamento nao classificado como transferencia (itens 3, 12 e 13)
 ```
 
-**Estourar o limite:** `gasto_realizado_no_mes > valor_limite`.
+**Estourar:** `gasto_realizado_no_mes > valor do sublimite`. Sublimite de
+R$ 0 (sobra zerada, item 20) fica estourado com qualquer gasto > 0.
 
-**Efeito: SOMENTE alerta visual.** O lancamento e salvo normalmente, sem
-bloqueio, mesmo ultrapassando o limite. A categoria so fica sinalizada como
-estourada nas superficies abaixo — nenhum fluxo de escrita (criar
-lancamento, compra de cartao) e impedido por causa do limite.
+**Efeito: SOMENTE alerta visual.** O lancamento e salvo normalmente, mesmo
+ultrapassando o sublimite. Nenhum fluxo de escrita (criar lancamento,
+compra de cartao) e impedido.
 
 **Onde aparece:**
-- Dashboard/resumo geral: indicador de progresso gasto/limite por categoria.
-- Tela de lancamento: aviso ao selecionar/criar lancamento numa categoria
-  perto ou acima do limite.
-- Relatorio por categoria: comparativo limite vs. realizado.
-- Tela de categoria: cadastro/edicao do `valor_limite` fica embutido no
-  form/lista de categoria (nao ha tela separada de "Limites").
+- **Tela unica de planejamento (`/planejamento`, item 20 — unificada em
+  2026-10-22):** reune em uma so tela a definicao dos sublimites e o
+  comparativo sublimite x gasto variavel do mes por categoria. Lista
+  diretamente todas as categorias `DESPESA` ativas de primeiro nivel (com
+  expansao para suas subcategorias ativas) e exibe o `gasto_realizado_no_mes`
+  de todas elas — inclusive as que estao com `0%` (sem sublimite salvo). A
+  antiga rota `/limites-gasto` redireciona para `/planejamento` (preservando
+  `?categoriaId=` para destaque/filtro na tela unificada) e nao existe item
+  separado "Limites" na sidebar.
+- Dashboard: indicador de progresso gasto/sublimite por categoria do mes
+  corrente (link aponta para `/planejamento?categoriaId=`).
+- Tela de lancamento: aviso ao selecionar categoria perto ou acima do
+  sublimite do mes da `data` do lancamento.
+- Relatorio por categoria (item 19): barra sublimite x gasto do sublimite no
+  detalhe, rotulada como gasto variavel.
+- O formulario de categoria NAO tem mais campo de limite (item 7).
 
-**Periodo:** so MENSAL nesta versao (`periodo` default `'MENSAL'`, campo
-pronto para extensao futura — nenhuma outra opcao de periodo esta
-implementada).
+**Periodo:** sempre o mes calendario do plano. O campo `periodo` deixa de
+existir.
 
 ---
 
@@ -1307,8 +1381,8 @@ conta, tipo e status.
   e permitido). SUGERIDO nunca (item 5).
 
 **Efeitos:** projecao (item 9), limite de gasto (item 14), relatorio por
-categoria (item 19) e fluxo de caixa leem o lancamento como ele esta, sem
-logica extra. O saldo de conta manual e o `saldo_manual` digitado (item
+categoria (item 19), planejamento mensal (item 20) e fluxo de caixa leem o
+lancamento como ele esta, sem logica extra. O saldo de conta manual e o `saldo_manual` digitado (item
 10): editar ou excluir lancamento NAO recalcula saldo de conta.
 
 **Exclusao:** hard delete, mesmo escopo (so avulso). Sem desfazer.
@@ -1321,12 +1395,18 @@ vinculo nenhum — precisam passar a recusar lancamento nao avulso.
 
 ## 19. Relatorio por categoria — DECISAO CONFIRMADA COM O USUARIO EM 2026-10-08
 
-**Recorte:** mes calendario escolhido (padrao: mes corrente). Mesmo calculo
-do "Gasto realizado no periodo" do item 14: lancamentos DEBIT, regime de
-COMPETENCIA (conta banco e compra de cartao pela propria `data`), status
-PENDENTE e PAGO, sem lancamento oculto. Transferencia e pagamento de fatura
-nunca entram (itens 3 e 12). Parcela antecipada conta no mes da nova data
-(item 12).
+**Recorte:** mes calendario escolhido (padrao: mes corrente). Lancamentos
+DEBIT, regime de COMPETENCIA (conta banco e compra de cartao pela propria
+`data`), status PENDENTE e PAGO, sem lancamento oculto. Transferencia e
+pagamento de fatura nunca entram (itens 3 e 12). Parcela antecipada conta no
+mes da nova data (item 12). Entra TODO o gasto do mes, inclusive o gerado
+por conta fixa (item 6) e por assinatura de cartao (item 16).
+
+**Diferenca para o limite (desde 2026-10-13):** este recorte deixou de ser
+igual ao gasto do sublimite (item 14), que exclui conta fixa e assinatura de
+cartao. Para a mesma categoria, o valor da linha do relatorio pode ser maior
+que o gasto mostrado na barra de sublimite — o relatorio responde "para onde
+foi o dinheiro", o sublimite responde "quanto do variavel ja usei".
 
 **Lista:** uma linha por categoria DESPESA de primeiro nivel com gasto > 0
 no mes, somando as subcategorias diretas (mesma agregacao do item 14).
@@ -1342,10 +1422,208 @@ anterior for zero, nao exibe a variacao.
 da linha — descricao, data, conta (ou cartao, identificado como tal),
 subcategoria quando houver, e valor — em ordem crescente de data. No topo:
 total da categoria, % do total gasto do mes (mesmo denominador da lista,
-confirmado pelo usuario em 2026-10-14) e, se a categoria tiver limite, a
-barra limite x realizado (item 14). A soma do detalhe e sempre igual ao
-valor da linha. So leitura: editar ou excluir e pela tela de origem (item
-18).
+confirmado pelo usuario em 2026-10-14) e, se a categoria tiver sublimite no
+plano do mes (item 20), a barra sublimite x gasto do sublimite (item 14),
+rotulada como gasto variavel (sem conta fixa e assinatura de cartao). A soma
+do detalhe e sempre igual ao valor da linha; o valor da barra pode ser
+menor. So leitura: editar ou excluir e pela tela de origem (item 18).
+Mes alem do horizonte do plano (item 20): o detalhe e exibido sem a barra de
+sublimite, como categoria sem sublimite, sem erro e sem gerar plano
+(decisao confirmada com o usuario em 2026-10-14).
+
+---
+
+## 20. Planejamento mensal — DECISAO CONFIRMADA COM O USUARIO EM 2026-10-13
+
+**Classificacao: CRITICA (calculo).** Implementacao segue TDD — teste RED
+antes do codigo.
+
+**O que e:** plano de um mes calendario. Parte da renda prevista, desconta as
+despesas fixas e o investimento, e distribui o que sobra em sublimites
+percentuais por categoria (item 14). So calcula, informa e alerta: nunca
+bloqueia lancamento e nunca gera lancamento, transferencia ou aporte.
+
+**Um plano por mes:** chave unica (`ano`, `mes`). App single-user — sem
+`usuario_id`, como o resto do dominio.
+
+**Definido pelo usuario:**
+- `renda_prevista` (decimal, >= 0);
+- `percentual_investimento` (decimal, 0 a 100);
+- sublimites: lista de (`categoria_id`, `percentual` decimal de 0 a 100) —
+  categoria DESPESA nao arquivada, no maximo um por categoria (item 14).
+
+Todo o resto e calculado. Na interface (`/planejamento`, decisao confirmada em
+2026-10-22), o usuario pode preencher tanto em `%` quanto em `R$` para o
+investimento (`% = valor_R$ / renda_prevista * 100`) e para cada sublimite
+(item 14), com conversao bidirecional imediata na tela; no banco e no `PUT`
+persiste-se exclusivamente o percentual. Categorias deixadas com `0%` / `R$ 0`
+/ vazio nao sao enviadas em `sublimites[]` ao salvar.
+
+**Calculo (valores em R$ calculados a cada consulta, nunca gravados):**
+
+```
+renda                  = renda_prevista do plano
+fixas                  = soma(lancamento.valor) com data no mes do plano
+                         onde tipo = DEBIT e oculto = false
+                         e (conta_fixa_id IS NOT NULL
+                            ou assinatura_cartao_id IS NOT NULL)
+investimento_planejado = renda * percentual_investimento / 100
+investimento           = max(0, min(investimento_planejado, renda - fixas))
+sobra                  = max(0, renda - fixas - investimento)
+sublimite(1o nivel)    = sobra * percentual / 100
+sublimite(subcat.)     = sublimite(pai) * percentual / 100
+nao_alocado            = sobra - soma(sublimites de primeiro nivel)
+gasto_sem_sublimite    = soma(lancamento.valor) com os mesmos filtros do
+                         gasto do sublimite (item 14), cuja categoria e null
+                         ou nem ela nem o pai dela tem sublimite no plano
+```
+
+- `fixas` segue o mesmo regime do resto: competencia pela `data`, status
+  PENDENTE ou PAGO. Parcela NUNCA e fixa — entra no sublimite da categoria
+  (item 14), no mes de cada parcela.
+- Arredondamento: calculo em decimal sem arredondamento intermediario;
+  arredondar para 2 casas so na exibicao.
+
+**Renda prevista:**
+- Ao nascer o plano, `renda_prevista` vem preenchida com a soma das
+  ocorrencias de recebivel recorrente (item 15) que caem no mes do plano —
+  as que os moldes ATIVOS geram naquele mes pela regra de ocorrencia do
+  item 15, materializadas ou nao (`SEMANAL` pode ter mais de uma no mes).
+  O pre-preenchimento vale so para o plano gerado sob demanda na consulta
+  (ver "Ciclo do mes"); plano criado direto por salvamento nasce com a
+  renda enviada.
+- O usuario pode editar o valor no plano. Depois de criado, o plano NAO
+  acompanha mudancas nos recebiveis recorrentes — o valor e do plano.
+- Renda realizada (o que ja entrou) nunca e usada: do dia 1 ate o
+  recebimento cair, todo sublimite seria zero e tudo apareceria estourado.
+
+**Investimento:**
+- Se nao cabe (`renda - fixas < investimento_planejado`), o investimento cai
+  so o necessario para a sobra chegar a zero, nunca abaixo de zero.
+- Sempre que `investimento < investimento_planejado`, a tela mostra o aviso
+  "investimento reduzido de R$ X para R$ Y" (X = planejado, Y = calculado).
+  Nunca silencioso: como os valores sao recalculados a cada consulta, a
+  reducao pode aparecer no meio do mes (ex.: conta fixa ou assinatura
+  nova).
+- Se `renda - fixas < 0`: investimento = 0, sobra = 0, todos os sublimites
+  = R$ 0, e a tela mostra o alerta "plano nao fecha".
+- v1: o investimento e so reserva no calculo. O sistema NAO confere se o
+  valor foi aportado ou transferido (ver "Fora da v1").
+
+**Validacao ao salvar (violacao = erro de validacao, nada e salvo):**
+- `renda_prevista` >= 0 e <= 9.999.999.999.999.999,99 (teto tecnico, limite
+  do armazenamento); `percentual_investimento` e cada `percentual` entre 0
+  e 100.
+- Soma dos percentuais das categorias de primeiro nivel <= 100.
+- Soma dos percentuais das subcategorias de um mesmo pai <= 100.
+- Subcategoria com sublimite exige sublimite no pai (item 14).
+- Categoria RECEITA ou arquivada nao recebe sublimite (item 14). Vale
+  tambem para sublimite ja existente de categoria arquivada: reenviar essa
+  categoria no salvamento e recusado; o usuario remove o sublimite (item 14,
+  decisao de 2026-10-14).
+- Plano de mes passado nao e editavel.
+- Mes alem do horizonte (mes corrente + 12, ver "Horizonte") e recusado.
+
+**Exibicao e edicao inline na tela unificada (`/planejamento`, decisao
+confirmada com o usuario em 2026-10-22):**
+- Renda, fixas, investimento (planejado e calculado), sobra, lista de
+  categorias com sublimite e gasto variavel do mes, `nao_alocado` e, ao lado
+  dele, `gasto_sem_sublimite` — sem essa linha, gasto em categoria sem
+  sublimite nao apareceria em lugar nenhum do plano. Mais os alertas:
+  investimento reduzido, plano nao fecha, sublimite estourado.
+- **Edicao inline com preview em tempo real:** nao existe tela/modo separado
+  de edicao. Em meses editaveis (corrente e futuros ate o horizonte), o
+  usuario altera renda prevista, investimento (`%` ou `R$`) e sublimites (`%`
+  ou `R$`) diretamente na tela principal. Enquanto digita, todos os valores em
+  R$, sobra, `nao_alocado`, `gasto_sem_sublimite`, alertas e barras de
+  progresso atualizam em tempo real na tela. Quando houver alteracoes nao
+  salvas (dirty state), fica visivel uma barra explicita com "Salvar
+  alteracoes" e "Descartar". Meses passados continuam somente leitura.
+- **Todas as categorias DESPESA ativas listadas diretamente:** em vez de um
+  seletor para adicionar categoria, a tela lista todas as categorias `DESPESA`
+  ativas de primeiro nivel, com botao para expandir/recolher suas
+  subcategorias ativas. Categorias arquivadas que ja possuiam sublimite salvo
+  no plano continuam aparecendo sinalizadas como arquivadas com acao de
+  remover.
+- **Gasto variavel disponivel para todas as categorias DESPESA:** a consulta do
+  plano (`GET`) retorna, alem dos `sublimites` salvos, a lista de gastos
+  variaveis realizados no mes (regra do item 14) de todas as categorias
+  `DESPESA` (primeiro nivel somando subcategorias diretas; subcategoria somando
+  apenas ela mesma), permitindo exibir o gasto variavel mesmo para categorias
+  que estao com `0%` (sem sublimite salvo).
+- **Copiar de outro mes na tela (decisao confirmada com o usuario em
+  2026-10-23):** em meses editaveis (`!somente_leitura`), o usuario pode
+  escolher um mes/ano de origem (por padrao sugerindo o mes imediatamente
+  anterior ao mes aberto, vedado copiar do proprio mes aberto ou de mes alem do
+  horizonte de +12 meses) para copiar os percentuais do plano daquele mes para
+  o rascunho da tela, com opcao (checkbox desmarcado por padrao) de **copiar
+  tambem a renda prevista**. A acao preenche apenas o rascunho em memoria (nao
+  salva direto no banco): aplica `percentual_investimento` (e `renda_prevista`,
+  se marcado) e, para cada categoria `DESPESA` ativa, aplica o `percentual` que
+  ela possuia no mes de origem (ou `0%` se nao tinha sublimite na origem).
+  Categorias arquivadas do mes de origem sao ignoradas na copia, e subcategoria
+  ativa cujo pai esteja arquivado ou com `0%` fica em `0%` (respeitando a
+  hierarquia do item 14). Os sublimites de categorias arquivadas que ja
+  existiam no mes DESTINO sao preservados no rascunho, intactos (decisao de
+  2026-10-26, item 14: sublimite arquivado so sai com "Remover"). Todos os
+  valores em R$, `sobra`, `nao_alocado`,
+  `gasto_sem_sublimite`, barras e alertas sao recalculados imediatamente sobre
+  as `fixas` e gastos variaveis do mes destino, habilitando a barra "Salvar
+  alteracoes" / "Descartar" para revisao antes de salvar. Se o mes de origem
+  for um mes passado sem plano salvo (`404`), a tela informa que nao ha plano
+  naquele mes.
+
+**Horizonte (decisao confirmada com o usuario em 2026-10-14):** o plano so
+pode ser consultado, gerado ou salvo ate 12 meses a frente do mes corrente
+(mes corrente + 12, inclusive; ex.: com mes corrente 2026-10, o ultimo mes
+aceito e 2027-10). Mes alem disso e recusado com erro de validacao e nenhum
+plano e criado, em consulta ou em salvamento. Motivo: a geracao sob demanda
+na consulta (ver "Ciclo do mes") nao pode criar planos sem limite. Mes
+passado segue a regra de sempre: so leitura, e sem plano continua sem plano.
+
+**Ciclo do mes:**
+- Mes corrente ou futuro (ate o horizonte) sem plano: na primeira consulta,
+  o plano nasce
+  automaticamente (geracao sob demanda, idempotente por `ano`/`mes`, mesmo
+  espirito do item 6), copiando `percentual_investimento` e os sublimites
+  (percentuais) do plano mais recente anterior a ele. Categoria arquivada
+  fica de fora da copia. Subcategoria cujo pai ficou de fora da copia (pai
+  arquivado) tambem fica de fora, mesmo ativa: subcategoria com sublimite
+  exige sublimite no pai (item 14) (decisao confirmada em 2026-10-14).
+  `renda_prevista` NAO e copiada: nasce pela regra de pre-preenchimento
+  acima. Sem nenhum plano anterior, nasce com a renda pre-preenchida,
+  investimento 0% e sem sublimites.
+- Salvar plano de mes corrente ou futuro (ate o horizonte) que ainda nao foi
+  gerado (decisao
+  confirmada com o usuario em 2026-10-14): o plano nasce com os valores
+  enviados no salvamento (`renda_prevista`, `percentual_investimento` e
+  sublimites), sem pre-preenchimento de renda e sem copia do plano anterior.
+  Valem as mesmas validacoes de salvamento. Mes passado continua so leitura:
+  salvar plano de mes passado e recusado, exista plano ou nao.
+- Mes passado (anterior ao mes corrente): plano so leitura. Mes passado sem
+  plano continua sem plano — nao e criado.
+- Mes corrente e futuro (ate o horizonte): editaveis. Os valores em R$ sao
+  recalculados a cada
+  consulta: conta fixa ou assinatura nova muda `fixas`, `sobra` e
+  sublimites na hora.
+
+**Relacao com outros itens:**
+- Item 9 (projecao do mes): nao muda. O plano nao entra no
+  `saldo_projetado`.
+- Item 14: o sublimite do plano E o limite de gasto.
+- Item 19: o relatorio continua somando todo o gasto; so a barra de
+  sublimite usa o gasto do item 14.
+
+**Fora da v1 (decisao consciente, 2026-10-13):**
+- Conferir se o investimento foi realizado. Se entrar, a fonte deve ser
+  transferencia para conta INVESTIMENTO no mes, nunca aporte: aporte nao
+  gera transferencia (item 8.5), entao transferir para a corretora e depois
+  registrar o aporte contaria duas vezes.
+- Diluir conta fixa ANUAL em 12 meses. Na v1 ela entra inteira em `fixas` no
+  mes da ocorrencia e reduz a sobra daquele mes.
+- Sublimite persistido como valor fixo (R$) independente da sobra. No banco e
+  na API persiste-se apenas percentual (na tela ha input bidirecional
+  `R$ <-> %` como atalho de calculo sobre a sobra/pai, decisao de 2026-10-22).
 
 ---
 
