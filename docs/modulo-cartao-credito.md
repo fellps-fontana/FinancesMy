@@ -67,8 +67,9 @@ explícito na UX).
 **Bloco H (TASK-131 a 136, follow-up front-only)** fechou as lacunas abaixo:
 categoria funcional na compra, parcelamento no formulário, múltiplos cartões,
 e removeu a tela morta de relatório por categoria em favor de reusar
-`/limites-gasto` (hoje comparativo do sublimite do plano, ver
-`docs/planejamento-mensal.md`) — sem duplicar endpoint.
+o comparativo de categoria (hoje a tela `/planejamento`; `/limites-gasto`
+redireciona para ela, ver `docs/backend/planejamento-mensal.md`) — sem
+duplicar endpoint.
 
 ## Recorrência de cartão (2026-08-26)
 
